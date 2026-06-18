@@ -1,0 +1,60 @@
+{
+    "key":  "spreed-itsl",
+    "name":  "spreed-itsl (ITSL-fork av Nextcloud Talk 21.1.7)",
+    "purpose":  "ITSL:s fork av Nextcloud Talk för säkra videomöten mellan handläggare och externa medborgare i Hubs-plattformen. Forkens egna ändringar är små och kirurgiska (alla markerade med \"itsl change\"-kommentarer): de låser gästers visningsnamn till BankID-verifierad identitet, undertrycker Talks egna e-postinbjudningar till förmån för sdkmc-appens egna kalenderinbjudningar, och ger moderatorer möjlighet att se gästers verifierade identitet (namn + personnummer). All BankID/OIDC-logik bor i syskonappen sdkmc — spreed-itsl är konsumenten.",
+    "key_features":  [
+                         "Gästnamn låses till BankID-identitet: lib/Controller/GuestController.php::setDisplayName vägrar namnbyte om sessionen saknar \u0027BankIdAuthUserName\u0027 och skriver annars alltid sessionens BankID-namn, aldrig det gästen själv anger (rad 44-64)",
+                         "Initial state-brygga till sdkmc: lib/Controller/PageController.php rad 412 och 473 dispatchar OCA\\SdkMc\\Event\\PublishInitialStateEventForGuests i showCall/invitedEmail-flödena; sdkmc:s SessionCleanupListener publicerar då initial state \u0027spreed\u0027/\u0027participantDisplayName\u0027 med BankID-namnet till gästsidan",
+                         "Undertryckta Talk-inbjudningar: lib/GuestManager.php::sendEmailInvitation (rad 206-210) skickar bara e-post om REQUEST_URI slutar på \u0027resend-invitations\u0027 — sdkmc:s CustomInvitationMailerService skickar i stället egna ICS-baserade inbjudningar med personlig länk spreed.Page.showCall?token\u0026email\u0026access",
+                         "src/services/participantsService.js rad 102: addParticipant POSTar till .../participants?resend-invitations så att invite ändå skickas när moderator manuellt lägger till e-postdeltagare",
+                         "Auto-namnsättning för gäster: src/components/GuestWelcomeWindow.vue (rad 96-106) och src/components/LobbyScreen.vue (rad 108-118) läser loadState(\u0027spreed\u0027,\u0027participantDisplayName\u0027) och autosubmittar gästnamnet — medborgaren väljer aldrig namn själv",
+                         "Gäst-utloggning: src/components/SetGuestUsername.vue — namnredigering bortkommenterad, ersatt med länken \u0027Sign out and exit call\u0027 som går till /apps/sdkmc/spreed/guest/logout/{token} (rad 155-160)",
+                         "Moderatorverifiering: src/components/RightSidebar/Participants/Participant.vue rad 253-262 + 1004-1039 — knappen \u0027View verified identity (moderator only)\u0027 hämtar GET /apps/sdkmc/api/v2/spreed/guest-identity/{token}/{actorId} och visar förnamn/efternamn/SSN/e-post",
+                         "Robustare gästnamnsupplösning i chatten: src/composables/useMessageInfo.js rad 111-161 (guestNameStore -\u003e participants store -\u003e message payload -\u003e \u0027Guest\u0027)",
+                         "Lobby, SIP-bridge och inspelning är OFÖRÄNDRAD upstream-funktionalitet (openapi-backend-sipbridge.json, openapi-backend-recording.json, LobbyScreen med lobbyTimer/webinar-lobby, occ talk:recording:consent) — ITSL har inte rört dem, bara lagt BankID-namnsättning ovanpå lobbyn",
+                         "Egen CI: .gitlab-ci.yml bygger spreed.tar.gz, releaser från brancher itsl/main och itsl/stableXX till GitLab package registry; .patches/ och composer.patches.json är tomma — ändringar görs direkt i trädet"
+                     ],
+    "architecture":  "Fork av Nextcloud Talk 21.1.7 (appinfo/info.xml, app-id \"spreed\", kräver NC 31): PHP-backend med OCS API v4 (/ocs/v2.php/apps/spreed/api/v4/...), Vue 3-frontend (src/), WebRTC med HPB-signalering, SIP-bridge och inspelningsbackend via separata openapi-specar. ITSL-deltat är ~9 filer med \"itsl change\"-markörer; ingen patch-mekanism används trots .patches/-katalogen. Forken har en HÅRD beroendekoppling till sdkmc-appen: PageController.php importerar OCA\\SdkMc\\Event\\PublishInitialStateEventForGuests direkt, och frontend anropar sdkmc-routes (/apps/sdkmc/spreed/guest/logout/{token}, /apps/sdkmc/api/v2/spreed/guest-identity/...). Identitetsflödet: sdkmc:s TalkController kör OIDC-flöde mot konfigurerbar BankID-broker (appconfig sdkmc/authorizeUrl, routes /apps/sdkmc/api/v2/spreed/authorize + /callback), verifierar SSN-claim mot förväntad identitet per möte+e-post (ConversationBankIDAuthMapper), och sätter sessionsnyckeln BankIdAuthUserName som spreed-itsl sedan litar på. Inga Freja-referenser finns — endast BankID (men OIDC-brokern är generisk). Byggs/distribueras via GitLab CI som tar.gz, inte via Nextcloud app store.",
+    "integration_points":  [
+                               "OCS API v4 (upstream, oförändrat): GET /ocs/v2.php/apps/spreed/api/v4/room — lista konversationer med unreadMessages, lastMessage, hasCall, lobbyState, participantType — primär datakälla för en dashboard",
+                               "Befintlig dashboard-widget: lib/Dashboard/TalkWidget.php registrerad i lib/AppInfo/Application.php rad 358 — visar olästa omnämnanden/samtal; bra referensimplementation eller ersättningskandidat",
+                               "Deep-links: /apps/spreed/ (huvudvy), /call/{token} (rum, även för gäster), /call/{token}?email=...\u0026access=... (personlig gästlänk som sdkmc mailar ut)",
+                               "sdkmc-API:er som spreed-frontenden redan konsumerar: GET /apps/sdkmc/api/v2/spreed/guest-identity/{token}/{actorId} (verifierad identitet, moderator), GET /apps/sdkmc/spreed/guest/logout/{token}, GET /apps/sdkmc/api/v2/spreed/authorize + /callback (BankID OIDC)",
+                               "Event: OCA\\SdkMc\\Event\\PublishInitialStateEventForGuests dispatchas från PageController vid varje gäst-sidladdning — mönster för att injicera Hubs-data i publika vyer",
+                               "Initial state: \u0027spreed\u0027/\u0027participantDisplayName\u0027 (BankID-namn) på gästsidor",
+                               "Upstream-events i lib/Events/ (BeforeEmailInvitationSentEvent m.fl.) som sdkmc:s SmsNotifyListener redan lyssnar på för egna inbjudningar",
+                               "occ-kommandon för övervakning: talk:monitor:calls, talk:monitor:has-active-calls, talk:monitor:room — kan exponeras som statuskälla",
+                               "Activity-providers (OCA\\Talk\\Activity\\Provider\\Invitation, \\Call) — flödesdata för en dashboard-tidslinje",
+                               "SIP/inspelning: openapi-backend-sipbridge.json och openapi-backend-recording.json (upstream, oförändrade) om dashboarden ska visa inringningsnummer eller inspelningsstatus"
+                           ],
+    "ux_touchpoints":  [
+                           "Medborgarens flöde: inbjudningsmail från sdkmc -\u003e personlig länk /call/{token}?email\u0026access -\u003e BankID-legitimering (sdkmc OIDC) -\u003e lobby (src/components/LobbyScreen.vue, med mötestid/nedräkning) -\u003e samtal",
+                           "GuestWelcomeWindow.vue: välkomstmodal som i forken autosätter namnet från BankID i stället för att fråga",
+                           "SetGuestUsername.vue i lobbyn: visar \u0027Display name: \u003cBankID-namn\u003e\u0027 + länken \u0027Sign out and exit call\u0027",
+                           "Moderatorns deltagarpanel (RightSidebar/Participants/Participant.vue): menyalternativ \u0027View verified identity (moderator only)\u0027 som visar namn + personnummer",
+                           "Talk-huvudvyn /apps/spreed/ för inloggade handläggare (konversationslista, samtal, chatt)",
+                           "Befintlig Nextcloud-dashboardwidget (TalkWidget) med olästa meddelanden/missade samtal"
+                       ],
+    "pain_points":  [
+                        "Hård kompileringskoppling till sdkmc: PageController.php rad 11 importerar OCA\\SdkMc\\Event\\PublishInitialStateEventForGuests utan class_exists-guard — spreed kraschar på gäst-routes om sdkmc inte är aktiverad",
+                        "Verifierad identitet visas i en showSuccess-TOAST (Participant.vue rad 1032-1038) med personnummer i klartext som försvinner efter sekunder — både dålig UX och tveksamt integritetsmässigt (SSN flashas på skärmen)",
+                        "Skört hack i GuestManager.php rad 207: invite-undertryckningen styrs av str_ends_with($_SERVER[\u0027REQUEST_URI\u0027], \u0027resend-invitations\u0027) — strängmatchning på rå URI i stället för parameter/flagga; går sönder vid trailing slash eller route-ändring",
+                        "GuestController::setDisplayName returnerar tyst 200/null när BankID-session saknas (rad 44-48) — klienten får ingen indikation på att namnbytet ignorerades",
+                        "Dubbel auto-submit av gästnamn i både GuestWelcomeWindow.vue och LobbyScreen.vue mounted — potentiell race/dubbelanrop, och en TODO-kommentar i GuestWelcomeWindow rad 104 erkänner att felhantering saknas när participantDisplayName är null",
+                        "console.debug-loggar i produktion (\u0027CURRENT USER IS GUEST, SETTING guest name...\u0027) i LobbyScreen.vue och GuestWelcomeWindow.vue",
+                        "Forkförvaltning: .patches/ är tom och composer.patches.json tom — alla ändringar ligger inline med kommentarsmarkörer och utkommenterad upstream-kod, vilket gör rebase mot nya Talk-versioner manuell och felbenägen",
+                        "Ingen Freja eID-support trots plattformens målbild — sessionsnyckeln \u0027BankIdAuthUserName\u0027 är hårdkodad BankID-semantik (även om OIDC-brokern i sdkmc tekniskt är generisk)",
+                        "Versionsglapp: info.xml kräver Nextcloud 31 (max-version=31) medan repo-roten kör NC 32.0.1 — forken släpar mot plattformen",
+                        "Identitetsknappen \u0027View verified identity\u0027 visas för alla moderatorer på alla deltagare oavsett om de är BankID-verifierade gäster — felmeddelande \u0027No additional info\u0027 först vid klick"
+                    ],
+    "dashboard_opportunities":  [
+                                    "Widget \u0027Kommande säkra möten\u0027: lista rum med lobbyTimer satt (mötestid finns i OCS room-svaret) med nedräkning och knapp \u0027Gå till lobby/möte\u0027 (deep-link /call/{token}) — datat finns redan i GET /apps/spreed/api/v4/room",
+                                    "Widget \u0027Pågående samtal\u0027: hasCall-flaggan i room-listan (eller occ talk:monitor:has-active-calls-motsvarande data) — visa vilka möten som pågår nu och vem som väntar i lobbyn, med join-knapp",
+                                    "Verifieringsstatus i mötesöversikten: korsa deltagarlistan med sdkmc:s guest-identity-endpoint (/apps/sdkmc/api/v2/spreed/guest-identity/{token}/{actorId}) och visa badge \u0027BankID-verifierad\u0027 per inbjuden medborgare — löser dagens toast-UX-problem på ett värdigare sätt",
+                                    "Snabbåtgärd \u0027Boka säkert videomöte med medborgare\u0027: skapa rum + lägg till e-postdeltagare via POST /apps/spreed/api/v4/room/{token}/participants?resend-invitations (forkens egen konvention) så att sdkmc-inbjudan med BankID-krav går ut direkt",
+                                    "Snabbåtgärd \u0027Skicka om inbjudan\u0027 per möte/deltagare — använder samma ?resend-invitations-flagga som forken introducerat",
+                                    "Olästa Talk-meddelanden/missade samtal: återanvänd eller ersätt upstream TalkWidget (lib/Dashboard/TalkWidget.php) som redan aggregerar detta; aktivitetsflöde via Activity-providers Invitation/Call",
+                                    "Lobby-notis i realtid: \u0027En BankID-verifierad medborgare väntar i lobbyn för mötet X\u0027 — kräver liten backend-tillägg men all data (lobbyState + deltagare med actorType guests/emails) finns i OCS-API:t",
+                                    "Enhetlig ingång: dashboarden blir naturlig plats att samla mötets hela kontext — Talk-rummet, relaterade säkra filer och SDK/securemail-trådar — eftersom sdkmc redan knyter möte+e-post+identitet i ConversationBankIDAuthMapper"
+                                ]
+}

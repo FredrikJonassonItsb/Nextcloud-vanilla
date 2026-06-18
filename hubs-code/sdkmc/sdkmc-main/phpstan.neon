@@ -1,0 +1,58 @@
+includes:
+  - phpstan-baseline.neon
+parameters:
+  tmpDir: %currentWorkingDirectory%/.phpstan-cache
+  reportUnmatchedIgnoredErrors: false
+  checkUninitializedProperties: true
+  checkBenevolentUnionTypes: true
+  rememberPossiblyImpureFunctionValues: false
+  reportPossiblyNonexistentGeneralArrayOffset: true
+  reportPossiblyNonexistentConstantArrayOffset: true
+  checkImplicitMixed: true
+  parallel:
+    maximumNumberOfProcesses: 4
+  level: 10
+  scanDirectories:
+    - ../mail
+    - ../mail/vendor/bytestream/horde-imap-client/lib
+    - ../spreed
+    - ../server/apps/files
+    - ../server/apps/dav
+  bootstrapFiles:
+    - %currentWorkingDirectory%/phpstan-bootstrap.php
+    - %currentWorkingDirectory%/../server/lib/private/Template/Base.php
+    - %currentWorkingDirectory%/../server/lib/private/legacy/template/functions.php
+  paths:
+    - appinfo/
+    - lib/
+    - templates/
+    - docker/nextcloud/config.php
+  ignoreErrors:
+    -
+      identifier: method.nonObject
+      paths:
+        - templates/
+    -
+      identifier: variable.undefined
+      paths:
+        - templates/
+    -
+      identifier: argument.type
+      paths:
+        - templates/
+    -
+      identifier: offsetAccess.nonOffsetAccessible
+      paths:
+        - templates/
+    -
+      identifier: foreach.nonIterable
+      paths:
+        - templates/
+    -
+      identifier: missingType.return
+      paths:
+        - lib/Migration/
+    -
+      identifier: missingType.iterableValue
+      paths:
+        - lib/Migration/

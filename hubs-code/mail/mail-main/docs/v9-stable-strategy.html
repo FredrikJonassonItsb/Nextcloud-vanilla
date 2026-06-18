@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ITSL Mail — Stable-to-Stable Upgrade Strategy</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0d1117;
+    color: #c9d1d9;
+    min-height: 100vh;
+  }
+  h1 { padding: 24px 32px 4px; font-size: 22px; color: #e6edf3; }
+  .subtitle { padding: 0 32px 16px; font-size: 13px; color: #8b949e; }
+  .stats { display: flex; gap: 32px; padding: 0 32px 20px; font-size: 13px; }
+  .stat-val { font-size: 28px; font-weight: 700; color: #e6edf3; }
+  .stat-label { color: #8b949e; }
+
+  .roadmap { padding: 20px 32px 220px; overflow-x: auto; }
+  .road-container { display: flex; align-items: flex-start; min-width: max-content; padding-bottom: 20px; }
+
+  .node {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 90px; position: relative; z-index: 2;
+  }
+  .node-dot {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: #161b22; border: 3px solid #30a14e;
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.2s, box-shadow 0.2s; cursor: default;
+  }
+  .node-dot:hover { transform: scale(1.15); box-shadow: 0 0 20px rgba(48,161,78,0.4); }
+  .node-dot .check { color: #30a14e; font-size: 18px; }
+  .node-version { margin-top: 8px; font-size: 14px; font-weight: 700; color: #e6edf3; white-space: nowrap; }
+  .node-branch { font-size: 10px; color: #8b949e; background: #21262d; padding: 1px 6px; border-radius: 8px; margin-top: 3px; font-family: 'SF Mono','Fira Code',monospace; }
+  .node.start .node-dot { border-color: #f0883e; background: #f0883e22; }
+  .node.start .node-version { color: #f0883e; }
+  .node.end .node-dot { border-color: #f0883e; background: #f0883e22; width: 56px; height: 56px; }
+  .node.end .node-version { color: #f0883e; font-size: 16px; }
+
+  .connector {
+    display: flex; flex-direction: column; align-items: center;
+    min-width: 120px; max-width: 160px; position: relative; padding-top: 10px;
+  }
+  .connector-line {
+    width: 100%; position: relative; margin-top: 14px; border-radius: 2px;
+  }
+  .connector-line::after {
+    content: '';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0; height: 0;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+  }
+  .connector.small .connector-line::after { border-left: 8px solid #238636; }
+  .connector.medium .connector-line::after { border-left: 10px solid #d29922; }
+  .connector.large .connector-line::after { border-left: 12px solid #f85149; }
+  .connector.small .connector-line { background: #238636; height: 3px; }
+  .connector.small .connector-line::after { color: #238636; }
+  .connector.medium .connector-line { background: #d29922; height: 5px; }
+  .connector.medium .connector-line::after { color: #d29922; }
+  .connector.large .connector-line { background: #f85149; height: 7px; }
+  .connector.large .connector-line::after { color: #f85149; }
+
+  .step-label { font-size: 10px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+  .size-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-bottom: 4px; text-transform: uppercase; }
+  .small .size-badge { background: #23863622; color: #238636; border: 1px solid #23863644; }
+  .medium .size-badge { background: #d2992222; color: #d29922; border: 1px solid #d2992244; }
+  .large .size-badge { background: #f8514922; color: #f85149; border: 1px solid #f8514944; }
+
+  .connector-changes { font-size: 10px; color: #8b949e; text-align: center; margin-top: 8px; line-height: 1.4; max-width: 140px; }
+
+  .connector:hover .connector-detail { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .connector-detail {
+    position: absolute; top: 70px; left: 50%;
+    transform: translateX(-50%) translateY(5px);
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 12px 16px; min-width: 240px; max-width: 300px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .connector-detail h4 { font-size: 13px; color: #e6edf3; margin-bottom: 6px; }
+  .connector-detail ul { list-style: none; font-size: 12px; }
+  .connector-detail li { padding: 2px 0; color: #c9d1d9; }
+  .connector-detail li::before { content: '→ '; color: #8b949e; }
+
+  .comparison { display: flex; gap: 24px; padding: 0 32px 32px; max-width: 900px; }
+  .compare-card {
+    flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+    padding: 20px; position: relative; overflow: hidden;
+  }
+  .compare-card h3 { font-size: 14px; margin-bottom: 12px; }
+  .compare-card.old { border-color: #f8514944; }
+  .compare-card.old h3 { color: #f85149; }
+  .compare-card.new { border-color: #23863644; }
+  .compare-card.new h3 { color: #238636; }
+  .compare-card .big-num { position: absolute; right: 16px; top: 12px; font-size: 48px; font-weight: 800; opacity: 0.08; color: #e6edf3; }
+  .compare-card ul { list-style: none; font-size: 13px; }
+  .compare-card li { padding: 3px 0; }
+  .compare-card.old li::before { content: '✗ '; color: #f85149; }
+  .compare-card.new li::before { content: '✓ '; color: #238636; }
+
+  .benefits { display: flex; gap: 16px; padding: 0 32px 40px; flex-wrap: wrap; max-width: 900px; }
+  .benefit { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 14px 18px; flex: 1; min-width: 150px; }
+  .benefit-icon { font-size: 20px; margin-bottom: 6px; }
+  .benefit-title { font-size: 13px; font-weight: 700; color: #e6edf3; }
+  .benefit-desc { font-size: 11px; color: #8b949e; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>ITSL Mail — Stable-to-Stable Upgrade Strategy</h1>
+<div class="subtitle">Upgrade from v4.2.0 to v5.7.3 by jumping between stable release branch tips — every step is deployable and testable</div>
+
+<div class="stats">
+  <div><div class="stat-val">9</div><div class="stat-label">version jumps</div></div>
+  <div><div class="stat-val">10</div><div class="stat-label">stable versions</div></div>
+  <div><div class="stat-val" style="color:#238636">4</div><div class="stat-label">small jumps</div></div>
+  <div><div class="stat-val" style="color:#d29922">3</div><div class="stat-label">medium jumps</div></div>
+  <div><div class="stat-val" style="color:#f85149">2</div><div class="stat-label">large jumps</div></div>
+</div>
+
+<div class="roadmap">
+  <div class="road-container" id="roadmap"></div>
+</div>
+
+<div class="comparison">
+  <div class="compare-card old">
+    <h3>Old approach: follow main</h3>
+    <div class="big-num">1715</div>
+    <ul>
+      <li>1,715 individual commits to process</li>
+      <li>Pre-release tags only (-dev, -beta, -rc)</li>
+      <li>Can't deploy intermediate states</li>
+      <li>Hard to audit which version changed what</li>
+      <li>Experimental code that gets reverted</li>
+    </ul>
+  </div>
+  <div class="compare-card new">
+    <h3>New approach: stable-to-stable</h3>
+    <div class="big-num">9</div>
+    <ul>
+      <li>9 clean, meaningful version jumps</li>
+      <li>Every step is a real tested release</li>
+      <li>Deploy and verify at each version</li>
+      <li>Easy to audit: "what changed for v5.1?"</li>
+      <li>Only production-ready code</li>
+    </ul>
+  </div>
+</div>
+
+<div class="benefits">
+  <div class="benefit"><div class="benefit-icon">🔍</div><div class="benefit-title">Auditable</div><div class="benefit-desc">Each jump = one version upgrade. Easy to review and approve.</div></div>
+  <div class="benefit"><div class="benefit-icon">🚀</div><div class="benefit-title">Deployable</div><div class="benefit-desc">Test on dev7 at every step. Catch issues early.</div></div>
+  <div class="benefit"><div class="benefit-icon">🐛</div><div class="benefit-title">Bisectable</div><div class="benefit-desc">Bug found? Check which version jump introduced it.</div></div>
+  <div class="benefit"><div class="benefit-icon">📦</div><div class="benefit-title">Clean History</div><div class="benefit-desc">~10 commits instead of ~70. Every commit is meaningful.</div></div>
+  <div class="benefit"><div class="benefit-icon">✅</div><div class="benefit-title">Real Releases</div><div class="benefit-desc">No experimental or pre-release code. Only stable, tested versions.</div></div>
+</div>
+
+<script>
+const steps = [
+  { version: 'v4.2.0', branch: 'stable4.2', start: true },
+  { size: 'small', step: 1, label: 'NC32 support, dependency bumps',
+    details: ['NC32 support in appinfo/info.xml', 'pinia/dompurify/core-js bumps', 'psr/log provide removal', 'AI summarization fixes'] },
+  { version: 'v4.3.7', branch: 'stable4.3' },
+  { size: 'medium', step: 2, label: '@nextcloud/vue imports, subject warning, KeepAlive, body format',
+    details: ['@nextcloud/vue import path migration', 'Subject empty warning with FAX guard', 'KeepAlive composer restructuring', 'Body format: .body → .bodyHtml/.bodyPlain', 'Composer state per account', 'Tooltip correctness fix'] },
+  { version: 'v5.0.8', branch: 'stable5.0' },
+  { size: 'small', step: 3, label: 'Printing, shift-multiselect, scroll fix',
+    details: ['Thread/envelope printing overhaul', 'Shift-multiselect on envelopes', 'Scroll to most recent message', 'Dead onPrint() removal'] },
+  { version: 'v5.1.11', branch: 'stable5.1' },
+  { size: 'medium', step: 4, label: 'Thread disable, own-identities, close-on-send',
+    details: ['Allow disabling threaded view', 'Own-identities autocomplete', 'Close modal on send', 'S/MIME per-alias sign preference', 'Loading component removal', 'Avatar request reduction'] },
+  { version: 'v5.2.1', branch: 'stable5.2' },
+  { size: 'small', step: 5, label: 'Bug fixes, CSS custom properties',
+    details: ['CSS variables instead of magic numbers', 'Bug fixes for classification', 'HTML source editing support'] },
+  { version: 'v5.3.3', branch: 'stable5.3' },
+  { size: 'small', step: 6, label: 'TypeScript, eslint-perfectionist',
+    details: ['TypeScript enablement (tsconfig, ts-loader)', 'eslint-perfectionist import ordering', 'cs-fixer PHP formatting', 'Rector PHP refactoring'] },
+  { version: 'v5.4.1', branch: 'stable5.4' },
+  { size: 'large', step: 7, label: 'CKEditor unified, outline icons, import reordering',
+    details: ['CKEditor unified package migration (37→45)', 'Outline icons throughout', 'Icon sizes 16px→20px', 'ImportantIcon moved to ITSL', 'Import reordering across all files', 'EnvelopeSkeleton restructuring', 'Ctrl+Enter send'] },
+  { version: 'v5.5.15', branch: 'stable5.5' },
+  { size: 'large', step: 8, label: 'ESLint 9, NcButton variant, CSS logical properties',
+    details: ['ESLint 9 flat config migration', 'NcButton type→variant across all files', 'CSS logical properties (margin-inline-start)', 'ClassificationSettingsService removal', 'viewer-back patch rewrite', 'NcColorPicker v-model API'] },
+  { version: 'v5.6.14', branch: 'stable5.6' },
+  { size: 'medium', step: 9, label: 'Scroll fixes, draft timing, v5.7.3',
+    details: ['Thread scroll position fix', 'Draft save ordering fix', 'Forward attachment handling', 'appinfo version/PHP/NC range updates', 'Final patch cleanups'] },
+  { version: 'v5.7.3', branch: 'stable5.7', end: true },
+];
+
+const container = document.getElementById('roadmap');
+steps.forEach((item) => {
+  if (item.version) {
+    const node = document.createElement('div');
+    node.className = 'node' + (item.start ? ' start' : '') + (item.end ? ' end' : '');
+    node.innerHTML = `
+      <div class="node-dot"><span class="check">✓</span></div>
+      <div class="node-version">${item.version}</div>
+      <div class="node-branch">${item.branch}</div>
+    `;
+    container.appendChild(node);
+  } else {
+    const conn = document.createElement('div');
+    conn.className = 'connector ' + item.size;
+    const detailHtml = item.details.map(d => `<li>${d}</li>`).join('');
+    conn.innerHTML = `
+      <div class="step-label">Step ${item.step}</div>
+      <div class="size-badge">${item.size}</div>
+      <div class="connector-line"></div>
+      <div class="connector-changes">${item.label}</div>
+      <div class="connector-detail">
+        <h4>Step ${item.step}: ${item.size.toUpperCase()}</h4>
+        <ul>${detailHtml}</ul>
+      </div>
+    `;
+    container.appendChild(conn);
+  }
+});
+</script>
+</body>
+</html>

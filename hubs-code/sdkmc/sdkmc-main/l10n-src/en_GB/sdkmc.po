@@ -1,0 +1,1706 @@
+# Translations for sdkmc.
+# Copyright (C) ITSL Solutions AB
+# This file is distributed under the GNU AGPL v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Säker Digital Kommunikation\n"
+"Report-Msgid-Bugs-To: support@itsl.se\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: English (United Kingdom)\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: appinfo/info.xml:9
+msgid "SDK MC"
+msgstr "SDK MC"
+
+#: appinfo/info.xml:10
+msgid "💌 A SDK Message Client app for Nextcloud"
+msgstr "💌 A SDK Message Client app for Nextcloud"
+
+#: appinfo/info.xml:11
+msgid "**💌 A SDK Message Client app for Nextcloud**"
+msgstr "**💌 A SDK Message Client app for Nextcloud**"
+
+#: lib/Activity/AssignmentTagSetting.php:24
+msgid "Assigned to me"
+msgstr "Assigned to me"
+
+#: lib/Activity/AssignmentTagSetting.php:32
+#: lib/Activity/FaxSetting.php:32
+#: lib/Activity/Filter.php:26
+#: lib/Activity/GruppSetting.php:32
+#: lib/Activity/PersonligSetting.php:32
+#: lib/Activity/SdkSetting.php:32
+#: lib/Activity/SmsSetting.php:32
+msgid "Secure messages"
+msgstr "Secure messages"
+
+#: lib/Activity/FaxSetting.php:24
+msgid "FAX Messages"
+msgstr "FAX Messages"
+
+#: lib/Activity/GruppSetting.php:24
+msgid "Group Messages"
+msgstr "Group Messages"
+
+#: lib/Activity/PersonligSetting.php:24
+msgid "Personal Messages"
+msgstr "Personal Messages"
+
+#: lib/Activity/Provider.php:68
+#: lib/Activity/Provider.php:71
+#: lib/Activity/Provider.php:99
+msgid "You were assigned to a message"
+msgstr "You were assigned to a message"
+
+#: lib/Activity/Provider.php:100
+#: lib/Activity/Provider.php:85
+#: lib/Activity/Provider.php:86
+#: lib/Service/MailboxNotificationService.php:127
+msgid "New secure message"
+msgstr "New secure message"
+
+#: lib/Activity/Provider.php:94
+#: lib/Service/MailboxNotificationService.php:122
+msgid "New SDK message"
+msgstr "New SDK message"
+
+#: lib/Activity/Provider.php:94
+msgid "messages_sdk"
+msgstr "messages_sdk"
+
+#: lib/Activity/Provider.php:95
+#: lib/Service/MailboxNotificationService.php:123
+msgid "New Personal message"
+msgstr "New Personal message"
+
+#: lib/Activity/Provider.php:96
+#: lib/Service/MailboxNotificationService.php:124
+msgid "New Group message"
+msgstr "New Group message"
+
+#: lib/Activity/Provider.php:97
+#: lib/Service/MailboxNotificationService.php:125
+msgid "New FAX message"
+msgstr "New FAX message"
+
+#: lib/Activity/Provider.php:98
+#: lib/Service/MailboxNotificationService.php:126
+msgid "New SMS message"
+msgstr "New SMS message"
+
+#: lib/Activity/SdkSetting.php:24
+msgid "SDK Messages"
+msgstr "SDK Messages"
+
+#: lib/Activity/SmsSetting.php:24
+msgid "SMS Messages"
+msgstr "SMS Messages"
+
+#: lib/Check/Loa3.php:71
+msgid "The given operator is invalid"
+msgstr "The given operator is invalid"
+
+#: lib/Controller/SmsController.php:98
+#, php-format
+msgid "%s is the code to read your secure message."
+msgstr "%s is the code to read your secure message."
+
+#: lib/Controller/TalkController.php:378
+msgid "The BankID account used does not match the required identity for this meeting."
+msgstr "The BankID account used does not match the required identity for this meeting."
+
+#: lib/Controller/TalkController.php:379
+msgid "Authentication failed. The identity provider did not return the expected identity claim."
+msgstr "Authentication failed. The identity provider did not return the expected identity claim."
+
+#: lib/Controller/TalkController.php:380
+msgid "Authentication failed. The identity provider returned an unrecognized identity format."
+msgstr "Authentication failed. The identity provider returned an unrecognized identity format."
+
+#: lib/Controller/TalkController.php:381
+msgid "Authentication failed. The identity provider did not return the expected name claims."
+msgstr "Authentication failed. The identity provider did not return the expected name claims."
+
+#: lib/Controller/TalkController.php:382
+msgid "Authentication failed. Please contact the meeting organizer."
+msgstr "Authentication failed. Please contact the meeting organizer."
+
+#: lib/Sections/SdkMcAdmin.php:31
+msgid "SDK Admin"
+msgstr "SDK Admin"
+
+#: lib/Sections/SdkMcLog.php:31
+msgid "SDK Logs"
+msgstr "SDK Logs"
+
+#: lib/Sections/SdkMcVueMailboxSectionAdmin.php:28
+#: lib/Settings/SdkMcVueMailboxSettingsAdmin.php:40
+msgid "ITSL Mailbox Settings"
+msgstr "ITSL Mailbox Settings"
+
+#: lib/Sections/SdkMcVueServerSectionAdmin.php:28
+#: lib/Settings/SdkMcVueServerSettingsAdmin.php:40
+msgid "ITSL Server Settings"
+msgstr "ITSL Server Settings"
+
+#: lib/Service/MailboxNotificationService.php:133
+#, php-format
+msgid "Activity at %s"
+msgstr "Activity at %s"
+
+#: lib/Service/MailboxNotificationService.php:137
+#: lib/Service/MailboxNotificationService.php:139
+msgid "Open message"
+msgstr "Open message"
+
+#: lib/Settings/SdkLogs.php:43
+msgid "Sdk Logs"
+msgstr "Sdk Logs"
+
+#: lib/Settings/SdkMcVueTagSettingsAdmin.php:34
+msgid "Mail Tag Management"
+msgstr "Mail Tag Management"
+
+#: src-calendar-sms/calendar-sms.js:459
+#, python-brace-format
+msgid "Send SMS to {name}?"
+msgstr "Send SMS to {name}?"
+
+#: src-calendar-sms/calendar-sms.js:467
+msgid "Number for notification"
+msgstr "Number for notification"
+
+#: src-calendar-sms/calendar-sms.js:1021
+#: src-calendar-sms/calendar-sms.js:484
+#: src-loa3/components/Loa3Modal.vue:33
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:49
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:34
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:34
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:36
+#: src-server-settings/pages/ServerSettings.vue:718
+#: src-server-settings/pages/ServerSettings.vue:751
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src-calendar-sms/calendar-sms.js:489
+msgid "Send"
+msgstr "Send"
+
+#: src-calendar-sms/calendar-sms.js:529
+msgid "Please enter a valid phone number"
+msgstr "Please enter a valid phone number"
+
+#: src-calendar-sms/calendar-sms.js:568
+#, python-brace-format
+msgid "Configure Attendee: {email}"
+msgstr "Configure Attendee: {email}"
+
+#: src-calendar-sms/calendar-sms.js:588
+msgid "Require BankID authentication"
+msgstr "Require BankID authentication"
+
+#: src-calendar-sms/calendar-sms.js:600
+msgid "When enabled, this attendee must authenticate with BankID to access the calendar event conversation"
+msgstr "When enabled, this attendee must authenticate with BankID to access the calendar event conversation"
+
+#: src-calendar-sms/calendar-sms.js:613
+msgid "Tie this invitation to specific SSN? (optional)"
+msgstr "Tie this invitation to specific SSN? (optional)"
+
+#: src-calendar-sms/calendar-sms.js:633
+msgid "Guest name visibility in the chat"
+msgstr "Guest name visibility in the chat"
+
+#: src-calendar-sms/calendar-sms.js:649
+msgid "First name"
+msgstr "First name"
+
+#: src-calendar-sms/calendar-sms.js:665
+msgid "Last name"
+msgstr "Last name"
+
+#: src-calendar-sms/calendar-sms.js:681
+msgid "SSN"
+msgstr "SSN"
+
+#: src-calendar-sms/calendar-sms.js:722
+msgid "Apply Settings"
+msgstr "Apply Settings"
+
+#: src-calendar-sms/calendar-sms.js:779
+msgid "Cancel SMS"
+msgstr "Cancel SMS"
+
+#: src-calendar-sms/calendar-sms.js:784
+#: src-calendar-sms/calendar-sms.js:794
+msgid "Notify via SMS"
+msgstr "Notify via SMS"
+
+#: src-calendar-sms/calendar-sms.js:819
+msgid "SMS notification cancelled"
+msgstr "SMS notification cancelled"
+
+#: src-calendar-sms/calendar-sms.js:821
+#: src-calendar-sms/calendar-sms.js:825
+msgid "Failed to cancel"
+msgstr "Failed to cancel"
+
+#: src-calendar-sms/calendar-sms.js:837
+#, python-brace-format
+msgid "Will notify {email} via SMS after saving"
+msgstr "Will notify {email} via SMS after saving"
+
+#: src-calendar-sms/calendar-sms.js:841
+#: src-calendar-sms/calendar-sms.js:845
+msgid "Failed to store SMS preference"
+msgstr "Failed to store SMS preference"
+
+#: src-calendar-sms/calendar-sms.js:880
+msgid "BankID Settings"
+msgstr "BankID Settings"
+
+#: src-calendar-sms/calendar-sms.js:1382
+#: src-calendar-sms/calendar-sms.js:909
+#, python-brace-format
+msgid "Will require BankID for {email} after saving"
+msgstr "Will require BankID for {email} after saving"
+
+#: src-calendar-sms/calendar-sms.js:1386
+#: src-calendar-sms/calendar-sms.js:913
+msgid "Failed to store BankID requirement"
+msgstr "Failed to store BankID requirement"
+
+#: src-calendar-sms/calendar-sms.js:927
+#, python-brace-format
+msgid "BankID requirement removed for {email}"
+msgstr "BankID requirement removed for {email}"
+
+#: src-calendar-sms/calendar-sms.js:931
+msgid "Failed to remove BankID requirement"
+msgstr "Failed to remove BankID requirement"
+
+#: src-calendar-sms/calendar-sms.js:1397
+#: src-calendar-sms/calendar-sms.js:945
+msgid "Failed to update BankID requirement"
+msgstr "Failed to update BankID requirement"
+
+#: src-calendar-sms/calendar-sms.js:972
+#, python-brace-format
+msgid "Invite {name} via Securemail?"
+msgstr "Invite {name} via Securemail?"
+
+#: src-calendar-sms/calendar-sms.js:981
+msgid "SSN (Social Security Number)"
+msgstr "SSN (Social Security Number)"
+
+#: src-calendar-sms/calendar-sms.js:998
+msgid "Send invitation from"
+msgstr "Send invitation from"
+
+#: src-calendar-sms/calendar-sms.js:1026
+msgid "Confirm"
+msgstr "Confirm"
+
+#: src-calendar-sms/calendar-sms.js:1071
+msgid "Please enter a valid SSN"
+msgstr "Please enter a valid SSN"
+
+#: src-calendar-sms/calendar-sms.js:1121
+#: src-calendar-sms/calendar-sms.js:1167
+msgid "Cancel Securemail"
+msgstr "Cancel Securemail"
+
+#: src-calendar-sms/calendar-sms.js:1123
+#: src-calendar-sms/calendar-sms.js:1147
+msgid "Invite via Securemail"
+msgstr "Invite via Securemail"
+
+#: src-calendar-sms/calendar-sms.js:1149
+#, python-brace-format
+msgid "Securemail invitation cancelled for {email}"
+msgstr "Securemail invitation cancelled for {email}"
+
+#: src-calendar-sms/calendar-sms.js:1153
+#: src-calendar-sms/calendar-sms.js:1157
+msgid "Failed to cancel Securemail invitation"
+msgstr "Failed to cancel Securemail invitation"
+
+#: src-calendar-sms/calendar-sms.js:1169
+#, python-brace-format
+msgid "Will invite {email} via Securemail after saving"
+msgstr "Will invite {email} via Securemail after saving"
+
+#: src-calendar-sms/calendar-sms.js:1173
+#: src-calendar-sms/calendar-sms.js:1177
+msgid "Failed to store Securemail preference"
+msgstr "Failed to store Securemail preference"
+
+#: src-loa3/components/Loa3Modal.vue:9
+msgid "Authentication Required"
+msgstr "Authentication Required"
+
+#: src-loa3/components/Loa3Modal.vue:19
+msgid "This file requires a stronger authentication method. Do you want to authenticate using a LOA-3 method?"
+msgstr "This file requires a stronger authentication method. Do you want to authenticate using a LOA-3 method?"
+
+#: src-loa3/components/Loa3Modal.vue:24
+msgid "LOA-3 (Level of Assurance 3) provides enhanced security through multi-factor authentication."
+msgstr "LOA-3 (Level of Assurance 3) provides enhanced security through multi-factor authentication."
+
+#: src-loa3/components/Loa3Modal.vue:42
+msgid "Authenticate with LOA-3"
+msgstr "Authenticate with LOA-3"
+
+#: src-loa3/loa3.js:22
+msgid "Login type"
+msgstr "Login type"
+
+#: src-loa3/loa3.js:24
+msgid "LOA-2 or lower"
+msgstr "LOA-2 or lower"
+
+#: src-loa3/loa3.js:25
+msgid "LOA-3 or higher"
+msgstr "LOA-3 or higher"
+
+#: src-loa3/loa3.js:111
+msgid "Requires LOA-3"
+msgstr "Requires LOA-3"
+
+#: src-mailbox-settings/MailboxSettingsApp.vue:5
+#: src-mailbox-settings/pages/MailboxSettings.vue:3
+#: src-mailbox-settings/pages/MailboxSettings.vue:5
+msgid "Mailbox Settings"
+msgstr "Mailbox Settings"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:5
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:9
+msgid "Add new mailbox"
+msgstr "Add new mailbox"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:10
+msgid "Search mailboxes"
+msgstr "Search mailboxes"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:12
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:12
+msgid "Search..."
+msgstr "Search..."
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:20
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:40
+msgid "Provision mailboxes"
+msgstr "Provision mailboxes"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:37
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:41
+msgid "Confirm removal"
+msgstr "Confirm removal"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:45
+msgid "Are you sure you want to remove this mailbox?"
+msgstr "Are you sure you want to remove this mailbox?"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:52
+msgid "Remove"
+msgstr "Remove"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:83
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:91
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:110
+msgid "Actions"
+msgstr "Actions"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:85
+msgid "No mailboxes found"
+msgstr "No mailboxes found"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:99
+msgid "No users added"
+msgstr "No users added"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:114
+msgid "No groups added"
+msgstr "No groups added"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:139
+msgid "Assign user"
+msgstr "Assign user"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:144
+msgid "Assign group"
+msgstr "Assign group"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:149
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:9
+msgid "Edit mailbox"
+msgstr "Edit mailbox"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:155
+msgid "Cannot remove mailbox with assigned users"
+msgstr "Cannot remove mailbox with assigned users"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:157
+msgid "Remove mailbox"
+msgstr "Remove mailbox"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:169
+msgid "No mailboxes added"
+msgstr "No mailboxes added"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:258
+msgid "Address"
+msgstr "Address"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:259
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:264
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:272
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:279
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:286
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:31
+msgid "Alias"
+msgstr "Alias"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:260
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:268
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:275
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:282
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:290
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:298
+msgid "Users"
+msgstr "Users"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:261
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:269
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:276
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:283
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:291
+msgid "Groups"
+msgstr "Groups"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:265
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:273
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:280
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:287
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:297
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:46
+msgid "Name"
+msgstr "Name"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:266
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:274
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:281
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:288
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:50
+msgid "Description"
+msgstr "Description"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:267
+msgid "Fax Number"
+msgstr "Fax Number"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:289
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:75
+msgid "Phone Number"
+msgstr "Phone Number"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:329
+#, python-brace-format
+msgid "Showing {from} to {to} of {count} mailboxes|{count} mailboxes|One mailbox"
+msgstr "Showing {from} to {to} of {count} mailboxes|{count} mailboxes|One mailbox"
+
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:95
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:114
+msgid "No data available"
+msgstr "No data available"
+
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:100
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:119
+#, python-brace-format
+msgid "Showing {from} to {to} of {count} items|{count} items|One item"
+msgstr "Showing {from} to {to} of {count} items|{count} items|One item"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:6
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:9
+msgid "Add group to mailbox"
+msgstr "Add group to mailbox"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:11
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:11
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:7
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:11
+#: src-server-settings/pages/ServerSettings.vue:696
+#: src-server-settings/pages/ServerSettings.vue:738
+msgid "Close"
+msgstr "Close"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:18
+msgid "Select the group to add"
+msgstr "Select the group to add"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:21
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:26
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:23
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:28
+msgid "Select group"
+msgstr "Select group"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:39
+msgid "Add group"
+msgstr "Add group"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:46
+msgid "All groups are already added."
+msgstr "All groups are already added."
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:50
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:50
+msgid "OK"
+msgstr "OK"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:6
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:9
+msgid "Add user to mailbox"
+msgstr "Add user to mailbox"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:18
+msgid "Select the user to add"
+msgstr "Select the user to add"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:21
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:26
+msgid "Select user"
+msgstr "Select user"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:39
+msgid "Add user"
+msgstr "Add user"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:46
+msgid "All users are already added."
+msgstr "All users are already added."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:16
+msgid "SDK Address"
+msgstr "SDK Address"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:60
+msgid "Allow replying to this mailbox"
+msgstr "Allow replying to this mailbox"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:68
+msgid "Allow sending messages to this mailbox"
+msgstr "Allow sending messages to this mailbox"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:85
+msgid "Notification Email"
+msgstr "Notification Email"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:96
+msgid "Retention Overrides"
+msgstr "Retention Overrides"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:101
+msgid "Empty = use global setting, 0 = keep forever, number = days"
+msgstr "Empty = use global setting, 0 = keep forever, number = days"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:106
+msgid "Folder"
+msgstr "Folder"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:107
+msgid "Days"
+msgstr "Days"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:108
+msgid "Global"
+msgstr "Global"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:120
+msgid "inherit"
+msgstr "inherit"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:125
+msgid "Reset to global"
+msgstr "Reset to global"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:148
+msgid "Adding..."
+msgstr "Adding..."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:148
+#: src-server-settings/pages/ServerSettings.vue:416
+msgid "Updating..."
+msgstr "Updating..."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:149
+msgid "Add mailbox"
+msgstr "Add mailbox"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:149
+msgid "Update mailbox"
+msgstr "Update mailbox"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:182
+msgid "Default (all folders)"
+msgstr "Default (all folders)"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:183
+msgid "INBOX"
+msgstr "INBOX"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:184
+msgid "Sent"
+msgstr "Sent"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:185
+msgid "Archive"
+msgstr "Processed"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:186
+msgid "Trash"
+msgstr "Trash"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:187
+msgid "Drafts"
+msgstr "Drafts"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:223
+msgid "forever"
+msgstr "forever"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:347
+msgid "Alias cannot exceed 64 characters"
+msgstr "Alias cannot exceed 64 characters"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:357
+msgid "Alias may only contain lowercase letters (a-z), digits (0-9), underscore (_), hyphen (-), and dots (not at start/end or consecutive)"
+msgstr "Alias may only contain lowercase letters (a-z), digits (0-9), underscore (_), hyphen (-), and dots (not at start/end or consecutive)"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:362
+msgid "This alias is already in use"
+msgstr "This alias is already in use"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:382
+msgid "This SDK address is already in use"
+msgstr "This SDK address is already in use"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:434
+msgid "SDK address is required for SDK type"
+msgstr "SDK address is required for SDK type"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:439
+msgid "Alias is required"
+msgstr "Alias is required"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:492
+msgid "Mailbox updated successfully!"
+msgstr "Mailbox updated successfully!"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:495
+msgid "Mailbox added successfully!"
+msgstr "Mailbox added successfully!"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:500
+msgid "Failed to add mailbox. Please try again."
+msgstr "Failed to add mailbox. Please try again."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:500
+msgid "Failed to update mailbox. Please try again."
+msgstr "Failed to update mailbox. Please try again."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:504
+msgid "Network or server error. Please try again."
+msgstr "Network or server error. Please try again."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:6
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:9
+msgid "Confirm provisioning"
+msgstr "Confirm provisioning"
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:17
+msgid "This will create a personlig mailbox for every user that doesn’t have one. This task may take up to 30 minutes."
+msgstr "This will create a personlig mailbox for every user that doesn’t have one. This task may take up to 30 minutes."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:20
+msgid "Select a group to provision only users in that group."
+msgstr "Select a group to provision only users in that group."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:78
+msgid "All groups"
+msgstr "All groups"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:8
+msgid "Sdk mailbox"
+msgstr "Sdk mailbox"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:22
+msgid "Fax mailbox"
+msgstr "Fax mailbox"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:36
+msgid "Gruppbox mailbox"
+msgstr "Gruppbox mailbox"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:50
+msgid "Personlig mailbox"
+msgstr "Personlig mailbox"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:65
+msgid "Sms mailbox"
+msgstr "Sms mailbox"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:151
+msgid "Failed to load mailbox data. Please try again."
+msgstr "Failed to load mailbox data. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:165
+msgid "Failed to load users data. Please try again."
+msgstr "Failed to load users data. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:185
+msgid "Failed to load groups."
+msgstr "Failed to load groups."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:220
+msgid "Failed to remove mailbox. Please try again."
+msgstr "Failed to remove mailbox. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:246
+msgid "Failed to add user. Please try again."
+msgstr "Failed to add user. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:259
+msgid "Failed to remove user. Please try again."
+msgstr "Failed to remove user. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:278
+msgid "Provision scheduled. Mailboxes will be set up in the next ~30 minutes in the background."
+msgstr "Provision scheduled. Mailboxes will be set up in the next ~30 minutes in the background."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:282
+msgid "Provisioning failed. Please try again."
+msgstr "Provisioning failed. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:308
+msgid "Failed to add group. Please try again."
+msgstr "Failed to add group. Please try again."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:322
+msgid "Failed to remove group. Please try again."
+msgstr "Failed to remove group. Please try again."
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:44
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:54
+msgid "ID"
+msgstr "ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:45
+msgid "Message Type"
+msgstr "Message Type"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:46
+msgid "AP ID"
+msgstr "AP ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:47
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:55
+msgid "Creation Time"
+msgstr "Creation Time"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:48
+msgid "From Message Client"
+msgstr "From Message Client"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:49
+msgid "To Message Client"
+msgstr "To Message Client"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:50
+msgid "From AP"
+msgstr "From AP"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:51
+msgid "To AP"
+msgstr "To AP"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:52
+msgid "Sender"
+msgstr "Sender"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:53
+msgid "Sender Attention"
+msgstr "Sender Attention"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:54
+msgid "Recipient"
+msgstr "Recipient"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:55
+msgid "Recipient Attention"
+msgstr "Recipient Attention"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:56
+msgid "Message ID AS4"
+msgstr "Message ID AS4"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:57
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:56
+msgid "Message ID"
+msgstr "Message ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:58
+msgid "Conversation ID"
+msgstr "Conversation ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:59
+msgid "Address Book Copy"
+msgstr "Address Book Copy"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:61
+msgid "MTS ID"
+msgstr "MTS ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:62
+msgid "AP Address"
+msgstr "AP Address"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:63
+msgid "Document Type"
+msgstr "Document Type"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:64
+msgid "Client Address"
+msgstr "Client Address"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:65
+msgid "Status"
+msgstr "Status"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:66
+msgid "Confidentiality"
+msgstr "Confidentiality"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:67
+msgid "Functional Address"
+msgstr "Functional Address"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:68
+msgid "Handling Service ID"
+msgstr "Handling Service ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:69
+msgid "Access Point Party ID"
+msgstr "Access Point Party ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:70
+msgid "Generating System Root"
+msgstr "Generating System Root"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:71
+msgid "Generating System Extension"
+msgstr "Generating System Extension"
+
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:38
+msgid "View SDK receipt"
+msgstr "View SDK receipt"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:3
+msgid "SDK Receipt"
+msgstr "SDK Receipt"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:9
+msgid "No message selected"
+msgstr "No message selected"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:13
+msgid "Loading receipt..."
+msgstr "Loading receipt..."
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:90
+msgid "No receipt data found for message id: "
+msgstr "No receipt data found for message id: "
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:4
+msgid "Logs V2"
+msgstr "Logs V2"
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:10
+msgid "Search logs"
+msgstr "Search logs"
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:22
+msgid "No logs available"
+msgstr "No logs available"
+
+#: src-server-settings/ServerSettingsApp.vue:5
+#: src-server-settings/pages/ServerSettings.vue:5
+msgid "Server Settings"
+msgstr "Server Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:3
+msgid "Server settings"
+msgstr "Server settings"
+
+#: src-server-settings/pages/ServerSettings.vue:7
+msgid "Global Settings"
+msgstr "Global Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:12
+msgid "Internal API Key"
+msgstr "Internal API Key"
+
+#: src-server-settings/pages/ServerSettings.vue:13
+msgid "Internal API key used to authenticate SDK calls."
+msgstr "Internal API key used to authenticate SDK calls."
+
+#: src-server-settings/pages/ServerSettings.vue:18
+msgid "SMTP Host"
+msgstr "SMTP Host"
+
+#: src-server-settings/pages/ServerSettings.vue:19
+msgid "Host name or IP address for the outgoing SMTP server."
+msgstr "Host name or IP address for the outgoing SMTP server."
+
+#: src-server-settings/pages/ServerSettings.vue:24
+msgid "SMTP Port"
+msgstr "SMTP Port"
+
+#: src-server-settings/pages/ServerSettings.vue:25
+msgid "Port number used for the outgoing SMTP server."
+msgstr "Port number used for the outgoing SMTP server."
+
+#: src-server-settings/pages/ServerSettings.vue:30
+msgid "Inbound SMTP Host"
+msgstr "Inbound SMTP Host"
+
+#: src-server-settings/pages/ServerSettings.vue:31
+msgid "Host name for the incoming SMTP server."
+msgstr "Host name for the incoming SMTP server."
+
+#: src-server-settings/pages/ServerSettings.vue:36
+msgid "Inbound SMTP Port"
+msgstr "Inbound SMTP Port"
+
+#: src-server-settings/pages/ServerSettings.vue:37
+msgid "Port number for the incoming SMTP server."
+msgstr "Port number for the incoming SMTP server."
+
+#: src-server-settings/pages/ServerSettings.vue:42
+msgid "IMAP Host"
+msgstr "IMAP Host"
+
+#: src-server-settings/pages/ServerSettings.vue:43
+msgid "Host name or IP address for the IMAP server used to fetch email."
+msgstr "Host name or IP address for the IMAP server used to fetch email."
+
+#: src-server-settings/pages/ServerSettings.vue:48
+msgid "IMAP Port"
+msgstr "IMAP Port"
+
+#: src-server-settings/pages/ServerSettings.vue:49
+msgid "Port number used for the IMAP server."
+msgstr "Port number used for the IMAP server."
+
+#: src-server-settings/pages/ServerSettings.vue:58
+msgid "Hide default login link"
+msgstr "Hide default login link"
+
+#: src-server-settings/pages/ServerSettings.vue:59
+msgid "Hides the default login link on the login page."
+msgstr "Hides the default login link on the login page."
+
+#: src-server-settings/pages/ServerSettings.vue:68
+msgid "LOA 3 functionality"
+msgstr "LOA 3 functionality"
+
+#: src-server-settings/pages/ServerSettings.vue:69
+msgid "Custom features based on LOA support"
+msgstr "Custom features based on LOA support"
+
+#: src-server-settings/pages/ServerSettings.vue:74
+msgid "Plugin used for LOA-3 login"
+msgstr "Plugin used for LOA-3 login"
+
+#: src-server-settings/pages/ServerSettings.vue:75
+msgid "Name of the login plugin that handles LOA-3 authentication."
+msgstr "Name of the login plugin that handles LOA-3 authentication."
+
+#: src-server-settings/pages/ServerSettings.vue:80
+msgid "Authentication method used for LOA-login"
+msgstr "Authentication method used for LOA-login"
+
+#: src-server-settings/pages/ServerSettings.vue:81
+msgid "Authentication method identifier used by the LOA-3 login plugin."
+msgstr "Authentication method identifier used by the LOA-3 login plugin."
+
+#: src-server-settings/pages/ServerSettings.vue:86
+msgid "LOA 3 Tag"
+msgstr "LOA 3 Tag"
+
+#: src-server-settings/pages/ServerSettings.vue:87
+msgid "Tag for files that require LOA 3 access to open"
+msgstr "Tag for files that require LOA 3 access to open"
+
+#: src-server-settings/pages/ServerSettings.vue:96
+msgid "Debug login logging"
+msgstr "Debug login logging"
+
+#: src-server-settings/pages/ServerSettings.vue:97
+msgid "Enables detailed logging of the login process."
+msgstr "Enables detailed logging of the login process."
+
+#: src-server-settings/pages/ServerSettings.vue:102
+msgid "Automatic logout after inactivity (seconds)"
+msgstr "Automatic logout after inactivity (seconds)"
+
+#: src-server-settings/pages/ServerSettings.vue:103
+msgid "Enter 0 to disable automatic logout, or a value greater than 120 to enable it"
+msgstr "Enter 0 to disable automatic logout, or a value greater than 120 to enable it"
+
+#: src-server-settings/pages/ServerSettings.vue:112
+msgid "Show newest messages first in threads"
+msgstr "Show newest messages first in threads"
+
+#: src-server-settings/pages/ServerSettings.vue:113
+msgid "When enabled, threads display the newest message at the top instead of the oldest."
+msgstr "When enabled, threads display the newest message at the top instead of the oldest."
+
+#: src-server-settings/pages/ServerSettings.vue:122
+msgid "Auto-expand newest message in threads"
+msgstr "Auto-expand newest message in threads"
+
+#: src-server-settings/pages/ServerSettings.vue:123
+msgid "When enabled, always expands the absolute newest message in a thread regardless of folder. When disabled (default), inbox expands the last received message and sent expands the last sent message."
+msgstr "When enabled, always expands the absolute newest message in a thread regardless of folder. When disabled (default), inbox expands the last received message and sent expands the last sent message."
+
+#: src-server-settings/pages/ServerSettings.vue:130
+#: src-server-settings/pages/ServerSettings.vue:367
+#: src-server-settings/pages/ServerSettings.vue:428
+#: src-server-settings/pages/ServerSettings.vue:485
+#: src-server-settings/pages/ServerSettings.vue:633
+#: src-server-settings/pages/ServerSettings.vue:679
+msgid "Save"
+msgstr "Save"
+
+#: src-server-settings/pages/ServerSettings.vue:136
+msgid "Notification Defaults"
+msgstr "Notification Defaults"
+
+#: src-server-settings/pages/ServerSettings.vue:139
+msgid "Current admin defaults for new users. Select the settings you want to apply to all existing users."
+msgstr "Current admin defaults for new users. Select the settings you want to apply to all existing users."
+
+#: src-server-settings/pages/ServerSettings.vue:145
+msgid "Change defaults in Activity settings"
+msgstr "Change defaults in Activity settings"
+
+#: src-server-settings/pages/ServerSettings.vue:150
+msgid "No notification defaults have been configured yet. Set them in Activity settings first."
+msgstr "No notification defaults have been configured yet. Set them in Activity settings first."
+
+#: src-server-settings/pages/ServerSettings.vue:154
+msgid "All users match the current admin defaults."
+msgstr "All users match the current admin defaults."
+
+#: src-server-settings/pages/ServerSettings.vue:160
+msgid "Setting"
+msgstr "Setting"
+
+#: src-server-settings/pages/ServerSettings.vue:1170
+#: src-server-settings/pages/ServerSettings.vue:166
+msgid "Email"
+msgstr "Email"
+
+#: src-server-settings/pages/ServerSettings.vue:1178
+#: src-server-settings/pages/ServerSettings.vue:169
+msgid "Push"
+msgstr "Push"
+
+#: src-server-settings/pages/ServerSettings.vue:180
+msgid "Collapse group"
+msgstr "Collapse group"
+
+#: src-server-settings/pages/ServerSettings.vue:180
+msgid "Expand group"
+msgstr "Expand group"
+
+#: src-server-settings/pages/ServerSettings.vue:189
+#, python-brace-format
+msgid "{count} total differences"
+msgstr "{count} total differences"
+
+#: src-server-settings/pages/ServerSettings.vue:192
+msgid "all match"
+msgstr "all match"
+
+#: src-server-settings/pages/ServerSettings.vue:231
+#: src-server-settings/pages/ServerSettings.vue:251
+msgid "This setting cannot be changed from here."
+msgstr "This setting cannot be changed from here."
+
+#: src-server-settings/pages/ServerSettings.vue:233
+#: src-server-settings/pages/ServerSettings.vue:253
+#: src-server-settings/pages/ServerSettings.vue:707
+msgid "OFF"
+msgstr "OFF"
+
+#: src-server-settings/pages/ServerSettings.vue:233
+#: src-server-settings/pages/ServerSettings.vue:253
+#: src-server-settings/pages/ServerSettings.vue:707
+msgid "ON"
+msgstr "ON"
+
+#: src-server-settings/pages/ServerSettings.vue:237
+#: src-server-settings/pages/ServerSettings.vue:257
+#: src-server-settings/pages/ServerSettings.vue:709
+#, python-brace-format
+msgid "{count} users differ"
+msgstr "{count} users differ"
+
+#: src-server-settings/pages/ServerSettings.vue:273
+msgid "Select all with differences"
+msgstr "Select all with differences"
+
+#: src-server-settings/pages/ServerSettings.vue:281
+msgid "Refresh"
+msgstr "Refresh"
+
+#: src-server-settings/pages/ServerSettings.vue:288
+msgid "Apply selected to all users"
+msgstr "Apply selected to all users"
+
+#: src-server-settings/pages/ServerSettings.vue:295
+msgid "Loading..."
+msgstr "Loading..."
+
+#: src-server-settings/pages/ServerSettings.vue:300
+msgid "Retention Settings"
+msgstr "Retention Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:305
+msgid "Delete regular Talk conversations after inactivity (days)"
+msgstr "Delete regular Talk conversations after inactivity (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:306
+msgid "Set the number of inactive days after which regular Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set the number of inactive days after which regular Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:312
+msgid "Delete event Talk conversations after inactivity (days)"
+msgstr "Delete event Talk conversations after inactivity (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:313
+msgid "Set the number of inactive days after which event Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set the number of inactive days after which event Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:319
+msgid "Default retention period (days)"
+msgstr "Default retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:320
+msgid "Defines the default number of days after which messages are automatically deleted, unless overridden by specific folder rules. Use 0 to disable automatic deletion."
+msgstr "Defines the default number of days after which messages are automatically deleted, unless overridden by specific folder rules. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:327
+msgid "Inbox retention period (days)"
+msgstr "Inbox retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:328
+msgid "Set how many days messages can remain in the Inbox before they are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set how many days messages can remain in the Inbox before they are automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:335
+msgid "Sent retention period (days)"
+msgstr "Sent retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:336
+msgid "Set how many days sent messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set how many days sent messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:343
+msgid "Processed retention period (days)"
+msgstr "Processed retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:344
+msgid "Set how many days processed messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set how many days processed messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:351
+msgid "Trash retention period (days)"
+msgstr "Trash retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:352
+msgid "Set how many days deleted messages remain in the Trash before being permanently removed. Use 0 to disable automatic deletion."
+msgstr "Set how many days deleted messages remain in the Trash before being permanently removed. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:359
+msgid "Drafts retention period (days)"
+msgstr "Drafts retention period (days)"
+
+#: src-server-settings/pages/ServerSettings.vue:360
+msgid "Set how many days draft messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Set how many days draft messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+
+#: src-server-settings/pages/ServerSettings.vue:372
+msgid "Manually trigger retention cleanup to delete messages older than the configured retention periods."
+msgstr "Manually trigger retention cleanup to delete messages older than the configured retention periods."
+
+#: src-server-settings/pages/ServerSettings.vue:376
+#: src-server-settings/pages/ServerSettings.vue:380
+#: src-server-settings/pages/ServerSettings.vue:754
+msgid "Run Now"
+msgstr "Run Now"
+
+#: src-server-settings/pages/ServerSettings.vue:376
+msgid "Running..."
+msgstr "Running..."
+
+#: src-server-settings/pages/ServerSettings.vue:385
+msgid "SDK Settings"
+msgstr "SDK Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:390
+msgid "Organization Extension"
+msgstr "Organization Extension"
+
+#: src-server-settings/pages/ServerSettings.vue:391
+msgid "Identifier or extension used to distinguish this organization."
+msgstr "Identifier or extension used to distinguish this organization."
+
+#: src-server-settings/pages/ServerSettings.vue:403
+msgid "Base URL for SDK address book updates"
+msgstr "Base URL for SDK address book updates"
+
+#: src-server-settings/pages/ServerSettings.vue:404
+msgid "Base URL used by the SDK to update the address book."
+msgstr "Base URL used by the SDK to update the address book."
+
+#: src-server-settings/pages/ServerSettings.vue:410
+msgid "Update frequency for address book (in seconds)"
+msgstr "Update frequency for address book (in seconds)"
+
+#: src-server-settings/pages/ServerSettings.vue:411
+msgid "How often the address book is updated, in seconds."
+msgstr "How often the address book is updated, in seconds."
+
+#: src-server-settings/pages/ServerSettings.vue:416
+#: src-server-settings/pages/ServerSettings.vue:420
+msgid "Update Now"
+msgstr "Update Now"
+
+#: src-server-settings/pages/ServerSettings.vue:434
+msgid "Secure Mail Settings"
+msgstr "Secure Mail Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:438
+msgid "From address for secure mail"
+msgstr "From address for secure mail"
+
+#: src-server-settings/pages/ServerSettings.vue:439
+msgid "Email address used as the From sender for secure mail."
+msgstr "Email address used as the From sender for secure mail."
+
+#: src-server-settings/pages/ServerSettings.vue:444
+msgid "Email subject for secure mail"
+msgstr "Email subject for secure mail"
+
+#: src-server-settings/pages/ServerSettings.vue:445
+msgid "Subject line used for secure mail sent to individuals."
+msgstr "Subject line used for secure mail sent to individuals."
+
+#: src-server-settings/pages/ServerSettings.vue:450
+msgid "Secure mail notification message"
+msgstr "Secure mail notification message"
+
+#: src-server-settings/pages/ServerSettings.vue:451
+msgid "Email body template used for secure mail notifications to private recipients."
+msgstr "Email body template used for secure mail notifications to private recipients."
+
+#: src-server-settings/pages/ServerSettings.vue:458
+msgid "Email subject for organization secure mail"
+msgstr "Email subject for organization secure mail"
+
+#: src-server-settings/pages/ServerSettings.vue:459
+msgid "Subject line used for secure mail sent to organizations or unverified recipients."
+msgstr "Subject line used for secure mail sent to organizations or unverified recipients."
+
+#: src-server-settings/pages/ServerSettings.vue:465
+msgid "Organization secure mail notification message"
+msgstr "Organization secure mail notification message"
+
+#: src-server-settings/pages/ServerSettings.vue:466
+msgid "Email body template used for secure mail notifications to organizations or unverified recipients."
+msgstr "Email body template used for secure mail notifications to organizations or unverified recipients."
+
+#: src-server-settings/pages/ServerSettings.vue:477
+msgid "Enforce personal secure message policy"
+msgstr "Enforce personal secure message policy"
+
+#: src-server-settings/pages/ServerSettings.vue:478
+msgid "Forces all secure messages to be sent as personal messages. Users must provide SSN."
+msgstr "Forces all secure messages to be sent as personal messages. Users must provide SSN."
+
+#: src-server-settings/pages/ServerSettings.vue:491
+msgid "Meetings Settings"
+msgstr "Meetings Settings"
+
+#: src-server-settings/pages/ServerSettings.vue:499
+msgid "Default lobby active for new conversations"
+msgstr "Default lobby active for new conversations"
+
+#: src-server-settings/pages/ServerSettings.vue:500
+msgid "Every newly created group or public conversation starts with lobby enabled"
+msgstr "Every newly created group or public conversation starts with lobby enabled"
+
+#: src-server-settings/pages/ServerSettings.vue:508
+msgid "Enable Secure Meeting bookings"
+msgstr "Enable Secure Meeting bookings"
+
+#: src-server-settings/pages/ServerSettings.vue:509
+msgid "This toggle enables or disables the possibility to book secure meetings through the calendar"
+msgstr "This toggle enables or disables the possibility to book secure meetings through the calendar"
+
+#: src-server-settings/pages/ServerSettings.vue:514
+msgid "Client ID for OIDC provider"
+msgstr "Client ID for OIDC provider"
+
+#: src-server-settings/pages/ServerSettings.vue:515
+msgid "Client ID configured in the external OIDC provider."
+msgstr "Client ID configured in the external OIDC provider."
+
+#: src-server-settings/pages/ServerSettings.vue:521
+msgid "Client Secret for OIDC provider"
+msgstr "Client Secret for OIDC provider"
+
+#: src-server-settings/pages/ServerSettings.vue:522
+msgid "Client secret configured in the external OIDC provider."
+msgstr "Client secret configured in the external OIDC provider."
+
+#: src-server-settings/pages/ServerSettings.vue:527
+msgid "Authorize URL"
+msgstr "Authorize URL"
+
+#: src-server-settings/pages/ServerSettings.vue:528
+msgid "URL to the OIDC authorization endpoint."
+msgstr "URL to the OIDC authorization endpoint."
+
+#: src-server-settings/pages/ServerSettings.vue:533
+msgid "Token URL"
+msgstr "Token URL"
+
+#: src-server-settings/pages/ServerSettings.vue:534
+msgid "URL to the OIDC token endpoint."
+msgstr "URL to the OIDC token endpoint."
+
+#: src-server-settings/pages/ServerSettings.vue:539
+msgid "Redirect URL"
+msgstr "Redirect URL"
+
+#: src-server-settings/pages/ServerSettings.vue:540
+msgid "URL where the OIDC provider should redirect back after authentication."
+msgstr "URL where the OIDC provider should redirect back after authentication."
+
+#: src-server-settings/pages/ServerSettings.vue:545
+msgid "Scope"
+msgstr "Scope"
+
+#: src-server-settings/pages/ServerSettings.vue:546
+msgid "Space separated list of scopes to request (e.g. profile email openid)."
+msgstr "Space separated list of scopes to request (e.g. profile email openid)."
+
+#: src-server-settings/pages/ServerSettings.vue:551
+msgid "SSN Claim"
+msgstr "SSN Claim"
+
+#: src-server-settings/pages/ServerSettings.vue:552
+msgid "Name of the claim in the OIDC ID token that contains the personnummer (e.g. personalNumber, preferred_username). Leave empty to use default fallback chain."
+msgstr "Name of the claim in the OIDC ID token that contains the personnummer (e.g. personalNumber, preferred_username). Leave empty to use default fallback chain."
+
+#: src-server-settings/pages/ServerSettings.vue:558
+msgid "First Name Claim"
+msgstr "First Name Claim"
+
+#: src-server-settings/pages/ServerSettings.vue:559
+msgid "Name of the claim in the OIDC ID token that contains the first name (e.g. givenName, given_name). Leave empty to use default fallback chain."
+msgstr "Name of the claim in the OIDC ID token that contains the first name (e.g. givenName, given_name). Leave empty to use default fallback chain."
+
+#: src-server-settings/pages/ServerSettings.vue:565
+msgid "Last Name Claim"
+msgstr "Last Name Claim"
+
+#: src-server-settings/pages/ServerSettings.vue:566
+msgid "Name of the claim in the OIDC ID token that contains the last name (e.g. surname, family_name). Leave empty to use default fallback chain."
+msgstr "Name of the claim in the OIDC ID token that contains the last name (e.g. surname, family_name). Leave empty to use default fallback chain."
+
+#: src-server-settings/pages/ServerSettings.vue:573
+msgid "SMS Gateway"
+msgstr "SMS Gateway"
+
+#: src-server-settings/pages/ServerSettings.vue:574
+msgid "Configured SMS gateway/integration used for sending text messages."
+msgstr "Configured SMS gateway/integration used for sending text messages."
+
+#: src-server-settings/pages/ServerSettings.vue:585
+msgid "SMS Gateway Username"
+msgstr "SMS Gateway Username"
+
+#: src-server-settings/pages/ServerSettings.vue:586
+msgid "Account username for authenticating with the SMS gateway service."
+msgstr "Account username for authenticating with the SMS gateway service."
+
+#: src-server-settings/pages/ServerSettings.vue:592
+msgid "SMS Gateway Password"
+msgstr "SMS Gateway Password"
+
+#: src-server-settings/pages/ServerSettings.vue:593
+msgid "Account password for authenticating with the SMS gateway service."
+msgstr "Account password for authenticating with the SMS gateway service."
+
+#: src-server-settings/pages/ServerSettings.vue:598
+msgid "SMS Gateway Sender"
+msgstr "SMS Gateway Sender"
+
+#: src-server-settings/pages/ServerSettings.vue:599
+msgid "Alphanumeric, max 11 chars, must start with a letter"
+msgstr "Alphanumeric, max 11 chars, must start with a letter"
+
+#: src-server-settings/pages/ServerSettings.vue:604
+msgid "SMS message: use #ORGANIZER_NAME for organizer, #ATTENDEE_EMAIL for attendee"
+msgstr "SMS message: use #ORGANIZER_NAME for organizer, #ATTENDEE_EMAIL for attendee"
+
+#: src-server-settings/pages/ServerSettings.vue:605
+msgid "Use placeholders in your message, e.g. “You have been invited by #ORGANIZER_NAME and the invitation was sent to #ATTENDEE_EMAIL.”"
+msgstr "Use placeholders in your message, e.g. “You have been invited by #ORGANIZER_NAME and the invitation was sent to #ATTENDEE_EMAIL.”"
+
+#: src-server-settings/pages/ServerSettings.vue:611
+msgid "Organizer for calendar event invitation email"
+msgstr "Organizer for calendar event invitation email"
+
+#: src-server-settings/pages/ServerSettings.vue:612
+msgid "Provide the organizer line for the calendar invitation email. Leave blank for the organizers actual name and email"
+msgstr "Provide the organizer line for the calendar invitation email. Leave blank for the organizers actual name and email"
+
+#: src-server-settings/pages/ServerSettings.vue:617
+msgid "Subject for calendar event invitation email"
+msgstr "Subject for calendar event invitation email"
+
+#: src-server-settings/pages/ServerSettings.vue:618
+msgid "Provide the subject line for the calendar invitation email. You may use placeholders such as #ORGANIZER_NAME and #ATTENDEE_EMAIL."
+msgstr "Provide the subject line for the calendar invitation email. You may use placeholders such as #ORGANIZER_NAME and #ATTENDEE_EMAIL."
+
+#: src-server-settings/pages/ServerSettings.vue:623
+msgid "[HTML] Body for calendar event invitation email"
+msgstr "[HTML] Body for calendar event invitation email"
+
+#: src-server-settings/pages/ServerSettings.vue:624
+msgid ""
+"Compose the HTML email body for the invitation. Available placeholders:\n"
+"\n"
+"• #INVITATION_LINK (required) - Meeting invitation link\n"
+"• #TITLE - Event title\n"
+"• #DESCRIPTION - Event description\n"
+"• #DATE_AND_TIME - Formatted date and time\n"
+"• #ACCEPT_LINK - Accept invitation link\n"
+"• #DECLINE_LINK - Decline invitation link"
+msgstr ""
+"Compose the HTML email body for the invitation. Available placeholders:\n"
+"\n"
+"• #INVITATION_LINK (required) - Meeting invitation link\n"
+"• #TITLE - Event title\n"
+"• #DESCRIPTION - Event description\n"
+"• #DATE_AND_TIME - Formatted date and time\n"
+"• #ACCEPT_LINK - Accept invitation link\n"
+"• #DECLINE_LINK - Decline invitation link"
+
+#: src-server-settings/pages/ServerSettings.vue:639
+msgid "Entra ID"
+msgstr "Entra ID"
+
+#: src-server-settings/pages/ServerSettings.vue:644
+msgid "Tenant URL"
+msgstr "Tenant URL"
+
+#: src-server-settings/pages/ServerSettings.vue:645
+msgid "URL to the Entra ID tenant. Read-only, configured by the SCIM component."
+msgstr "URL to the Entra ID tenant. Read-only, configured by the SCIM component."
+
+#: src-server-settings/pages/ServerSettings.vue:649
+msgid "JWT Token"
+msgstr "JWT Token"
+
+#: src-server-settings/pages/ServerSettings.vue:650
+msgid "Authentication token. Read-only, configured by the SCIM component."
+msgstr "Authentication token. Read-only, configured by the SCIM component."
+
+#: src-server-settings/pages/ServerSettings.vue:653
+msgid "Graph Client ID"
+msgstr "Graph Client ID"
+
+#: src-server-settings/pages/ServerSettings.vue:654
+msgid "Client ID from your Microsoft Entra ID app registration."
+msgstr "Client ID from your Microsoft Entra ID app registration."
+
+#: src-server-settings/pages/ServerSettings.vue:659
+msgid "Graph Client Secret"
+msgstr "Graph Client Secret"
+
+#: src-server-settings/pages/ServerSettings.vue:660
+msgid "Client secret value from your Microsoft Entra ID app registration."
+msgstr "Client secret value from your Microsoft Entra ID app registration."
+
+#: src-server-settings/pages/ServerSettings.vue:665
+msgid "Graph Tenant ID"
+msgstr "Graph Tenant ID"
+
+#: src-server-settings/pages/ServerSettings.vue:666
+msgid "Tenant ID from your Microsoft Entra ID."
+msgstr "Tenant ID from your Microsoft Entra ID."
+
+#: src-server-settings/pages/ServerSettings.vue:671
+#: src-server-settings/pages/ServerSettings.vue:672
+msgid "Sync Group Pattern"
+msgstr "Sync Group Pattern"
+
+#: src-server-settings/pages/ServerSettings.vue:691
+#: src-server-settings/pages/ServerSettings.vue:694
+msgid "Apply notification defaults"
+msgstr "Apply notification defaults"
+
+#: src-server-settings/pages/ServerSettings.vue:702
+msgid "The following settings will be applied to all existing users:"
+msgstr "The following settings will be applied to all existing users:"
+
+#: src-server-settings/pages/ServerSettings.vue:714
+msgid "Users who have customized these settings will have them overwritten."
+msgstr "Users who have customized these settings will have them overwritten."
+
+#: src-server-settings/pages/ServerSettings.vue:721
+msgid "Apply"
+msgstr "Apply"
+
+#: src-server-settings/pages/ServerSettings.vue:721
+msgid "Applying..."
+msgstr "Applying..."
+
+#: src-server-settings/pages/ServerSettings.vue:733
+#: src-server-settings/pages/ServerSettings.vue:736
+msgid "Confirm retention cleanup"
+msgstr "Confirm retention cleanup"
+
+#: src-server-settings/pages/ServerSettings.vue:744
+msgid "This will permanently delete messages older than the configured retention periods for all mailboxes."
+msgstr "This will permanently delete messages older than the configured retention periods for all mailboxes."
+
+#: src-server-settings/pages/ServerSettings.vue:747
+msgid "This action cannot be undone."
+msgstr "This action cannot be undone."
+
+#: src-server-settings/pages/ServerSettings.vue:804
+#: src-server-settings/pages/ServerSettings.vue:806
+#: src-server-settings/pages/ServerSettings.vue:808
+#: src-server-settings/pages/ServerSettings.vue:826
+#: src-server-settings/pages/ServerSettings.vue:870
+#: src-server-settings/pages/ServerSettings.vue:882
+#: src-server-settings/pages/ServerSettings.vue:896
+msgid "Please enter a valid number."
+msgstr "Please enter a valid number."
+
+#: src-server-settings/pages/ServerSettings.vue:813
+msgid "Invalid format. Use letters (a-z, A-Z), numbers (0-9) and underscore (_) only."
+msgstr "Invalid format. Use letters (a-z, A-Z), numbers (0-9) and underscore (_) only."
+
+#: src-server-settings/pages/ServerSettings.vue:819
+msgid "Invalid format. Use letters (a-z, A-Z), numbers (0-9), hyphen (-), underscore (_) and slash (/) only."
+msgstr "Invalid format. Use letters (a-z, A-Z), numbers (0-9), hyphen (-), underscore (_) and slash (/) only."
+
+#: src-server-settings/pages/ServerSettings.vue:830
+msgid "Use 0 to keep sessions always active, or 120+ seconds to enable autologout."
+msgstr "Use 0 to keep sessions always active, or 120+ seconds to enable autologout."
+
+#: src-server-settings/pages/ServerSettings.vue:874
+#: src-server-settings/pages/ServerSettings.vue:886
+msgid "Use 0 to disable this feature, or enter the number of days to keep inactive conversations."
+msgstr "Use 0 to disable this feature, or enter the number of days to keep inactive conversations."
+
+#: src-server-settings/pages/ServerSettings.vue:899
+msgid "Please enter a whole number of days."
+msgstr "Please enter a whole number of days."
+
+#: src-server-settings/pages/ServerSettings.vue:902
+msgid "Use 0 to disable this feature, or enter the number of days to keep items."
+msgstr "Use 0 to disable this feature, or enter the number of days to keep items."
+
+#: src-server-settings/pages/ServerSettings.vue:986
+msgid "Sender must not exceed 11 characters."
+msgstr "Sender must not exceed 11 characters."
+
+#: src-server-settings/pages/ServerSettings.vue:988
+msgid "Sender must start with a letter and contain only letters and numbers."
+msgstr "Sender must start with a letter and contain only letters and numbers."
+
+#: src-server-settings/pages/ServerSettings.vue:998
+msgid "The body must include the #INVITATION_LINK placeholder."
+msgstr "The body must include the #INVITATION_LINK placeholder."
+
+#: src-server-settings/pages/ServerSettings.vue:1059
+msgid "Name not provided"
+msgstr "Name not provided"
+
+#: src-server-settings/pages/ServerSettings.vue:1085
+#: src-server-settings/pages/ServerSettings.vue:1219
+msgid "Failed to load settings. Please try again."
+msgstr "Failed to load settings. Please try again."
+
+#: src-server-settings/pages/ServerSettings.vue:1116
+msgid "Address book updated successfully!"
+msgstr "Address book updated successfully!"
+
+#: src-server-settings/pages/ServerSettings.vue:1122
+msgid "Failed to update address book. Please try again."
+msgstr "Failed to update address book. Please try again."
+
+#: src-server-settings/pages/ServerSettings.vue:1138
+msgid "Retention job started successfully!"
+msgstr "Retention job started successfully!"
+
+#: src-server-settings/pages/ServerSettings.vue:1144
+msgid "Failed to start retention job. Please try again."
+msgstr "Failed to start retention job. Please try again."
+
+#: src-server-settings/pages/ServerSettings.vue:1330
+#, python-brace-format
+msgid "Notification defaults applied to {count} users."
+msgstr "Notification defaults applied to {count} users."
+
+#: src-server-settings/pages/ServerSettings.vue:1338
+msgid "Failed to apply notification defaults. Please try again."
+msgstr "Failed to apply notification defaults. Please try again."
+
+#: src-server-settings/pages/ServerSettings.vue:1353
+msgid "Please fix form errors."
+msgstr "Please fix form errors."
+
+#: src-server-settings/pages/ServerSettings.vue:1383
+msgid "Settings saved successfully!"
+msgstr "Settings saved successfully!"
+
+#: src-server-settings/pages/ServerSettings.vue:1389
+msgid "Failed to save settings. Please try again."
+msgstr "Failed to save settings. Please try again."
+
+#: templates/GuestLogout.php:8
+msgid "Logged Out"
+msgstr "Logged Out"
+
+#: templates/GuestLogout.php:10
+msgid "You have been successfully logged out."
+msgstr "You have been successfully logged out."

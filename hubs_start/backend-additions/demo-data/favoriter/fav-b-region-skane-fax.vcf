@@ -1,0 +1,15 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-b-region-skane-fax
+FN:Region Skåne, vårdcentral Rosengård (fax)
+N:Region Skåne vårdcentral Rosengård;;;;
+ORG:Region Skåne;Vårdcentral Rosengård – remisser
+KIND:org
+TEL;TYPE=fax,work:+46 40 623 99 00
+X-HUBS-FAVORIT-KLASS:extern-funktion
+X-HUBS-OWNER:funktion:barn-familj@
+CATEGORIES:Favoriter,fax,extern
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). Funktionsfax (remisser) utan SDK – Hubs äger värdet (klass b). Förvaltas av funktion\, ej individ. Ej medborgar-PII.
+REV:2026-06-15T08:00:00Z
+END:VCARD

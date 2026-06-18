@@ -26,6 +26,8 @@ services:
       - nextcloud_data:/var/www/html
       - nextcloud_config:/var/www/html/config
       - nextcloud_apps:/var/www/html/custom_apps
+      # Mount the GovPortal app for development
+      - ./gov-portal/nextcloud-app:/var/www/html/custom_apps/govportal:ro
     depends_on:
       - db
     environment:
@@ -33,6 +35,8 @@ services:
       - MYSQL_DATABASE=nextcloud
       - MYSQL_USER=nextcloud
       - MYSQL_PASSWORD=nextcloud_password
+      # Default app after login (uncomment to enable)
+      # - NEXTCLOUD_DEFAULT_APP=govportal
     networks:
       - nextcloud_network
 

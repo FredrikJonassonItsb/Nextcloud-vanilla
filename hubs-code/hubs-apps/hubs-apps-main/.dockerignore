@@ -1,0 +1,4 @@
+# Only send what the Dockerfile needs
+*
+!docker/nextcloud/
+!apps/server/

@@ -1,0 +1,12 @@
+{
+  "dependencies": {
+    "html2pdf.js": "^0.10.3",
+    "vue-tel-input": "^5.16.0",
+    "libphonenumber-js": "^1.10.12",
+    "vue-demi": "^0.14.10"
+  },
+  "scripts": {
+    "test:itsl:vitest": "vitest --run src/itsl/tests",
+    "test:itsl:php": "cd tests && php -d memory_limit=512M ../vendor/bin/phpunit -c phpunit.itsl.xml --no-coverage"
+  }
+}

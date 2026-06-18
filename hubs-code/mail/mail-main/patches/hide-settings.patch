@@ -1,0 +1,82 @@
+--- a/css/mail.scss
++++ b/css/mail.scss
+@@ -3,6 +3,68 @@
+  * SPDX-FileCopyrightText: 2013-2016 ownCLoud, Inc.
+  * SPDX-License-Identifier: AGPL-3.0-only
+  */
++
++/* mail settings, button on bottom left */
++.mail-settings,
++/* advanced search */
++.modal-inner--field:has(#ccId),
++.modal-inner--field:has(#bccId),
++/* ... button on mailaccount */
++.v-popper__popper:has(.material-design-icon.cog-outline-icon) li.action:has(.material-design-icon.information-outline-icon),
++.v-popper__popper:has(.material-design-icon.cog-outline-icon) li.action:has(.material-design-icon.trash-can-outline-icon),
++.v-popper__popper:has(.material-design-icon.cog-outline-icon) li.action:has(.action-checkbox),
++/* ... button on mailfolder */
++.v-popper__popper:has(.material-design-icon.wrench-icon) li.action:has(.action-checkbox),
++/* ... (on mailaccount) => Account settings */
++.dialog__content.app-settings__content #settings-section_alias-settings,
++.dialog__content.app-settings__content #settings-section_certificate-settings,
++.dialog__content.app-settings__content #settings-section_default-folders,
++.dialog__content.app-settings__content #settings-section_trash-retention,
++.dialog__content.app-settings__content #settings-section_mail-filters,
++.dialog__content.app-settings__content #settings-section_sieve-filter,
++.dialog__content.app-settings__content #settings-section_mail-server,
++.dialog__content.app-settings__content #settings-section_sieve-settings,
++.dialog__content.app-settings__content #settings-section_calendar-settings,
++.dialog__content.app-settings__content #settings-section_classification,
++.dialog__content.app-settings__content #settings-section_quick-actions-settings,
++nav.dialog__navigation.app-settings__navigation {
++	display: none;
++}
++/* itsl change end */
++
++/* itsl: Hide importance info popover next to High Priority header (#6) */
++.section-title.important + .v-popper {
++	display: none;
++}
++
++/* itsl: Hide recipient address bubbles between subject and thread (#9) */
++#mail-message .avatar-header {
++	display: none;
++}
++
++/* itsl: Allow long account names to wrap in navigation sidebar */
++.app-navigation .app-navigation-caption {
++	align-items: center;
++}
++
++.app-navigation .app-navigation-caption__name {
++	overflow: visible;
++	text-overflow: unset;
++	white-space: normal;
++	word-break: break-word;
++	line-height: 1.3;
++}
++
++.app-navigation .app-navigation-entry-wrapper .app-navigation-entry-link {
++	padding-left: 10px;
++}
++
++@keyframes itsl-loading-gradient {
++	0% { background-position: 0% 50%; }
++	50% { background-position: 100% 50%; }
++	100% { background-position: 0% 50%; }
++}
++
+ .loading {
+ 	position: absolute;
+ 	inset-inline-start: 50%;
+--- a/src/components/Navigation.vue
++++ b/src/components/Navigation.vue
+@@ -125,7 +125,7 @@
+ 			return this.mainStore.getAccounts
+ 				.filter((account) => account.id !== UNIFIED_ACCOUNT_ID)
+ 				.map((account) => {
+-					const mailboxes = this.mainStore.getMailboxes(account.id)
++					const mailboxes = this.mainStore.getMailboxes(account.id).filter(mailbox => mailbox.specialRole !== 'junk')
+ 					const nonSpecialRoleMailboxes = mailboxes.filter((mailbox) => this.isCollapsed(account, mailbox))
+ 					const isCollapsible = nonSpecialRoleMailboxes.length > 1
+ 

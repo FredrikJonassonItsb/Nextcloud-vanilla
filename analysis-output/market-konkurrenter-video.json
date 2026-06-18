@@ -1,0 +1,124 @@
+{
+    "key":  "konkurrenter-video",
+    "topic":  "Konkurrentanalys: säkra videomöten med medborgare i svensk/nordisk offentlig sektor",
+    "key_findings":  [
+                         "Compodium/Vidicue är marknadsledare i nischen \u0027säkra videomöten\u0027 mot kommuner/regioner: dubbel autentisering (mötesledare via SITHS/BankID, deltagare via BankID, Freja eID+ eller SMS-kod), digitalt väntrum/lobby där mötesledaren manuellt släpper in autentiserade deltagare, drift i svenska georedundanta datacenter (moln, ej on-prem hos kund). Säljs ofta via partner: Atea, Inera, SecureAppbox. Kunder: Region Västerbotten inkl 16 kommuner, Region Kronoberg, Skellefteå kommun m.fl. Användningsområden i kommuner: socialtjänst, elevhälsa, medborgarstöd, nämndmöten.",
+                         "Ineras tjänst \u0027Digitalt möte\u0027 (byggd på Compodium) avvecklas — kommuner hänvisas till alternativ som Digitala Samtal; Ineras kvarvarande \u0027Video- och distansmöte\u0027 (Pexip-baserad videoinfrastruktur) riktar sig främst till vårdens flerpartsmöten, inte medborgarmöten. Detta skapar ett aktivt fönster där kommuner just nu upphandlar ersättare.",
+                         "Digitala Samtal AB är en uppstickare specifikt mot socialtjänst/omsorg/elevhälsa: marknadsför sig på GDPR+OSL-efterlevnad, drift i \u0027Compliant Cloud\u0027 i Sverige, integration med Tietoevry Lifecare (videosamtal startas direkt från brukarkortet utan separat bokning/väntrum), säljs via Adda- och Kammarkollegiet-ramavtal med 2–4 veckors införande. Deras vinkel: bokningsfria flöden inbäddade i handläggarens verksamhetssystem.",
+                         "Visiba Care (Visiba Group) dominerar vårdsidan: plattform för regioner med bokade videobesök och virtuella drop-in-väntrum, patient identifierar sig med Mobilt BankID vid bokning och inloggning, teknikkontroll före mötet, därefter väntrum tills vårdpersonal startar mötet. Stöd för flerpartsmöte med gäst via BankID och ombud. Kunder: Region Halland, Västerbotten, Jönköping m.fl; mest använda plattformen inom Folktandvården (8+ regioner). Expanderar mot NHS England med triage — fokus skiftar mot AI-triage snarare än ren video.",
+                         "1177-video är inte en enhetlig tjänst: regionerna kör olika plattformar bakom 1177-inloggning (Visiba Care, Platform24, regionala appar). \u00271177 direkt\u0027 (levereras av Platform24 via Inera) blir nationell digital ingång till primärvård med chatt som kan eskaleras till videosamtal — relevant för vård men löser inte kommunernas behov (socialtjänst, överförmyndare, budgetrådgivning).",
+                         "Teams/Zoom underkänns för sekretessbelagd kommunikation av två skäl: (1) Schrems II — överföring till USA-moln ger tredjelandsproblem under GDPR, (2) OSL-röjandefrågan — It-driftsutredningen (SOU 2021:1) bedömde att utlämnande till extern driftleverantör är ett \u0027röjande\u0027 enligt OSL och föreslog en sekretessbrytande bestämmelse med intresseavvägning; eSam:s vägledning ES2023-06 om utkontraktering håller rättsläget restriktivt. Tunga myndigheter har nobbat Teams med hänvisning till exponering av känsliga uppgifter. Notera: även bokningsflödet kan fälla en lösning — externa personer som bokar mötesrum kan i sig bryta mot OSL.",
+                         "Sefos (Meaplus) tar kommunmarknaden via en hybridstrategi: tillägg till Outlook/Teams som lägger identifiering (Mobilt BankID, Freja, SMS, lösenord) ovanpå mötesbokningen, så att kommunen kan behålla Teams men låsa mötet till identifierade deltagare. Används av bl.a. Järfälla, Falköping, Alvesta, Södertälje. Visar att \u0027identifieringslager + befintligt verktyg\u0027 är ett konkurrerande mönster mot helt egna plattformar.",
+                         "OpenTalk (Tyskland, open source under EUPL, skrivet i Rust): on-premise eller SaaS i tyskt datacenter, BSI-säkerhetscertifiering för videokonferenstjänster, siktar på Common Criteria EAL4 för E2E-kryptering. Funktioner: väntrum, flera moderatorer, revisionssäker omröstning med deltagarverifieringstokens, telefoninringning, kalenderdashboard. Kund: Thüringens delstatsförvaltning. Ingen BankID/Freja — svensk eID är inte löst i internationella OSS-alternativ.",
+                         "Element/Matrix har fått institutionellt momentum i Sverige: eSam/dSam:s styrgrupp avser rekommendera Matrix som gemensam standard för säker, federerad myndighetskommunikation (inkl. videorum); federation mellan Försäkringskassans Element och Trafikverkets Rocket.Chat är i drift (maj 2026). Förebild: Bundeswehrs BwMessenger (100 000+ användare). Detta gäller dock främst intern myndighet-till-myndighet-kommunikation, inte medborgarmöten med BankID.",
+                         "Gemensamt mönster hos alla godkända lösningar för medborgarmöten: (1) stark eID-identifiering av ALLA deltagare före insläpp (BankID/Freja/SITHS, med SMS som fallback för de utan eID), (2) lobby/väntrum där handläggaren ser vem som verifierats och manuellt släpper in, (3) bokning via länk i sms/e-post — aldrig krav på konto hos medborgaren, (4) svensk/EU-drift med data kvar hos leverantör i Sverige eller on-prem. Pexip används som infrastruktur i flera regioner (Örebro, Ineras videoinfrastruktur) men är norsk-ägd infrastruktur snarare än färdig medborgartjänst."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "Compodium International AB (Vidicue)",
+                       "role":  "Huvudkonkurrent — dedikerad svensk tjänst för säkra videomöten i offentlig sektor",
+                       "notes":  "BankID/Freja eID+/SITHS/SMS-identifiering, lobby med manuell insläppning, svenska datacenter. Säljs via Atea/SecureAppbox/Inera. Förvärvade TDialog (säkra meddelanden). Många region- och kommunavtal men molnbaserad, inte on-prem."
+                   },
+                   {
+                       "name":  "Digitala Samtal AB",
+                       "role":  "Uppstickarkonkurrent mot socialtjänst/omsorg/elevhälsa",
+                       "notes":  "Positionerar sig på GDPR+OSL, svensk \u0027Compliant Cloud\u0027, integration i Tietoevry Lifecare (start från brukarkort, inga väntrum/bokningar), Adda/Kammarkollegiet-ramavtal. Fångar aktivt upp kunder när Inera Digitalt möte avvecklas."
+                   },
+                   {
+                       "name":  "Visiba Group (Visiba Care)",
+                       "role":  "Marknadsledare för videobesök i vården (regioner)",
+                       "notes":  "Bokade besök + drop-in-väntrum, BankID för patient och gäst, flerpartsmöten med ombud, 1177-integration. Skiftar fokus mot AI-triage (NHS England). Mindre närvarande i kommunal socialtjänst."
+                   },
+                   {
+                       "name":  "Inera (Digitalt möte / Video- och distansmöte / 1177 direkt)",
+                       "role":  "Offentligt ägd tjänsteleverantör och kanal — både konkurrent och marknadsöppning",
+                       "notes":  "Digitalt möte (Compodium-baserad) avvecklas; Video- och distansmöte (Pexip) fokuserar vårdens flerpartsmöten; 1177 direkt (Platform24) blir nationell digital vårdingång med chatt→video."
+                   },
+                   {
+                       "name":  "Platform24",
+                       "role":  "Konkurrent inom region/vård via 1177 direkt",
+                       "notes":  "Levererar nationell digital ingång till primärvård åt Inera; symtombedömning + chatt + videosamtal. Stark i regioner, ej i kommunal sektor."
+                   },
+                   {
+                       "name":  "Sefos (Meaplus)",
+                       "role":  "Konkurrent med hybridmodell — identifieringslager ovanpå Outlook/Teams",
+                       "notes":  "BankID/Freja/SMS-verifiering av mötesdeltagare som tillägg till Teams-möten. Använd av Järfälla, Falköping, Alvesta, Södertälje. Lägre tröskel eftersom kommunen behåller Microsoft-miljön."
+                   },
+                   {
+                       "name":  "Pexip",
+                       "role":  "Infrastrukturleverantör (norsk) bakom flera regionala/nationella tjänster",
+                       "notes":  "Används i Region Örebro och Ineras videoinfrastruktur; self-hosted-möjlighet. Konkurrerar på infrastrukturnivå snarare än färdig medborgartjänst med eID."
+                   },
+                   {
+                       "name":  "OpenTalk GmbH",
+                       "role":  "Europeisk OSS-konkurrent (EUPL), on-prem eller tysk SaaS",
+                       "notes":  "BSI-certifierad, väntrum, revisionssäker omröstning, telefoninringning, dashboard med kalendervy. Tysk offentlig sektor (Thüringen). Saknar svensk eID-integration."
+                   },
+                   {
+                       "name":  "Element / Matrix-ekosystemet",
+                       "role":  "Strategisk standardiseringsaktör för myndighetsintern kommunikation",
+                       "notes":  "eSam/dSam avser rekommendera Matrix som standard; Försäkringskassan↔Trafikverket-federation i drift 2026. Tele2 paketerar samarbetsplattform för offentlig sektor. Gäller främst myndighet-till-myndighet, inte BankID-medborgarmöten."
+                   },
+                   {
+                       "name":  "SecureAppbox",
+                       "role":  "Återförsäljare/paketerare",
+                       "notes":  "Lanserade \u0027Säkra Videomöten\u0027 för offentlig sektor tillsammans med Compodium — exempel på partnerkanalens betydelse."
+                   },
+                   {
+                       "name":  "Microsoft Teams / Zoom",
+                       "role":  "De-facto-standard som underkänns för sekretess",
+                       "notes":  "Schrems II (tredjelandsöverföring) + OSL-röjandeproblemet (SOU 2021:1, eSam ES2023-06). Tunga myndigheter har nobbat Teams. Används ändå brett för icke-sekretessbelagda möten — kommuner kör tvåspårslösning."
+                   },
+                   {
+                       "name":  "eSam / dSam, IMY, It-driftsutredningen (SOU 2021:1)",
+                       "role":  "Regelverk/standardsättare",
+                       "notes":  "Definierar varför US-moln underkänns och vilka krav (eID-identifiering av deltagare, svensk drift) som styr upphandlingar. Adda:s DIS \u0027Säker digital kommunikation\u0027 är en central upphandlingskanal."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Hubs starkaste differentiering är on-prem/egen server med kunden som dataägare — ingen av huvudkonkurrenterna (Compodium, Digitala Samtal, Visiba) erbjuder detta; alla kör leverantörsdrivet svenskt moln. Det löser OSL-röjandefrågan i grunden (ingen extern part får informationen), vilket är ett juridiskt skarpare argument än \u0027svenskt datacenter\u0027. Detta budskap bör vara synligt i dashboarden (t.ex. \u0027all data på er server\u0027).",
+                                  "BankID/Freja-identifiering av externa deltagare är hygienkrav, inte differentiator: Talk-mötet med medborgare måste ha eID-verifiering FÖRE insläpp, med SMS-kod som fallback, och handläggaren måste i lobbyn se verifierad identitet (namn + personnummer-verifiering) på varje väntande deltagare. Nextcloud Talks inbyggda lobby finns, men eID-kopplingen är det Hubs måste bygga — och dashboarden bör visa väntrumsstatus (\u00272 verifierade deltagare väntar\u0027) direkt på startsidan.",
+                                  "Timing: Inera Digitalt möte är avvecklad och kommuner byter leverantör nu — Digitala Samtal fångar dem aktivt. Hubs bör rikta säljbudskap mot exakt denna migreringsvåg (socialtjänst, elevhälsa, överförmyndare) och finnas på Adda:s DIS \u0027Säker digital kommunikation\u0027 som är den dominerande upphandlingskanalen.",
+                                  "Bokningsflödet avgör användbarheten: vinnande mönster är (a) handläggaren bokar och medborgaren får länk via SMS/e-post utan konto, (b) drop-in-väntrum för spontana möten, (c) start direkt från ärendet/verksamhetssystemet (Digitala Samtals Lifecare-integration är beviset). Dashboarden bör ha \u0027boka säkert videomöte\u0027 som primär åtgärd med dagens bokade möten + väntrumsstatus i en vy — Compodiums portal och OpenTalks kalenderdashboard är referenspunkter.",
+                                  "Konkurrera inte med Teams överallt: kommuner kör tvåspår (Teams för vardag, säker tjänst för sekretess). Sefos visar att hybridmönstret är gångbart. Hubs dashboard bör därför göra det tydligt NÄR man ska använda det säkra mötet (ärendekopplat, sekretess) och göra tröskeln för handläggaren minimal — annars läcker användarna tillbaka till Teams.",
+                                  "Matrix/eSam-spåret är en risk och möjlighet på 2–3 års sikt: om Matrix blir rekommenderad standard för federerad myndighetskommunikation bör Hubs bevaka interoperabilitet (Nextcloud Talk är inte Matrix-baserat). För medborgarmöten med BankID är det dock irrelevant idag — där finns inget standardspår, bara produktkonkurrens.",
+                                  "Paketeringen är Hubs trumfkort: ingen konkurrent kombinerar säkra videomöten med SDK, säker e-post, fax och filer i EN plattform — Compodium köpte TDialog just för att bredda sig åt det hållet. Dashboarden bör visa hela kommunikationsläget (inkommande SDK-meddelanden, väntande videomöten, säkra mail) som en samlad \u0027sekretess-inkorg\u0027, vilket ingen konkurrent har idag.",
+                                  "Funktioner att matcha (bordlägg inte): teknikkontroll före möte (Visiba), telefoninringning för medborgare utan smartphone/eID (OpenTalk), ombud/flerpart med olika identifieringsnivåer (Visiba), manuell insläppskontroll i lobby (Compodium). Funktioner att överväga som differentiering: mötesloggar/revisionsspår kopplade till ärende, revisionssäker dokumentation av vem som identifierats och när."
+                              ],
+    "sources":  [
+                    "https://compodium.se/vidicue",
+                    "https://compodium.com/blogg-artikel?id=245",
+                    "https://www.mynewsdesk.com/se/compodium/pressreleases/stort-intresse-foer-saekra-digitala-moeten-compodium-levererar-till-ytterligare-20-kommuner-och-regioner-3057135",
+                    "https://news.cision.com/se/compodium-international-ab--publ-/r/region-kronoberg-valjer-compodium-for-sakra-videomoten,c3725022",
+                    "https://eventeffect.se/compodium-sluter-avtal-med-region-vasterbotten-inklusive-16-kommuner/",
+                    "https://www.mynewsdesk.com/se/compodium/pressreleases/compodium-breddar-sitt-erbjudande-genom-foervaerv-3112535",
+                    "https://skelleftea.se/invanare/startsida/omsorg-och-stod/familj-barn-och-ungdom/sakra-digitala-moten",
+                    "https://digitalasamtal.se/sakra-videosamtal-for-socialtjansten/",
+                    "https://digitalasamtal.se/blog/inera-digitalt-mote-avvecklas-sa-gar-du-over-till-digitala-samtal/",
+                    "https://www.mynewsdesk.com/se/digitala-samtal-ab/pressreleases/ny-svensk-tjaenst-foer-saekra-videosamtal-inom-socialtjaensten-hjaelper-kommuner-efterleva-gdpr-och-osl-3077592",
+                    "https://www.visibagroup.com/sv/visiba-care/anpassade-floden",
+                    "https://media-cdn.visibacare.com/manuals/sv/VisibaCare_Manual_V%C3%A5rdut%C3%B6vare.pdf",
+                    "https://vardgivare.regionhalland.se/tjanster-it-stod/it-stod-och-system/visiba-care/",
+                    "https://it-halsa.se/folktandvarden-uppsala-valjer-visiba-care-och-gor-atta-andra-regioner-sallskap/",
+                    "https://www.1177.se/om-1177/nar-du-loggar-in-pa-1177.se/det-har-kan-du-gora-nar-du-loggat-in/kontakta-varden-pa-natet/videosamtal-med-varden/",
+                    "https://www.inera.se/tjanster/alla-tjanster-a-o/1177-direkt/",
+                    "https://www.inera.se/tjanster/alla-tjanster-a-o/video--och-distansmote/om-video--och-distansmote/",
+                    "https://www.inera.se/arkiv/arkiv-2020/arkiv-2020-nyheter/skr-rekommenderar-digitalt-mote-for-videomoten-i-socialtjansten/",
+                    "https://computersweden.se/article/1291335/tunga-myndigheter-nobbar-microsoft-teams-exponerar-kansliga-uppgifter.html",
+                    "https://www.riksdagen.se/sv/dokument-och-lagar/dokument/statens-offentliga-utredningar/saker-och-kostnadseffektiv-it-drift_zzb31/html/",
+                    "https://wikstrompartners.se/en/it-driftsutredningen-lamnar-forslag-om-sekretessbrytande-regel-2/",
+                    "https://www.esamverka.se/download/18.43a3add4188b9f2345a2fe78/1687332814480/ES2023-06%20V%C3%A4gledning%20Utkontraktering%20-%20sekretess%20och%20dataskydd.pdf",
+                    "https://www.adda.se/upphandling-och-ramavtal/ramavtal-och-avtalskategorier/it-produkter-och-tjanster/saker-digital-kommunikation-dis/",
+                    "https://www.jarfalla.se/kommunochpolitik/insynochrattssakerhet/sefossakerkommunikation.4.2fcdfe0619a71550f02670c4.html",
+                    "https://www.falkoping.se/kommun--politik/trygg-och-saker/sakra-meddelanden-och-videomoten-med-verktyget-sefos",
+                    "https://sefos.se/en/",
+                    "https://opentalk.eu/en/public-sector",
+                    "https://opentalk.eu/en/on-premises-videoconferencing",
+                    "https://element.io/blog/dsam-och-esam-forordar-matrix-for-saker-och-federerad-kommunikation-inom-sveriges-offentliga-sektor/",
+                    "https://www.esamverka.se/aktuellt/nyheter/nyheter/2026-05-22-federation-i-praktiken---nu-kopplas-myndigheters-chattar-ihop.html",
+                    "https://www.esamverka.se/publikationer/styr--och-ledning/2026-01-30-es2025-20-gemensamt-federationsprotokoll-for-chatt-i-offentlig-sektor.html",
+                    "https://element.io/matrix-in-germany/projects/bwmessenger",
+                    "https://vardgivare.regionorebrolan.se/sv/it-och-support/pexip--for-sakra-videomoten/",
+                    "https://www.secureappbox.se/nyheter/secureappbox-lanserar-securemeetings-en-tjanst-for-sakra-videomoten-speciellt-framtagen-for-offentl"
+                ]
+}

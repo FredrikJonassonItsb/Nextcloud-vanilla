@@ -1,0 +1,394 @@
+/**
+ * ITSL Envelope Styling Overrides
+ * Customizations for envelope list items in ITSL fork
+ */
+
+// =============================================================================
+// Roomy Mode Design Constants
+// =============================================================================
+$itsl-avatar-size: 32px;
+$itsl-unread-bar-width: 4px;
+$itsl-unread-bar-color: rgb(15, 108, 189);
+$itsl-unread-text-weight: 600;
+$itsl-unread-subject-color: rgb(15, 108, 189);
+$itsl-read-text-weight: 400;
+$itsl-draft-label-color: #d32f2f;
+$itsl-icon-spacing: 4px;
+
+// =============================================================================
+// Unread Styling - Blue Bar + Bold Text
+// =============================================================================
+
+// Blue vertical bar on left edge for unread emails
+// Flush left, full height, square corners, widens on hover
+.envelope:not(.seen) {
+	.list-item {
+		position: relative;
+
+		&::before {
+			content: '';
+			position: absolute;
+			left: -4px;  // Offset to be flush with container edge
+			top: -2px;   // Extend into wrapper padding for full height
+			bottom: -2px;
+			width: $itsl-unread-bar-width;
+			background-color: $itsl-unread-bar-color;
+			border-radius: 0;  // Square corners
+			transition: width 0.15s ease;
+		}
+	}
+
+	// Bar widens on hover
+	&:hover .list-item::before {
+		width: 6px;
+	}
+
+	// Bold sender name (font-weight 600) when unread
+	.list-item-content__name {
+		font-weight: $itsl-unread-text-weight;
+	}
+
+	// Bold + blue subject line when unread
+	.envelope__subtitle__subject {
+		font-weight: $itsl-unread-text-weight;
+		color: $itsl-unread-subject-color;
+	}
+
+	// Bold + blue timestamp when unread
+	// High specificity needed to override Vue scoped style:
+	// .list-item .list-item-content__inner__details__details[data-v-*] { color: var(--color-text-maxcontrast); font-weight: normal; }
+	.list-item .list-item-content__inner .list-item-content__inner__details__details {
+		color: $itsl-unread-bar-color !important;
+		font-weight: $itsl-unread-text-weight !important;
+	}
+}
+
+// =============================================================================
+// Draft Label Styling - Red [Draft] on Line 1
+// =============================================================================
+
+.envelope {
+	// Draft label: red color, bold weight, positioned before recipient names on line 1
+	.draft-label {
+		color: $itsl-draft-label-color;
+		font-weight: $itsl-unread-text-weight; // 600
+		// Negative margin to counteract the 8px flex gap, leaving ~4px (normal space width)
+		margin-right: -$itsl-icon-spacing;
+		flex-shrink: 0; // Don't let the label shrink
+		white-space: nowrap;
+	}
+}
+
+// Ensure read emails have normal weight
+// !important needed to override Vue scoped style: .list-item .list-item-content__name[data-v-*] { font-weight: bold }
+.envelope.seen {
+	.list-item-content__name {
+		font-weight: $itsl-read-text-weight !important;
+	}
+
+	.envelope__subtitle__subject {
+		font-weight: $itsl-read-text-weight;
+	}
+}
+
+// =============================================================================
+// Avatar Size - 32px (Roomy density mode)
+// =============================================================================
+
+.envelope {
+	// Override the CSS variable that EnvelopeSkeleton uses for avatar sizing
+	// EnvelopeSkeleton calculates: calc(var(--header-menu-item-height) - 4px)
+	// So we set it to 36px to get 32px avatars
+	--header-menu-item-height: 36px;
+
+	// Ensure avatar container matches new size
+	.avatar-wrapper {
+		width: $itsl-avatar-size;
+		height: $itsl-avatar-size;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	// Direct selector override for avatar elements (works in global SCSS)
+	.avatardiv,
+	.avatardiv__initials-wrapper {
+		width: $itsl-avatar-size !important;
+		height: $itsl-avatar-size !important;
+	}
+}
+
+// =============================================================================
+// Line 1 Icons - Attachment, Reply, Important, Star (flex siblings of sender name)
+// =============================================================================
+
+.envelope {
+	// Move date from line 1 to line 2 by removing the negative margin that pulled it up
+	// EnvelopeSkeleton uses margin-top: -22px on this container to align date with line 1
+	// Setting to 0 makes date align naturally with line 2 (subject line)
+	// !important needed to override EnvelopeSkeleton's scoped styles
+	.list-item-content__inner__details {
+		margin-top: 0 !important;
+	}
+
+	// Date container - position absolutely so it doesn't constrain __main width
+	// The date is on line 2 (subject), preview (line 3) and tags (line 4) need full width
+	.list-item-content__inner__details {
+		position: absolute !important;
+		right: 0;
+		top: 0;
+	}
+
+	// Make __inner relative for absolute positioning context
+	.list-item-content__inner {
+		position: relative;
+	}
+
+	// Date styling - right-aligned on line 2, flush with container edge
+	// High specificity selector (40) needed to beat EnvelopeSkeleton's scoped styles
+	.list-item .list-item-content__inner .list-item-content__inner__details__details {
+		margin: 0 !important;
+	}
+
+	// Override the sender name container to be a flex row with space-between
+	// Sender text on left, icons pushed to far right
+	.list-item-content__name {
+		display: flex;
+		flex-direction: row;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
+		// Force full width so space-between works
+		width: 100% !important;
+		max-width: 100% !important;
+
+		// EnvelopeSkeleton wraps #name slot content in a <span>.
+		// Make it a flex container so our slot children (sender text + icons)
+		// lay out horizontally instead of stacking.
+		> span {
+			display: flex;
+			flex-direction: row;
+			align-items: center;
+			width: 100%;
+			min-width: 0; // Allow truncation
+			gap: 8px;
+		}
+	}
+
+	// The actual sender text - don't grow, just take content width and truncate
+	.envelope-sender-text {
+		flex: 0 1 auto;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	// Container for line-1 icons - pushed to far right via space-between
+	.envelope-line1-icons {
+		flex: 0 0 auto;
+		display: flex;
+		align-items: center;
+		gap: $itsl-icon-spacing;
+		margin-left: auto; // Push to far right
+	}
+
+	// Individual icon styling
+	.line1-icon {
+		opacity: 0.6;
+		flex-shrink: 0;
+
+		// Important badge: yellow flag SVG, clickable to toggle important status
+		// Visibility: v-if="isImportant" (tag with imapLabel === '$label1')
+		&--important {
+			cursor: pointer;
+			opacity: 1; // Important badge fully visible when set
+			display: flex;
+			align-items: center;
+
+			// The SVG inside the important badge
+			svg {
+				width: 16px;
+				height: 16px;
+
+				path {
+					fill: #ffcc00; // Yellow color for important flag
+					stroke: var(--color-main-background);
+				}
+			}
+
+			&:hover {
+				opacity: 0.5; // Per visual inventory: hover state opacity 0.5
+			}
+		}
+
+		// Star/Favorite: gold star, clickable to toggle flagged status
+		&--star {
+			cursor: pointer;
+			stroke: var(--color-main-background);
+			stroke-width: 2;
+			opacity: 1; // Star should be fully visible when flagged
+
+			&:hover {
+				opacity: 0.7;
+			}
+		}
+	}
+}
+
+// One-line layout adjustments (horizontal layout mode)
+.envelope .list-item--one-line {
+	.envelope-line1-icons {
+		// In one-line mode, vertically center the icons
+		top: 50%;
+		transform: translateY(-50%);
+	}
+}
+
+// =============================================================================
+// Tag Display Overrides
+// Tag sorting: Assignment tags LEFT, other tags RIGHT
+// =============================================================================
+
+// Main container for tags - flexbox row, full width for proper left/right positioning
+.envelope-tags-container {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	width: 100%;
+	gap: 8px; // Minimum gap between left and right groups
+	min-width: 0; // Allow container to shrink below content size
+}
+
+// Left group: Assignment tags - stay left, shrink if needed
+.envelope-tags-left {
+	display: flex;
+	flex-shrink: 1;
+	gap: 2px;
+	align-items: center;
+	min-width: 0;
+	overflow: hidden;
+}
+
+// Right group: Other tags - pushed to right via margin-left: auto
+.envelope-tags-right {
+	display: flex;
+	flex-shrink: 1;
+	gap: 2px;
+	align-items: center;
+	margin-left: auto; // Push to right even when left group is empty
+	min-width: 0;
+	overflow: hidden;
+}
+
+// Tag pills - don't wrap, truncate with ellipsis
+.envelope .tag-group {
+	flex-shrink: 0; // Individual tags don't shrink
+}
+
+// Tag label - single line, no wrapping
+.envelope .tag-group__label {
+	white-space: nowrap;
+}
+
+// Make the main content area grow to fill available width
+// This allows tags to use the full row width for left/right positioning
+// !important needed to override EnvelopeSkeleton's scoped styles
+.envelope .list-item-content__inner__main {
+	flex: 1 1 auto !important;
+	min-width: 0;
+}
+
+// Envelope skeleton tags slot - full width, hide overflow
+.list-item-content__inner__tags {
+	width: 100%;
+	overflow: hidden;
+}
+
+// =============================================================================
+// Roomy Density Typography & Spacing
+// Pixel-perfect spacing verified against reference mail client design
+// =============================================================================
+
+// Typography constants - values verified by pixel measurement
+$itsl-roomy-font-size: 14px;
+$itsl-sender-line-height: 19px;     // Sender row: 19px (verified)
+$itsl-content-line-height: 20px;    // Subject/preview rows: 20px (verified)
+$itsl-divider-color: rgb(224, 224, 224); // Light gray divider between messages
+$itsl-read-subject-color: var(--color-main-text);
+
+// --- Divider Line Between Messages ---
+.envelope {
+	border-bottom: 1px solid $itsl-divider-color;
+}
+
+// --- List Item Padding (verified: 8px top, 13px bottom total) ---
+// !important needed to override Vue scoped .list-item[data-v-*] { padding: var(...) }
+.envelope .list-item {
+	padding-top: 4px;
+	padding-bottom: 6px !important;
+	// Reserve space for the unread bar on ALL envelopes so read/unread stay aligned
+	padding-left: calc($itsl-unread-bar-width + var(--default-grid-baseline));
+}
+
+// --- Font Sizes (14px for better density) ---
+.envelope {
+	.envelope-sender-text,
+	.list-item-content__name {
+		font-size: $itsl-roomy-font-size;
+	}
+
+	.envelope__subtitle__subject {
+		font-size: $itsl-roomy-font-size;
+	}
+
+	.envelope__preview-text {
+		font-size: $itsl-roomy-font-size;
+	}
+}
+
+// --- Line Heights (verified pixel values) ---
+.envelope {
+	// Sender line: 19px height
+	.envelope-sender-text,
+	.list-item-content__name {
+		line-height: $itsl-sender-line-height;
+	}
+
+	// Subject line: 20px height
+	// !important needed to override Vue scoped .envelope__subtitle__subject[data-v-*]
+	.envelope__subtitle__subject {
+		line-height: $itsl-content-line-height !important;
+	}
+
+	// Preview line: 20px height
+	.envelope__preview-text {
+		line-height: $itsl-content-line-height;
+	}
+}
+
+// --- Row Spacing (verified pixel gaps) ---
+.envelope {
+	// Gap after sender row: 1px (verified)
+	.envelope__subtitle,
+	.list-item-content__inner__subname {
+		margin-top: 1px;
+	}
+
+	// Gap between subject and preview: 0px (verified)
+	.envelope__preview-text {
+		margin-top: 0px;
+	}
+
+	// Gap before tags row: 4px for visual separation
+	.envelope-tags-container {
+		margin-top: 4px;
+	}
+}
+
+// --- Read Subject Color (dark text for better contrast) ---
+.envelope.seen {
+	.envelope__subtitle__subject {
+		color: $itsl-read-subject-color;
+	}
+}

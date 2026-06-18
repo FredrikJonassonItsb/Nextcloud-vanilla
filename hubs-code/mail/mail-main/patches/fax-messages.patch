@@ -1,0 +1,176 @@
+--- a/src/components/EnvelopeSkeleton.vue
++++ b/src/components/EnvelopeSkeleton.vue
+@@ -40,16 +40,16 @@
+ 					<slot name="icon" />
+ 
+ 					<div class="list-item-content">
+-						<div class="list-item-content__name">
++						<div class="list-item-content__name" :class="messageType === $MESSAGE_TYPES.FAX.id && 'fax-message-name'">
+ 							<!-- @slot Slot for the first line of the component. prop 'name' is used as a fallback is no slots are provided -->
+ 							<span>
+-								<slot name="name">{{ name }}</slot>
++								<slot name="name">{{ name.replace(/@fax$/, '') }}</slot>
+ 							</span>
+ 						</div>
+ 						<div class="list-item-content__inner">
+ 							<div class="list-item-content__inner__main">
+ 								<div
+-									v-if="hasSubname"
++									v-if="messageType !== $MESSAGE_TYPES.FAX.id && hasSubname"
+ 									class="list-item-content__inner__subname"
+ 									:class="{ 'list-item-content__inner__subname--bold': bold }">
+ 									<!-- @slot Slot for the second line of the component -->
+@@ -93,8 +93,8 @@
+ 					</div>
+ 				</a>
+ 
++				<!-- Actions -->
+ 				<!-- @slot Provide the actions for the right side quick menu -->
+-				<slot name="actions" />
+ 			</div>
+ 		</li>
+ 	</component>
+@@ -260,6 +260,10 @@
+ 			type: Boolean,
+ 			default: false,
+ 		},
++		messageType: {
++			type: String,
++			default: '',
++		},
+ 	},
+ 
+ 	emits: [
+@@ -702,7 +706,6 @@
+ 	max-width: unset;
+ 	max-height: calc(var(--default-font-size) * var(--default-line-height));
+ }
+-
+ // Force icon to be in line with the first two lines
+ :deep(.app-content-list-item-icon), :deep(.avatardiv), :deep(.avatardiv__initials-wrapper) {
+ 	height: calc(var(--header-menu-item-height) - 4px);
+--- a/src/components/Message.vue
++++ b/src/components/Message.vue
+@@ -29,24 +29,26 @@
+ 				:key="scheduling.id"
+ 				:scheduling="scheduling" />
+ 		</div>
+-		<MessageHTMLBody
+-			v-if="message.hasHtmlBody"
+-			:url="htmlUrl"
+-			:message="message"
+-			:full-height="fullHeight"
+-			@load="$emit('load', $event)"
+-			@translate="$emit('translate')" />
+-		<MessageEncryptedBody
+-			v-else-if="isEncrypted || isPgpMimeEncrypted"
+-			:body="message.body"
+-			:from="from"
+-			:message="message" />
+-		<MessagePlainTextBody
+-			v-else
+-			:body="message.body"
+-			:signature="message.signature"
+-			:message="message"
+-			@translate="$emit('translate')" />
++		<template v-if="envelope.itsl?.messageType !== $MESSAGE_TYPES.FAX.id">
++			<MessageHTMLBody
++				v-if="message.hasHtmlBody"
++				:url="htmlUrl"
++				:message="message"
++				:full-height="fullHeight"
++				@load="$emit('load', $event)"
++				@translate="$emit('translate')" />
++			<MessageEncryptedBody
++				v-else-if="isEncrypted || isPgpMimeEncrypted"
++				:body="message.body"
++				:from="from"
++				:message="message" />
++			<MessagePlainTextBody
++				v-else
++				:body="message.body"
++				:signature="message.signature"
++				:message="message"
++				@translate="$emit('translate')" />
++		</template>
+ 		<MessageAttachments :attachments="message.attachments" :envelope="envelope" />
+ 		<div id="reply-composer" />
+ 		<div class="reply-buttons">
+@@ -134,6 +136,10 @@
+ 			type: String,
+ 		},
+ 	},
++	data() {
++		return {
++		}
++	},
+ 
+ 	computed: {
+ 		...mapStores(useMainStore),
+@@ -163,6 +169,11 @@
+ 			return this.mainStore.hasCurrentUserPrincipalAndCollections
+ 		},
+ 	},
++	mounted() {
++		if (this.envelope.itsl?.messageType === this.$MESSAGE_TYPES.FAX.id) {
++			this.$emit('load')
++		}
++	},
+ 
+ 	methods: {
+ 		onReply(replyBody) {
+--- a/src/components/OutboxMessageListItem.vue
++++ b/src/components/OutboxMessageListItem.vue
+@@ -106,7 +106,7 @@
+ 		},
+ 
+ 		title() {
+-			const recipientToString = (recipient) => recipient.label
++			const recipientToString = (recipient) => (recipient.label).replace(/@fax$/, '')
+ 			const recipients = this.message.to.map(recipientToString)
+ 				.concat(this.message.cc.map(recipientToString))
+ 				.concat(this.message.bcc.map(recipientToString))
+@@ -136,7 +136,11 @@
+ 		subjectForSubtitle() {
+ 			// We have to use || here (instead of ??) because the subject might be '', null
+ 			// or undefined.
+-			return this.message.subject || this.t('mail', 'No subject')
++			if (this.message.itsl.messageType === this.$MESSAGE_TYPES.FAX.id) {
++				return ''
++			} else {
++				return this.message.subject || this.t('mail', 'No subject')
++			}
+ 		},
+ 	},
+ 
+--- a/src/components/Thread.vue
++++ b/src/components/Thread.vue
+@@ -191,7 +191,11 @@
+ 				console.warn('thread is empty')
+ 				return ''
+ 			}
+-			return thread[0].subject || this.t('mail', 'No subject')
++			if (thread[0].itsl.messageType === this.$MESSAGE_TYPES.FAX.id) {
++				return ' '
++			} else {
++				return thread[0].subject || this.t('mail', 'No subject')
++			}
+ 		},
+ 
+ 		showSummaryBox() {
+@@ -599,6 +603,9 @@
+ 	flex: 1;
+ 	margin-bottom: 0;
+ 	position: relative;
++	display: flex;
++	flex-direction: column;
++	justify-content: space-between;
+ 	border-radius: 5px;
+ }
+ 
+@@ -790,4 +797,5 @@
+ .user-bubble__title {
+ 	cursor: pointer;
+ }
++
+ </style>

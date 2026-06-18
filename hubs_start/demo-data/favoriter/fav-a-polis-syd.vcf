@@ -1,0 +1,16 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-a-polis-syd
+FN:Polisen, ungdomssektionen Region Syd
+N:Polisen ungdomssektionen Region Syd;;;;
+ORG:Polismyndigheten;Region Syd – ungdomssektionen
+KIND:org
+EMAIL;TYPE=INTERNET:ungdom-syd@sdk
+X-HUBS-SDK-REF:SE2021000076-ungdom-syd
+X-HUBS-FAVORIT-KLASS:sdk-pekare
+X-HUBS-RESOLVED-AT:2026-06-15T08:00:00
+CATEGORIES:Favoriter,funktion,myndighet
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). Funktionsadress\, ej medborgar-PII. Pekare mot DIGG/SDK – auktoritativ adress resolvas färskt\, kopieras aldrig.
+REV:2026-06-15T08:00:00Z
+END:VCARD

@@ -1,0 +1,10 @@
+/*
+ * SPDX-FileCopyrightText: ITSL <info@itsl.se>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * Hides the "Log in with username or email" link added by
+ * sociallogin's hide_default_login feature.
+ */
+a[href*='#body-login'] {
+	display: none !important;
+}

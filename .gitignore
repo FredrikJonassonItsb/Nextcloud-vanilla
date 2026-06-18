@@ -1,0 +1,9 @@
+# Dependencies (regenerable — never committed)
+node_modules/
+vendor/
+
+# Build / tooling caches
+.phpunit.result.cache
+*.log
+.DS_Store
+Thumbs.db

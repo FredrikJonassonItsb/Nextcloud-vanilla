@@ -1,0 +1,46 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '''
+				#^Fetching class constant class of deprecated interface OCP\\AppFramework\\Utility\\IControllerMethodReflector\:
+				22\.0\.0 will be obsolete with native attributes in PHP8$#
+			'''
+			identifier: classConstant.deprecatedInterface
+			count: 1
+			path: lib/AppInfo/Application.php
+
+		-
+			message: '''
+				#^Call to deprecated method hasAnnotation\(\) of interface OCP\\AppFramework\\Utility\\IControllerMethodReflector\:
+				22\.0\.0 will be obsolete with native attributes in PHP8$#
+			'''
+			identifier: method.deprecated
+			count: 1
+			path: lib/Middleware/InternalAPIMiddleware.php
+
+		-
+			message: '''
+				#^Parameter \$reflector of method OCA\\SdkMc\\Middleware\\InternalAPIMiddleware\:\:__construct\(\) has typehint with deprecated interface OCP\\AppFramework\\Utility\\IControllerMethodReflector\:
+				22\.0\.0 will be obsolete with native attributes in PHP8$#
+			'''
+			identifier: parameter.deprecatedInterface
+			count: 1
+			path: lib/Middleware/InternalAPIMiddleware.php
+
+		-
+			message: '''
+				#^Access to constant on deprecated interface OCP\\AppFramework\\Utility\\IControllerMethodReflector\:
+				22\.0\.0 will be obsolete with native attributes in PHP8$#
+			'''
+			identifier: classConstant.deprecatedInterface
+			count: 1
+			path: lib/AppInfo/Application.php
+
+		-
+			message: '''
+				#^Call to method hasAnnotation\(\) of deprecated interface OCP\\AppFramework\\Utility\\IControllerMethodReflector\:
+				22\.0\.0 will be obsolete with native attributes in PHP8$#
+			'''
+			identifier: method.deprecatedInterface
+			count: 1
+			path: lib/Middleware/InternalAPIMiddleware.php

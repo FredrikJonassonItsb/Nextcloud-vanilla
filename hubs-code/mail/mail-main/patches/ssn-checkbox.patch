@@ -1,0 +1,38 @@
+--- a/src/components/EnvelopeSkeleton.vue
++++ b/src/components/EnvelopeSkeleton.vue
+@@ -93,33 +93,8 @@
+ 					</div>
+ 				</a>
+ 
+-				<div class="list-item__hoverable">
+-					<EnvelopeSingleClickActions
+-						:is-read="isRead"
+-						:is-important="isImportant"
+-						@delete="$emit('delete')"
+-						@toggle-important="$emit('toggle-important')"
+-						@toggle-seen="$emit('toggle-seen')" />
+-
+-					<!-- Actions -->
+-					<div
+-						v-show="forceDisplayActions || displayActionsOnHoverFocus"
+-						class="list-item__actions"
+-						@focusout="handleBlur">
+-						<NcActions
+-							ref="actions"
+-							:primary="isActive || active"
+-							:aria-label="computedActionsAriaLabel"
+-							variant="tertiary"
+-							@update:open="handleActionsUpdateOpen">
+-							<template #icon>
+-								<DotsHorizontal :size="20" />
+-							</template>
+-							<!-- @slot Provide the actions for the right side quick menu -->
+-							<slot name="actions" />
+-						</NcActions>
+-					</div>
+-				</div>
++				<!-- @slot Provide the actions for the right side quick menu -->
++				<slot name="actions" />
+ 			</div>
+ 		</li>
+ 	</component>

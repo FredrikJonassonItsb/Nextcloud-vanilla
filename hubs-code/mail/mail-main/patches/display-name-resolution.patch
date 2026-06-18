@@ -1,0 +1,42 @@
+--- a/src/components/Mailbox.vue
++++ b/src/components/Mailbox.vue
+@@ -10,7 +10,7 @@
+ 			:error="t('mail', 'Could not open folder')"
+ 			message=""
+ 			role="alert" />
+-		<LoadingSkeleton v-else-if="loadingEnvelopes" :number-of-lines="20" />
++		<LoadingSkeleton v-else-if="loadingEnvelopes || !itslStore.internalMailboxesLoaded" :number-of-lines="20" />
+ 		<Loading
+ 			v-else-if="loadingCacheInitialization"
+ 			:hint="t('mail', 'Loading messages …')"
+@@ -64,6 +64,7 @@
+ 	from '../errors/NoTrashMailboxConfiguredError.js'
+ import logger from '../logger.js'
+ import useMainStore from '../store/mainStore.js'
++import useItslStore from '../itsl/store/itslStore.js' // itsl
+ import { mailboxHasRights } from '../util/acl.js'
+ import { wait } from '../util/wait.js'
+ 
+@@ -145,7 +146,7 @@
+ 	},
+ 
+ 	computed: {
+-		...mapStores(useMainStore),
++		...mapStores(useMainStore, useItslStore),
+ 		sortOrder() {
+ 			return this.mainStore.getPreference('sort-order', 'newest')
+ 		},
+--- a/src/components/NavigationAccount.vue
++++ b/src/components/NavigationAccount.vue
+@@ -7,9 +7,9 @@
+ 	<Fragment>
+ 		<NcAppNavigationCaption
+ 			v-if="visible"
+-			:id="id"
++			:heading-id="id"
+ 			:key="id"
+-			:name="account.emailAddress"
++			:name="account.name"
+ 			@update:open="onMenuToggle">
+ 			<!-- Actions -->
+ 			<template #actions>

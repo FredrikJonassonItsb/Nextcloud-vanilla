@@ -1,0 +1,1706 @@
+# Translations for sdkmc.
+# Copyright (C) ITSL Solutions AB
+# This file is distributed under the GNU AGPL v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Säker Digital Kommunikation\n"
+"Report-Msgid-Bugs-To: support@itsl.se\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: Swedish\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: appinfo/info.xml:9
+msgid "SDK MC"
+msgstr "SDK MC"
+
+#: appinfo/info.xml:10
+msgid "💌 A SDK Message Client app for Nextcloud"
+msgstr "En SDK-klient för Hubs"
+
+#: appinfo/info.xml:11
+msgid "**💌 A SDK Message Client app for Nextcloud**"
+msgstr "**En SDK-klient för Hubs**"
+
+#: lib/Activity/AssignmentTagSetting.php:24
+msgid "Assigned to me"
+msgstr "Tilldelad till mig"
+
+#: lib/Activity/AssignmentTagSetting.php:32
+#: lib/Activity/FaxSetting.php:32
+#: lib/Activity/Filter.php:26
+#: lib/Activity/GruppSetting.php:32
+#: lib/Activity/PersonligSetting.php:32
+#: lib/Activity/SdkSetting.php:32
+#: lib/Activity/SmsSetting.php:32
+msgid "Secure messages"
+msgstr "Säkra meddelanden"
+
+#: lib/Activity/FaxSetting.php:24
+msgid "FAX Messages"
+msgstr "Faxmeddelanden"
+
+#: lib/Activity/GruppSetting.php:24
+msgid "Group Messages"
+msgstr "Meddelanden till gruppbrevlåda"
+
+#: lib/Activity/PersonligSetting.php:24
+msgid "Personal Messages"
+msgstr "Meddelanden till personlig brevlåda"
+
+#: lib/Activity/Provider.php:68
+#: lib/Activity/Provider.php:71
+#: lib/Activity/Provider.php:99
+msgid "You were assigned to a message"
+msgstr "Du tilldelades ett meddelande"
+
+#: lib/Activity/Provider.php:100
+#: lib/Activity/Provider.php:85
+#: lib/Activity/Provider.php:86
+#: lib/Service/MailboxNotificationService.php:127
+msgid "New secure message"
+msgstr "Nytt säkert meddelande"
+
+#: lib/Activity/Provider.php:94
+#: lib/Service/MailboxNotificationService.php:122
+msgid "New SDK message"
+msgstr "Nytt SDK-meddelande"
+
+#: lib/Activity/Provider.php:94
+msgid "messages_sdk"
+msgstr "messages_sdk"
+
+#: lib/Activity/Provider.php:95
+#: lib/Service/MailboxNotificationService.php:123
+msgid "New Personal message"
+msgstr "Nytt personligt meddelande"
+
+#: lib/Activity/Provider.php:96
+#: lib/Service/MailboxNotificationService.php:124
+msgid "New Group message"
+msgstr "Nytt gruppmeddelande"
+
+#: lib/Activity/Provider.php:97
+#: lib/Service/MailboxNotificationService.php:125
+msgid "New FAX message"
+msgstr "Nytt faxmeddelande"
+
+#: lib/Activity/Provider.php:98
+#: lib/Service/MailboxNotificationService.php:126
+msgid "New SMS message"
+msgstr "Nytt smsmeddelande"
+
+#: lib/Activity/SdkSetting.php:24
+msgid "SDK Messages"
+msgstr "SDK-meddelanden"
+
+#: lib/Activity/SmsSetting.php:24
+msgid "SMS Messages"
+msgstr "SMS-meddelanden"
+
+#: lib/Check/Loa3.php:71
+msgid "The given operator is invalid"
+msgstr "Den angivna operatören är ogiltig"
+
+#: lib/Controller/SmsController.php:98
+#, php-format
+msgid "%s is the code to read your secure message."
+msgstr "%s är koden för att läsa ditt säkra meddelande."
+
+#: lib/Controller/TalkController.php:378
+msgid "The BankID account used does not match the required identity for this meeting."
+msgstr "Det använda BankID-kontot matchar inte den identitet som krävs för detta möte."
+
+#: lib/Controller/TalkController.php:379
+msgid "Authentication failed. The identity provider did not return the expected identity claim."
+msgstr "Autentiseringen misslyckades. Identitetsleverantören returnerade inte den förväntade identitetsuppgiften."
+
+#: lib/Controller/TalkController.php:380
+msgid "Authentication failed. The identity provider returned an unrecognized identity format."
+msgstr "Autentiseringen misslyckades. Identitetsleverantören returnerade ett okänt identitetsformat."
+
+#: lib/Controller/TalkController.php:381
+msgid "Authentication failed. The identity provider did not return the expected name claims."
+msgstr "Autentiseringen misslyckades. Identitetsleverantören returnerade inte de förväntade namnuppgifterna."
+
+#: lib/Controller/TalkController.php:382
+msgid "Authentication failed. Please contact the meeting organizer."
+msgstr "Autentiseringen misslyckades. Kontakta mötesorganisatören."
+
+#: lib/Sections/SdkMcAdmin.php:31
+msgid "SDK Admin"
+msgstr "SDK Admin"
+
+#: lib/Sections/SdkMcLog.php:31
+msgid "SDK Logs"
+msgstr "SDK-loggar"
+
+#: lib/Sections/SdkMcVueMailboxSectionAdmin.php:28
+#: lib/Settings/SdkMcVueMailboxSettingsAdmin.php:40
+msgid "ITSL Mailbox Settings"
+msgstr "Brevlådeinställningar"
+
+#: lib/Sections/SdkMcVueServerSectionAdmin.php:28
+#: lib/Settings/SdkMcVueServerSettingsAdmin.php:40
+msgid "ITSL Server Settings"
+msgstr "Hubs-inställningar"
+
+#: lib/Service/MailboxNotificationService.php:133
+#, php-format
+msgid "Activity at %s"
+msgstr "Aktivitet på %s"
+
+#: lib/Service/MailboxNotificationService.php:137
+#: lib/Service/MailboxNotificationService.php:139
+msgid "Open message"
+msgstr "Öppna meddelande"
+
+#: lib/Settings/SdkLogs.php:43
+msgid "Sdk Logs"
+msgstr "SDK-loggar"
+
+#: lib/Settings/SdkMcVueTagSettingsAdmin.php:34
+msgid "Mail Tag Management"
+msgstr "Hantering av e-postetiketter"
+
+#: src-calendar-sms/calendar-sms.js:459
+#, python-brace-format
+msgid "Send SMS to {name}?"
+msgstr "Skicka sms till {name}?"
+
+#: src-calendar-sms/calendar-sms.js:467
+msgid "Number for notification"
+msgstr "Telefonnummer för notis"
+
+#: src-calendar-sms/calendar-sms.js:1021
+#: src-calendar-sms/calendar-sms.js:484
+#: src-loa3/components/Loa3Modal.vue:33
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:49
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:34
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:34
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:36
+#: src-server-settings/pages/ServerSettings.vue:718
+#: src-server-settings/pages/ServerSettings.vue:751
+msgid "Cancel"
+msgstr "Avbryt"
+
+#: src-calendar-sms/calendar-sms.js:489
+msgid "Send"
+msgstr "Skicka"
+
+#: src-calendar-sms/calendar-sms.js:529
+msgid "Please enter a valid phone number"
+msgstr "Felaktigt telefonnummer"
+
+#: src-calendar-sms/calendar-sms.js:568
+#, python-brace-format
+msgid "Configure Attendee: {email}"
+msgstr "Mötesinställningar för {email}"
+
+#: src-calendar-sms/calendar-sms.js:588
+msgid "Require BankID authentication"
+msgstr "Kräv BankID"
+
+#: src-calendar-sms/calendar-sms.js:600
+msgid "When enabled, this attendee must authenticate with BankID to access the calendar event conversation"
+msgstr "Mötesdeltagaren måste verifiera sin identitet med BankID när detta är aktiverat"
+
+#: src-calendar-sms/calendar-sms.js:613
+msgid "Tie this invitation to specific SSN? (optional)"
+msgstr "Kräv personnummer för personen?"
+
+#: src-calendar-sms/calendar-sms.js:633
+msgid "Guest name visibility in the chat"
+msgstr "Visning av deltagarens namn"
+
+#: src-calendar-sms/calendar-sms.js:649
+msgid "First name"
+msgstr "Förnamn"
+
+#: src-calendar-sms/calendar-sms.js:665
+msgid "Last name"
+msgstr "Efternamn"
+
+#: src-calendar-sms/calendar-sms.js:681
+msgid "SSN"
+msgstr "Personnummer"
+
+#: src-calendar-sms/calendar-sms.js:722
+msgid "Apply Settings"
+msgstr "Verkställ inställningar"
+
+#: src-calendar-sms/calendar-sms.js:779
+msgid "Cancel SMS"
+msgstr "Avbryt sms"
+
+#: src-calendar-sms/calendar-sms.js:784
+#: src-calendar-sms/calendar-sms.js:794
+msgid "Notify via SMS"
+msgstr "SMS-notis"
+
+#: src-calendar-sms/calendar-sms.js:819
+msgid "SMS notification cancelled"
+msgstr "SMS-notis avbeställd"
+
+#: src-calendar-sms/calendar-sms.js:821
+#: src-calendar-sms/calendar-sms.js:825
+msgid "Failed to cancel"
+msgstr "Misslyckades att avbryta"
+
+#: src-calendar-sms/calendar-sms.js:837
+#, python-brace-format
+msgid "Will notify {email} via SMS after saving"
+msgstr "Kommer att skicka ett sms till {email}"
+
+#: src-calendar-sms/calendar-sms.js:841
+#: src-calendar-sms/calendar-sms.js:845
+msgid "Failed to store SMS preference"
+msgstr "Misslyckades med att skicka SMSet"
+
+#: src-calendar-sms/calendar-sms.js:880
+msgid "BankID Settings"
+msgstr "BankID-inställningar"
+
+#: src-calendar-sms/calendar-sms.js:1382
+#: src-calendar-sms/calendar-sms.js:909
+#, python-brace-format
+msgid "Will require BankID for {email} after saving"
+msgstr "BankID krävs nu för {email}"
+
+#: src-calendar-sms/calendar-sms.js:1386
+#: src-calendar-sms/calendar-sms.js:913
+msgid "Failed to store BankID requirement"
+msgstr "Misslyckades med att spara krav för BankID"
+
+#: src-calendar-sms/calendar-sms.js:927
+#, python-brace-format
+msgid "BankID requirement removed for {email}"
+msgstr "BankID krävs inte längre för {email}"
+
+#: src-calendar-sms/calendar-sms.js:931
+msgid "Failed to remove BankID requirement"
+msgstr "Misslyckades med att ta bort BankID"
+
+#: src-calendar-sms/calendar-sms.js:1397
+#: src-calendar-sms/calendar-sms.js:945
+msgid "Failed to update BankID requirement"
+msgstr "Misslyckades med att uppdatera BankID krav"
+
+#: src-calendar-sms/calendar-sms.js:972
+#, python-brace-format
+msgid "Invite {name} via Securemail?"
+msgstr "Bjud in {name} via säkert meddelande?"
+
+#: src-calendar-sms/calendar-sms.js:981
+msgid "SSN (Social Security Number)"
+msgstr "Personnummer"
+
+#: src-calendar-sms/calendar-sms.js:998
+msgid "Send invitation from"
+msgstr "Skicka inbjudan från"
+
+#: src-calendar-sms/calendar-sms.js:1026
+msgid "Confirm"
+msgstr "Bekräfta"
+
+#: src-calendar-sms/calendar-sms.js:1071
+msgid "Please enter a valid SSN"
+msgstr "Felaktigt personnummer"
+
+#: src-calendar-sms/calendar-sms.js:1121
+#: src-calendar-sms/calendar-sms.js:1167
+msgid "Cancel Securemail"
+msgstr "Avbryt säkert meddelande"
+
+#: src-calendar-sms/calendar-sms.js:1123
+#: src-calendar-sms/calendar-sms.js:1147
+msgid "Invite via Securemail"
+msgstr "Bjud in via säkert meddelande"
+
+#: src-calendar-sms/calendar-sms.js:1149
+#, python-brace-format
+msgid "Securemail invitation cancelled for {email}"
+msgstr "Inbjudan till {email} skickas via vanlig e-post"
+
+#: src-calendar-sms/calendar-sms.js:1153
+#: src-calendar-sms/calendar-sms.js:1157
+msgid "Failed to cancel Securemail invitation"
+msgstr "Misslyckades med att avbryta säkert meddelande inbjudan"
+
+#: src-calendar-sms/calendar-sms.js:1169
+#, python-brace-format
+msgid "Will invite {email} via Securemail after saving"
+msgstr "Inbjudan till {email} skickas via säkert meddelande"
+
+#: src-calendar-sms/calendar-sms.js:1173
+#: src-calendar-sms/calendar-sms.js:1177
+msgid "Failed to store Securemail preference"
+msgstr "Misslyckades med att spara inställningar för säkert meddelande"
+
+#: src-loa3/components/Loa3Modal.vue:9
+msgid "Authentication Required"
+msgstr "Autentisering krävs"
+
+#: src-loa3/components/Loa3Modal.vue:19
+msgid "This file requires a stronger authentication method. Do you want to authenticate using a LOA-3 method?"
+msgstr "Du behöver en högre behörighet för att kunna titta på filen. Vill du få högre behörighet, tillitsnivå 3?"
+
+#: src-loa3/components/Loa3Modal.vue:24
+msgid "LOA-3 (Level of Assurance 3) provides enhanced security through multi-factor authentication."
+msgstr "Tillitsnivå 3 erbjuder en säkrare identifiering genom att använda en godkänd e-legitimation."
+
+#: src-loa3/components/Loa3Modal.vue:42
+msgid "Authenticate with LOA-3"
+msgstr "Autentisering till tillitsnivå 3"
+
+#: src-loa3/loa3.js:22
+msgid "Login type"
+msgstr "Inloggningssätt"
+
+#: src-loa3/loa3.js:24
+msgid "LOA-2 or lower"
+msgstr "Tillitsnivå 2 eller lägre"
+
+#: src-loa3/loa3.js:25
+msgid "LOA-3 or higher"
+msgstr "Tillitsnivå 3 eller högre"
+
+#: src-loa3/loa3.js:111
+msgid "Requires LOA-3"
+msgstr "Kräver tillitsnivå 3"
+
+#: src-mailbox-settings/MailboxSettingsApp.vue:5
+#: src-mailbox-settings/pages/MailboxSettings.vue:3
+#: src-mailbox-settings/pages/MailboxSettings.vue:5
+msgid "Mailbox Settings"
+msgstr "Brevlådeinställningar"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:5
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:9
+msgid "Add new mailbox"
+msgstr "Skapa ny brevlåda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:10
+msgid "Search mailboxes"
+msgstr "Sök brevlådor"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:12
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:12
+msgid "Search..."
+msgstr "Sök"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:20
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:40
+msgid "Provision mailboxes"
+msgstr "Provisionera brevlådor"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:37
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:41
+msgid "Confirm removal"
+msgstr "Bekräfta borttagning"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:45
+msgid "Are you sure you want to remove this mailbox?"
+msgstr "Är du säker på att du vill ta bort den här brevlådan?"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:52
+msgid "Remove"
+msgstr "Radera"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:83
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:91
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:110
+msgid "Actions"
+msgstr "Åtgärder"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:85
+msgid "No mailboxes found"
+msgstr "Inga brevlådor skapade"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:99
+msgid "No users added"
+msgstr "Inga användare tillagda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:114
+msgid "No groups added"
+msgstr "Inga grupper tillagda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:139
+msgid "Assign user"
+msgstr "Tilldela användare"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:144
+msgid "Assign group"
+msgstr "Tilldela grupp"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:149
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:9
+msgid "Edit mailbox"
+msgstr "Redigera brevlåda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:155
+msgid "Cannot remove mailbox with assigned users"
+msgstr "Det går inte att ta bort en brevlåda med användare"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:157
+msgid "Remove mailbox"
+msgstr "Ta bort brevlåda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:169
+msgid "No mailboxes added"
+msgstr "Inga brevlådor tillagda"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:258
+msgid "Address"
+msgstr "Adress"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:259
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:264
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:272
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:279
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:286
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:31
+msgid "Alias"
+msgstr "Alias"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:260
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:268
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:275
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:282
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:290
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:298
+msgid "Users"
+msgstr "Användare"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:261
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:269
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:276
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:283
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:291
+msgid "Groups"
+msgstr "Grupper"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:265
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:273
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:280
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:287
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:297
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:46
+msgid "Name"
+msgstr "Namn"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:266
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:274
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:281
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:288
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:50
+msgid "Description"
+msgstr "Beskrivning"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:267
+msgid "Fax Number"
+msgstr "Faxnummer"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:289
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:75
+msgid "Phone Number"
+msgstr "Telefonnummer"
+
+#: src-mailbox-settings/components/MailboxTypeTabContent.vue:329
+#, python-brace-format
+msgid "Showing {from} to {to} of {count} mailboxes|{count} mailboxes|One mailbox"
+msgstr "{from} till {to} av {count} brevlådor|{count} brevlådor|En brevlåda"
+
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:95
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:114
+msgid "No data available"
+msgstr "Ingen data tillgänglig"
+
+#: src-mailbox-settings/components/shareable/DataTableWithPagination.vue:100
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:119
+#, python-brace-format
+msgid "Showing {from} to {to} of {count} items|{count} items|One item"
+msgstr "Visar {from} till {to} av {count} objekt|{count} objekt|Ett objekt"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:6
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:9
+msgid "Add group to mailbox"
+msgstr "Lägg till grupp till brevlåda"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:11
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:11
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:7
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:11
+#: src-server-settings/pages/ServerSettings.vue:696
+#: src-server-settings/pages/ServerSettings.vue:738
+msgid "Close"
+msgstr "Stäng"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:18
+msgid "Select the group to add"
+msgstr "Lägg till vald grupp"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:21
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:26
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:23
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:28
+msgid "Select group"
+msgstr "Välj grupp"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:39
+msgid "Add group"
+msgstr "Lägg till grupp"
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:46
+msgid "All groups are already added."
+msgstr "Alla grupper i systemet är redan tillagda."
+
+#: src-mailbox-settings/modals/AddGroupToMailboxModal.vue:50
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:50
+msgid "OK"
+msgstr "Ok"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:6
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:9
+msgid "Add user to mailbox"
+msgstr "Lägg till postmottagare"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:18
+msgid "Select the user to add"
+msgstr "Lägg till användare"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:21
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:26
+msgid "Select user"
+msgstr "Välj användare"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:39
+msgid "Add user"
+msgstr "Lägg till användare"
+
+#: src-mailbox-settings/modals/AddUserToMailboxModal.vue:46
+msgid "All users are already added."
+msgstr "Alla användare på systemet är redan tillagda."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:16
+msgid "SDK Address"
+msgstr "SDK funktionsadress"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:60
+msgid "Allow replying to this mailbox"
+msgstr "Tillåt svar från säkra meddelanden"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:68
+msgid "Allow sending messages to this mailbox"
+msgstr "Tillåt som mottagare för nya säkra meddelanden"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:85
+msgid "Notification Email"
+msgstr "E-postnotifiering"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:96
+msgid "Retention Overrides"
+msgstr "Gallringsinställningar"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:101
+msgid "Empty = use global setting, 0 = keep forever, number = days"
+msgstr "Tom = använd global inställning, 0 = behåll för alltid, siffra = dagar"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:106
+msgid "Folder"
+msgstr "Mapp"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:107
+msgid "Days"
+msgstr "Dagar"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:108
+msgid "Global"
+msgstr "Global"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:120
+msgid "inherit"
+msgstr "ärv"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:125
+msgid "Reset to global"
+msgstr "Återställ till global"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:148
+msgid "Adding..."
+msgstr "Lägger till..."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:148
+#: src-server-settings/pages/ServerSettings.vue:416
+msgid "Updating..."
+msgstr "Uppdaterar…"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:149
+msgid "Add mailbox"
+msgstr "Lägg till brevlåda"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:149
+msgid "Update mailbox"
+msgstr "Uppdatera brevlåda"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:182
+msgid "Default (all folders)"
+msgstr "Standard (alla mappar)"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:183
+msgid "INBOX"
+msgstr "Inkorg"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:184
+msgid "Sent"
+msgstr "Skickat"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:185
+msgid "Archive"
+msgstr "Behandlat"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:186
+msgid "Trash"
+msgstr "Papperskorg"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:187
+msgid "Drafts"
+msgstr "Utkast"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:223
+msgid "forever"
+msgstr "för alltid"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:347
+msgid "Alias cannot exceed 64 characters"
+msgstr "Alias får inte överstiga 64 tecken"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:357
+msgid "Alias may only contain lowercase letters (a-z), digits (0-9), underscore (_), hyphen (-), and dots (not at start/end or consecutive)"
+msgstr "Alias får endast innehålla små bokstäver (a-z), siffror (0-9), understreck (_), bindestreck (-) och punkter (ej i början/slutet eller i följd)"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:362
+msgid "This alias is already in use"
+msgstr "Det finns redan en brevlåda med det aliaset"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:382
+msgid "This SDK address is already in use"
+msgstr "Denna SDK-adress används redan"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:434
+msgid "SDK address is required for SDK type"
+msgstr "Fyll i en SDK-adress"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:439
+msgid "Alias is required"
+msgstr "Fyll i alias"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:492
+msgid "Mailbox updated successfully!"
+msgstr "Brevlådan uppdaterades!"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:495
+msgid "Mailbox added successfully!"
+msgstr "Brevlådan lades till!"
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:500
+msgid "Failed to add mailbox. Please try again."
+msgstr "Det gick inte att lägga till brevlådan."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:500
+msgid "Failed to update mailbox. Please try again."
+msgstr "Det gick inte att uppdatera brevlådan."
+
+#: src-mailbox-settings/modals/MailboxDetailModal.vue:504
+msgid "Network or server error. Please try again."
+msgstr "Nätverk- eller serverfel, försök igen."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:6
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:9
+msgid "Confirm provisioning"
+msgstr "Bekräfta provisionering"
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:17
+msgid "This will create a personlig mailbox for every user that doesn’t have one. This task may take up to 30 minutes."
+msgstr "Du är på väg att skapa en personlig brevlåda för alla användare utan en. Det kommer ta cirka 30 minuter. VARNING: Det går inte att ångra."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:20
+msgid "Select a group to provision only users in that group."
+msgstr "Välj en grupp för att endast provisionera användare i den gruppen."
+
+#: src-mailbox-settings/modals/ProvisionMailboxesModal.vue:78
+msgid "All groups"
+msgstr "Alla grupper"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:8
+msgid "Sdk mailbox"
+msgstr "SDK-brevlåda"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:22
+msgid "Fax mailbox"
+msgstr "FAX-brevlåda"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:36
+msgid "Gruppbox mailbox"
+msgstr "Gruppbrevlåda"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:50
+msgid "Personlig mailbox"
+msgstr "Personlig brevlåda"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:65
+msgid "Sms mailbox"
+msgstr "SMS-brevlåda"
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:151
+msgid "Failed to load mailbox data. Please try again."
+msgstr "Det gick inte att hämta någon information om brevlådan."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:165
+msgid "Failed to load users data. Please try again."
+msgstr "Det gick inte att hämta någon information om användaren."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:185
+msgid "Failed to load groups."
+msgstr "Misslyckades med att ladda grupper."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:220
+msgid "Failed to remove mailbox. Please try again."
+msgstr "Det gick inte att ta bort brevlådan."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:246
+msgid "Failed to add user. Please try again."
+msgstr "Det gick inte att lägga till användare, försök igen."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:259
+msgid "Failed to remove user. Please try again."
+msgstr "Det gick inte att ta bort användaren."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:278
+msgid "Provision scheduled. Mailboxes will be set up in the next ~30 minutes in the background."
+msgstr "Provisionering påbörjad. Brevlådor skapas i bakgrunden under de kommande 30 minuterna."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:282
+msgid "Provisioning failed. Please try again."
+msgstr "Provisionering misslyckades. Kontakta supporten."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:308
+msgid "Failed to add group. Please try again."
+msgstr "Det gick inte att lägga till gruppen, försök igen."
+
+#: src-mailbox-settings/pages/MailboxSettings.vue:322
+msgid "Failed to remove group. Please try again."
+msgstr "Det gick inte att ta bort gruppen, försök igen."
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:44
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:54
+msgid "ID"
+msgstr "ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:45
+msgid "Message Type"
+msgstr "Meddelandetyp"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:46
+msgid "AP ID"
+msgstr "AP ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:47
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:55
+msgid "Creation Time"
+msgstr "Skapad den"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:48
+msgid "From Message Client"
+msgstr "Från meddelandeklient"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:49
+msgid "To Message Client"
+msgstr "Till meddelandeklient"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:50
+msgid "From AP"
+msgstr "Från AP"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:51
+msgid "To AP"
+msgstr "Till AP"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:52
+msgid "Sender"
+msgstr "Avsändare"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:53
+msgid "Sender Attention"
+msgstr "Uppmärksamma avsändare"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:54
+msgid "Recipient"
+msgstr "Mottagare"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:55
+msgid "Recipient Attention"
+msgstr "Uppmärksamma mottagare"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:56
+msgid "Message ID AS4"
+msgstr "Meddelande-ID AS4"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:57
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:56
+msgid "Message ID"
+msgstr "Meddelande-ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:58
+msgid "Conversation ID"
+msgstr "Konversations-ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:59
+msgid "Address Book Copy"
+msgstr "Adressbokskopia"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:61
+msgid "MTS ID"
+msgstr "MTS-ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:62
+msgid "AP Address"
+msgstr "AP-adress"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:63
+msgid "Document Type"
+msgstr "Dokumenttyp"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:64
+msgid "Client Address"
+msgstr "Klientadress"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:65
+msgid "Status"
+msgstr "Status"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:66
+msgid "Confidentiality"
+msgstr "Sekretessnivå"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:67
+msgid "Functional Address"
+msgstr "Funktionsadress"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:68
+msgid "Handling Service ID"
+msgstr "Tjänstehanterings-ID"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:69
+msgid "Access Point Party ID"
+msgstr "Part-ID för Accesspunkt"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:70
+msgid "Generating System Root"
+msgstr "Genererande systems root"
+
+#: src-sdkmc-logs/components/CustomLogDetailsModal.vue:71
+msgid "Generating System Extension"
+msgstr "Genererande systemtillägg"
+
+#: src-sdkmc-logs/components/DataTableWithPagination.vue:38
+msgid "View SDK receipt"
+msgstr "Visa SDK-kvitto"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:3
+msgid "SDK Receipt"
+msgstr "SDK-kvitto"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:9
+msgid "No message selected"
+msgstr "Inget meddelande valt"
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:13
+msgid "Loading receipt..."
+msgstr "Hämtar kvitto..."
+
+#: src-sdkmc-logs/components/SDKReceiptModal.vue:90
+msgid "No receipt data found for message id: "
+msgstr "Det finns inget kvitto för meddelandet med ID: "
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:4
+msgid "Logs V2"
+msgstr "SDK-Loggar"
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:10
+msgid "Search logs"
+msgstr "Sök i loggar"
+
+#: src-sdkmc-logs/pages/SdkmcLogsPage.vue:22
+msgid "No logs available"
+msgstr "Ingen logginformation tillgänglig"
+
+#: src-server-settings/ServerSettingsApp.vue:5
+#: src-server-settings/pages/ServerSettings.vue:5
+msgid "Server Settings"
+msgstr "Hubs-inställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:3
+msgid "Server settings"
+msgstr "Hubs-inställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:7
+msgid "Global Settings"
+msgstr "Generella inställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:12
+msgid "Internal API Key"
+msgstr "Intern API-nyckel"
+
+#: src-server-settings/pages/ServerSettings.vue:13
+msgid "Internal API key used to authenticate SDK calls."
+msgstr "Intern API-nyckel som används för att autentisera SDK-anrop."
+
+#: src-server-settings/pages/ServerSettings.vue:18
+msgid "SMTP Host"
+msgstr "SMTP-server"
+
+#: src-server-settings/pages/ServerSettings.vue:19
+msgid "Host name or IP address for the outgoing SMTP server."
+msgstr "Värdnamn eller IP-adress för utgående SMTP-server."
+
+#: src-server-settings/pages/ServerSettings.vue:24
+msgid "SMTP Port"
+msgstr "SMTP-port"
+
+#: src-server-settings/pages/ServerSettings.vue:25
+msgid "Port number used for the outgoing SMTP server."
+msgstr "Portnummer för utgående SMTP-server."
+
+#: src-server-settings/pages/ServerSettings.vue:30
+msgid "Inbound SMTP Host"
+msgstr "Inkommande SMTP-server"
+
+#: src-server-settings/pages/ServerSettings.vue:31
+msgid "Host name for the incoming SMTP server."
+msgstr "Värdnamn för inkommande SMTP-server."
+
+#: src-server-settings/pages/ServerSettings.vue:36
+msgid "Inbound SMTP Port"
+msgstr "Inkommande SMTP-port"
+
+#: src-server-settings/pages/ServerSettings.vue:37
+msgid "Port number for the incoming SMTP server."
+msgstr "Portnummer för inkommande SMTP-server."
+
+#: src-server-settings/pages/ServerSettings.vue:42
+msgid "IMAP Host"
+msgstr "IMAP-server"
+
+#: src-server-settings/pages/ServerSettings.vue:43
+msgid "Host name or IP address for the IMAP server used to fetch email."
+msgstr "Värdnamn eller IP-adress för IMAP-servern som används för att hämta e-post."
+
+#: src-server-settings/pages/ServerSettings.vue:48
+msgid "IMAP Port"
+msgstr "IMAP-port"
+
+#: src-server-settings/pages/ServerSettings.vue:49
+msgid "Port number used for the IMAP server."
+msgstr "Portnummer för IMAP-servern."
+
+#: src-server-settings/pages/ServerSettings.vue:58
+msgid "Hide default login link"
+msgstr "Dölj standard-inloggningslänk"
+
+#: src-server-settings/pages/ServerSettings.vue:59
+msgid "Hides the default login link on the login page."
+msgstr "Döljer standard-inloggningslänken på inloggningssidan."
+
+#: src-server-settings/pages/ServerSettings.vue:68
+msgid "LOA 3 functionality"
+msgstr "Kräv tillitsnivå 3 inloggning för SDK-användare"
+
+#: src-server-settings/pages/ServerSettings.vue:69
+msgid "Custom features based on LOA support"
+msgstr "Kräv tillitsnivå 3 inloggning för SDK-användare"
+
+#: src-server-settings/pages/ServerSettings.vue:74
+msgid "Plugin used for LOA-3 login"
+msgstr "Plugin som används för tillitsnivå 3 inloggning"
+
+#: src-server-settings/pages/ServerSettings.vue:75
+msgid "Name of the login plugin that handles LOA-3 authentication."
+msgstr "Namn på inloggningspluginet som hanterar autentisering med tillitsnivå 3."
+
+#: src-server-settings/pages/ServerSettings.vue:80
+msgid "Authentication method used for LOA-login"
+msgstr "Tillitsnivå 3 för autentisering"
+
+#: src-server-settings/pages/ServerSettings.vue:81
+msgid "Authentication method identifier used by the LOA-3 login plugin."
+msgstr "Autentiseringsmetod som används av tillitsnivå 3-inloggningspluginet."
+
+#: src-server-settings/pages/ServerSettings.vue:86
+msgid "LOA 3 Tag"
+msgstr "Tagg för tillitsnivå 3"
+
+#: src-server-settings/pages/ServerSettings.vue:87
+msgid "Tag for files that require LOA 3 access to open"
+msgstr "För tillitsnivå 3 skriv ’sekretess’"
+
+#: src-server-settings/pages/ServerSettings.vue:96
+msgid "Debug login logging"
+msgstr "Detaljerad loggning för inloggningsprocessen"
+
+#: src-server-settings/pages/ServerSettings.vue:97
+msgid "Enables detailed logging of the login process."
+msgstr "Aktiverar detaljerad loggning av inloggningsprocessen."
+
+#: src-server-settings/pages/ServerSettings.vue:102
+msgid "Automatic logout after inactivity (seconds)"
+msgstr "Automatisk utloggning efter inaktivitet (sekunder)"
+
+#: src-server-settings/pages/ServerSettings.vue:103
+msgid "Enter 0 to disable automatic logout, or a value greater than 120 to enable it"
+msgstr "Ange 0 för att inaktivera automatisk utloggning. För att aktivera automatisk utloggning, ange mer än 120 (sekunder)"
+
+#: src-server-settings/pages/ServerSettings.vue:112
+msgid "Show newest messages first in threads"
+msgstr "Visa nyaste meddelanden först i trådar"
+
+#: src-server-settings/pages/ServerSettings.vue:113
+msgid "When enabled, threads display the newest message at the top instead of the oldest."
+msgstr "När aktiverat visas det nyaste meddelandet överst i tråden istället för det äldsta."
+
+#: src-server-settings/pages/ServerSettings.vue:122
+msgid "Auto-expand newest message in threads"
+msgstr "Expandera automatiskt det nyaste meddelandet i ärenden"
+
+#: src-server-settings/pages/ServerSettings.vue:123
+msgid "When enabled, always expands the absolute newest message in a thread regardless of folder. When disabled (default), inbox expands the last received message and sent expands the last sent message."
+msgstr "När aktiverat expanderas alltid det absolut nyaste meddelandet i ett ärende oavsett mapp. När inaktiverat (standard) expanderar Inkorg det senast mottagna meddelandet och Skickat expanderar det senast skickade meddelandet."
+
+#: src-server-settings/pages/ServerSettings.vue:130
+#: src-server-settings/pages/ServerSettings.vue:367
+#: src-server-settings/pages/ServerSettings.vue:428
+#: src-server-settings/pages/ServerSettings.vue:485
+#: src-server-settings/pages/ServerSettings.vue:633
+#: src-server-settings/pages/ServerSettings.vue:679
+msgid "Save"
+msgstr "Spara"
+
+#: src-server-settings/pages/ServerSettings.vue:136
+msgid "Notification Defaults"
+msgstr "Notisinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:139
+msgid "Current admin defaults for new users. Select the settings you want to apply to all existing users."
+msgstr "Nuvarande administratörsinställningar för nya användare. Välj de inställningar du vill tillämpa på alla befintliga användare."
+
+#: src-server-settings/pages/ServerSettings.vue:145
+msgid "Change defaults in Activity settings"
+msgstr "Ändra standardvärden i Aktivitetsinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:150
+msgid "No notification defaults have been configured yet. Set them in Activity settings first."
+msgstr "Inga notisinställningar har konfigurerats ännu. Ställ in dem i Aktivitetsinställningar först."
+
+#: src-server-settings/pages/ServerSettings.vue:154
+msgid "All users match the current admin defaults."
+msgstr "Alla användare matchar nuvarande administratörsinställningar."
+
+#: src-server-settings/pages/ServerSettings.vue:160
+msgid "Setting"
+msgstr "Inställning"
+
+#: src-server-settings/pages/ServerSettings.vue:1170
+#: src-server-settings/pages/ServerSettings.vue:166
+msgid "Email"
+msgstr "E-post"
+
+#: src-server-settings/pages/ServerSettings.vue:1178
+#: src-server-settings/pages/ServerSettings.vue:169
+msgid "Push"
+msgstr "Push"
+
+#: src-server-settings/pages/ServerSettings.vue:180
+msgid "Collapse group"
+msgstr "Fäll ihop grupp"
+
+#: src-server-settings/pages/ServerSettings.vue:180
+msgid "Expand group"
+msgstr "Expandera grupp"
+
+#: src-server-settings/pages/ServerSettings.vue:189
+#, python-brace-format
+msgid "{count} total differences"
+msgstr "{count} totala skillnader"
+
+#: src-server-settings/pages/ServerSettings.vue:192
+msgid "all match"
+msgstr "alla matchar"
+
+#: src-server-settings/pages/ServerSettings.vue:231
+#: src-server-settings/pages/ServerSettings.vue:251
+msgid "This setting cannot be changed from here."
+msgstr "Den här inställningen kan inte ändras härifrån."
+
+#: src-server-settings/pages/ServerSettings.vue:233
+#: src-server-settings/pages/ServerSettings.vue:253
+#: src-server-settings/pages/ServerSettings.vue:707
+msgid "OFF"
+msgstr "AV"
+
+#: src-server-settings/pages/ServerSettings.vue:233
+#: src-server-settings/pages/ServerSettings.vue:253
+#: src-server-settings/pages/ServerSettings.vue:707
+msgid "ON"
+msgstr "PÅ"
+
+#: src-server-settings/pages/ServerSettings.vue:237
+#: src-server-settings/pages/ServerSettings.vue:257
+#: src-server-settings/pages/ServerSettings.vue:709
+#, python-brace-format
+msgid "{count} users differ"
+msgstr "{count} användare skiljer sig"
+
+#: src-server-settings/pages/ServerSettings.vue:273
+msgid "Select all with differences"
+msgstr "Välj alla som skiljer sig"
+
+#: src-server-settings/pages/ServerSettings.vue:281
+msgid "Refresh"
+msgstr "Uppdatera"
+
+#: src-server-settings/pages/ServerSettings.vue:288
+msgid "Apply selected to all users"
+msgstr "Tillämpa valda på alla användare"
+
+#: src-server-settings/pages/ServerSettings.vue:295
+msgid "Loading..."
+msgstr "Laddar..."
+
+#: src-server-settings/pages/ServerSettings.vue:300
+msgid "Retention Settings"
+msgstr "Gallringsinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:305
+msgid "Delete regular Talk conversations after inactivity (days)"
+msgstr "Gallra interna säkra möten efter inaktivitet (i antal dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:306
+msgid "Set the number of inactive days after which regular Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Ställ in antal dagar, interna säkra möten tas bort. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:312
+msgid "Delete event Talk conversations after inactivity (days)"
+msgstr "Gallring av säkra möten skapade av kalendern"
+
+#: src-server-settings/pages/ServerSettings.vue:313
+msgid "Set the number of inactive days after which event Talk conversations are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Antal dagar innan säkra möten skapade av kalendern gallras automatisk. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:319
+msgid "Default retention period (days)"
+msgstr "Standard gallringstid för meddelanden"
+
+#: src-server-settings/pages/ServerSettings.vue:320
+msgid "Defines the default number of days after which messages are automatically deleted, unless overridden by specific folder rules. Use 0 to disable automatic deletion."
+msgstr "Hur många dagar meddelanden i mappar som inte nämns nedan bevaras innan automatisk gallring sker. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:327
+msgid "Inbox retention period (days)"
+msgstr "Gallringsperiod för Inkorg (dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:328
+msgid "Set how many days messages can remain in the Inbox before they are automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Hur många dagar meddelanden i Inkorg bevaras innan automatisk gallring sker. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:335
+msgid "Sent retention period (days)"
+msgstr "Gallring för skickade meddelanden (i antalet dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:336
+msgid "Set how many days sent messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Hur många dagar skickade meddelanden bevaras innan automatisk gallring sker. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:343
+msgid "Processed retention period (days)"
+msgstr "Gallring för behandlade meddelanden (i antalet dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:344
+msgid "Set how many days processed messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Hur många dagar behandlade meddelanden bevaras innan automatisk gallring sker. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:351
+msgid "Trash retention period (days)"
+msgstr "Gallring för meddelanden i papperskorgen (i antalet dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:352
+msgid "Set how many days deleted messages remain in the Trash before being permanently removed. Use 0 to disable automatic deletion."
+msgstr "Antalet dagar borttagna meddelanden i papperskorgen behålls innan automatisk gallring. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:359
+msgid "Drafts retention period (days)"
+msgstr "Gallring för utkast (i antal dagar)"
+
+#: src-server-settings/pages/ServerSettings.vue:360
+msgid "Set how many days draft messages are kept before being automatically deleted. Use 0 to disable automatic deletion."
+msgstr "Antalet dagar utkast till meddelanden behålls innan automatisk gallring sker. Ange 0 för att stänga av automatisk gallring."
+
+#: src-server-settings/pages/ServerSettings.vue:372
+msgid "Manually trigger retention cleanup to delete messages older than the configured retention periods."
+msgstr "Kör gallring manuellt för att radera meddelanden äldre än de konfigurerade gallringstiderna."
+
+#: src-server-settings/pages/ServerSettings.vue:376
+#: src-server-settings/pages/ServerSettings.vue:380
+#: src-server-settings/pages/ServerSettings.vue:754
+msgid "Run Now"
+msgstr "Kör nu"
+
+#: src-server-settings/pages/ServerSettings.vue:376
+msgid "Running..."
+msgstr "Kör..."
+
+#: src-server-settings/pages/ServerSettings.vue:385
+msgid "SDK Settings"
+msgstr "SDK-inställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:390
+msgid "Organization Extension"
+msgstr "Organisationsidentifierare för SDK"
+
+#: src-server-settings/pages/ServerSettings.vue:391
+msgid "Identifier or extension used to distinguish this organization."
+msgstr "Identifierare eller tillägg som används för att särskilja denna organisation."
+
+#: src-server-settings/pages/ServerSettings.vue:403
+msgid "Base URL for SDK address book updates"
+msgstr "Bas-URL för uppdateringar för av SDK-adressboken"
+
+#: src-server-settings/pages/ServerSettings.vue:404
+msgid "Base URL used by the SDK to update the address book."
+msgstr "Bas-URL som används av SDK för att uppdatera adressboken."
+
+#: src-server-settings/pages/ServerSettings.vue:410
+msgid "Update frequency for address book (in seconds)"
+msgstr "Uppdateringsintervall för adressboken (i antal sekunder)"
+
+#: src-server-settings/pages/ServerSettings.vue:411
+msgid "How often the address book is updated, in seconds."
+msgstr "Hur ofta adressboken uppdateras, i sekunder."
+
+#: src-server-settings/pages/ServerSettings.vue:416
+#: src-server-settings/pages/ServerSettings.vue:420
+msgid "Update Now"
+msgstr "Uppdatera nu"
+
+#: src-server-settings/pages/ServerSettings.vue:434
+msgid "Secure Mail Settings"
+msgstr "Säker e-postinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:438
+msgid "From address for secure mail"
+msgstr "Från-adress för säker e-post"
+
+#: src-server-settings/pages/ServerSettings.vue:439
+msgid "Email address used as the From sender for secure mail."
+msgstr "Adress som används som avsändare för säker e-post."
+
+#: src-server-settings/pages/ServerSettings.vue:444
+msgid "Email subject for secure mail"
+msgstr "Ämne för säker e-post till privatperson"
+
+#: src-server-settings/pages/ServerSettings.vue:445
+msgid "Subject line used for secure mail sent to individuals."
+msgstr "Ämnesrad för säker e-post till privatpersoner."
+
+#: src-server-settings/pages/ServerSettings.vue:450
+msgid "Secure mail notification message"
+msgstr "E-post-notis för säkra meddelanden till privatperson"
+
+#: src-server-settings/pages/ServerSettings.vue:451
+msgid "Email body template used for secure mail notifications to private recipients."
+msgstr "E-postmall för notifieringar om säkra meddelanden till privatpersoner."
+
+#: src-server-settings/pages/ServerSettings.vue:458
+msgid "Email subject for organization secure mail"
+msgstr "Ämne för säker e-post till organisation eller obekräftad mottagare"
+
+#: src-server-settings/pages/ServerSettings.vue:459
+msgid "Subject line used for secure mail sent to organizations or unverified recipients."
+msgstr "Ämnesrad för säker e-post till organisationer eller obekräftade mottagare."
+
+#: src-server-settings/pages/ServerSettings.vue:465
+msgid "Organization secure mail notification message"
+msgstr "E-post-notis för Säkra meddelanden till organisation eller obekräftad mottagare"
+
+#: src-server-settings/pages/ServerSettings.vue:466
+msgid "Email body template used for secure mail notifications to organizations or unverified recipients."
+msgstr "E-postmall för notifieringar om säkra meddelanden till organisationer eller obekräftade mottagare."
+
+#: src-server-settings/pages/ServerSettings.vue:477
+msgid "Enforce personal secure message policy"
+msgstr "Tillämpa säkra meddelanden för personalen"
+
+#: src-server-settings/pages/ServerSettings.vue:478
+msgid "Forces all secure messages to be sent as personal messages. Users must provide SSN."
+msgstr "Tvingar alla säkra meddelanden att skickas som personliga. Användaren måste förse ett personnummer."
+
+#: src-server-settings/pages/ServerSettings.vue:491
+msgid "Meetings Settings"
+msgstr "Mötesinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:499
+msgid "Default lobby active for new conversations"
+msgstr "Aktivera lobby som standard för nya möten"
+
+#: src-server-settings/pages/ServerSettings.vue:500
+msgid "Every newly created group or public conversation starts with lobby enabled"
+msgstr "Varje nytt grupp- eller publikt möte startar med lobby aktiverad"
+
+#: src-server-settings/pages/ServerSettings.vue:508
+msgid "Enable Secure Meeting bookings"
+msgstr "Aktivera funktionen för säkra möten"
+
+#: src-server-settings/pages/ServerSettings.vue:509
+msgid "This toggle enables or disables the possibility to book secure meetings through the calendar"
+msgstr "Den här inställningen aktiverar eller inaktiverar möjligheten att boka säkra möten via kalendern"
+
+#: src-server-settings/pages/ServerSettings.vue:514
+msgid "Client ID for OIDC provider"
+msgstr "ClientID för OIDC-integrationen"
+
+#: src-server-settings/pages/ServerSettings.vue:515
+msgid "Client ID configured in the external OIDC provider."
+msgstr "Klient-ID konfigurerat i den externa OIDC-leverantören."
+
+#: src-server-settings/pages/ServerSettings.vue:521
+msgid "Client Secret for OIDC provider"
+msgstr "Client Secret för OIDC-integrationen"
+
+#: src-server-settings/pages/ServerSettings.vue:522
+msgid "Client secret configured in the external OIDC provider."
+msgstr "Klienthemlighet konfigurerad i den externa OIDC-leverantören."
+
+#: src-server-settings/pages/ServerSettings.vue:527
+msgid "Authorize URL"
+msgstr "Authorize-url"
+
+#: src-server-settings/pages/ServerSettings.vue:528
+msgid "URL to the OIDC authorization endpoint."
+msgstr "URL till OIDC-auktoriseringsslutpunkten."
+
+#: src-server-settings/pages/ServerSettings.vue:533
+msgid "Token URL"
+msgstr "Token-url"
+
+#: src-server-settings/pages/ServerSettings.vue:534
+msgid "URL to the OIDC token endpoint."
+msgstr "URL till OIDC-tokenslutpunkten."
+
+#: src-server-settings/pages/ServerSettings.vue:539
+msgid "Redirect URL"
+msgstr "Redirect-url"
+
+#: src-server-settings/pages/ServerSettings.vue:540
+msgid "URL where the OIDC provider should redirect back after authentication."
+msgstr "URL dit OIDC-leverantören ska omdirigera efter autentisering."
+
+#: src-server-settings/pages/ServerSettings.vue:545
+msgid "Scope"
+msgstr "Scope"
+
+#: src-server-settings/pages/ServerSettings.vue:546
+msgid "Space separated list of scopes to request (e.g. profile email openid)."
+msgstr "Blankstegsseparerad lista över scopes att begära (t.ex. profile email openid)."
+
+#: src-server-settings/pages/ServerSettings.vue:551
+msgid "SSN Claim"
+msgstr "OIDC-attribut (claim) för personnummer"
+
+#: src-server-settings/pages/ServerSettings.vue:552
+msgid "Name of the claim in the OIDC ID token that contains the personnummer (e.g. personalNumber, preferred_username). Leave empty to use default fallback chain."
+msgstr "Namn på det claim i OIDC ID-token som innehåller personnumret (t.ex. personalNumber, preferred_username). Lämna tomt för att använda standardordningen."
+
+#: src-server-settings/pages/ServerSettings.vue:558
+msgid "First Name Claim"
+msgstr "OIDC-attribut (claim) för förnamn"
+
+#: src-server-settings/pages/ServerSettings.vue:559
+msgid "Name of the claim in the OIDC ID token that contains the first name (e.g. givenName, given_name). Leave empty to use default fallback chain."
+msgstr "Namn på det claim i OIDC ID-token som innehåller förnamnet (t.ex. givenName, given_name). Lämna tomt för att använda standardordningen."
+
+#: src-server-settings/pages/ServerSettings.vue:565
+msgid "Last Name Claim"
+msgstr "OIDC-attribut (claim) för efternamn"
+
+#: src-server-settings/pages/ServerSettings.vue:566
+msgid "Name of the claim in the OIDC ID token that contains the last name (e.g. surname, family_name). Leave empty to use default fallback chain."
+msgstr "Namn på det claim i OIDC ID-token som innehåller efternamnet (t.ex. surname, family_name). Lämna tomt för att använda standardordningen."
+
+#: src-server-settings/pages/ServerSettings.vue:573
+msgid "SMS Gateway"
+msgstr "SMS-integration"
+
+#: src-server-settings/pages/ServerSettings.vue:574
+msgid "Configured SMS gateway/integration used for sending text messages."
+msgstr "Konfigurerad SMS-gateway/integration för att skicka textmeddelanden."
+
+#: src-server-settings/pages/ServerSettings.vue:585
+msgid "SMS Gateway Username"
+msgstr "Användarnamn för sms-integrationen"
+
+#: src-server-settings/pages/ServerSettings.vue:586
+msgid "Account username for authenticating with the SMS gateway service."
+msgstr "Användarnamn för autentisering mot SMS-gateway-tjänsten."
+
+#: src-server-settings/pages/ServerSettings.vue:592
+msgid "SMS Gateway Password"
+msgstr "Lösenord för sms-integrationen"
+
+#: src-server-settings/pages/ServerSettings.vue:593
+msgid "Account password for authenticating with the SMS gateway service."
+msgstr "Lösenord för autentisering mot SMS-gateway-tjänsten."
+
+#: src-server-settings/pages/ServerSettings.vue:598
+msgid "SMS Gateway Sender"
+msgstr "Avsändare för sms"
+
+#: src-server-settings/pages/ServerSettings.vue:599
+msgid "Alphanumeric, max 11 chars, must start with a letter"
+msgstr "Enbart bokstäver, max 11 tecken. Måste börja med en bokstav"
+
+#: src-server-settings/pages/ServerSettings.vue:604
+msgid "SMS message: use #ORGANIZER_NAME for organizer, #ATTENDEE_EMAIL for attendee"
+msgstr "SMS-meddelande. Använd #ORGANIZER_NAME för handläggarens namn och  #ATTENDEE_EMAIL för mottagarens e-post"
+
+#: src-server-settings/pages/ServerSettings.vue:605
+msgid "Use placeholders in your message, e.g. “You have been invited by #ORGANIZER_NAME and the invitation was sent to #ATTENDEE_EMAIL.”"
+msgstr "Det går att använda ersättare i texten. Till exempel så kommer \"Du har blivit inbjuden till möte av #ORGANIZER_NAME och inbjudan har skickats till #ATTENDEE_EMAIL\" skickas som \"Du har blivit inbjuden till möte av Anna och inbjudan har skickats till pelle.persson@gmail.com\""
+
+#: src-server-settings/pages/ServerSettings.vue:611
+msgid "Organizer for calendar event invitation email"
+msgstr "Organisationsnamn för mötesinbjudningar"
+
+#: src-server-settings/pages/ServerSettings.vue:612
+msgid "Provide the organizer line for the calendar invitation email. Leave blank for the organizers actual name and email"
+msgstr "Om det här fältet fylls i så kommer handläggarens namn döljas i ics-filen i mötesinbjudningar och istället kommer fältets innehåll att visas. Lämna blankt för att istället inkludera handläggarens namn och e-post"
+
+#: src-server-settings/pages/ServerSettings.vue:617
+msgid "Subject for calendar event invitation email"
+msgstr "Ämnesrad för mötesinbjudningar"
+
+#: src-server-settings/pages/ServerSettings.vue:618
+msgid "Provide the subject line for the calendar invitation email. You may use placeholders such as #ORGANIZER_NAME and #ATTENDEE_EMAIL."
+msgstr "Det går att använda ersättare i texten. Till exempel så kommer \"Du har blivit inbjuden till möte av #ORGANIZER_NAME\" skickas som \"Du har blivit inbjuden till möte av Anna\".  #ORGANIZER_NAME och #ATTENDEE_EMAIL är tillgängliga ersättare."
+
+#: src-server-settings/pages/ServerSettings.vue:623
+msgid "[HTML] Body for calendar event invitation email"
+msgstr "Mall för epost-meddelande för mötesbokning [HTML]"
+
+#: src-server-settings/pages/ServerSettings.vue:624
+msgid ""
+"Compose the HTML email body for the invitation. Available placeholders:\n"
+"\n"
+"• #INVITATION_LINK (required) - Meeting invitation link\n"
+"• #TITLE - Event title\n"
+"• #DESCRIPTION - Event description\n"
+"• #DATE_AND_TIME - Formatted date and time\n"
+"• #ACCEPT_LINK - Accept invitation link\n"
+"• #DECLINE_LINK - Decline invitation link"
+msgstr ""
+"Det här fältet ska innehålla HTML-kod. Följande ersättare är tillgängliga:\n"
+"\n"
+"• #INVITATION_LINK (måste ingå) - Länken till mötesinbjudan\n"
+"• #TITLE - Titeln på mötet\n"
+"• #DESCRIPTION - Beskrivning på mötet\n"
+"• #DATE_AND_TIME - Datum och tid för mötet\n"
+"• #ACCEPT_LINK - Länk för att acceptera inbjudan\n"
+"• #DECLINE_LINK - Länk för att neka inbjudan"
+
+#: src-server-settings/pages/ServerSettings.vue:639
+msgid "Entra ID"
+msgstr "Entra ID"
+
+#: src-server-settings/pages/ServerSettings.vue:644
+msgid "Tenant URL"
+msgstr "Klientorganisations-URL"
+
+#: src-server-settings/pages/ServerSettings.vue:645
+msgid "URL to the Entra ID tenant. Read-only, configured by the SCIM component."
+msgstr "URL till Entra ID-klientorganisationen. Skrivskyddad, konfigureras av SCIM-komponenten."
+
+#: src-server-settings/pages/ServerSettings.vue:649
+msgid "JWT Token"
+msgstr "JWT-token"
+
+#: src-server-settings/pages/ServerSettings.vue:650
+msgid "Authentication token. Read-only, configured by the SCIM component."
+msgstr "Autentiseringstoken. Skrivskyddad, konfigureras av SCIM-komponenten."
+
+#: src-server-settings/pages/ServerSettings.vue:653
+msgid "Graph Client ID"
+msgstr "Graph-klient-ID"
+
+#: src-server-settings/pages/ServerSettings.vue:654
+msgid "Client ID from your Microsoft Entra ID app registration."
+msgstr "Klient-ID från din Microsoft Entra ID-appregistrering."
+
+#: src-server-settings/pages/ServerSettings.vue:659
+msgid "Graph Client Secret"
+msgstr "Graph-klienthemlighet"
+
+#: src-server-settings/pages/ServerSettings.vue:660
+msgid "Client secret value from your Microsoft Entra ID app registration."
+msgstr "Klienthemlighet från din Microsoft Entra ID-appregistrering."
+
+#: src-server-settings/pages/ServerSettings.vue:665
+msgid "Graph Tenant ID"
+msgstr "Graph-klientorganisations-ID"
+
+#: src-server-settings/pages/ServerSettings.vue:666
+msgid "Tenant ID from your Microsoft Entra ID."
+msgstr "Klientorganisations-ID (Tenant ID) från din Microsoft Entra ID."
+
+#: src-server-settings/pages/ServerSettings.vue:671
+#: src-server-settings/pages/ServerSettings.vue:672
+msgid "Sync Group Pattern"
+msgstr "Synkroniseringsmönster för grupper"
+
+#: src-server-settings/pages/ServerSettings.vue:691
+#: src-server-settings/pages/ServerSettings.vue:694
+msgid "Apply notification defaults"
+msgstr "Tillämpa notisinställningar"
+
+#: src-server-settings/pages/ServerSettings.vue:702
+msgid "The following settings will be applied to all existing users:"
+msgstr "Följande inställningar kommer att tillämpas på alla befintliga användare:"
+
+#: src-server-settings/pages/ServerSettings.vue:714
+msgid "Users who have customized these settings will have them overwritten."
+msgstr "Användare som har anpassat dessa inställningar kommer att få dem överskrivna."
+
+#: src-server-settings/pages/ServerSettings.vue:721
+msgid "Apply"
+msgstr "Tillämpa"
+
+#: src-server-settings/pages/ServerSettings.vue:721
+msgid "Applying..."
+msgstr "Tillämpar..."
+
+#: src-server-settings/pages/ServerSettings.vue:733
+#: src-server-settings/pages/ServerSettings.vue:736
+msgid "Confirm retention cleanup"
+msgstr "Bekräfta gallring"
+
+#: src-server-settings/pages/ServerSettings.vue:744
+msgid "This will permanently delete messages older than the configured retention periods for all mailboxes."
+msgstr "Detta kommer permanent radera meddelanden äldre än de konfigurerade gallringstiderna för alla brevlådor."
+
+#: src-server-settings/pages/ServerSettings.vue:747
+msgid "This action cannot be undone."
+msgstr "Denna åtgärd kan inte ångras."
+
+#: src-server-settings/pages/ServerSettings.vue:804
+#: src-server-settings/pages/ServerSettings.vue:806
+#: src-server-settings/pages/ServerSettings.vue:808
+#: src-server-settings/pages/ServerSettings.vue:826
+#: src-server-settings/pages/ServerSettings.vue:870
+#: src-server-settings/pages/ServerSettings.vue:882
+#: src-server-settings/pages/ServerSettings.vue:896
+msgid "Please enter a valid number."
+msgstr "Vänligen ange ett giltigt nummer."
+
+#: src-server-settings/pages/ServerSettings.vue:813
+msgid "Invalid format. Use letters (a-z, A-Z), numbers (0-9) and underscore (_) only."
+msgstr "Ogiltigt format. Använd endast bokstäver (a-z, A-Z), siffror (0-9) och understreck (_)."
+
+#: src-server-settings/pages/ServerSettings.vue:819
+msgid "Invalid format. Use letters (a-z, A-Z), numbers (0-9), hyphen (-), underscore (_) and slash (/) only."
+msgstr "Ogiltigt format. Använd endast bokstäver (a-z, A-Z), siffror (0-9), bindestreck (-), understreck (_) och snedstreck (/)."
+
+#: src-server-settings/pages/ServerSettings.vue:830
+msgid "Use 0 to keep sessions always active, or 120+ seconds to enable autologout."
+msgstr "Ange 0 för att inaktivera automatisk utloggning. För att aktivera automatisk utloggning, ange mer än 120 (sekunder)"
+
+#: src-server-settings/pages/ServerSettings.vue:874
+#: src-server-settings/pages/ServerSettings.vue:886
+msgid "Use 0 to disable this feature, or enter the number of days to keep inactive conversations."
+msgstr "Ange en positiv siffra, alternativt 0 för att inaktivera radering av gamla möten."
+
+#: src-server-settings/pages/ServerSettings.vue:899
+msgid "Please enter a whole number of days."
+msgstr "Vänligen ange ett heltal för antalet dagar."
+
+#: src-server-settings/pages/ServerSettings.vue:902
+msgid "Use 0 to disable this feature, or enter the number of days to keep items."
+msgstr "Ange 0 för att stänga av, eller heltal för att ange antal dagar innan automatiskt borttag."
+
+#: src-server-settings/pages/ServerSettings.vue:986
+msgid "Sender must not exceed 11 characters."
+msgstr "Avsändare kan inte vara längre än 11 tecken."
+
+#: src-server-settings/pages/ServerSettings.vue:988
+msgid "Sender must start with a letter and contain only letters and numbers."
+msgstr "Avsändare måste börja med en bokstav sedan enbart innehålla bokstäver och siffror."
+
+#: src-server-settings/pages/ServerSettings.vue:998
+msgid "The body must include the #INVITATION_LINK placeholder."
+msgstr "Meddelandet måste som minst innehålla #INVITATION_LINK (inbjudningslänken)."
+
+#: src-server-settings/pages/ServerSettings.vue:1059
+msgid "Name not provided"
+msgstr "Namn saknas"
+
+#: src-server-settings/pages/ServerSettings.vue:1085
+#: src-server-settings/pages/ServerSettings.vue:1219
+msgid "Failed to load settings. Please try again."
+msgstr "Det gick inte att läsa in inställningarna, försök igen."
+
+#: src-server-settings/pages/ServerSettings.vue:1116
+msgid "Address book updated successfully!"
+msgstr "Uppdatering av adressboken lyckades!"
+
+#: src-server-settings/pages/ServerSettings.vue:1122
+msgid "Failed to update address book. Please try again."
+msgstr "Uppdatering av adressboken misslyckades."
+
+#: src-server-settings/pages/ServerSettings.vue:1138
+msgid "Retention job started successfully!"
+msgstr "Gallringsjobbet startade!"
+
+#: src-server-settings/pages/ServerSettings.vue:1144
+msgid "Failed to start retention job. Please try again."
+msgstr "Kunde inte starta gallringsjobbet. Försök igen."
+
+#: src-server-settings/pages/ServerSettings.vue:1330
+#, python-brace-format
+msgid "Notification defaults applied to {count} users."
+msgstr "Notisinställningar tillämpade på {count} användare."
+
+#: src-server-settings/pages/ServerSettings.vue:1338
+msgid "Failed to apply notification defaults. Please try again."
+msgstr "Det gick inte att tillämpa notisinställningar. Försök igen."
+
+#: src-server-settings/pages/ServerSettings.vue:1353
+msgid "Please fix form errors."
+msgstr "Vänligen rätta felen i formuläret."
+
+#: src-server-settings/pages/ServerSettings.vue:1383
+msgid "Settings saved successfully!"
+msgstr "Inställningarna är sparade!"
+
+#: src-server-settings/pages/ServerSettings.vue:1389
+msgid "Failed to save settings. Please try again."
+msgstr "Det gick inte att spara inställningarna, försök igen."
+
+#: templates/GuestLogout.php:8
+msgid "Logged Out"
+msgstr "Utloggad"
+
+#: templates/GuestLogout.php:10
+msgid "You have been successfully logged out."
+msgstr "Nu är du utloggad från mötet och kan stänga det här fönstret."

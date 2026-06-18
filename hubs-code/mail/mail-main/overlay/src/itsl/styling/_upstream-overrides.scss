@@ -1,0 +1,150 @@
+/**
+ * ITSL Upstream Component CSS Overrides
+ *
+ * CSS rules extracted from upstream Vue components to minimize diff footprint.
+ * These rules were previously inline in upstream <style> blocks.
+ *
+ * For scoped component styles, selectors need higher specificity or !important
+ * to override the [data-v-xxxx] scoped attribute selectors.
+ */
+
+// =============================================================================
+// Thread.vue (unscoped) - header layout & mobile breakpoint
+// =============================================================================
+
+// Extra left margin on thread header fields at tablet breakpoint
+@media only screen and (max-width: 1024px) {
+	#mail-thread-header-fields {
+		margin-left: 15px;
+	}
+}
+
+// Mobile thread view - typography and layout adjustments
+@media only screen and (max-width: 768px) {
+	h2 {
+		font-size: 22px;
+		margin-left: 0;
+		margin-top: -35px;
+	}
+	.app-navigation-toggle {
+		background-color: var(--color-primary-element-light) !important;
+	}
+	.mail-message-body {
+		display: flex;
+		flex-direction: column;
+		align-items: normal;
+		justify-content: space-between;
+	}
+}
+
+// Minimum height for thread header to prevent layout shifts
+#mail-thread-header-fields {
+	min-height: 45px;
+}
+
+// =============================================================================
+// SearchMessages.vue (unscoped) - mobile modal field layout
+// =============================================================================
+
+@media only screen and (max-width: 768px) {
+	.modal-inner--field {
+		padding: 0 12px 0 12px;
+		& > label {
+			width: 90px;
+		}
+		.modal-inner--container {
+			width: calc(100% - 100px);
+			display: flex;
+			flex-wrap: wrap;
+			& > div {
+				min-width: 182px !important;
+				width: 100%;
+			}
+		}
+	}
+}
+
+// =============================================================================
+// TextEditor.vue (unscoped) - mobile CKEditor adjustments
+// =============================================================================
+
+@media only screen and (max-width: 768px) {
+	.ck.ck-button.ck-button_with-text {
+		max-height: 35px;
+		align-items: center;
+	}
+	.ck.ck-reset.ck-list {
+		overflow: auto;
+		max-height: 300px;
+	}
+}
+@media only screen and (max-width: 425px) {
+	.ck.ck-reset.ck-list {
+		max-height: 220px;
+	}
+}
+
+// =============================================================================
+// TextEditor.vue (unscoped) - fix 7px scroll in composer editable area
+// =============================================================================
+
+// The .ck-editor__editable_inline element also carries the upstream .editor class,
+// which has a scoped rule: .editor[data-v-*] { margin-bottom: 10px }. This 10px
+// bottom margin causes the element to exceed .editable's clientHeight by ~7px,
+// triggering an unnecessary scrollbar. Zero the margin on the element itself.
+// Also zero first/last-child inner margins from CKEditor's --ck-spacing-large rule.
+.editor-wrapper .editable .ck.ck-editor__editable_inline {
+	margin-bottom: 0;
+}
+.editor-wrapper .editable .ck.ck-editor__editable_inline > *:first-child {
+	margin-top: 0;
+}
+.editor-wrapper .editable .ck.ck-editor__editable_inline > *:last-child {
+	margin-bottom: 0;
+}
+
+// =============================================================================
+// MessageHTMLBody.vue (scoped) - dark theme email body background
+// =============================================================================
+
+// Upstream hardcodes #FFFFFF for HTML email body containers. In dark mode this
+// creates a jarring white box. Use the theme background instead. HTML emails
+// that set their own background will override this via inline styles in the iframe.
+.html-message-body {
+	background-color: var(--color-main-background) !important;
+}
+#message-container {
+	background-color: var(--color-main-background) !important;
+}
+
+// =============================================================================
+// EnvelopeSkeleton.vue (scoped) - fax message name positioning
+// =============================================================================
+
+// Override scoped .fax-message-name positioning
+// Original is scoped in EnvelopeSkeleton.vue
+.fax-message-name {
+	position: relative !important;
+	top: 9px !important;
+}
+
+// =============================================================================
+// MessageHTMLBody.vue (scoped) - mobile margin adjustment
+// =============================================================================
+
+@media only screen and (max-width: 768px) {
+	.html-message-body {
+		margin-left: 15px !important;
+	}
+}
+
+// =============================================================================
+// Message.vue (scoped) - mobile reply buttons margin
+// =============================================================================
+
+@media screen and (max-width: 600px) {
+	.reply-buttons {
+		margin: 0 15px !important;
+		align-self: flex-end !important;
+	}
+}

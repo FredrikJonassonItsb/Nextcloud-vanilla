@@ -1,0 +1,45 @@
+--- a/src/mixins/AttachementMixin.js
++++ b/src/mixins/AttachementMixin.js
+@@ -25,6 +25,12 @@
+ 			&& OCA.Viewer.mimetypes.includes(fileInfo.mime))
+ 		},
+ 	},
++	beforeDestroy() {
++		if (this._viewerPopStateHandler) {
++			window.removeEventListener('popstate', this._viewerPopStateHandler)
++			this._viewerPopStateHandler = null
++		}
++	},
+ 	methods: {
+ 		canPreview(fileInfo) {
+ 			return this.previewableFileInfos.includes(fileInfo)
+@@ -34,9 +40,29 @@
+ 				return
+ 			}
+ 
++			// Push a duplicate history entry so browser back closes the viewer
++			// instead of navigating the mail app behind it (see mail#132)
++			history.pushState({ viewerOpen: true }, '', window.location.href)
++
++			const onPopState = () => {
++				OCA.Viewer.close()
++				window.removeEventListener('popstate', onPopState)
++				this._viewerPopStateHandler = null
++			}
++			this._viewerPopStateHandler = onPopState
++			window.addEventListener('popstate', onPopState)
++
+ 			OCA.Viewer.open({
+ 				fileInfo,
+ 				list: this.previewableFileInfos,
++				onClose: () => {
++					window.removeEventListener('popstate', onPopState)
++					this._viewerPopStateHandler = null
++					// If closed via X button (not back), pop the extra history entry
++					if (history.state?.viewerOpen) {
++						history.back()
++					}
++				},
+ 			})
+ 		},
+ 

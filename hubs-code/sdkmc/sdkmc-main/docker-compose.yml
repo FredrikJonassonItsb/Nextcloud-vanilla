@@ -1,0 +1,56 @@
+services:
+  nextcloud:
+    build:
+      args:
+        DEVELOPER_UID: "${DEVELOPER_UID:-1000}"
+        DEVELOPER_GID: "${DEVELOPER_GID:-1000}"
+        PHP_MEMORY_LIMIT: "${PHP_MEMORY_LIMIT:-512M}"
+        PHP_POST_MAX_SIZE: "${PHP_POST_MAX_SIZE:-128M}"
+        PHP_UPLOAD_MAX_FILESIZE: "${PHP_UPLOAD_MAX_FILESIZE:-128M}"
+        PHP_VERSION: "${PHP_VERSION:-8.2}"
+      context: "./docker/nextcloud"
+    command: "/usr/local/bin/entrypoint.sh"
+    depends_on:
+      - "mariadb"
+    environment:
+      NEXTCLOUD_VERSION: "${NEXTCLOUD_VERSION:-v31.0.6}"
+      SDK_MC_ENV_NAME: "development"
+      SDK_MC_ENV_TYPE: "docker"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    hostname: "nextcloud"
+    init: true
+    networks:
+      - "nextcloud"
+    ports:
+      - "127.0.0.1:2222:22"
+      - "127.0.0.1:8080:80"
+    volumes:
+      - "nextcloud_home_developer_dotcache:/home/developer/.cache"
+      - "nextcloud_var_www_html:/var/www/html"
+      - ".:/var/www/html/apps-extra/sdkmc"
+      - "${MAIL_APP_PATH:-$HOME/.no_mail}:/var/www/html/apps-extra/mail"
+      - "${SPREED_APP_PATH:-$HOME/.no_spreed}:/var/www/html/apps-extra/spreed"
+  mariadb:
+    image: "mariadb:10.11.7-jammy"
+    command: [
+      '--wait_timeout=300',
+    ]
+    environment:
+      MYSQL_DATABASE: "nextcloud"
+      MYSQL_PASSWORD: "nextcloud"
+      MYSQL_ROOT_PASSWORD: "nextcloud"
+      MYSQL_USER: "nextcloud"
+    hostname: "mariadb"
+    networks:
+      - "nextcloud"
+    ports:
+      - "127.0.0.1:3306:3306"
+    volumes:
+      - "mariadb_var_lib_mysql:/var/lib/mysql"
+networks:
+  nextcloud:
+volumes:
+  nextcloud_home_developer_dotcache:
+  nextcloud_var_www_html:
+  mariadb_var_lib_mysql:

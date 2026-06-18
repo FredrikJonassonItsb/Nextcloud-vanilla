@@ -1,0 +1,12 @@
+# BuildKit uses this file (named for its Dockerfile) instead of the repo-root .dockerignore
+# when building ci-builder with context = repo root. The root .dockerignore is the nextcloud
+# image's `* + whitelist` and would bake nothing here. We bake the whole platform tree, minus
+# VCS metadata and any app/generated trees (apps/ is gitignored so usually absent in the CI
+# checkout, but guard regardless).
+.git
+apps
+**/.build
+**/.dist
+**/node_modules
+**/vendor
+**/*.tar.gz

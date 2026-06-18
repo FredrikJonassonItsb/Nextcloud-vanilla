@@ -1,0 +1,16 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-a-tombstone-gammal-mottagning
+FN:Gamla mottagningen (avvecklad)
+N:Gamla mottagningen avvecklad;;;;
+ORG:Region Skåne;Avvecklad mottagning
+KIND:org
+EMAIL;TYPE=INTERNET:gammal-mottagning@sdk
+X-HUBS-SDK-REF:SE2321000255-gammal-mott
+X-HUBS-FAVORIT-KLASS:sdk-pekare
+X-HUBS-RESOLVED-AT:2026-04-01T08:00:00
+CATEGORIES:Favoriter,funktion,myndighet
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). TOMBSTONE-TESTFIXTUR: pekaren finns avsiktligt INTE i DIGG-spegeln – resolvern ska returnera removed:true och göra raden icke-väljbar. Ej medborgar-PII.
+REV:2026-04-01T08:00:00Z
+END:VCARD

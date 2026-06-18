@@ -1,0 +1,31 @@
+{
+  "name": "email-reader-backend",
+  "version": "1.0.0",
+  "description": "Backend for email reader application",
+  "main": "server.js",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=10.17.1"
+  },
+  "engineStrict": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "preinstall": "node -e \"if (!process.env.npm_execpath.includes('pnpm')) { console.error('❌ Please use pnpm, not npm!'); process.exit(1) }\""
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
+    "mailparser": "^3.6.5",
+    "node-imap": "^0.9.6",
+    "nodemailer": "^6.10.0",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}

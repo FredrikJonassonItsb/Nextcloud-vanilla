@@ -1,0 +1,107 @@
+default:
+  image: php:8.2-cli-alpine
+  tags:
+    - docker
+
+variables:
+  VERSION: $CI_COMMIT_REF_NAME
+
+stages:
+  - build
+  - upload
+  - release
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+
+build:
+  stage: build
+  before_script:
+    - apk add --no-cache nodejs npm curl unzip
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  script:
+    - |
+      # Stamp version in info.xml
+      # For vX.Y.Z tags: use X.Y.Z as version
+      # For everything else (branches, non-semver tags): keep X.Y from info.xml, set Z to pipeline IID
+      TAG_VERSION=$(echo "${CI_COMMIT_TAG:-}" | sed -n 's|.*v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$|\1|p')
+      if [ -n "$TAG_VERSION" ]; then
+        APP_VERSION="$TAG_VERSION"
+      else
+        XY=$(sed -n 's|.*<version>\([0-9]*\.[0-9]*\)\.[0-9]*</version>.*|\1|p' appinfo/info.xml)
+        APP_VERSION="${XY}.${CI_PIPELINE_IID}"
+      fi
+      echo "Stamping version: ${APP_VERSION}"
+      sed -i "s|<version>[^<]*</version>|<version>${APP_VERSION}</version>|" appinfo/info.xml
+      grep '<version>' appinfo/info.xml
+    - rm -rf vendor/ node_modules/ js/
+    - composer install --no-dev || true
+    - npm ci --cache .npm --prefer-offline --omit=dev
+    - npm audit fix || true
+    - npm run build
+    - rm -rf ansible/ .ansible-lint bin/ build.yml docker docker-compose.yml .editorconfig .env .eslintrc.js .git .gitignore .gitlab composer.json composer.lock package.json package-lock.json .php-cs-fixer.cache .php-cs-fixer.dist.php phpmd.xml phpstan-baseline.neon phpstan.neon README.md src-calendar-sms/ src-loa3/ src-mailbox-settings/ src-sdkmc-logs/ src-server-settings/ stylelint.config.js tests/ webpack.js node_modules/ .nvmrc *.yml
+    - rm -f js/*.map
+    - cd ..
+    - rm -f sdkmc.tar.gz
+    - GZIP=-9 tar --create --gzip --verbose --file=sdkmc.tar.gz sdkmc
+    - mv sdkmc.tar.gz sdkmc/sdkmc.tar.gz
+  artifacts:
+    paths:
+      - sdkmc.tar.gz
+    expire_in: 1 week
+
+upload:
+  stage: upload
+  image: curlimages/curl:latest
+  needs:
+    - build
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH =~ /^stable\d+$/
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      # Clean up previous branch package to avoid duplicates in generic registry
+      if [ -z "$CI_COMMIT_TAG" ]; then
+        echo "Branch build: cleaning up previous ${VERSION} package..."
+        PACKAGE_ID=$(curl -s --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages?package_name=sdkmc&package_version=${VERSION_SLUG}" \
+          | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
+        if [ -n "$PACKAGE_ID" ]; then
+          echo "Deleting package ID: $PACKAGE_ID"
+          curl -s --request DELETE --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/${PACKAGE_ID}" || true
+          echo "Previous package deleted"
+        else
+          echo "No previous package found"
+        fi
+      fi
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file sdkmc.tar.gz \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/sdkmc/${VERSION_SLUG}/sdkmc.tar.gz"
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - build
+    - upload
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - echo "Creating release for version ${VERSION}"
+  release:
+    tag_name: '${VERSION}'
+    description: 'Release ${VERSION}'
+    assets:
+      links:
+        - name: 'sdkmc.tar.gz'
+          url: '${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/sdkmc/${VERSION}/sdkmc.tar.gz'
+          filepath: '/sdkmc.tar.gz'

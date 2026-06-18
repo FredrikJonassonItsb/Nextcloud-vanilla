@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: ITSL <info@itsl.se>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+.idea
+.vscode
+*.iml
+/.php_cs.cache
+/.php-cs-fixer.cache
+/build/
+/vendor/
+js/
+node_modules/
+tests/.phpunit.result.cache
+gen/generated-typescript/*
+coverage/
+.env
+messages.mo
+translation_report.json
+.phpstan-cache

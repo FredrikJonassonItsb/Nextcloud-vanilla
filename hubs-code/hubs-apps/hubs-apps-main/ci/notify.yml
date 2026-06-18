@@ -1,0 +1,49 @@
+# Upstream drift detection (scheduled pipelines only).
+# Tests patches against raw latest upstream, not the platform clone — so no extends.
+
+notify:upstream-drift:
+  stage: notify
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache git quilt make rsync bash curl jq
+  script:
+    - UPSTREAM_REPO=$(git config -f .gitmodules submodule.upstream.url)
+    - UPSTREAM_BRANCH=$(git config -f .gitmodules submodule.upstream.branch || echo "main")
+    - echo "Checking patch compatibility with latest upstream (${UPSTREAM_BRANCH})..."
+    - git clone --depth 1 --branch "${UPSTREAM_BRANCH}" "${UPSTREAM_REPO}" /tmp/upstream-latest
+    - UPSTREAM_SHA=$(cd /tmp/upstream-latest && git rev-parse --short HEAD)
+    - rm -rf .build
+    - mkdir -p .build
+    - rsync -a --exclude='.git' /tmp/upstream-latest/ .build/
+    - cd .build
+    - export QUILT_PATCHES=$CI_PROJECT_DIR/patches
+    - |
+      if ! quilt push -a --quiltrc=- 2>&1; then
+        echo ""
+        echo "===== UPSTREAM DRIFT DETECTED ====="
+        echo "Latest upstream: ${UPSTREAM_SHA}"
+        echo "One or more patches failed to apply."
+
+        ISSUE_TITLE="Upstream drift: patches incompatible with upstream ${UPSTREAM_BRANCH} (${UPSTREAM_SHA})"
+        ISSUE_BODY="One or more quilt patches failed to apply against the latest upstream ${UPSTREAM_BRANCH} branch (commit ${UPSTREAM_SHA}).%0A%0AAction: update patches to apply cleanly."
+
+        # Drift is the primary signal: exit 1 regardless of whether the
+        # issue auto-file succeeded. A failed file-creation only warns.
+        if ! curl --fail --location \
+             --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+             --request POST \
+             --data "title=${ISSUE_TITLE}&description=${ISSUE_BODY}&labels=wf::Backlog,type::Maintenance" \
+             "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/issues"; then
+          echo "WARNING: drift detected but could not auto-file the GitLab issue (API error). The drift is real — file it manually." >&2
+        fi
+
+        exit 1
+      fi
+    - echo "All patches compatible with latest upstream (${UPSTREAM_SHA})"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+  # Scheduled informational check: the exit 1 above marks this job amber and
+  # the filed issue is the actionable output, but allow_failure keeps the
+  # scheduled pipeline green — drift alerts, it doesn't block (nothing deploys
+  # on a schedule run).
+  allow_failure: true

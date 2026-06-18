@@ -1,0 +1,13 @@
+--- a/lib/Db/MessageMapper.php
++++ b/lib/Db/MessageMapper.php
+@@ -194,10 +194,6 @@
+ 			->where($messagesQuery->expr()->in('mailbox_id', $messagesQuery->createFunction($mailboxesQuery->getSQL()), IQueryBuilder::PARAM_INT_ARRAY))
+ 			->andWhere(
+ 				$messagesQuery->expr()->isNotNull('message_id'),
+-				$messagesQuery->expr()->orX(
+-					$messagesQuery->expr()->isNotNull('in_reply_to'),
+-					$messagesQuery->expr()->neq('references', $messagesQuery->createNamedParameter('[]'))
+-				),
+ 			);
+ 
+ 		$result = $messagesQuery->executeQuery();

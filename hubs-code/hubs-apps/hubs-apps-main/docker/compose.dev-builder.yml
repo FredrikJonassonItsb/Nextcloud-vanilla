@@ -1,0 +1,51 @@
+# Two services, one image (via the *dev-builder-base anchor), so tag,
+# build args, user, working_dir, and env can't drift between roles:
+#   - dev-builder: base for ephemeral one-shots (dc-run.sh) and the
+#     IDE-attach endpoint (compose.dev.yml overlay).
+#   - build-pool: long-running exec target (second service below).
+# Bind sources use ${HOST_PROJECT_DIR} so the host daemon gets a host-
+# resolvable path regardless of which side compose was invoked from;
+# :? makes an unset value crash rather than let docker auto-create an
+# empty host dir at the wrong path.
+
+x-dev-builder-base: &dev-builder-base
+  build:
+    context: "dev-builder"
+    args:
+      DEVELOPER_UID: "${DEVELOPER_UID:-1000}"
+      DEVELOPER_GID: "${DEVELOPER_GID:-1000}"
+  image: "hubs-apps/dev-builder:${DEV_BUILDER_VERSION:?DEV_BUILDER_VERSION not set — invoke via make (which reads docker/dev-builder/VERSION)}"
+  user: "${DEVELOPER_UID:-1000}:${DEVELOPER_GID:-1000}"
+  working_dir: "/platform"
+  environment:
+    IN_BUILDER: "1"
+    PLATFORM_ROOT: "/platform"
+
+services:
+  # Minimal /platform:ro baseline: run as-is for ephemeral one-shots
+  # (dc-run.sh adds a per-call /app bind); compose.dev.yml's overlay
+  # extends it into the long-running IDE-attach endpoint.
+  dev-builder:
+    <<: *dev-builder-base
+    volumes:
+      - "${HOST_PROJECT_DIR:?HOST_PROJECT_DIR not set — invoke via make (auto-derived from PLATFORM_ROOT)}:/platform:ro"
+
+  # Long-running exec target for benign (non-install-touching) make
+  # calls: dc-run.sh defaults to `docker exec` here; install-touching
+  # recipes set EPHEMERAL=1 to route to a fresh ephemeral instead,
+  # which is supply-chain-isolated by fresh-container-per-call. Safe
+  # because the pool only runs platform code we own — third-party
+  # post-install scripts never land in its writable layer.
+  # Diffs from dev-builder: idle `tail -f` command; wholesale
+  # /platform/apps:rw (one container, any app); no docker.sock bind
+  # (doesn't orchestrate compose); no home volume (no state to keep).
+  build-pool:
+    <<: *dev-builder-base
+    command: ["tail", "-f", "/dev/null"]
+    volumes:
+      # ro defense-in-depth: routing already keeps hostile code out,
+      # but ro regardless so /platform scripts can't be modified
+      # from inside the pool.
+      - "${HOST_PROJECT_DIR:?HOST_PROJECT_DIR not set — invoke via make (auto-derived from PLATFORM_ROOT)}:/platform:ro"
+      # apps:rw — same nested-overlay shape as the IDE-attach dev-builder.
+      - "${HOST_PROJECT_DIR}/apps:/platform/apps:rw"

@@ -1,0 +1,51 @@
+# ci/lint.yml — ESLint on app code.
+#
+# Lints the assembled source (upstream + patches + overlay) with node_modules pulled from the shared
+# dependency cache — it does NOT re-install (the cache exists to kill that cost) and does NOT consume
+# a heavy .build/ artifact (the old shape, which shipped dangling overlay symlinks). It lays its own
+# source-only tree via assemble MODE=snapshot (real files, no symlinks, no install, no webpack — so
+# no built js/ to lint over), then restores node_modules from cache.
+
+test:lint:
+  extends: .build_env
+  stage: test
+  # Order after build:app so the npm cache it writes is available to pull (the within-pipeline
+  # handoff). artifacts: false — lint lays its own source, it doesn't want build:app's tarball.
+  needs:
+    - job: build:app
+      artifacts: false
+  cache:
+    # Pull-only: build:app (validate.yml) is the writer. SAME key as build:app's npm-modules cache
+    # — keep the two in sync (cache:key:files can't be shared via anchors across included files).
+    - key:
+        files:
+          - overlay/package-lock.json
+        prefix: npm-modules-v2
+      paths:
+        - .dist/node_modules
+        - upstream
+      policy: pull
+  script:
+    # Guarded on a warm upstream — same as build:app (validate.yml). DO NOT remove: an
+    # unconditional submodule update over a cache-restored tree fatals ("could not get a
+    # repository handle"). Fetch only on a cache miss.
+    - '[ -n "$(ls -A upstream 2>/dev/null)" ] || git submodule update --init --depth 1 upstream'
+    # Lay .dist/ source only (MODE=snapshot, like build:app's default — rsync upstream + quilt push +
+    # overlay, no install, no webpack). KEEP_CACHED_DEPS so clean_build_dir spares the cached node_modules.
+    - APP_ROOT="$PWD" MODE=snapshot KEEP_CACHED_DEPS=1 bash /tmp/platform/scripts/assemble.sh
+    - |
+      if [ ! -f .dist/package.json ]; then
+        echo "==> No package.json in .dist/ — PHP-only app, nothing to lint."
+        exit 0
+      fi
+      if [ ! -d .dist/node_modules ]; then
+        echo "ERROR: node_modules not restored from cache — build:app must run first to populate it" >&2
+        echo "       (cold cache)." >&2
+        exit 1
+      fi
+    - cd .dist
+    # No `|| true`: it hid a crashed eslint (rc>=2: bad config/OOM) as a clean run. Let rc reach the
+    # job so rc=1 (findings) and rc>=2 (tool failure) both surface. allow_failure keeps it
+    # non-blocking until the lint debt is worked down.
+    - npx eslint .
+  allow_failure: true

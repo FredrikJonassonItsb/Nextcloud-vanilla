@@ -1,0 +1,15 @@
+.build/
+.dist/
+.node_modules_cache/
+.vendor_cache/
+.js_cache/
+.deps-tmp/
+.build-ready
+.quilt-lock
+.quilt-state
+.quilt-state.tmp
+.DS_Store
+*.tar.gz
+messages.mo
+translation_report.json
+overlay/patches.lock.json

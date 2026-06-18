@@ -1,0 +1,80 @@
+{
+    "key":  "academy",
+    "topic":  "Granskning av ITSL/Hubs publika utbildningsportal (Hubs Akademi, portal.hubs.se/academy)",
+    "key_findings":  [
+                         "Portalen är en interaktiv SPA (\u0027Hubs Akademi\u0027) med fem kursmoduler à 25–40 min: (1) Kom igång med Hubs, (2) Säkra meddelanden, (3) Säkra möten, video \u0026 chatt, (4) Säkra filer, (5) Administration \u0026 systemförvaltning. Varje modul har lektioner, klick-simuleringar med hotspots, sluttest (7–8 flervalsfrågor) och avslutas med \u0027Gör det på riktigt!\u0027-övningar i kunddemo-miljön (kunddemo.hubs.se). Vid 100 % progress utfärdas ett diplom (PNG/A4, utfärdare \u0027HUBS AKADEMI / ITSL SOLUTIONS\u0027). Progress sparas i localStorage men koden är förberedd för serverläge med magiska länkar, tilldelade moduler och verifierbara certifikat.",
+                         "Hela utbildningen följer ett genomgående scenario: handläggaren Axel Isaksson på socialkontoret i fiktiva Bergsby kommun hanterar en orosanmälan med diarienummer \u0027SN 2026-0142\u0027. Diarienumret används som sammanhållande nyckel i ALLA appar – meddelandetaggar, chattrumsnamn (\u0027Orosanmälan Dnr SN 2026-0142\u0027), mappnamn i Filer och kalenderhändelser – men kopplingen är helt manuell (användaren förväntas själv namnge/tagga konsekvent).",
+                         "Dagens gränssnitt enligt materialet: Nextcloud-baserat (versionssträng \u0027Nextcloud Hub 10\u0027 nämns i adminmodulen). Startsidan är en Dashboard med tre widgets (Talk-omnämnanden, Viktiga meddelanden, Kommande händelser) och en \u0027Anpassa\u0027-knapp. Navigering sker via appmenyn (⠿-ikon) som grupperar apparna i tre kategorier: \u0027Säker Kommunikation\u0027 (Meddelanden, Video \u0026 Chatt, Kalender), \u0027Säkert Samarbete\u0027 (Filer, Fax) och \u0027Allmänt\u0027 (Kunskapsbank, Start). Topbar har sök, notisklocka och profilmeny.",
+                         "Kundterminologi som konsekvent används: SDK-Meddelande (myndighet↔myndighet via Diggs infrastruktur), Internpost (kollega), Säker E-post (medborgare/extern), funktionsbrevlåda (personoberoende, t.ex. \u0027Socialkontoret\u0027), kvittens i tre steg (transport → meddelande → läst), tillitsnivå/LOA1-3 (e-postlänk/SMS/BankID), lobby/väntrum, ärendechatt, gallring, federation, \u0027mellanlagring enligt OSL\u0027, diarienummer, \u0027Ej tilldelad\u0027 (gemensam ärendekö). Tumregeln som lärs ut: \u0027Kollega → Internpost. Annan myndighet → SDK-Meddelande. Medborgare → Säker E-post.\u0027",
+                         "Flöden som lärs ut: logga in med e-legitimation på LoA3 (BankID/Freja eID+/SITHS-EFOS); ta emot och tilldela ärende (Ej tilldelad → Mina meddelanden, tagga med dnr, anonym avsändare); skicka internpost (Från-konto, lokal mottagare, ämne); skicka SDK-meddelande (nationell adressbok, mallar, kvittenser); skapa ärendechatt och eskalera till videomöte (\u0027Starta samtal\u0027 i samma rum); boka säkert möte i Kalendern (\u0027+ Händelse\u0027 → \u0027Lägg till Talk-konversation\u0027); medborgarmöte med BankID + lobby (grön bock = BankID+personnummer, lila bock = enbart BankID); skapa ärendemapp, dela internt/externt, tagga och LOA3-skydda filer; fax beskrivs som digitaliserat inflöde (OCR, sökbart, egen brevlådetyp); admin: fem brevlådetyper, Hubs-inställningar med sju flikar, gallring, teman, Talk-begränsningar, loggar.",
+                         "UX-friktion nr 1 – kalenderbokningen: utbildningen måste explicit varna att Talk-länken \u0027MÅSTE ligga i Plats-fältet\u0027 och att man aldrig får klistra in den bara i beskrivningen – systemet kopplar mötet till Talk-rummet via platsfältet. Att ett helt utbildningsavsnitt ägnas åt detta avslöjar ett skört, icke-förlåtande bokningsflöde.",
+                         "UX-friktion nr 2 – många manuella steg och konventioner: simuleringen för att skapa en ärendemapp har 6 klicksteg, intern delning 5 steg; användaren ska själv komma ihåg namnstandard (dnr som mappnamn/rumsnamn), själv tagga meddelanden med dnr och själv välja rätt av tre transportvägar. Varningen \u0027Skriv aldrig känsliga personuppgifter i ämnesraden – den kan synas i notiser\u0027 visar att systemet inte skyddar användaren mot detta misstag.",
+                         "UX-friktion nr 3 – möten och extern access: kameraproblem (hänglåsikonen i webbläsaren) är ett återkommande FAQ-ämne i både Kunskapsbanken och modul 3; kollega utan Talk-licens kräver workaround (kopiera länk → skicka via internpost); två snarlika identitetsnivåer (grön vs lila bock) måste läras ut; värden uppmanas \u0027verifiera alltid kort i mötets början vem du pratar med\u0027 trots BankID – tilliten till tekniken är inte fullständig.",
+                         "UX-friktion nr 4 – farliga adminfunktioner: \u0027Provisionera brevlådor\u0027 tar ca 30 min och \u0027går inte att ångra\u0027; gallringens \u0027Kör nu\u0027-knapp raderar omedelbart och oåterkalleligt; höjda LOA-krav kan \u0027låsa ute verksamheten\u0027; SDK-loggen får aldrig stängas av (DIGG-krav, 12 mån sökbarhet). Utbildningen kompenserar för avsaknad av skyddsräcken i gränssnittet med textvarningar.",
+                         "Stödstruktur runt portalen: Hubs Kunskapsbank (Collectives-wiki, kräver inloggning på kunddemo), utbildningsvideor på itsl.hubs.se (delningssida \u0027Inspelningar\u0027, innehållslista laddas via JS), Hubs supportportal med driftstatus, Administratörshandledning/Förberedelseguide-PDF:er och ett \u0027Förbättringsforum\u0027 där kunder lämnar och röstar på förslag. Supportvägen är: Kunskapsbank → videor → egen systemförvaltare → ITSL/Hubs support."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "ITSL (ITSL Solutions)",
+                       "role":  "Leverantör",
+                       "notes":  "Står bakom Hubs och Akademin; tagline \u0027IT som är laglig och lämplig\u0027. Konfigurerar STUN/TURN, tillhandahåller Förberedelseguide och supportportal med förbättringsforum."
+                   },
+                   {
+                       "name":  "Nextcloud",
+                       "role":  "Underliggande plattform",
+                       "notes":  "Hubs är byggt på Nextcloud Hub 10 (\u0027öppen källkod\u0027, \u0027digital suveränitet\u0027); apparna är Nextcloud-appar: Talk (spreed), Calendar, Files, Collectives, Dashboard."
+                   },
+                   {
+                       "name":  "DIGG (Myndigheten för digital förvaltning)",
+                       "role":  "Myndighet/regelverkssättare",
+                       "notes":  "Äger SDK-infrastrukturen (Säker Digital Kommunikation); kräver separat SDK-logg sökbar i 12 månader och nationell adressbok (synk var 3600 s)."
+                   },
+                   {
+                       "name":  "BankID / Freja eID+ / SITHS (EFOS)",
+                       "role":  "E-legitimationsstandarder",
+                       "notes":  "LoA3-inloggning för personal och identifiering av externa mötesdeltagare/medborgare. LOA2 = SMS, LOA1 = e-postlänk."
+                   },
+                   {
+                       "name":  "GrandID (Svensk e-identitet)",
+                       "role":  "Leverantör/integration",
+                       "notes":  "OIDC-integration för BankID-legitimering av mötesgäster (ClientID/secret/authorize-/token-url i Mötesinställningar)."
+                   },
+                   {
+                       "name":  "46Elks",
+                       "role":  "Leverantör/integration",
+                       "notes":  "SMS-tjänst för verifiering och mötesnotiser, konfigureras med mallvariabler som #ORGANIZER_NAME."
+                   },
+                   {
+                       "name":  "Microsoft (Entra ID, Outlook/Teams)",
+                       "role":  "Konkurrent och integrationspunkt",
+                       "notes":  "Entra ID som identitetsintegration (egen flik i Hubs-inställningar); kalenderinbjudningar uppges synka med Outlook/Teams. Materialet positionerar Hubs mot \u0027utländska molntjänster\u0027."
+                   },
+                   {
+                       "name":  "OSL / GDPR",
+                       "role":  "Regelverk",
+                       "notes":  "Motiverar mellanlagring vid extern delning, gallringsinställningar, loggning och förbudet mot vanlig e-post för känsliga personuppgifter (\u0027vanlig e-post är som ett vykort\u0027)."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Diarienumret är den röda tråden genom alla appar men hålls ihop helt manuellt (namngivning, taggning). En dashboard som aggregerar allt per ärende/dnr – meddelanden, ärendechatt, möten, filer – skulle eliminera det mest inlärningstunga momentet i hela utbildningen. Filer-appens \u0027Relaterade resurser\u0027 visar att kopplingslogiken delvis redan finns att bygga på.",
+                                  "Dagens startsida är en generisk Nextcloud-dashboard med bara tre widgets (Talk-omnämnanden, Viktiga meddelanden, Kommande händelser). Utbildningen lär ut handläggarbegrepp som dashboarden inte speglar: \u0027Ej tilldelad\u0027-kön, funktionsbrevlådor, kvittensstatus för SDK, snoozade ärenden. Det är uppenbara kandidater för nya widgets – t.ex. \u0027ägarlösa ärenden i mina funktionsbrevlådor\u0027 (utbildningen säger uttryckligen att tom Ej tilldelad-kö = inga ägarlösa ärenden).",
+                                  "Bokningsflödet (\u0027Talk-länken MÅSTE ligga i Plats-fältet\u0027) är den tydligast dokumenterade UX-fällan. En \u0027Boka säkert möte\u0027-genväg från dashboarden som alltid skapar händelse + Talk-rum + rätt platsfält i ett steg skulle ta bort ett helt varningsavsnitt ur utbildningen.",
+                                  "Återanvänd den etablerade kundterminologin i dashboarden: \u0027Säker Kommunikation\u0027/\u0027Säkert Samarbete\u0027, funktionsbrevlåda, ärendechatt, kvittens, tillitsnivå/LOA, grön/lila bock. Avvikande ordval i nya ytor skapar omedelbart utbildningsskuld eftersom Akademin, Kunskapsbanken och videorna redan cementerat begreppen.",
+                                  "Standardappen efter inloggning är konfigurerbar (Teman → Navigeringsfältet → Standardapp) – Hubs kan alltså göra en ny dashboard till landningssida per organisation utan kodändringar i inloggningsflödet, vilket sänker tröskeln för utrullning.",
+                                  "En separat förvaltar-dashboard har tydligt dokumenterat behov: bakgrundsjobbens hälsa (\u0027Senaste jobbet kördes…\u0027 långt bak i tiden = driftproblem som ska felsökas direkt), SDK-loggstatus (DIGG-krav), systemvarningar från Översikt-sidan samt skyddsräcken kring destruktiva åtgärder (gallringens \u0027Kör nu\u0027, oåterkallelig provisionering) som idag bara hanteras med textvarningar i utbildningen.",
+                                  "Utbildningsportalen själv har progress, sluttest och diplom med förberett serverläge – utbildningsstatus per användare/organisation är en naturlig dashboard-widget för förvaltare (vilka medarbetare är certifierade innan de släpps in i skarp miljö; modul 5 kräver 6/8 rätt före arbete i skarp miljö).",
+                                  "Mötesfriktionen (kameratillstånd/hänglåsikonen är återkommande FAQ, manuell verifiering av deltagare trots BankID) talar för en pre-flight-kontroll (\u0027Kontrollera enheter\u0027 finns redan i Talk) synlig från dashboarden inför kommande bokade möten, t.ex. i widgeten Kommande händelser."
+                              ],
+    "sources":  [
+                    "https://portal.hubs.se/academy/index.html",
+                    "https://portal.hubs.se/academy/assets/js/data/module1.js",
+                    "https://portal.hubs.se/academy/assets/js/data/module2.js",
+                    "https://portal.hubs.se/academy/assets/js/data/module3.js",
+                    "https://portal.hubs.se/academy/assets/js/data/module4.js",
+                    "https://portal.hubs.se/academy/assets/js/data/module5.js",
+                    "https://portal.hubs.se/academy/assets/js/app.js",
+                    "https://portal.hubs.se/academy/assets/js/certificate.js",
+                    "https://kunddemo.hubs.se/apps/collectives/Hubs-Kunskapsbank-1",
+                    "https://itsl.hubs.se/s/Wbsz3F4LxoQ9fjk"
+                ]
+}

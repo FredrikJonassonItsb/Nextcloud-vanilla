@@ -1,0 +1,169 @@
+--- a/lib/IMAP/ImapMessageFetcher.php
++++ b/lib/IMAP/ImapMessageFetcher.php
+@@ -104,6 +104,8 @@
+ 	 */
+ 	public function withPhishingCheck(bool $value): ImapMessageFetcher {
+ 		$this->runPhishingCheck = $value;
++		// we always disable the phishing checks as they often provide false positives
++		$this->runPhishingCheck = false;
+ 		return $this;
+ 	}
+ 
+@@ -253,7 +255,11 @@
+ 
+ 		return new IMAPMessage(
+ 			$this->uid,
+-			$messageId->ids[0] ?? '',
++			// itsl: strip folded-header whitespace artifact inside angle brackets (mail#58)
++			// Horde parser preserves <> and the space from IMAP header folding: "< id@domain>"
++			(function ($id) {
++				return str_starts_with($id, '<') ? '<' . ltrim(substr($id, 1)) : ltrim($id);
++			})($messageId->ids[0] ?? ''),
+ 			$fetch->getFlags(),
+ 			AddressList::fromHorde($envelope->from),
+ 			AddressList::fromHorde($envelope->to),
+--- a/lib/Service/Classification/NewMessagesClassifier.php
++++ b/lib/Service/Classification/NewMessagesClassifier.php
+@@ -90,7 +90,7 @@
+ 
+ 			foreach ($messages as $message) {
+ 				$prediction = $predictions[$message->getUid()] ?? false;
+-				$this->logger->info("Message {$message->getUid()} ({$message->getPreviewText()}) is " . ($prediction ? 'important' : 'not important'));
++	//				$this->logger->info("Message {$message->getUid()} ({$message->getPreviewText()}) is " . ($prediction ? 'important' : 'not important'));
+ 				if ($prediction) {
+ 					$message->setFlagImportant(true);
+ 					$this->mailManager->flagMessage($account, $mailbox->getName(), $message->getUid(), Tag::LABEL_IMPORTANT, true);
+--- a/src/components/Envelope.vue
++++ b/src/components/Envelope.vue
+@@ -930,26 +930,26 @@
+ 				{
+ 					key: 'laterToday',
+ 					timestamp: this.getTimestamp(laterTodayTime),
+-					label: t('spreed', 'Later today – {timeLocale}', { timeLocale: laterTodayTime?.format('LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for later today'),
++					label: t('mail', 'Later today – {timeLocale}', { timeLocale: laterTodayTime?.format('LT') }),
++					ariaLabel: t('mail', 'Set reminder for later today'),
+ 				},
+ 				{
+ 					key: 'tomorrow',
+ 					timestamp: this.getTimestamp(tomorrowTime),
+-					label: t('spreed', 'Tomorrow – {timeLocale}', { timeLocale: tomorrowTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for tomorrow'),
++					label: t('mail', 'Tomorrow – {timeLocale}', { timeLocale: tomorrowTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for tomorrow'),
+ 				},
+ 				{
+ 					key: 'thisWeekend',
+ 					timestamp: this.getTimestamp(thisWeekendTime),
+-					label: t('spreed', 'This weekend – {timeLocale}', { timeLocale: thisWeekendTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for this weekend'),
++					label: t('mail', 'This weekend – {timeLocale}', { timeLocale: thisWeekendTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for this weekend'),
+ 				},
+ 				{
+ 					key: 'nextWeek',
+ 					timestamp: this.getTimestamp(nextWeekTime),
+-					label: t('spreed', 'Next week – {timeLocale}', { timeLocale: nextWeekTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for next week'),
++					label: t('mail', 'Next week – {timeLocale}', { timeLocale: nextWeekTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for next week'),
+ 				},
+ 			].filter((option) => option.timestamp !== null)
+ 		},
+--- a/src/components/MenuEnvelope.vue
++++ b/src/components/MenuEnvelope.vue
+@@ -245,13 +245,13 @@
+ 			</NcActionInput>
+ 
+ 			<NcActionButton
+-				:aria-label="t('spreed', 'Set custom snooze')"
++				:aria-label="t('mail', 'Set custom snooze')"
+ 				close-after-click
+ 				@click.stop="setCustomSnooze(customSnoozeDateTime)">
+ 				<template #icon>
+ 					<CheckIcon :size="20" />
+ 				</template>
+-				{{ t('spreed', 'Set custom snooze') }}
++				{{ t('mail', 'Set custom snooze') }}
+ 			</NcActionButton>
+ 		</template>
+ 	</div>
+@@ -469,26 +469,26 @@
+ 				{
+ 					key: 'laterToday',
+ 					timestamp: this.getTimestamp(laterTodayTime),
+-					label: t('spreed', 'Later today – {timeLocale}', { timeLocale: laterTodayTime?.format('LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for later today'),
++					label: t('mail', 'Later today – {timeLocale}', { timeLocale: laterTodayTime?.format('LT') }),
++					ariaLabel: t('mail', 'Set reminder for later today'),
+ 				},
+ 				{
+ 					key: 'tomorrow',
+ 					timestamp: this.getTimestamp(tomorrowTime),
+-					label: t('spreed', 'Tomorrow – {timeLocale}', { timeLocale: tomorrowTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for tomorrow'),
++					label: t('mail', 'Tomorrow – {timeLocale}', { timeLocale: tomorrowTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for tomorrow'),
+ 				},
+ 				{
+ 					key: 'thisWeekend',
+ 					timestamp: this.getTimestamp(thisWeekendTime),
+-					label: t('spreed', 'This weekend – {timeLocale}', { timeLocale: thisWeekendTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for this weekend'),
++					label: t('mail', 'This weekend – {timeLocale}', { timeLocale: thisWeekendTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for this weekend'),
+ 				},
+ 				{
+ 					key: 'nextWeek',
+ 					timestamp: this.getTimestamp(nextWeekTime),
+-					label: t('spreed', 'Next week – {timeLocale}', { timeLocale: nextWeekTime?.format('ddd LT') }),
+-					ariaLabel: t('spreed', 'Set reminder for next week'),
++					label: t('mail', 'Next week – {timeLocale}', { timeLocale: nextWeekTime?.format('ddd LT') }),
++					ariaLabel: t('mail', 'Set reminder for next week'),
+ 				},
+ 			].filter((option) => option.timestamp !== null)
+ 		},
+--- a/src/components/textBlocks/ListItem.vue
++++ b/src/components/textBlocks/ListItem.vue
+@@ -319,12 +319,12 @@
+ 				// case this.SHARE_TYPES.SHARE_TYPE_USER:
+ 					return {
+ 						icon: 'icon-user',
+-						iconTitle: t('files_sharing', 'Guest'),
++						iconTitle: t('mail', 'Guest'),
+ 					}
+ 				case ShareType.Group:
+ 					return {
+ 						icon: 'icon-group',
+-						iconTitle: t('files_sharing', 'Group'),
++						iconTitle: t('mail', 'Group'),
+ 					}
+ 				default:
+ 					return {}
+--- a/src/html-response.js
++++ b/src/html-response.js
+@@ -14,4 +14,24 @@
+ 			el.style['max-width'] = '100%'
+ 		}
+ 	}
++
++	// itsl: dark theme for SDK message iframes only
++	// SDK messages are markdown-derived HTML (via javamw Flexmark) — guaranteed
++	// no colors or backgrounds. Other types (Internal, Secure Email) may contain
++	// rich HTML with sender-chosen colors that would break on dark backgrounds.
++	try {
++		const frame = window.frameElement
++		if (!frame) return
++		const envelope = frame.closest('[data-itsl-message-type]')
++		if (envelope?.dataset.itslMessageType !== 'sdk_message') return
++
++		const parentStyle = parent.getComputedStyle(parent.document.documentElement)
++		const bg = parentStyle.getPropertyValue('--color-main-background').trim()
++		const fg = parentStyle.getPropertyValue('--color-main-text').trim()
++		if (bg) {
++			document.documentElement.style.backgroundColor = bg
++			document.body.style.backgroundColor = bg
++		}
++		if (fg) document.body.style.color = fg
++	} catch (e) { /* cross-origin or sandboxed — ignore */ }
+ })

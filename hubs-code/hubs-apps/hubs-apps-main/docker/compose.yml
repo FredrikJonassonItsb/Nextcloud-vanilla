@@ -1,0 +1,120 @@
+# ITSL Hubs-Apps local dev: Nextcloud (docker/nextcloud/Dockerfile,
+# entrypoint baked in) + PostgreSQL. Drive via make, not raw compose.
+#
+# No sshd in the image — `docker compose exec nextcloud bash` replaces
+# it, dropping that attack surface.
+
+services:
+  nextcloud:
+    build:
+      # ".." = platform root (relative to docker/). Don't narrow: the
+      # Dockerfile COPYs apps/server/apps/ to seed the nextcloud_apps
+      # volume, so a narrower context breaks the build.
+      context: ".."
+      dockerfile: "docker/nextcloud/Dockerfile"
+      args:
+        DEVELOPER_UID: "${DEVELOPER_UID:-1000}"
+        DEVELOPER_GID: "${DEVELOPER_GID:-1000}"
+        PHP_MEMORY_LIMIT: "${PHP_MEMORY_LIMIT:-512M}"
+        PHP_POST_MAX_SIZE: "${PHP_POST_MAX_SIZE:-128M}"
+        PHP_UPLOAD_MAX_FILESIZE: "${PHP_UPLOAD_MAX_FILESIZE:-128M}"
+        PHP_VERSION: "${PHP_VERSION:-8.3}"
+        # Single source of truth for the NC version: the Dockerfile clones the
+        # first-party companion apps (notifications/logreader/viewer) at this
+        # tag, so they can never skew from the NC server. :? not a default — a
+        # literal fallback could silently bake a stale version. make supplies it
+        # from .env.example/.env; raw compose must pass --env-file.
+        NEXTCLOUD_VERSION: "${NEXTCLOUD_VERSION:?NEXTCLOUD_VERSION not set — invoke via make (loads .env.example + .env)}"
+    image: "hubs-apps/nextcloud:${NEXTCLOUD_IMAGE_VERSION:?NEXTCLOUD_IMAGE_VERSION not set — invoke via make (which reads docker/nextcloud/VERSION)}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # :? not a default: a literal fallback could silently pin a stale
+      # version. make supplies it from .env.example/.env; raw compose
+      # must pass --env-file.
+      NEXTCLOUD_VERSION: "${NEXTCLOUD_VERSION:?NEXTCLOUD_VERSION not set — invoke via make (loads .env.example + .env)}"
+    # Gates `dc up --wait`, which otherwise unblocks at PID 1 start while
+    # apache is still bootstrapping. /status.php is NC's lightweight liveness
+    # endpoint (small JSON, minimal bootstrap) — far cheaper than rendering the
+    # full /login page on every probe, so a 10s interval stays cheap.
+    # NOT using healthcheck.start_interval (faster probing during start_period):
+    # that field needs Docker Engine v25+, which isn't on every host — compose
+    # hard-errors on older engines. A flat 10s interval is the cross-engine
+    # compromise: a reasonably-fast --wait with no v25 dependency.
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://localhost/status.php"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 90s
+    hostname: "nextcloud"
+    networks:
+      - nextcloud
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      # Live bind of NC core (apps/server) over /var/www/html so host
+      # edits show up in the container. MUST be first: Docker mounts in
+      # YAML order, and the nested named volumes below layer on top of
+      # this bind. Anything under apps/server NOT shadowed by those
+      # volumes propagates live; apps/ subpaths do NOT (the
+      # nextcloud_apps volume below shadows them).
+      #
+      # The bind shadows the image, so the entrypoint re-applies the NC
+      # autoloader patch (nextcloud/server#10613) at runtime via an
+      # idempotent sed — which leaves lib/autoloader.php modified in
+      # apps/server's git status.
+      #
+      # Absolute HOST_PROJECT_DIR, not `./`, so the bind resolves from
+      # any invocation dir; :? crashes loud rather than mounting an
+      # empty dir at the wrong path.
+      - "${HOST_PROJECT_DIR:?HOST_PROJECT_DIR not set — invoke via make (auto-derived from PLATFORM_ROOT)}/apps/server:/var/www/html"
+      # Named volumes nested on the apps/server bind. Each seeds once
+      # from the image at first mount, then persists. So a
+      # NEXTCLOUD_VERSION bump needs `make distclean && make setup &&
+      # make nc-up` to wipe and re-seed them from the new image.
+      #
+      # nextcloud_apps — shadows apps/ in the bind; bundled apps +
+      # vendored clones from the bake, plus runtime `occ app:install`.
+      - nextcloud_apps:/var/www/html/apps
+      # nextcloud_apps_extra — image-baked hmr_enabler; entrypoint's
+      # discover-apps adds symlinks here into /srv/apps/<X>/.build.
+      - nextcloud_apps_extra:/var/www/html/apps-extra
+      - nextcloud_data:/var/www/html/data
+      # .installed-version marker here gates the entrypoint upgrade
+      # path; also config.php and the install-time instanceid/secrets.
+      - nextcloud_config:/var/www/html/config
+      # Wholesale apps/ bind for discover-apps to walk; the apps-extra
+      # symlinks above point into /srv/apps/<X>/.build. Separate path,
+      # so no mount-order interaction with the nested binds above.
+      - "${HOST_PROJECT_DIR}/apps:/srv/apps"
+
+  postgres:
+    image: "postgres:16-bookworm"
+    environment:
+      POSTGRES_DB: "nextcloud"
+      POSTGRES_PASSWORD: "nextcloud"
+      POSTGRES_USER: "nextcloud"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    hostname: "postgres"
+    networks:
+      - nextcloud
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+networks:
+  nextcloud:
+
+volumes:
+  nextcloud_data:
+  nextcloud_config:
+  nextcloud_apps:
+  nextcloud_apps_extra:
+  postgres_data:

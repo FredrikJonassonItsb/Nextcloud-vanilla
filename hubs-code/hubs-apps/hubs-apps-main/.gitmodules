@@ -1,0 +1,3 @@
+[submodule "l10n-tools"]
+	path = l10n-tools
+	url = git@gitlab.itsl.se:itsl/l10n-tools.git

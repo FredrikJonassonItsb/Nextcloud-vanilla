@@ -1,0 +1,38 @@
+--- a/img/important.svg
++++ b/img/important.svg
+@@ -1 +1 @@
+-<svg xmlns="http://www.w3.org/2000/svg" height="16" width="16"><path d="M2 13h7.8a1.4 1.4 0 001.1-.6L14 8l-3.1-4.4A1.4 1.4 0 009.8 3H2l3.4 5z" stroke="#000" stroke-width="2"/></svg>
++<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="m40-120 440-760 440 760H40Zm440-120q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Z"/></svg>
+--- a/src/components/MailboxThread.vue
++++ b/src/components/MailboxThread.vue
+@@ -144,7 +144,7 @@
+ 						<div v-show="hasImportantEnvelopes" class="app-content-list-item">
+ 							<SectionTitle
+ 								class="section-title important"
+-								:name="t('mail', 'Important')" />
++								:name="t('mail', 'ImportantLabel')" />
+ 							<NcPopover trigger="hover focus">
+ 								<template #trigger>
+ 									<ButtonVue
+@@ -617,10 +617,8 @@
+ 	flex: 1 1 auto;
+ 	height: 100% !important;
+ 	min-height: 0;
+-	position: absolute;
+ 	overflow: scroll;
+ 	width: 100% !important;
+-	top: 40px;
+ }
+ 
+ :deep(.app-content-wrapper) {
+--- a/src/components/NavigationMailbox.vue
++++ b/src/components/NavigationMailbox.vue
+@@ -260,7 +260,7 @@
+ import IconAllInboxes from 'vue-material-design-icons/InboxMultiple.vue'
+ import IconAllInboxesOutline from 'vue-material-design-icons/InboxMultipleOutline.vue'
+ import IconInfo from 'vue-material-design-icons/InformationOutline.vue'
+-import ImportantIcon from 'vue-material-design-icons/LabelVariant.vue'
++import ImportantIcon from '../itsl/components/icons/ImportantIcon.vue'
+ import IconExternal from 'vue-material-design-icons/OpenInNew.vue'
+ import IconDraft from 'vue-material-design-icons/Pencil.vue'
+ import IconEdit from 'vue-material-design-icons/PencilOutline.vue'

@@ -1,0 +1,119 @@
+# SSH tunnel service — forwards remote dev-host IMAP/SMTP into the
+# compose project, addressable by NC as `tunnel:10143/10025/10026` via
+# compose service-name DNS. A service (not a host-side ssh) so sdkmc can
+# store the literal "tunnel" in imapHost/smtpHost/smtpInboundHost: stable
+# across network recreates, so destructive `make seed` isn't needed just
+# to rewrite a gateway IP that drifted on teardown.
+#
+# SSH credentials: no keys in the image, so the host SSH agent socket is
+# bind-mounted in (see volumes). Source is HOST_SSH_AUTH_SOCK, a host path
+# tunnel-up.sh resolves whether run from host or IDE terminal.
+#
+# Image reuses hubs-apps/dev-builder; the `build:` block mirrors
+# compose.dev-builder.yml so a fresh checkout (tag not yet cached) builds
+# rather than pulling from a registry the image doesn't live in.
+#
+# Profile-gated AND excluded from $(DC) (loaded only by tunnel-up.sh): so
+# this YAML can use strict `:?` interpolation for SERVER / HOST_SSH_AUTH_SOCK
+# / DEV_BUILDER_VERSION without forcing unrelated recipes to supply them.
+
+services:
+  tunnel:
+    build:
+      # Context + UID/GID args must match the dev-builder service in
+      # compose.dev-builder.yml: any divergence invalidates the BuildKit
+      # cache and forces an unnecessary rebuild on tunnel-up after ide-up.
+      context: "dev-builder"
+      args:
+        DEVELOPER_UID: "${DEVELOPER_UID:-1000}"
+        DEVELOPER_GID: "${DEVELOPER_GID:-1000}"
+    image: "hubs-apps/dev-builder:${DEV_BUILDER_VERSION:?DEV_BUILDER_VERSION not set — invoke via make (which reads docker/dev-builder/VERSION)}"
+    profiles:
+      - tunnel
+    # Match host UID/GID so in-container ssh can read the bind-mounted
+    # agent socket (operator-owned on the host). Required on Linux;
+    # harmless on Mac/OrbStack where the socket perms are broader.
+    user: "${DEVELOPER_UID:-1000}:${DEVELOPER_GID:-1000}"
+    # -N: no remote shell, port-forward only. GatewayPorts=yes binds the
+    # listener to 0.0.0.0 in-container (not ssh's default 127.0.0.1) so NC
+    # in another container can reach `tunnel:10143` over the bridge.
+    #
+    # Robustness: ServerAliveInterval=30 + CountMax=10 tolerates ~5min
+    # silence, surviving brief blips. No ExitOnForwardFailure, so one
+    # forward error (port reuse, remote transient) doesn't kill the ssh.
+    # (Re-exit handled by restart: unless-stopped, see that key.)
+    #
+    # StrictHostKeyChecking=no + UserKnownHostsFile=/dev/null: container is
+    # ephemeral and SERVER is internal dev hardware, not adversarial.
+    # ConnectTimeout=10 stops a dead target hanging compose-up for ssh's
+    # default 2min.
+    # `-o User=ubuntu` (not `ubuntu@${SERVER}` baked in): ssh's destination
+    # format takes precedence over `-o User`, so all three SERVER shapes work:
+    #   SERVER=host        → user defaults to ubuntu (from -o)
+    #   SERVER=ubuntu@host → ubuntu (from @, matches -o)
+    #   SERVER=other@host  → other (explicit @ override)
+    #
+    # Wrapper enumerates the forwarded agent's keys to stdout before
+    # exec'ing ssh; tunnel-up.sh reads the markers from docker logs to show
+    # the operator what keys the tunnel reaches with — no separate probe,
+    # the run IS the probe. ssh-add's exit is ignored here; an empty agent
+    # surfaces as the subsequent ssh auth failure (healthcheck diagnostic).
+    command:
+      - bash
+      - -c
+      - |
+        echo "==AGENT_KEYS_BEGIN=="
+        ssh-add -l
+        echo "==AGENT_KEYS_END=="
+        exec ssh \
+          -N \
+          -o GatewayPorts=yes \
+          -o ServerAliveInterval=30 \
+          -o ServerAliveCountMax=10 \
+          -o ConnectTimeout=10 \
+          -o StrictHostKeyChecking=no \
+          -o UserKnownHostsFile=/dev/null \
+          -o LogLevel=ERROR \
+          -o User=ubuntu \
+          -L 10143:127.0.0.1:143 \
+          -L 10025:127.0.0.1:10025 \
+          -L 10026:127.0.0.1:25 \
+          "${SERVER:?SERVER not set — invoke as 'make tunnel SERVER=<host>'}"
+    volumes:
+      # Long-form bind + create_host_path: false so a missing
+      # HOST_SSH_AUTH_SOCK errors loud. The short `src:dst` form would
+      # instead create an empty dir, silently littering the host.
+      - type: bind
+        source: "${HOST_SSH_AUTH_SOCK:?HOST_SSH_AUTH_SOCK not set — invoke via scripts/host/tunnel-up.sh (resolves it from env / platform default)}"
+        target: /ssh-agent
+        bind:
+          create_host_path: false
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+    # `make status` reads this label for "tunneled to <host>" instead of
+    # re-parsing the command argv.
+    labels:
+      hubs-apps.tunnel.server: "${SERVER:?SERVER not set — invoke as 'make tunnel SERVER=<host>'}"
+    # ssh exit → compose restarts → ssh reconnects. unless-stopped (not
+    # on-failure) so normal exits (remote declared dead after keepalives)
+    # also restart, no operator babysitting.
+    restart: unless-stopped
+    # TCP-probe the -L listener: ssh binds the forward port only after
+    # auth, so a pass means "authed + forward established". Paired with
+    # `up -d --wait` in tunnel-up.sh, the recipe blocks until the tunnel
+    # truly works instead of returning "up" on a container silently
+    # cycling on auth failure (common Mac/OrbStack agent-forwarding break).
+    #
+    # CMD (not CMD-SHELL): /dev/tcp/* is a bash feature; CMD-SHELL runs
+    # /bin/sh = dash on the cimg base, which lacks it.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/10143"]
+      interval: 3s
+      timeout: 2s
+      retries: 3
+      start_period: 5s
+    networks:
+      - nextcloud
+
+networks:
+  nextcloud:

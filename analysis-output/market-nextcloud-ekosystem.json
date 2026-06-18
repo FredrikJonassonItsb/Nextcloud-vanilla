@@ -1,0 +1,111 @@
+{
+    "key":  "nextcloud-ekosystem",
+    "topic":  "Nextcloud-ekosystemet 2025–2026: releaser, dashboard-utveckling, offentlig sektor i Europa och custom-portaler — underlag för Hubs dashboard-satsning",
+    "key_findings":  [
+                         "Releasekadens och namnbyte: Nextcloud Hub 10 (server v31) släpptes 25 feb 2025; därefter bytte Nextcloud till säsongsnamn: \u0027Hub 25 Autumn\u0027 (v32, 27 sep 2025), \u0027Hub 26 Winter\u0027 (v33, ca feb 2026) och \u0027Hub 26 Spring\u0027 (v34, 9 juni 2026, samtidigt med 10-årsjubileet). Er lokala installation (32.0.1 i repot) är alltså Hub 25 Autumn — två majorversioner bakom aktuell release, med stöd för v32 t.o.m. ca sep 2026.",
+                         "Dashboard-utveckling i kärnan: Hub 10 lade till widget för favoritfiler och Talk-widget (senaste chattar/omnämnanden) ovanpå befintliga mail-/kalender-/väderwidgets. Hub 25 Autumn gav hela UI:t en designöversyn (nya ikoner, upphöjda knappar, inset-inputfält, ny standardbakgrund för dashboarden, anpassningsbara bakgrunder). Nextclouds egen dashboard är dock fortfarande en enkel widget-grid — ingen layoutkontroll, inga widgetstorlekar, ingen rollstyrd vy.",
+                         "Widget-API:t är moget och stabilt: IWidget/IAPIWidgetV2 (v27.1+) låter en app registrera widgets via $context-\u003eregisterDashboardWidget(); IAPIWidgetV2 renderar widgets server-side utan egen frontend-kod, plus IButtonWidget (NEW/MORE/SETUP-knappar), IReloadableWidget (periodisk refresh) och IConditionalWidget (visa per villkor, t.ex. per grupp/roll). Det officiella API:t täcker dock INTE att ersätta hela dashboard-sidan — vill man ha en helt egen portalvy bygger man en egen app-sida och sätter den som default-app, vilket Nextcloud stödjer via konfiguration.",
+                         "Hub 26 Winter (v33) fokuserar på federation (Deck + Kalender federeras nu, Talk var redan federerat), migrationverktyg aktiverade som standard, och prestanda (\u0027ADA Engine\u0027). Hub 26 Spring (v34) buntar \u0027Euro-Office 1.0\u0027 (egen kontorssvit), AI-assistent i alla appar, Talk med live-transkribering+översättning och AI-brusreducering.",
+                         "Talk-roadmap: \u0027Nextcloud Talk Munich\u0027 lanserades på Nextcloud Summit i München 9 juni 2026 som ett uttalat Microsoft Teams-alternativ — hybridmöten, förbättrad Talk Phone (telefoni), webinarer, trådade konversationer (kom i v32) och meddelandesök/AI-sammanfattningar (v31). Nextcloud uppger att efterfrågan på Talk tredubblats på ett år. För Hubs säkra videomöten betyder det att uppströms-Talk rör sig snabbt och i samma riktning.",
+                         "Mail/Calendar-roadmap: Hub 10 gav grupp-inbjudningar och organisationsövergripande tillgänglighetsvy i Kalender samt trådsammanfattningar och omnämnanden i Mail; v32 lade till mötesförslag med omröstning bland deltagare och snabbåtgärds-/filterflöden i Mail; v33 federerar kalendern mellan instanser.",
+                         "Offentlig sektor-momentum i Europa är kraftigt: Nextcloud rapporterar ~2 miljoner nya \u0027sovereign workspace\u0027-platser under 2025, partnerekosystemet växte ~300 % och inkommande leads tredubblades. Île-de-France gav 550 000 elever/personal en Nextcloud-baserad plattform; Schleswig-Holstein ersätter Microsoft för 25 000 anställda med LibreOffice+Nextcloud och driver \u0027Deutschland-Stack\u0027; Danmarks digitaliseringsministerium påbörjade Microsoft-exit juli 2025 (Köpenhamn såg 72 % licensökning på 5 år) och Nextcloud positionerar sig som standardplattform där.",
+                         "openDesk (Tysklands suveräna arbetsplats, byggd av ZenDiS på uppdrag av inrikesministeriet) löser \u0027första gränssnittet\u0027-problemet med en SEPARAT central portal, inte Nextclouds dashboard: Univention Nubus (IAM) levererar en webbportal med SSO där användaren växlar mellan Nextcloud, OX App Suite (mail/kalender), Element/Matrix, Collabora, OpenProject och XWiki. En \u0027central navigation\u0027-API (delad hemlighet + användarnamn) injicerar samma appväxlare i varje komponents topplist, inklusive Nextcloud. ZenDiS siktade på 160 000 licenser i tysk offentlig sektor till slutet av 2025; Internationella brottmålsdomstolen och tyska delstatsregeringar har valt openDesk.",
+                         "Frankrikes La Suite numérique (DINUM) tar motsatt arkitekturväg: egenutvecklade förstapartsappar (Docs, Meet på LiveKit, Tchap på Matrix) plus Nextcloud för fillagring, allt öppet på GitHub (suitenumerique) — miljontals franska tjänstemän använder den. Mönstret i båda nationella satsningarna: Nextcloud är EN komponent bakom en egen portal/ett eget skal, inte hela gränssnittet.",
+                         "Kommersiella suveräna erbjudanden ovanpå Nextcloud: IONOS lanserade 2025 \u0027Nextcloud Workspace\u0027 (fullt managerad M365-ersättare i IONOS tyska datacenter, byggd ihop med Nextcloud GmbH); OVHcloud och IONOS levererar även suverän AI-as-a-Service till Nextcloud Assistant; Murena Workspace (murena.io, servrar i Finland, 65 000+ användare) är ett white-label-exempel där Nextcloud fått ett eget launcher-liknande startgränssnitt och egen branding — bevis på att djupt omskalade Nextcloud-frontends är kommersiellt gångbara.",
+                         "White-label-möjligheter: Nextclouds theming-app täcker logotyp, färger, namn, URL:er och e-postmallar; Nextcloud Enterprise erbjuder dessutom brandade desktop-/mobilklienter med förkonfigurerad server (användaren slipper serverval). \u0027External sites\u0027-appen kan lägga externa webbsidor som menyposter/flikar i Nextcloud-navigationen — enklaste sättet att blanda in egna portalsidor.",
+                         "Designsystemet förändras snabbt: v32:s \u0027design glow-up\u0027 (nya ikoner, knappar, inputs, navigation) innebär att en custom dashboard som byggs mot Vue-komponentbiblioteket @nextcloud/vue följer med uppströms design, medan en helt egen frontend måste underhållas separat vid varje major-release (2 releaser/år sedan 2025: vår + höst)."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "Nextcloud GmbH",
+                       "role":  "Plattformsleverantör/uppström",
+                       "notes":  "Tysk leverantör; 2 releaser/år (vår/höst, säsongsnamn sedan 2025); driver Talk \u0027Munich\u0027 som Teams-alternativ; Enterprise-prenumeration ger branding-tjänster och längre support."
+                   },
+                   {
+                       "name":  "ZenDiS / openDesk",
+                       "role":  "Tysk statlig aktör, referensarkitektur och indirekt konkurrent",
+                       "notes":  "Centrum för digital suveränitet under tyska inrikesministeriet; openDesk integrerar Nextcloud bakom Univention Nubus-portal med central navigation; mål 160 000 licenser 2025; öppen källkod på openCode."
+                   },
+                   {
+                       "name":  "DINUM / La Suite numérique",
+                       "role":  "Fransk statlig aktör, alternativt arkitekturmönster",
+                       "notes":  "Bygger egna appar (Docs, Meet, Tchap) + Nextcloud för filer; allt på GitHub (suitenumerique); miljontals användare i fransk förvaltning."
+                   },
+                   {
+                       "name":  "Univention (Nubus)",
+                       "role":  "Leverantör av portal/IAM-lagret i openDesk",
+                       "notes":  "Nubus-portalen är \u0027första gränssnittet\u0027 i openDesk; central navigation-API injiceras i Nextclouds topplist — den mest relevanta tekniska förebilden för en Hubs-dashboard."
+                   },
+                   {
+                       "name":  "IONOS",
+                       "role":  "Kommersiell konkurrent/partner till Nextcloud",
+                       "notes":  "Lanserade managerad \u0027Nextcloud Workspace\u0027 2025 som M365-alternativ i tyska datacenter; även AI-hosting för Nextcloud Assistant."
+                   },
+                   {
+                       "name":  "OVHcloud",
+                       "role":  "Kommersiell partner",
+                       "notes":  "Suverän AI-as-a-Service till Nextcloud; europeisk hostingjätte i samma suveränitetsnarrativ."
+                   },
+                   {
+                       "name":  "Murena / e Foundation",
+                       "role":  "White-label-exempel",
+                       "notes":  "murena.io: Nextcloud + OnlyOffice med kraftigt omskalat eget startgränssnitt och branding; servrar i Finland; visar att custom Nextcloud-frontend fungerar i produktion för 65 000+ användare."
+                   },
+                   {
+                       "name":  "Nordeck",
+                       "role":  "Komponentleverantör i openDesk",
+                       "notes":  "Bygger Element-moduler (openDesk-navigationsmodul, widget-toggles) och videokonferensappen OVC — exempel på hur tredje part syr ihop navigering över appgränser."
+                   },
+                   {
+                       "name":  "Schleswig-Holstein, Danmark (Digitaliseringsministeriet, Köpenhamn, Aarhus), Île-de-France",
+                       "role":  "Offentliga referenskunder/marknadssignaler",
+                       "notes":  "25 000 anställda (S-H), Microsoft-exit från 2025 (DK, delvis kostnadsdrivet: +72 % licenskostnad på 5 år i Köpenhamn), 550 000 användare (Île-de-France) — bekräftar att nordisk/europeisk offentlig sektor aktivt köper Nextcloud-baserat."
+                   },
+                   {
+                       "name":  "Microsoft (M365/Teams)",
+                       "role":  "Huvudkonkurrent som hela kategorin positionerar sig mot",
+                       "notes":  "Licenskostnader, CLOUD Act-oro och geopolitik (Trump-administrationen) är de tre drivkrafter som återkommer i alla europeiska upphandlingsbeslut 2025–2026."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Bygg inte om Nextclouds inbyggda dashboard — bygg en egen \u0027default app\u0027. Både openDesk (Univention-portal) och Murena (egen launcher) visar att seriösa aktörer lägger ett eget portallager som första gränssnitt och låter Nextclouds dashboard vara kvar som sekundär vy. Nextcloud stödjer att en egen app sätts som default-landningssida, vilket ger Hubs full layoutkontroll (rollbaserade vyer för SDK-ärenden, säker e-post-kö, fax-status, kommande Talk-möten) som widget-gridden aldrig kan ge.",
+                                  "Använd ändå widget-API:t som komplement: registrera Hubs-widgets (IAPIWidgetV2 + IButtonWidget + IConditionalWidget) för SDK-inkorg, säker e-post och fax så att Hubs-data syns även i standard-dashboarden och i mobilappar/klienter som konsumerar widget-API:t. IConditionalWidget ger gratis rollstyrning (t.ex. bara registratorer ser SDK-widgeten).",
+                                  "Bygg dashboarden med @nextcloud/vue-komponentbiblioteket. Designsystemet fick stora förändringar i v32 och takten är 2 majorreleaser/år — en egen frontend utanför komponentbiblioteket blir en underhållsskuld vid varje uppgradering. Ni ligger redan på 32.0.1 medan uppström är på v34; planera uppgraderingsfönster (v32 EOL ~sep 2026).",
+                                  "Talk \u0027Munich\u0027 (juni 2026) är en gåva för Hubs säkra videomöten: trådar, mötesschemaläggning från chatt/kalender, live-transkribering, telefoni och webinarfunktioner kommer uppströms — Hubs bör exponera dessa i dashboarden (t.ex. \u0027dagens möten\u0027-widget via Talk-API:t) i stället för att bygga eget, och rida på \u0027Teams-alternativ\u0027-narrativet i sälj mot kommuner.",
+                                  "openDesks \u0027central navigation\u0027-mönster är värt att kopiera: en gemensam appväxlare/topplist över alla Hubs-moduler (SDK, säker e-post, fax, Talk, Filer) med SSO, levererad via ett enkelt JSON-API per användare. Det är skillnaden mellan \u0027Nextcloud med appar\u0027 och \u0027en produkt\u0027. Källkoden är öppen (openCode/Nordecks moduler) och kan studeras direkt.",
+                                  "Marknadstimingen är exceptionell: 2 miljoner nya suveräna platser 2025, Danmark lämnar Microsoft, Schleswig-Holstein och Frankrike skalar upp. Sverige saknar en nationell motsvarighet till openDesk/La Suite — Hubs kan positionera sig som \u0027svensk openDesk för sekretessbelagd kommunikation\u0027 med SDK-stödet som unik differentierare ingen av de europeiska sviterna har. Dashboarden är skyltfönstret för den positioneringen i upphandlingsdemos.",
+                                  "Differentiera mot IONOS/Nextcloud Workspace: deras erbjudande är generisk M365-ersättning i tyska datacenter. Hubs vinner inte på funktionsbredd utan på svensk myndighetsspecifik funktionalitet (SDK, säker medborgarkommunikation, fax) + data på kundens egna servrar. Dashboarden bör därför leda med ärende-/meddelandeflöden, inte filer och kalender (det gör alla andra).",
+                                  "White-labeling är lågt hängande frukt: theming-appen + Enterprise-brandade klienter räcker långt för Hubs varumärke; \u0027external sites\u0027-appen kan användas som snabb brygga för att länka in gov-portal-sidor i Nextcloud-menyn innan den riktiga dashboard-appen är klar."
+                              ],
+    "sources":  [
+                    "https://nextcloud.com/blog/nextcloud-hub10/",
+                    "https://nextcloud.com/blog/nextcloud-hub25-autumn/",
+                    "https://nextcloud.com/blog/nextcloud-hub26-winter/",
+                    "https://www.heise.de/en/news/Nextcloud-Hub-26-Winter-extends-federation-and-optimized-performance-11186171.html",
+                    "https://nextcloud.com/blog/nextcloud-hub26-spring/",
+                    "https://github.com/nextcloud/server/wiki/Maintenance-and-Release-Schedule",
+                    "https://docs.nextcloud.com/server/latest/developer_manual/digging_deeper/dashboard.html",
+                    "https://docs.nextcloud.com/server/stable/admin_manual/configuration_server/theming.html",
+                    "https://nextcloud.com/blog/branding-theming-nextcloud-hub/",
+                    "https://www.opendesk.eu/en/product",
+                    "https://docs.opendesk.eu/operations/architecture/",
+                    "https://www.univention.com/references/zentrum-fuer-digitale-souveraenitaet/",
+                    "https://allthingsopen.org/articles/zendis-opendesk-opencode-public-sector-open-source",
+                    "https://www.openproject.org/blog/digital-sovereignty-government-germany-opendesk/",
+                    "https://www.webpronews.com/frances-bold-bet-on-digital-sovereignty-inside-suite-numerique-the-open-source-office-suite-challenging-big-tech/",
+                    "https://nextcloud.com/blog/ile-de-france-sovereign-cloud-collaboration-platform/",
+                    "https://nextcloud.com/blog/digital-sovereignty-momentum-france/",
+                    "https://nextcloud.com/blog/press_releases/sovereign-workspace-momentum/",
+                    "https://nextcloud.com/blog/nextcloud-workspace-microsoft-365-alternative-by-nextcloud-and-ionos/",
+                    "https://docs.ionos.com/cloud/sovereign-workplace/nextcloud-workspace",
+                    "https://murena.com/discover-murena-workspace-your-private-all-in-one-online-suite-without-big-techs/",
+                    "https://nextcloud.com/blog/nextcloud-talk-munich/",
+                    "https://nextcloud.com/blog/your-microsoft-teams-alternative-nextcloud-talk-munich-launching-live-at-the-nextcloud-summit/",
+                    "https://nextcloud.com/blog/schleswig-holsteins-impulspapier-for-deutschland-stack-vision/",
+                    "https://nextcloud.com/blog/nextcloud-in-government-insights-from-sven-thomsen-schleswig-holsteins-cio/",
+                    "https://therecord.media/denmark-digital-agency-microsoft-digital-independence",
+                    "https://borncity.com/win/2025/06/17/digital-sovereignty-eu-cloud-microsoft-exit-in-danish-digital-ministry-true-cost-of-windows-11/",
+                    "https://nextcloud.com/blog/nextcloud-2025-wrap-up/",
+                    "https://github.com/nordeck/element-web-modules"
+                ]
+}

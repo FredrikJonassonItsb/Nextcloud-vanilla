@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<info xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <!--
+    SPDX-FileCopyrightText: ITSL <info@itsl.se>
+    SPDX-License-Identifier: CC0-1.0
+    -->
+    <id>sdkmc</id>
+    <name>SDK MC</name>
+    <summary>💌 A SDK Message Client app for Nextcloud</summary>
+    <description><![CDATA[**💌 A SDK Message Client app for Nextcloud**]]></description>
+    <version>2.2.21</version>
+    <licence>agpl</licence>
+    <author mail="info@itsl.se" homepage="https://itsl.se">ITSL</author>
+    <namespace>SdkMc</namespace>
+    <category>tools</category>
+    <bugs>https://itsl.se</bugs>
+    <dependencies>
+        <nextcloud min-version="30" max-version="32"/>
+    </dependencies>
+    <settings>
+        <admin>OCA\SdkMc\Settings\SdkLogs</admin>
+        <admin>OCA\SdkMc\Settings\SdkMcVueServerSettingsAdmin</admin>
+        <admin>OCA\SdkMc\Settings\SdkMcVueMailboxSettingsAdmin</admin>
+        <admin>OCA\SdkMc\Settings\SdkMcVueTagSettingsAdmin</admin>
+        <admin-section>OCA\SdkMc\Sections\SdkMcLog</admin-section>
+        <admin-section>OCA\SdkMc\Sections\SdkMcVueServerSectionAdmin</admin-section>
+        <admin-section>OCA\SdkMc\Sections\SdkMcVueMailboxSectionAdmin</admin-section>
+    </settings>
+    <background-jobs>
+        <job>OCA\SdkMc\BackgroundJob\UpdateAddressBookBackgroundJob</job>
+        <job>OCA\SdkMc\BackgroundJob\ConsolidateMailboxesJob</job>
+        <job>OCA\SdkMc\BackgroundJob\CleanupExpiredAbsenceAccessJob</job>
+        <job>OCA\SdkMc\BackgroundJob\ExpungeJob</job>
+        <job>OCA\SdkMc\BackgroundJob\DeleteTagsJob</job>
+    </background-jobs>
+    <repair-steps>
+        <post-migration>
+            <step>OCA\SdkMc\Migration\ImplementSieve</step>
+        </post-migration>
+    </repair-steps>
+    <activity>
+        <settings>
+            <setting>OCA\SdkMc\Activity\SdkSetting</setting>
+            <setting>OCA\SdkMc\Activity\PersonligSetting</setting>
+            <setting>OCA\SdkMc\Activity\GruppSetting</setting>
+            <setting>OCA\SdkMc\Activity\FaxSetting</setting>
+            <setting>OCA\SdkMc\Activity\SmsSetting</setting>
+            <setting>OCA\SdkMc\Activity\AssignmentTagSetting</setting>
+        </settings>
+        <filters>
+            <filter>OCA\SdkMc\Activity\Filter</filter>
+        </filters>
+        <providers>
+            <provider>OCA\SdkMc\Activity\Provider</provider>
+        </providers>
+	</activity>
+</info>

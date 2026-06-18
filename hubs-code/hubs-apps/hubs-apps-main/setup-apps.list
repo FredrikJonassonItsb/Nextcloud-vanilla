@@ -1,0 +1,25 @@
+# setup-apps.list — the extendable app set cloned by `make setup`.
+#
+# Add an app by adding ONE line here; no Makefile edit needed. `make setup`
+# reads this file and clones each app into apps/<name> (absence-gated, so
+# re-running setup is idempotent).
+#
+# Format: whitespace-separated columns, one app per line.
+#   <name>  <clone-url>  [recurse-submodules]
+#
+#   name                destination dir under apps/ (and the Nextcloud app id).
+#   clone-url           passed verbatim to `git clone`.
+#   recurse-submodules  optional 3rd column. Present  -> clone with
+#                       --recurse-submodules (quilt apps whose upstream/ carries
+#                       submodules). Absent -> plain clone (standalone apps).
+#
+# Blank lines and #-comment lines are ignored.
+#
+# NOT listed here: apps/server (Nextcloud core). It is cloned inline by the
+# setup recipe because it is special — github not gitlab, shallow (--depth 1),
+# pinned to the NEXTCLOUD_VERSION tag, and followed by its own submodule init.
+# It is not an "app" in the extendable sense, so it stays out of this list.
+
+sdkmc     git@gitlab.itsl.se:itsl/sdkmc.git
+mail      git@gitlab.itsl.se:itsl/mail.git      recurse-submodules
+calendar  git@gitlab.itsl.se:itsl/calendar.git  recurse-submodules

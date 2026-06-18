@@ -1,0 +1,292 @@
+--- a/lib/Controller/MessagesController.php
++++ b/lib/Controller/MessagesController.php
+@@ -55,6 +55,7 @@
+ use OCP\EventDispatcher\IEventDispatcher;
+ use OCA\SdkMc\Event\FetchEmailEvent;
+ use OCA\SdkMc\Event\FetchThreadEvent;
++use OCA\SdkMc\Service\MessageTypeService;
+ use function array_map;
+ 
+ #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+@@ -102,6 +103,7 @@
+ 		IUserPreferences $preferences,
+ 		SnoozeService $snoozeService,
+ 		IEventDispatcher $eventDispatcher,
++		private MessageTypeService $messageTypeService,
+ 		AiIntegrationsService $aiIntegrationService,
+ 		private ICacheFactory $cacheFactory,
+ 	) {
+@@ -175,7 +177,7 @@
+ 			$view
+ 		);
+ 
+-		$response = new JSONResponse($messages);
++		$response = new JSONResponse($this->messageTypeService->enhanceMessages($messages, $this->clientFactory, $account, $mailbox));
+ 		if ($v !== null && $v !== '') {
+ 			$response->cacheFor(7 * 24 * 3600, false, true);
+ 		}
+@@ -207,7 +209,7 @@
+ 				$account,
+ 				$mailbox,
+ 				$message
+-			)
++			),
+ 		);
+ 	}
+ 
+--- a/lib/Service/Attachment/AttachmentService.php
++++ b/lib/Service/Attachment/AttachmentService.php
+@@ -24,7 +24,9 @@
+ use OCA\Mail\Exception\ServiceException;
+ use OCA\Mail\Exception\SmimeDecryptException;
+ use OCA\Mail\Exception\UploadException;
++use OCA\Mail\IMAP\IMAPClientFactory;
+ use OCA\Mail\IMAP\MessageMapper;
++use OCA\Mail\Service\AccountService;
+ use OCP\AppFramework\Db\DoesNotExistException;
+ use OCP\Files\File;
+ use OCP\Files\Folder;
+@@ -59,6 +61,10 @@
+ 	 */
+ 	private $logger;
+ 
++	private IMAPClientFactory $clientFactory;
++
++	private AccountService $accountService;
++
+ 	/**
+ 	 * @param Folder $userFolder
+ 	 */
+@@ -72,6 +78,8 @@
+ 		private IURLGenerator $urlGenerator,
+ 		private IMimeTypeDetector $mimeTypeDetector,
+ 		LoggerInterface $logger,
++		IMAPClientFactory $clientFactory,
++		AccountService $accountService,
+ 	) {
+ 		$this->mapper = $mapper;
+ 		$this->storage = $storage;
+@@ -79,6 +87,8 @@
+ 		$this->messageMapper = $imapMessageMapper;
+ 		$this->userFolder = $userFolder;
+ 		$this->logger = $logger;
++		$this->clientFactory = $clientFactory;
++		$this->accountService = $accountService;
+ 	}
+ 
+ 	/**
+@@ -323,12 +333,28 @@
+ 	private function handleForwardedMessageAttachment(Account $account, array $attachment, \Horde_Imap_Client_Socket $client): ?int {
+ 		$attachmentMessage = $this->mailManager->getMessage($account->getUserId(), (int)$attachment['id']);
+ 		$mailbox = $this->mailManager->getMailbox($account->getUserId(), $attachmentMessage->getMailboxId());
+-		$fullText = $this->messageMapper->getFullText(
+-			$client,
+-			$mailbox->getName(),
+-			$attachmentMessage->getUid(),
+-			$account->getUserId()
+-		);
++
++		// Cross-account forward: source mailbox belongs to a different account
++		$sourceClient = $client;
++		$ownsClient = false;
++		if ($mailbox->getAccountId() !== $account->getId()) {
++			$sourceAccount = $this->accountService->find($account->getUserId(), $mailbox->getAccountId());
++			$sourceClient = $this->clientFactory->getClient($sourceAccount);
++			$ownsClient = true;
++		}
++
++		try {
++			$fullText = $this->messageMapper->getFullText(
++				$sourceClient,
++				$mailbox->getName(),
++				$attachmentMessage->getUid(),
++				$account->getUserId()
++			);
++		} finally {
++			if ($ownsClient) {
++				$sourceClient->logout();
++			}
++		}
+ 
+ 		// detect mime type
+ 		$mime = 'application/octet-stream';
+@@ -361,15 +387,30 @@
+ 	private function handleForwardedAttachment(Account $account, array $attachment, \Horde_Imap_Client_Socket $client): ?int {
+ 		$mailbox = $this->mailManager->getMailbox($account->getUserId(), $attachment['mailboxId']);
+ 
+-		$attachments = $this->messageMapper->getRawAttachments(
+-			$client,
+-			$mailbox->getName(),
+-			(int)$attachment['uid'],
+-			$account->getUserId(),
+-			[
+-				$attachment['id'] ?? []
+-			]
+-		);
++		// Cross-account forward: source mailbox belongs to a different account
++		$sourceClient = $client;
++		$ownsClient = false;
++		if ($mailbox->getAccountId() !== $account->getId()) {
++			$sourceAccount = $this->accountService->find($account->getUserId(), $mailbox->getAccountId());
++			$sourceClient = $this->clientFactory->getClient($sourceAccount);
++			$ownsClient = true;
++		}
++
++		try {
++			$attachments = $this->messageMapper->getRawAttachments(
++				$sourceClient,
++				$mailbox->getName(),
++				(int)$attachment['uid'],
++				$account->getUserId(),
++				[
++					$attachment['id'] ?? []
++				]
++			);
++		} finally {
++			if ($ownsClient) {
++				$sourceClient->logout();
++			}
++		}
+ 
+ 		if ($attachments === []) {
+ 			return null;
+--- a/lib/Service/Sync/SyncService.php
++++ b/lib/Service/Sync/SyncService.php
+@@ -25,6 +25,7 @@
+ use OCA\Mail\Service\Search\FilterStringParser;
+ use OCA\Mail\Service\Search\SearchQuery;
+ use Psr\Log\LoggerInterface;
++use OCA\SdkMc\Service\MessageTypeService;
+ use function array_diff;
+ use function array_map;
+ 
+@@ -57,6 +58,7 @@
+ 		MessageMapper $messageMapper,
+ 		PreviewEnhancer $previewEnhancer,
+ 		LoggerInterface $logger,
++		private MessageTypeService $messageTypeService,
+ 		MailboxSync $mailboxSync) {
+ 		$this->clientFactory = $clientFactory;
+ 		$this->synchronizer = $synchronizer;
+@@ -184,8 +186,12 @@
+ 		$vanished = array_values(array_diff($knownIds, $stillKnownIds));
+ 
+ 		return new Response(
++			$this->messageTypeService->enhanceMessages(
+ 			$this->previewEnhancer->process($account, $mailbox, $new),
++			$this->clientFactory, $account, $mailbox),
++			$this->messageTypeService->enhanceMessages(
+ 			$changed,
++			$this->clientFactory, $account, $mailbox),
+ 			$vanished,
+ 			$mailbox->getStats()
+ 		);
+--- a/src/components/EnvelopeSkeleton.vue
++++ b/src/components/EnvelopeSkeleton.vue
+@@ -256,6 +256,10 @@
+ 			type: Boolean,
+ 			default: false,
+ 		},
++		hasAttachment: {
++			type: Boolean,
++			default: false,
++		},
+ 	},
+ 
+ 	emits: [
+@@ -277,7 +281,7 @@
+ 
+ 	computed: {
+ 		showAdditionalElements() {
+-			return !this.displayActionsOnHoverFocus || this.forceDisplayActions
++			return true
+ 		},
+ 
+ 		showDetails() {
+@@ -414,12 +418,12 @@
+ 	&--active,
+ 	&.active {
+ 		.list-item {
+-			background-color: var(--color-primary-element);
++			background-color: var(--color-primary-element-light);
+ 			&:hover,
+ 			&:focus-within,
+ 			&:has(:focus-visible),
+ 			&:has(:active) {
+-				background-color: var(--color-primary-element-hover);
++				background-color: var(--color-primary-element-light);
+ 			}
+ 		}
+ 
+@@ -427,7 +431,7 @@
+ 		.list-item-content__subname,
+ 		.list-item-content__details,
+ 		.list-item-details__details {
+-			color: var(--color-primary-element-text);
++			color: var(--color-main-text);
+ 		}
+ 
+ 		.list-item-content__quick-actions :deep(svg) {
+@@ -496,7 +500,7 @@
+ 		&__name {
+ 			min-width: 100px;
+ 			flex: 1 1 10%;
+-			font-weight: 500;
++			font-weight: bold;
+ 			// we changed the time/date and actions to be alighned with the name
+ 			max-width: 78%;
+ 			line-height: var(--default-line-height);
+--- a/src/components/Thread.vue
++++ b/src/components/Thread.vue
+@@ -17,13 +17,11 @@
+ 						{{ threadSubject }}
+ 					</h2>
+ 					<div v-if="thread.length" ref="avatarHeader" class="avatar-header">
+-						<!-- Participants that can fit in the parent div -->
+ 						<RecipientBubble
+ 							v-for="participant in threadParticipants.slice(0, participantsToDisplay)"
+ 							:key="participant.email"
+ 							:email="participant.email"
+ 							:label="participant.label" />
+-						<!-- Indicator to show that there are more participants than displayed -->
+ 						<NcPopover
+ 							v-if="threadParticipants.length > participantsToDisplay"
+ 							class="avatar-more">
+@@ -41,7 +39,6 @@
+ 								:email="participant.email"
+ 								:label="participant.label" />
+ 						</NcPopover>
+-						<!-- Remaining participants, if any (Needed to have avatarHeader reactive) -->
+ 						<RecipientBubble
+ 							v-for="participant in threadParticipants.slice(participantsToDisplay)"
+ 							:key="participant.email"
+@@ -649,8 +646,7 @@
+ 	// initial width
+ 	width: 0;
+ 	// while scrolling, the back button overlaps with subject on small screen
+-	// 66px to allign with the sender Envelope -> 8px margin + 2px border+ avatar -> 40px width  + envelope__header -> 8px padding + sender-> margin 8px
+-	padding-inline-start: 66px;
++	padding-inline-start: 26px;
+ 	// grow and try to fill 100%
+ 	flex: 1 1 auto;
+ 	background: var(--color-main-background);
+--- a/src/store/mainStore/actions.js
++++ b/src/store/mainStore/actions.js
+@@ -499,6 +499,9 @@
+ 						if (reply.followUp) {
+ 							to = reply.data.to
+ 						}
++						if (original.itsl.messageDirection === MESSAGE_DIRECTION.OUTGOING) {
++							to = reply.data.to
++						}
+ 						this.startComposerSessionMutation({
+ 							data: {
+ 								accountId: reply.data.accountId,
+@@ -554,6 +557,7 @@
+ 									uid: attachment.messageId,
+ 									type: 'message-attachment',
+ 								})),
++								itsl: { ...original.itsl, ...reply.data.itsl },
+ 							},
+ 						})
+ 						return

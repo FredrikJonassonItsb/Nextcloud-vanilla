@@ -1,0 +1,132 @@
+# IDE-attach overlay for the long-running shared dev-builder.
+#
+# Loaded by the Makefile's $(DC); NOT by scripts/host/dc-run.sh, so
+# the ro→rw widening, docker socket bind, and SSH agent bind below
+# apply only to the long-running IDE-attach container — ephemeral
+# one-shots stay walled off (a hostile npm post-install in an
+# ephemeral can't reach other apps or the docker daemon).
+
+services:
+  dev-builder:
+    # Override needed: default CMD /bin/bash exits immediately with no
+    # terminal. The wrapper:
+    #   1. Names the host docker GID in /etc/group (cosmetic — silences
+    #      getgrgid "cannot find name for group ID" on every shell
+    #      startup; group_add already grants membership). In command not
+    #      the ide-up recipe so it runs on EVERY start, not just ide-up.
+    #      `! getent` guard makes the named case a no-op; on a groupadd
+    #      failure we warn and continue (naming is cosmetic — group_add
+    #      already grants membership — so it must not wedge start). Gated on DOCKER_GID in
+    #      env (make-driven path); bare `docker compose up` skips it,
+    #      matching group_add's :-999 fallback.
+    #   2. `exec tail -f /dev/null` to idle as the docker-exec target.
+    command:
+      - bash
+      - -c
+      - |
+        if [ -n "${DOCKER_GID:-}" ] && ! getent group "$DOCKER_GID" >/dev/null; then
+            sudo groupadd -g "$DOCKER_GID" hostdocker || echo "WARN: could not name docker GID $DOCKER_GID — cosmetic, group_add already grants membership" >&2
+        fi
+        exec tail -f /dev/null
+
+    # DOCKER_GID = the GID that grants write to the bind-mounted docker
+    # socket, set by the Makefile: the host socket's owning GID on Linux,
+    # 0 (root) on macOS where the in-container socket is the VM's own,
+    # owned root:root. :-999 is an unreachable sentinel, not a real
+    # fallback — on Linux empty means no socket at the conventional path;
+    # literal "999" in group_add output = detection broke and the
+    # developer won't have socket write access.
+    group_add:
+      - "${DOCKER_GID:-999}"
+
+    environment:
+      # Pinned so in-container `docker compose` targets the same project
+      # as host make. Else compose uses cwd-basename — "platform" inside
+      # vs "hubs-apps" outside — splitting them into two projects.
+      - "COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-hubs-apps}"
+
+      # Marks the long-running IDE-attach endpoint. Read by dc-run.sh's
+      # short-circuit (skip-in-place is right for ephemerals, wrong for
+      # IDE-attach — work routes to a fresh sibling via the docker
+      # socket) and the Makefile's _REQUIRE_HOST guard.
+      - "IDE_ATTACH=1"
+
+      # Absolute host path of the platform tree. Bind sources here and
+      # in the sibling compose files are resolved by the host daemon as
+      # host paths regardless of which side invoked compose (in-container
+      # compose sees /platform). :? crashes loud on missing rather than
+      # letting docker auto-create an empty host dir at the wrong path.
+      - "HOST_PROJECT_DIR=${HOST_PROJECT_DIR:?HOST_PROJECT_DIR not set — invoke via make (auto-derived from PLATFORM_ROOT)}"
+
+      # The cimg image bakes PHP_VERSION=8.3.31 into its env, so
+      # in-container compose would interpolate that for compose.yml's
+      # ${PHP_VERSION:-8.3} nextcloud build arg while host (unset) gets
+      # 8.3 — the mismatch drifts the service-spec hash and recreates
+      # nextcloud on every in-container `make nc-up`. Pinning prevents it.
+      - "PHP_VERSION=${PHP_VERSION:-8.3}"
+
+      # Bare-name passthrough: compose injects only if the host has the
+      # var set (no empty-string injection). The Makefile resolves both
+      # via a fallback chain and exports them, so the make path gets
+      # non-empty values; a direct `docker compose up` gets whatever the
+      # shell has.
+      - "EDITOR"
+      - "GIT_EDITOR"
+
+      # Host path to the operator's SSH agent socket, consumed by
+      # scripts/host/tunnel-up.sh for `make tunnel` from inside. :-
+      # (empty default), NOT :? — compose interpolates the whole -f set
+      # on every call, so :? would fail unrelated calls (nc-up, status)
+      # for Linux operators with no SSH_AUTH_SOCK. ide-up checks strictly.
+      - "HOST_SSH_AUTH_SOCK=${HOST_SSH_AUTH_SOCK:-}"
+
+      # In-container path of the bound host agent socket (see /ssh-agent
+      # bind below). Set unconditionally so ssh commands find the agent
+      # via the bind, not via the Dev Containers extension's forwarding —
+      # empirically unreliable, leaves SSH_AUTH_SOCK unset on current
+      # versions.
+      - "SSH_AUTH_SOCK=/ssh-agent"
+
+    # Nested binds over compose.dev-builder.yml's /platform:ro: inside
+    # the container /platform stays ro EXCEPT /platform/apps and
+    # /platform/docker/sidecars, which become rw.
+    #
+    # apps:rw — IDE saves here. Wholesale (not per-app) so `make new-app`
+    # is picked up without regeneration; apps/server editable too, so
+    # edits propagate live to the bind-mounted NC core.
+    #
+    # docker/sidecars:rw — narrower so `make webpack` can write the
+    # sidecar fragment. Broader /platform:rw would break supply-chain
+    # isolation (in-container code could modify scripts/assemble.sh).
+    # Host dir must pre-exist — docker/sidecars/.gitkeep tracks it so
+    # docker's create_host_path default doesn't make it root-owned.
+    #
+    # docker.sock — in-container `docker compose` for nc-up/webpack/
+    # status. Carve-out from "no host operational control inside
+    # containers": the long-running dev-builder runs no installs (those
+    # route to ephemerals via EPHEMERAL=1), so the supply-chain RCE
+    # vector is traded for the narrower IDE-compromise one.
+    #
+    # /ssh-agent — direct bind of the host SSH agent socket so ssh/git
+    # push from inside reach the host agent without the Dev Containers
+    # extension's forwarding (observed to silently fail on recent
+    # versions). Same primitive as compose.tunnel.yml's ssh -L. Source
+    # falls back to /dev/null when HOST_SSH_AUTH_SOCK is empty so the
+    # bind still succeeds; ssh-add then surfaces "agent unreachable",
+    # same diagnostic as a missing bind via one mechanism. No widened
+    # surface: docker.sock above is already RCE-equivalent (spawn a
+    # privileged sibling, extract anything from host).
+    #
+    # dev-builder-home — persists /home/developer (.vscode-server binary
+    # +extensions, ~30s to re-download; .claude/ credentials) across
+    # recreations. `make clean` and `make distclean` wipe it (both run
+    # `down -v`, which removes named volumes); ide-down/up preserve it.
+    volumes:
+      - "${HOST_PROJECT_DIR}/apps:/platform/apps:rw"
+      - "${HOST_PROJECT_DIR}/docker/sidecars:/platform/docker/sidecars:rw"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${HOST_SSH_AUTH_SOCK:-/dev/null}:/ssh-agent"
+      - "dev-builder-home:/home/developer"
+
+volumes:
+  dev-builder-home:

@@ -1,0 +1,171 @@
+{
+    "key":  "konkurrenter-meddelanden",
+    "topic":  "Konkurrentanalys: säker meddelandehantering mot medborgare i svensk offentlig sektor (säkra meddelanden, digital post, säker e-post, digital fax)",
+    "key_findings":  [
+                         "Marknaden består av tre separata skikt som ingen aktör täcker samlat: (1) digital post/brevlådor till medborgare (Kivra, Min myndighetspost, Billo, e-Boks, Fortnox via Digg-infrastrukturen Mina meddelanden), (2) säkra meddelande-/dialoglösningar med BankID-inloggning (TDialog, Sefos, CGI, SecureAppbox), (3) org-till-org-kanalen SDK (Säker digital kommunikation) som INTE når medborgare. Hubs helhetsgrepp (SDK + medborgar-e-post + fax + video + filer i en plattform) saknar direkt motsvarighet.",
+                         "Kivra dominerar digital post: 6+ miljoner användare, 50 000+ anslutna företag. Prismodell: digital portoavgift via integrationspartner, ca 1,50 kr/brev för stora avsändare och ca 3 kr för mindre. Digg har tagit fram ersättningsmodell för myndighetsutskick (uppskattat 60–123 Mkr/år om Kivras nivåer tillämpas). Auktorisationssystem för digital post infördes maj 2025 som alternativ till upphandling. Men Kivra är i praktiken en envägskanal — ingen dialog, inga handläggarflöden.",
+                         "SOU 2024:47 (Digital myndighetspost, juni 2024) föreslår att alla statliga myndigheter, kommuner och regioner SKA skicka myndighetspost via Mina meddelanden — kommande obligatorium som driver hela marknaden mot digitala kanaler.",
+                         "SDK-status (Digg): över 100 anslutna organisationer i aug 2025, 267 kommuner anmälda till SKR/Digg:s införandestöd (\u0027Handslag för digitalisering\u0027), men bara 5 statliga myndigheter anslutna (Arbetsförmedlingen, Försäkringskassan, IVO, Skolverket, SiS). 2025–2026 är anslutningsvågen för kommuner/regioner — fönstret för att sälja SDK-klienter är NU.",
+                         "Adda:s dynamiska inköpssystem \u0027Säker digital kommunikation DIS\u0027 (giltigt 2023-11-01 till 2033-10-26) listar de kvalificerade konkurrenterna explicit: Certezza, CGI Sverige, Compodium International, Ida Infront, ITSL Solutions (= Hubs ägare själva), Meaplus och SecureAppbox. Detta är den exakta konkurrentlistan i offentliga SDK-upphandlingar. Adda/Inera ger gratis upphandlingsstöd, inga avgifter för avropande organisationer.",
+                         "TDialog (utvecklad av eValue Sverige, numera ägd av Compodium; säljs/driftas ofta via Certezza) var FÖRSTA meddelandetjänsten godkänd för SDK. Styrkor: ej molntjänst — kunden kontrollerar krypteringsnycklar och lagring (on-prem), SAML/BankID/Freja/SITHS-inloggning, läskvitton, visselblåsarfunktion, e-underskrift (PhenixID), används av bl.a. Kristinehamn, Nacka, Sollentuna, Stockholms stad, Region Västernorrland (SMT). Mottagarmodell: notifiering via e-post + länk till säker brevlåda. Svaghet: separat silo vid sidan av ordinarie verktyg, äldre UI, ingen prislista publik.",
+                         "Sefos (Meaplus AB, ISO 9001/14001/22301/27001) är närmaste funktionella konkurrenten till Hubs: säkra meddelanden med AES256, integration i Outlook och Teams, säkra videomöten, digital fax, filhantering, BankID/Freja/SITHS/SMS med konfigurerbara LOA-nivåer. Drift som delad nod (SaaS i Sverige) eller dedikerad installation on-prem. Stark i mindre kommuner: Sjöbo, Bromölla, Osby, Östra Göinge, Gnesta, Södertälje, Tyresö, Sollentuna. Svaghet: Microsoft-centrerad (förutsätter i praktiken M365), ingen publik prismodell, ingen samlad dashboard-upplevelse.",
+                         "CGI:s SDK-lösning (ofta kallad Messit i kommunsammanhang): meddelandeklient + meddelandetjänst + accesspunkt som SaaS från svenska datacenter, 24/7, mobil/platta/dator. Styrka: helhetsleverantör med stor offentlig kundbas och driftorganisation. Svaghet: SaaS hos leverantören (inte kundens egna servrar), fokus på org-till-org (SDK) snarare än medborgardialog.",
+                         "SecureAppbox (svenskt, grundat 2011): SecureMailbox (säker e-post som tillägg till befintlig e-postklient), SharedMailbox (GDPR-säkrad funktionsbrevlåda) och GDPR e-Fax i samarbete med Generic Mobile (inkommande fax krypteras som PDF in i SecureMailbox). Kvalificerad i Adda DIS. Riktar sig uttryckligen mot kommuner som vill ersätta fax. Ingen publik prislista.",
+                         "Internationella säker e-post-aktörer har svagt svenskt fotavtryck: Zivver (NL) har stark Outlook/M365/Gateway-produkt och public sector-paketering (GDPR/NIS2-argument) men ingen synlig svensk offentlig kundbas; Cryptshare (Pointsharp-ägd, säljs i Sverige via Inuit) körs i kundens egen IT-miljö och fick 2024/2025 BankID-stöd via Signicat — positionerar sig nu aktivt mot svensk säker e-post/SDK-marknaden via Inuit; RPost (USA, juridiskt bevisad e-post) saknar i praktiken närvaro i svensk offentlig sektor. \u0027iPost\u0027 förekommer inte som etablerad svensk aktör — närmast är Posti/Strålfors output management (hybridpost + alla digitala brevlådor).",
+                         "Säker e-post i kommuner är fortfarande fragmenterat: riksdagssvar bekräftar att det inte finns någon samlad statlig lösning för krypterad e-post — varje myndighet/kommun löser det själv (t.ex. Karlshamn använder Secmail, Domstolarna har egen \u0027Säker e-post\u0027-tjänst). Socialtjänst och elevhälsa pekas återkommande ut som verksamheter med störst behov. Detta är Hubs säkra e-post-segments kärnmålgrupp.",
+                         "Digital fax: svenska leverantörer är Generic (DOCS/Fax Email Service — svensk drift, kryptering, används av t.ex. Socialjour), TellusTalk (digital fax + \u0027skyddade meddelanden\u0027 + e-signering, GDPR-profilerad svensk plattform), Wx3 Telecom (krypterad \u0027Säker Digital Fax\u0027) och Cellip (fax-till-PDF). Internationellt: Retarus Cloud Fax (enterprise, vårdfokus, Epic-integration, pris från ca 29 USD/mån volymbaserat) och eFax Corporate (HIPAA-paketering, USA-fokus). \u0027GFD\u0027 kunde inte verifieras som aktiv aktör på svenska marknaden. Politiskt tryck sedan 2018 att fasa ut faxen; Atea m.fl. marknadsför SDK som \u0027faxdödaren\u0027 — fax är en krympande övergångsmarknad.",
+                         "Mottagarmönstret är de facto-standardiserat: medborgaren får e-post-/SMS-notis med länk, loggar in med BankID/Freja och läser/svarar i säker webbrevlåda. Alla svenska konkurrenter (TDialog, Sefos, SecureAppbox, CGI) följer detta mönster — medborgarsidan är alltså inte differentiatorn; handläggarsidan (avsändarupplevelsen) är där lösningarna skiljer sig och där en dashboard kan vinna affärer.",
+                         "Prismodeller är genomgående icke-publika (offert/demo) hos alla svenska säkra meddelanden-leverantörer; endast Kivra (1,50–3 kr/försändelse) och Retarus (~29 USD/mån+) har kända prisnivåer. Vanlig modell i sektorn är per användare/månad plus etablering, ibland per nod. Transparent prissättning vore i sig en differentiator."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "Kivra",
+                       "role":  "Konkurrent (digital post till medborgare)",
+                       "notes":  "Dominant digital brevlåda, 6+ M användare. Pris ca 1,50–3 kr/försändelse via integrationspartner. Envägskanal — ingen dialog, ingen handläggararbetsyta. Gynnas av kommande obligatorium för digital myndighetspost (SOU 2024:47)."
+                   },
+                   {
+                       "name":  "Min myndighetspost / Digg (Mina meddelanden)",
+                       "role":  "Statlig infrastruktur + myndighet/standardsättare",
+                       "notes":  "Statens brevlåda sedan 2012, drivs av Digg. Digg äger även SDK-infrastrukturen (övertagen från SKR/Inera 2023) och auktorisationssystemet för digital post (maj 2025). Både möjliggörare och gatekeeper för Hubs."
+                   },
+                   {
+                       "name":  "Compodium / TDialog (f.d. eValue Sverige)",
+                       "role":  "Direkt konkurrent (säkra meddelanden + SDK)",
+                       "notes":  "Första SDK-godkända meddelandetjänsten. On-prem, kundkontrollerade nycklar, BankID/Freja/SITHS, visselblåsning, e-underskrift. Stor kommunal kundbas (Stockholms stad, Nacka, Sollentuna, Kristinehamn). Säljs ofta via Certezza. Kvalificerad i Adda DIS."
+                   },
+                   {
+                       "name":  "Meaplus / Sefos",
+                       "role":  "Direkt konkurrent (närmast Hubs funktionsbredd)",
+                       "notes":  "Säkra meddelanden + videomöten + digital fax + filer. Outlook/Teams-integration, AES256, LOA-konfigurerbar autentisering. Delad nod eller on-prem. Stark i små/mellanstora kommuner. Svaghet: M365-beroende, ingen samlad dashboard. Kvalificerad i Adda DIS."
+                   },
+                   {
+                       "name":  "CGI Sverige (Messit / SDK-lösning)",
+                       "role":  "Direkt konkurrent (SDK-helhetsleverantör)",
+                       "notes":  "Meddelandeklient+MT+AP som SaaS från svenska datacenter, 24/7. Stor befintlig offentlig kundbas och säljkraft. Svaghet: leverantörsdrift (ej kundens servrar), org-till-org-fokus. Kvalificerad i Adda DIS."
+                   },
+                   {
+                       "name":  "SecureAppbox",
+                       "role":  "Direkt konkurrent (säker e-post + funktionsbrevlåda + e-fax)",
+                       "notes":  "SecureMailbox, SharedMailbox, GDPR e-Fax (med Generic Mobile). Uttalat kommunfokus på faxersättning. Kvalificerad i Adda DIS."
+                   },
+                   {
+                       "name":  "Certezza",
+                       "role":  "Konkurrent/integratör",
+                       "notes":  "Säkerhetskonsult som paketerar och driftar TDialog för offentlig sektor; kvalificerad i Adda DIS. Möter Hubs i upphandlingar som lösningsintegratör."
+                   },
+                   {
+                       "name":  "Ida Infront",
+                       "role":  "Konkurrent (SDK-komponenter, ärendehantering)",
+                       "notes":  "Kvalificerad i Adda DIS; iipax-produktfamilj för säkert meddelandeutbyte och e-arkiv, främst myndighetsmarknaden."
+                   },
+                   {
+                       "name":  "TellusTalk",
+                       "role":  "Konkurrent (digital fax, skyddade meddelanden, e-signering)",
+                       "notes":  "Svensk GDPR-profilerad plattform; kommuner och regioner som kunder. Bredd men inte sekretessdjup (ingen SDK-klient)."
+                   },
+                   {
+                       "name":  "Generic (Generic Mobile, tjänsten DOCS)",
+                       "role":  "Konkurrent (digital fax)",
+                       "notes":  "Säker digital fax med svensk drift och kryptering; partner till SecureAppbox för GDPR e-Fax. Etablerad i vård/socialjour."
+                   },
+                   {
+                       "name":  "Wx3 Telecom och Cellip",
+                       "role":  "Nischkonkurrenter (digital fax)",
+                       "notes":  "Wx3 säljer krypterad \u0027Säker Digital Fax\u0027; Cellip fax-till-PDF. Mindre aktörer utan meddelandeplattform runtom."
+                   },
+                   {
+                       "name":  "Zivver",
+                       "role":  "Potentiell konkurrent (säker e-post, internationell)",
+                       "notes":  "Stark Outlook/M365-integration, gateway, public sector-paketering (GDPR/NIS2). Ingen synlig svensk offentlig kundbas idag — men kan komma in via M365-spåret."
+                   },
+                   {
+                       "name":  "Cryptshare (Pointsharp) via Inuit",
+                       "role":  "Konkurrent (säker e-post/filöverföring)",
+                       "notes":  "Körs i kundens egen IT-miljö (matchar egen-server-kravet), fick BankID-stöd via Signicat. Inuit marknadsför aktivt mot SDK/säker e-post i Sverige."
+                   },
+                   {
+                       "name":  "RPost",
+                       "role":  "Marginell konkurrent",
+                       "notes":  "Juridiskt bevisad e-post (Registered Email), USA-baserad; ingen påvisbar närvaro i svensk offentlig sektor."
+                   },
+                   {
+                       "name":  "Retarus / eFax Corporate",
+                       "role":  "Internationella faxkonkurrenter",
+                       "notes":  "Retarus: enterprise cloud fax, vårdintegrationer (Epic), från ca 29 USD/mån. eFax: HIPAA/USA-fokus. Begränsad svensk offentlig relevans men kan dyka upp i koncernupphandlingar."
+                   },
+                   {
+                       "name":  "Strålfors (Posti) m.fl. output management",
+                       "role":  "Angränsande konkurrent",
+                       "notes":  "Hybridpost: print + distribution till alla digitala brevlådor + e-post/SMS. Tar volymutskicken, inte dialogen."
+                   },
+                   {
+                       "name":  "Adda Inköpscentral",
+                       "role":  "Upphandlingskanal",
+                       "notes":  "DIS \u0027Säker digital kommunikation\u0027 2023–2033 med 7 kvalificerade leverantörer inkl. ITSL Solutions. Gratis avrop och upphandlingsstöd tillsammans med Inera."
+                   },
+                   {
+                       "name":  "SKR / Inera",
+                       "role":  "Standard- och införandestöd",
+                       "notes":  "Driver kommunernas SDK-anslutning via \u0027Handslag för digitalisering\u0027 (267 kommuner anmälda). Påverkar kravbilder i upphandlingar."
+                   },
+                   {
+                       "name":  "Billo, e-Boks, Fortnox företagsbrevlåda",
+                       "role":  "Övriga digitala brevlådor",
+                       "notes":  "Godkända i Digg:s infrastruktur; små jämfört med Kivra."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Dashboarden är själva differentiatorn: ingen konkurrent erbjuder en samlad handläggararbetsyta över SDK + säker e-post till medborgare + fax + video + filer. Sefos har funktionsbredden men splittrar den över Outlook/Teams-tillägg; TDialog och CGI är silos. Bygg dashboarden som \u0027en inkorg, alla kanaler\u0027 med tydlig kanalindikator (SDK/medborgare/fax) per konversation.",
+                                  "Funktionsbrevlådor är navet i både SDK och kommunal sekretesshantering (socialtjänst, elevhälsa, överförmyndare). Dashboarden bör utgå från delade funktionsbrevlådor med roller, bevakning, kvittenser och vidaretilldelning — det är så Nacka, Sollentuna m.fl. beskriver sina arbetsflöden idag.",
+                                  "Matcha de etablerade hygienkraven direkt i förstavyn: BankID/Freja/SITHS-inloggning med synlig LOA-nivå, läskvitton, möjlighet att återkalla meddelanden och automatisk gallring/retention — TDialog och Sefos har alla dessa och de återkommer i kravspecar. Visa gallringsstatus och spårbarhet i dashboarden (sekretess + arkivlagskrav).",
+                                  "Tajming: 2025–2026 är kommunernas SDK-anslutningsvåg (267 kommuner i SKR/Digg:s införandestöd, 100+ org anslutna). ITSL är redan kvalificerad i Adda:s SDK-DIS (giltigt till 2033) bredvid Certezza, CGI, Compodium, Ida Infront, Meaplus, SecureAppbox — dashboarden bör kunna demoas mot exakt det DIS:ets omfattning (meddelandeklient, meddelandetjänst, accesspunkt) eftersom det är där avropen sker.",
+                                  "Egen-server/datasuveränitet är ett vinnande argument bara mot CGI/Zivver/SaaS-aktörerna — TDialog och Cryptshare har det redan, Sefos erbjuder dedikerad nod. Kombinationen \u0027kundens servrar + modern samlad UX + öppen källkodsbas (Nextcloud)\u0027 är däremot unik; lyft inlåsningsfrihet i säljmaterialet.",
+                                  "Prissättning: hela svenska fältet gömmer priser bakom demo/offert; Kivra kostar avsändare 1,50–3 kr/försändelse och volymerna gör det dyrt över tid. En transparent, förutsägbar prismodell (per användare eller per server, obegränsade försändelser på egen infrastruktur) är en konkret differentiator i upphandlingar.",
+                                  "Digital post (Mina meddelanden) blir sannolikt obligatorisk för kommuner (SOU 2024:47). Hubs konkurrerar inte med Kivra om massutskick — positionera Hubs som dialogkanalen (tvåvägs, sekretess, handläggarflöden) och överväg på sikt en koppling så att enkelriktade utskick kan gå via Mina meddelanden från samma dashboard, vilket gör den till kommunens enda avsändaryta.",
+                                  "Digital fax är en krympande övergångsmarknad (\u0027faxdödaren\u0027 SDK) — sälj faxen som migreringsbrygga, inte huvudprodukt. Visa i dashboarden migreringsdata (andel fax vs SDK/säkra meddelanden per månad) så kunden ser sin egen faxavveckling; det matchar regionernas faxutfasningsprojekt och ger Hubs en berättelse ingen faxleverantör har.",
+                                  "Medborgarupplevelsen är standardiserad (notis + BankID + webbrevlåda) — lägg inte differentieringskrutet där, men avvik inte heller från mönstret, eftersom kommuner och medborgare redan är vana vid det från Sefos/TDialog.",
+                                  "Bevaka två inkommande hot: Zivver via Microsoft 365-spåret (om kommuner standardiserar på M365-säker e-post försvinner delar av behovet) och Cryptshare/Inuit som nu fått BankID och marknadsför sig mot SDK-marknaden. Hubs motdrag är djupet i svensk offentlig kravbild: SDK-godkännande, funktionsbrevlådor, sekretessflöden och svensk drift på kundens järn."
+                              ],
+    "sources":  [
+                    "https://www.digg.se/digitala-tjanster/digital-post/digital-post-for-dig-som-offentlig-aktor",
+                    "https://www.digg.se/digitala-tjanster/digital-post",
+                    "https://kivra.my.site.com/foretagFAQ/s/article/Vad-kostar-det-att-skicka-brev-i-Kivra",
+                    "https://www.dagensarena.se/innehall/sa-vill-naringslivet-tjana-pengar-pa-digitala-brevlador/",
+                    "https://www.mynewsdesk.com/se/kivra/pressreleases/regeringen-tar-nytt-steg-mot-ersaettningsmodell-3061269",
+                    "https://www.regeringen.se/contentassets/a358f464e0f04c818f466b0191124525/sou_2024_47_ny-kopia.pdf",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2025-08-19-milstolpe-for-saker-digital-kommunikation---over-100-organisationer-anslutna",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2025-04-01-digg-firar-1-ar-med-sdk---fler-anslutna-och-okad-digital-sakerhet",
+                    "https://www.adda.se/upphandling-och-ramavtal/ramavtal-och-avtalskategorier/digitala-tjanster/saker-digital-kommunikation-dis/",
+                    "https://www.adda.se/aktuellt/2023/kommuner-och-regioner-forbereder-sig-for-saker-digital-kommunikation/",
+                    "https://www.cgi.com/se/sv/offentlig-sektor/sdk-saker-digital-kommunikation",
+                    "https://www.cgi.com/se/sv/blogg/offentlig-sektor/saker-digital-kommunikation-SDK-vad-ar-det",
+                    "https://compodium.com/tdialog",
+                    "https://certezza.net/tdialog-forsta-meddelandetjansten-godkand-for-sdk/",
+                    "https://certezza.net/tjanster/saker-meddelandehantering/",
+                    "https://www.kristinehamn.se/kommun-och-politik/digitalisering/digitalisering-i-verksamheter/sakra-meddelanden/",
+                    "https://www.nacka.se/medarbetare/digitalisering/stod-for-medarbetare/jobba-sakert/sakra-meddelanden/",
+                    "https://start.stockholm/om-webbplatsen/personuppgifter-och-dataskydd/sakra-meddelanden/",
+                    "https://www.rvn.se/sv/delplatser/Vardgivare/Vardgivarwebb/administration-och-stod/sakra-meddelanden-smt/",
+                    "https://sefos.se/en/sakra-meddelanden/",
+                    "https://www.sjobo.se/kommun-och-politik/trygg-och-saker/sefos---sakra-meddelanden-och-videomoten.html",
+                    "https://www.sodertalje.se/kommun-och-politik/sakra-meddelanden/",
+                    "https://secureappbox.com/our-services/securemailbox/",
+                    "https://www.secureappbox.com/news/today-we-launch-gdpr-e-fax",
+                    "https://www.zivver.com/solutions/industry/public-sector",
+                    "https://www.zivver.com/products/microsoft-email-security",
+                    "https://www.mynewsdesk.com/se/signicat-as-finland/pressreleases/cryptshare-och-signicat-banar-vaeg-foer-saeker-e-post-och-filoeverfoering-med-hjaelp-av-svenskt-bankid-3128071",
+                    "https://www.inuit.se/saker-digital-kommunikation",
+                    "https://tellustalk.com/tjanster/digital-fax/",
+                    "https://www.generic.se/tjanster/digital-fax/",
+                    "https://www.wx3.se/saker-digital-fax/",
+                    "https://www.retarus.com/products/cloud-fax/",
+                    "https://www.selecthub.com/p/online-fax-services/retarus-cloud-fax/",
+                    "https://www.efax.com/pricing",
+                    "https://www.atea.se/strategi-och-utveckling/saker-digital-kommunikation/",
+                    "https://www.karlshamn.se/kommun-och-politik/kommunfakta/personuppgifter-gdpr/skicka-saker-e-post/",
+                    "https://www.domstol.se/tjanster-och-blanketter/saker-e-post/",
+                    "https://www.riksdagen.se/sv/dokument-och-lagar/dokument/svar-pa-skriftlig-fraga/krypterad-e-post-hos-svenska-myndigheter_h5121369/",
+                    "https://www.stralfors.se/vara-losningar/output-management/digitala-brevlador/",
+                    "https://skr.se/digitaliseringivalfarden/digitalinfrastruktur.8347.html"
+                ]
+}

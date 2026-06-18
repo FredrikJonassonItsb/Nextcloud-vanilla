@@ -1,0 +1,80 @@
+# ci/security.yml — npm and composer vulnerability scans.
+#
+# Audit the committed lockfile directly (no assemble, no node_modules/vendor, no .build/ artifact —
+# the old shape consumed assemble:dev's dangling-symlink tree). overlay/ holds the lockfile for
+# make-deps-managed apps; apps that use upstream's deps directly (no overlay, e.g. notes) fall back
+# to the shallow-inited upstream submodule. needs: [] so the scans run immediately, in parallel, and
+# surface even when the build is red (a patch-apply failure must not hide a vuln).
+
+security:npm-audit:
+  stage: test
+  image: cimg/php:8.3-node
+  needs: []
+  script:
+    - |
+      # Locate the committed npm lockfile: overlay/ wins; else the upstream submodule; else the app
+      # has no npm deps (PHP-only) and there is nothing to audit. `git submodule update` runs
+      # unguarded so a real fetch failure crashes rather than masquerading as "no deps".
+      if [ -f overlay/package-lock.json ]; then
+        LOCK_DIR=overlay
+      else
+        git submodule update --init --depth 1 upstream
+        if [ -f upstream/package-lock.json ]; then
+          LOCK_DIR=upstream
+        else
+          echo "==> No package-lock.json (overlay or upstream) — no npm deps to audit."
+          exit 0
+        fi
+      fi
+      cd "$LOCK_DIR"
+      # Capture to artifact AND propagate audit's rc, not `| tee` (masks rc behind tee's rc=0) and
+      # not `|| true`: rc=1 (vulns) and rc>=2 (tool failed) must both surface — a swallowed
+      # tool-failure looks like a clean scan. The `|| rc=$?` is load-bearing: the runner runs this
+      # block under errexit, so a bare `npm audit` returning non-zero (the common case — findings)
+      # would exit before the cat, leaving the report invisible AND (with on_success artifacts)
+      # unuploaded. `|| rc=$?` catches it, the cat prints the report, and `exit $rc` re-propagates.
+      # --package-lock-only audits from the lockfile alone (no node_modules). allow_failure keeps it
+      # non-blocking but visible.
+      rc=0
+      npm audit --package-lock-only --audit-level=moderate > "$CI_PROJECT_DIR/npm-audit.txt" 2>&1 || rc=$?
+      cat "$CI_PROJECT_DIR/npm-audit.txt"
+      exit $rc
+  artifacts:
+    when: always
+    paths:
+      - npm-audit.txt
+    expire_in: 30 days
+  allow_failure: true
+
+security:composer-audit:
+  stage: test
+  image: cimg/php:8.3-node
+  needs: []
+  script:
+    - |
+      # Same lockfile-locate shape as security:npm-audit, for composer.lock.
+      if [ -f overlay/composer.lock ]; then
+        LOCK_DIR=overlay
+      else
+        git submodule update --init --depth 1 upstream
+        if [ -f upstream/composer.lock ]; then
+          LOCK_DIR=upstream
+        else
+          echo "==> No composer.lock (overlay or upstream) — no PHP deps to audit."
+          exit 0
+        fi
+      fi
+      cd "$LOCK_DIR"
+      # Same no-swallow shape as security:npm-audit, including the load-bearing `|| rc=$?` (the runner
+      # runs the block under errexit, so a bare non-zero audit would skip the cat + artifact). --locked
+      # audits the lockfile without installing vendor/.
+      rc=0
+      composer audit --locked > "$CI_PROJECT_DIR/composer-audit.txt" 2>&1 || rc=$?
+      cat "$CI_PROJECT_DIR/composer-audit.txt"
+      exit $rc
+  artifacts:
+    when: always
+    paths:
+      - composer-audit.txt
+    expire_in: 30 days
+  allow_failure: true

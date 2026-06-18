@@ -1,0 +1,28 @@
+--- a/vitest.config.js
++++ b/vitest.config.js
+@@ -3,13 +3,24 @@
+  * SPDX-License-Identifier: AGPL-3.0-or-later
+  */
+ 
++import path from 'path'
+ import vue from '@vitejs/plugin-vue2'
+ import { defineConfig } from 'vitest/config'
+ 
+ export default defineConfig({
+ 	plugins: [vue()],
++	resolve: {
++		preserveSymlinks: true,
++		alias: {
++			'@itsl': path.resolve(__dirname, 'src/itsl'),
++			'@': path.resolve(__dirname, 'src'),
++		},
++	},
+ 	test: {
+-		include: ['src/tests/unit/**/*.{test,spec}.?(c|m)[jt]s?(x)'],
++		include: [
++			'src/tests/unit/**/*.{test,spec}.?(c|m)[jt]s?(x)',
++			'src/itsl/tests/**/*.{test,spec}.?(c|m)[jt]s?(x)',
++		],
+ 		setupFiles: ['./src/tests/setup.js'],
+ 		globals: true,
+ 		environment: 'jsdom',

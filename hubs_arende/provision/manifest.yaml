@@ -1,0 +1,332 @@
+# SPDX-FileCopyrightText: ITSL <info@itsl.se>
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# ============================================================================
+# hubs_arende — "ÖVERLEVER-RESET"-MANIFEST
+# ============================================================================
+# Detta är källan-till-sanning för ALLT som provisioneringsrutinen lägger till
+# ovanpå en ren/återställd dev15-instans. bootstrap.sh läser samma lista; varje
+# artefakt här MÅSTE ha en motsvarande, idempotent restore-väg.
+#
+# Kolumner per artefakt:
+#   id                 stabilt namn (= occ app-id där relevant)
+#   kind               app | system_config | db | deploy_daemon | code | policy
+#   version            exakt pinnad version (eller "n/a")
+#   nc_compat          NC-versionsintervall artefakten stödjer (dev15 = 31.0.8)
+#   source             VAR koden/tarballen hämtas ifrån
+#   install_method     HUR den installeras (måste vara idempotent)
+#   verified_for_nc31  ja | nej | kontrollera-vid-körning
+#   survives_itsl_deploy  ja | nej | delvis  (överlever `itsl deploy`/instans-reset?)
+#   restore_step       exakt steg i bootstrap.sh som återställer artefakten
+#   destructive        ja | nej  (kan radera/skriva över befintlig data?)
+#   notes              kontext / risker
+#
+# KÄRNFAKTA (verifierat read-only på dev15 2026-06-16):
+#   - dev15 = 10.43.51.62, NC 31.0.8.1, productname "ITSL Hubs".
+#   - occ-mönster: sudo docker exec -u www-data hubs-php php /var/www/html/occ <cmd>
+#   - custom_apps lever på en volym monterad i hubs-php; appar där KAN nollas vid
+#     en hård instans-reset om volymen återskapas → därför detta manifest.
+#   - `itsl deploy` bevarar /opt/project_data (DB, config) men OM-kompilerar config
+#     ur .env och kan skriva över systeminställningar (t.ex. appstoreenabled).
+#   - "Riktiga" Hubs kör NC 31 (INTE NC 32). Alla app-versioner nedan är valda för
+#     NC 31-kompatibilitet. VERIFIERA alltid mot info.xml <nextcloud max-version>.
+# ============================================================================
+
+meta:
+  app_id: hubs_arende
+  namespace_root: 'OCA\HubsArende'
+  vendor: ITSL
+  license: AGPL-3.0-or-later
+  nc_target: "31.0.8"        # dev15
+  nc_compat_range: "30-32"   # kontrakt: NC 30–32
+  php_min: "8.1"
+  occ_exec: "sudo docker exec -u www-data hubs-php php /var/www/html/occ"
+  custom_apps_path: "/var/www/html/custom_apps"
+  rollback_ref_dir: "/opt/project_data/hubs_arende/rollback"
+  tarball_cache_dir: "/opt/project_data/hubs_arende/tarballs"
+  log_file: "/opt/project_data/hubs_arende/provision.log"
+
+# ----------------------------------------------------------------------------
+# 0. ROLLBACK-REFERENS (steg a) — tas FÖRE allt annat
+# ----------------------------------------------------------------------------
+rollback_reference:
+  - id: config_snapshot_before
+    kind: snapshot
+    version: n/a
+    source: "occ config:list --private"
+    install_method: >-
+      occ config:list --private > $rollback_ref_dir/config-before-<ts>.json ;
+      occ app:list > $rollback_ref_dir/applist-before-<ts>.txt
+    survives_itsl_deploy: ja      # skrivs till project_data
+    restore_step: "step_a_snapshot()"
+    destructive: nej
+    notes: >-
+      Rollback-ankare. Låter oss diffa appstore-policy + app:list före/efter och
+      återställa appstoreenabled till EXAKT föregående värde i steg (i).
+
+# ----------------------------------------------------------------------------
+# 1. SYSTEM-/POLICY-ÄNDRINGAR (steg b + i) — TILLFÄLLIGA
+# ----------------------------------------------------------------------------
+system_config:
+  - id: appstoreenabled_temporary_on
+    kind: policy
+    version: n/a
+    nc_compat: "30-32"
+    source: "occ config:system:set appstoreenabled --value true"
+    install_method: >-
+      Läs nuvarande värde -> spara i rollback-ref -> sätt true (steg b).
+      Återställs i steg (i) till sparat värde (vanligen false i prod-policy).
+    verified_for_nc31: ja
+    survives_itsl_deploy: nej     # itsl deploy/reset kan nolla detta; AVSIKT: ska vara av
+    restore_step: "step_b_appstore_on() + step_i_appstore_off()"
+    destructive: nej
+    notes: >-
+      ALTERNATIV om policy förbjuder appstore helt: sidoladdningsläge (sätt INTE
+      true; installera enbart via tarball→custom_apps). bootstrap.sh stödjer
+      SIDELOAD_ONLY=1 som hoppar över detta steg helt.
+
+# ----------------------------------------------------------------------------
+# 2. INBYGGDA APPAR SOM BARA SKA AKTIVERAS (steg c) — redan i koden, disabled
+# ----------------------------------------------------------------------------
+shipped_apps_enable_only:
+  - id: contacts
+    kind: app
+    version: "7.3.7 (medföljande på dev15; VERIFIERAD enabled 2026-06-17)"
+    nc_compat: "30-32"
+    source: "redan i bilden/custom_apps; ingen nedladdning"
+    install_method: "occ app:enable contacts (idempotent — no-op om redan på)"
+    verified_for_nc31: ja
+    survives_itsl_deploy: delvis   # koden överlever, men enabled-flaggan kan nollas
+    restore_step: "step_c_enable_contacts()"
+    destructive: nej
+    notes: "Krävs av Kontakter-favoriter-lösningen. Var disabled i bas-image; aktiverad på dev15 2026-06-17."
+
+# ----------------------------------------------------------------------------
+# 3. SAKNADE APPAR — SIGNERADE nextcloud-releases-tarballar (steg d)
+# ----------------------------------------------------------------------------
+# Alla hämtas som GPG/signaturverifierade officiella tarballar och läggs i
+# custom_apps. Versioner nedan är NC31-säkra utgångsvärden; bootstrap.sh
+# VERIFIERAR varje tarballs info.xml <nextcloud max-version> >= 31 innan enable.
+# Om en pinnad version inte längre är NC31-kompatibel → skriptet stoppar med
+# tydligt fel (ingen tyst uppgradering).
+missing_apps_tarball:
+  - id: deck
+    kind: app
+    version: "1.15.9"               # VERIFIERAD installerad+enabled på dev15 2026-06-17 (info.xml max-version=31)
+    nc_compat: ">=30,<=31 (info.xml nc_max=31)"
+    source: "https://github.com/nextcloud-releases/deck/releases/download/v1.15.9/deck-v1.15.9.tar.gz"
+    install_method: "tarball -> custom_apps/deck -> occ app:enable deck"
+    verified_for_nc31: ja           # enabled & verifierad på NC31 2026-06-17
+    survives_itsl_deploy: nej      # custom_apps-innehåll kan nollas vid hård reset
+    restore_step: "step_d_install_tarball_app(deck, <url>, <sha>)"
+    destructive: nej
+    notes: "Kort-per-ärende-pekare (objekt_typ=deck_card). board-per-enhet."
+
+  - id: tasks
+    kind: app
+    version: "0.17.1"               # VERIFIERAD installerad+enabled på dev15 2026-06-17
+    nc_compat: ">=30,<=32 (verifiera info.xml)"
+    source: "https://github.com/nextcloud-releases/tasks/releases/download/v0.17.1/tasks.tar.gz"
+    install_method: "tarball -> custom_apps/tasks -> occ app:enable tasks"
+    verified_for_nc31: ja           # enabled & verifierad på NC31 2026-06-17
+    survives_itsl_deploy: nej
+    restore_step: "step_d_install_tarball_app(tasks, <url>, <sha>)"
+    destructive: nej
+    notes: "Frist/uppgift-yta (CalDAV VTODO)."
+
+  - id: forms
+    kind: app
+    version: "5.2.9"               # VERIFIERAD installerad+enabled på dev15 2026-06-17 (info.xml max-version=33)
+    nc_compat: ">=30,<=33 (info.xml nc_max=33)"
+    source: "https://github.com/nextcloud-releases/forms/releases/download/v5.2.9/forms-v5.2.9.tar.gz"
+    install_method: "tarball -> custom_apps/forms -> occ app:enable forms"
+    verified_for_nc31: ja           # enabled & verifierad på NC31 2026-06-17
+    survives_itsl_deploy: nej
+    restore_step: "step_d_install_tarball_app(forms, <url>, <sha>)"
+    destructive: nej
+    notes: "Blankett-inflöde (ansökan/orosanmälan via formulär)."
+
+  - id: libresign
+    kind: app
+    version: "11.x (verifiera NC31-kompatibel tagg vid körning — INTE installerad ännu)"
+    nc_compat: ">=30,<=32 (verifiera info.xml — LibreSign följer NC-major noga)"
+    source: "github LibreSign/libresign releases (NC31-kompatibel tagg via appstore-release-API)"
+    install_method: >-
+      tarball -> custom_apps/libresign -> occ app:enable libresign ;
+      OBS: libresign kräver `occ libresign:install --all` för JSignPdf/binärer.
+    verified_for_nc31: blockerad-prereq    # se notes — java saknas
+    survives_itsl_deploy: nej
+    restore_step: "step_d_install_tarball_app(libresign, <url>, <sha>) + step_d_post_libresign()"
+    destructive: nej
+    notes: >-
+      Signerings-port. BLOCKERAD-PREREQ (verifierat 2026-06-17): java finns INTE i
+      hubs-php → `libresign:install` (JSignPdf) skulle fela. BESLUT: SENARELÄGGS —
+      SigneringPort-STUBBEN räcker i v1, och Inera Underskriftstjänst (EJ libresign)
+      är den beslutade riktiga backend:en (börja med stubbe). Om libresign ändå ska
+      köras: kräver java i hubs-php-imagen (image-/compose-ändring som itsl äger) +
+      utgående nät (hubs-php→github=200 verifierat). OPTIONAL via INSTALL_LIBRESIGN=0.
+
+  - id: notes
+    kind: app
+    version: "5.0.1"               # VERIFIERAD installerad+enabled på dev15 2026-06-17
+    nc_compat: ">=30,<=32 (verifiera info.xml)"
+    source: "https://github.com/nextcloud-releases/notes/releases/download/v5.0.1/notes.tar.gz"
+    install_method: "tarball -> custom_apps/notes -> occ app:enable notes"
+    verified_for_nc31: ja           # enabled & verifierad på NC31 2026-06-17
+    survives_itsl_deploy: nej
+    restore_step: "step_d_install_tarball_app(notes, <url>, <sha>)"
+    destructive: nej
+    notes: "Anteckningsyta (tjänsteanteckning). Markdown via Files."
+
+# ----------------------------------------------------------------------------
+# 4. AppAPI (app_api) + DOCKER DEPLOY-DAEMON (steg e)
+# ----------------------------------------------------------------------------
+appapi:
+  - id: app_api
+    kind: app
+    version: "3.2.0 (INKOMPATIBEL — se notes; default AV via INSTALL_APPAPI=0)"
+    nc_compat: ">=30,<=31 enligt info.xml MEN runtime-trasig på ITSL NC 31.0.8.1"
+    source: "https://github.com/nextcloud-releases/app_api/releases/download/v3.2.0/app_api.tar.gz"
+    install_method: "tarball -> custom_apps/app_api -> occ app:enable app_api"
+    verified_for_nc31: nej          # BLOCKERAD: ExApps-sida kraschar (se notes)
+    survives_itsl_deploy: nej
+    restore_step: "step_e_install_appapi() (gated av INSTALL_APPAPI=1)"
+    destructive: nej
+    notes: >-
+      BLOCKERAD-INKOMPAT (verifierat 2026-06-17): app:enable går rent MEN ExApps-admin-
+      sidan /apps/app_api/apps kraschar med "Call to undefined method OC_Util::getChannel()"
+      (app_api/lib/Fetcher/AppAPIFetcher.php:187) — 3.2.0 anropar en kärnmetod som inte
+      finns i ITSL:s NC 31.0.8.1-build. HÅLLS DISABLED (occ app:disable app_api). app_api
+      behövs först i ExApp-paketeringsfasen (hubs_arende kör in-process nu). När den fasen
+      når: hitta/verifiera en app_api-version som FAKTISKT funkar mot ITSL-builden (ladda
+      admin-sidan, inte bara app:enable), eller låt ITSL paketera den i basimagen. Aktiveras
+      via INSTALL_APPAPI=1. Deploy-daemon (docker.sock) är en separat blockerare.
+
+  - id: docker_deploy_daemon
+    kind: deploy_daemon
+    version: n/a
+    nc_compat: "30-32"
+    source: "/var/run/docker.sock (lokal Docker-host)"
+    install_method: >-
+      occ app_api:daemon:register hubs_docker "Hubs Docker" docker-install
+        unix-socket /var/run/docker.sock http://localhost --net <hubs-net>
+      (idempotent: kontrollera `app_api:daemon:list` först)
+    verified_for_nc31: blockerad-prereq    # se notes — docker.sock saknas
+    survives_itsl_deploy: nej      # daemon-registreringen ligger i NC-DB; kan nollas vid reset
+    restore_step: "step_e_register_daemon()"
+    destructive: nej
+    notes: >-
+      Registrerar Docker-deploy-daemon mot unix-socket. BLOCKERAD-PREREQ (verifierat
+      2026-06-17): /var/run/docker.sock är INTE monterad i hubs-php → registrering
+      mot unix-socket faller. Att montera docker.sock = en compose-/runtime-ändring
+      som `itsl deploy` äger (initiator/docker-compose.yml) — görs INTE ad-hoc.
+      BESLUT: SENARELÄGGS till ExApp-paketeringsfasen (hubs_arende kör in-process nu,
+      app_api är installerad som förberedelse). Nätet hubs-php sitter på = `initiator_hubs`
+      (ExApps måste joina det). app_api-version på NC31 = 3.2.0 (3.x-spåret, EJ 4.x).
+
+# ----------------------------------------------------------------------------
+# 5. hubs_arende EGEN DATABAS (steg f)
+# ----------------------------------------------------------------------------
+# KONTRAKT: hubs_arende är in-process NC-app NU (designad ExApp-rent). Därför är
+# DEFAULT i v1 en NC-app-DB-migration (tabeller i hubs-postgres, oc_-prefix
+# hanteras av NC via QBMapper/Migration). En separat DB+role förbereds som
+# OPTION för ExApp-fasen.
+database:
+  - id: hubs_arende_app_db_migration
+    kind: db
+    version: "Version001000Date* (app-migrationer)"
+    nc_compat: "30-32"
+    source: "hubs_arende/lib/Migration/* (levereras med appkoden)"
+    install_method: >-
+      Körs automatiskt av occ app:enable hubs_arende / occ upgrade.
+      Idempotent by design: migrationer använder hasTable()-vakt (sdkmc-mönster).
+    verified_for_nc31: ja
+    survives_itsl_deploy: ja       # tabellerna ligger i hubs-postgres = project_data
+    restore_step: "step_f_provision_db() (DEFAULT: app-migration via occ)"
+    destructive: nej
+    notes: >-
+      Tabeller: hubs_arende_case, hubs_arende_typ, hubs_arende_flagga,
+      hubs_arende_pekare. INVARIANT: commit_destination NOT NULL.
+
+  - id: hubs_arende_dedicated_pg_role     # OPTION för ExApp-fasen, EJ default
+    kind: db
+    version: n/a
+    nc_compat: "n/a (ExApp-fas)"
+    source: "hubs-postgres (CREATE ROLE/DATABASE)"
+    install_method: >-
+      [DESTRUKTIV om DB finns med data] psql i hubs-postgres:
+        CREATE ROLE hubs_arende LOGIN PASSWORD '<vault>';
+        CREATE DATABASE hubs_arende OWNER hubs_arende;
+      Idempotent-vakt: SELECT 1 FROM pg_database WHERE datname='hubs_arende'.
+    verified_for_nc31: n/a
+    survives_itsl_deploy: ja       # ligger i hubs-postgres-volymen
+    restore_step: "step_f_provision_db() (med PROVISION_DEDICATED_DB=1)"
+    destructive: ja               # DROP/CREATE kan radera; default AVSTÄNGD
+    notes: >-
+      AKTIVERAS ENDAST i ExApp-fasen via PROVISION_DEDICATED_DB=1. Lösenord ska
+      komma ur vault, ALDRIG hårdkodas. DESTRUKTIV — se reset-restore.md.
+
+# ----------------------------------------------------------------------------
+# 6. hubs_arende APP-KOD + AKTIVERING (steg g)
+# ----------------------------------------------------------------------------
+app_code:
+  - id: hubs_arende
+    kind: code
+    version: "0.1.0 (in-process NC-app; ExApp-paketeras senare)"
+    nc_compat: "30-32"
+    source: >-
+      C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende (build-host)
+      -> rsync/tar -> $custom_apps_path/hubs_arende
+    install_method: >-
+      Lägg koden i custom_apps/hubs_arende (rsync/tar-pipe), chown www-data,
+      occ app:enable hubs_arende, occ upgrade (kör migrationer).
+    verified_for_nc31: ja
+    survives_itsl_deploy: nej      # custom_apps-kod nollas vid hård reset
+    restore_step: "step_g_deploy_app()"
+    destructive: nej
+    notes: >-
+      App-id hubs_arende, namespace OCA\\HubsArende. Cache-bust-mönster (från
+      hubs_start): installed_version får ALDRIG överstiga info.xml-version.
+
+# ----------------------------------------------------------------------------
+# 7. VERIFIERING + REPAIR (steg h)
+# ----------------------------------------------------------------------------
+verification:
+  - id: maintenance_repair
+    kind: maintenance
+    version: n/a
+    nc_compat: "30-32"
+    source: "occ maintenance:repair"
+    install_method: "occ maintenance:repair (idempotent)"
+    verified_for_nc31: ja
+    survives_itsl_deploy: n/a
+    restore_step: "step_h_repair_verify()"
+    destructive: nej
+    notes: >-
+      Verifierar: occ app:list visar alla appar enabled, occ status ok,
+      hubs_arende-tabellerna finns, commit_destination NOT NULL-constraint aktiv.
+
+# ----------------------------------------------------------------------------
+# SAMMANFATTNING: VAD ÖVERLEVER `itsl deploy` / INSTANS-RESET?
+# ----------------------------------------------------------------------------
+survives_summary:
+  survives_itsl_deploy:        # ligger i project_data (DB/config) -> bevaras
+    - hubs_arende_app_db_migration   # tabeller i hubs-postgres
+    - config_snapshot_before         # rollback-ref i project_data
+  does_not_survive:            # MÅSTE provisioneras om efter reset via bootstrap.sh
+    - appstoreenabled_temporary_on   # (avsiktligt av efteråt)
+    - deck
+    - tasks
+    - forms
+    - libresign
+    - notes
+    - app_api
+    - docker_deploy_daemon
+    - hubs_arende                    # app-KODEN i custom_apps
+  partial:
+    - contacts                       # kod kvar, enabled-flagga kan nollas
+  conclusion: >-
+    Allt under "does_not_survive" är exakt det bootstrap.sh återställer
+    idempotent. Slutmålet (reset-restore.md): flytta dessa steg in i den
+    gemensamma itsl-deploy-rutinen (versions.yaml + en post-deploy-hook) så att
+    `itsl deploy` självt provisionerar hubs_arende-stacken.

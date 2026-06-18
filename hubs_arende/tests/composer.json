@@ -1,0 +1,14 @@
+{
+    "name": "itsl/hubs-arende-tests",
+    "description": "Standalone PHPUnit dev-deps for the hubs_arende case engine. In a real Nextcloud checkout the suite runs against the server class-loader instead and these are unnecessary.",
+    "license": "AGPL-3.0-or-later",
+    "require-dev": {
+        "phpunit/phpunit": "^10.5",
+        "nextcloud/ocp": "dev-master"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}

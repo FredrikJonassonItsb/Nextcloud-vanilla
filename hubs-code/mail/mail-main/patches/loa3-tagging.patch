@@ -1,0 +1,46 @@
+--- a/src/components/MessageAttachment.vue
++++ b/src/components/MessageAttachment.vue
+@@ -93,6 +93,7 @@
+ import { downloadAttachment, saveAttachmentToFiles } from '../service/AttachmentService.js'
+ import { getUserCalendars, importCalendarEvent } from '../service/DAVService.js'
+ 
++
+ export default {
+ 	name: 'MessageAttachment',
+ 	components: {
+@@ -153,6 +154,10 @@
+ 			type: Boolean,
+ 			default: false,
+ 		},
++		sdkMessage: {
++			type: Boolean,
++			default: false,
++		},
+ 	},
+ 
+ 	data() {
+@@ -213,7 +218,13 @@
+ 			const id = this.$route.params.threadId
+ 
+ 			try {
+-				await saveAttachmentToFiles(id, this.id, path)
++				if (this.sdkMessage) {
++					await saveAttachmentToFiles(id, this.id, path)
++					const fullPath = `${path}/${this.fileName}`
++					Axios.post(generateUrl('/apps/sdkmc/api/v2/tag/assign'), { fullPath })
++				} else {
++					await saveAttachmentToFiles(id, this.id, path)
++				}
+ 				Logger.info('saved')
+ 				showSuccess(t('mail', 'Attachment saved to Files'))
+ 			} catch (e) {
+--- a/src/components/MessageAttachments.vue
++++ b/src/components/MessageAttachments.vue
+@@ -20,6 +20,7 @@
+ 					:mime="attachment.mime"
+ 					:mime-url="attachment.mimeUrl"
+ 					:can-preview="canPreview(fileInfos[idx])"
++					:sdk-message="isSDKMessage"
+ 					@open="showViewer(fileInfos[idx])" />
+ 			</div>
+ 		</div>

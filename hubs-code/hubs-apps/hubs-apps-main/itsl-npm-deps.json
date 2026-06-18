@@ -1,0 +1,13 @@
+{
+  "devDependencies": {
+    "webpack-dev-server": "^5",
+    "webpack-merge": "^5"
+  },
+  "scripts": {
+    "preinstall": "[ \"$npm_command\" = ci ] || { echo 'ERROR: npm install blocked. Use: make deps (add deps) or make security-update (patches)' >&2; exit 1; }"
+  },
+  "engines": {
+    "node": "^22.0.0",
+    "npm": "^10.5.0"
+  }
+}

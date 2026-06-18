@@ -1,0 +1,152 @@
+--- a/lib/Controller/DraftsController.php
++++ b/lib/Controller/DraftsController.php
+@@ -172,6 +172,7 @@
+ 		bool $isPgpMime = false): JsonResponse {
+ 		$message = $this->service->getMessage($id, $this->userId);
+ 		$account = $this->accountService->find($this->userId, $accountId);
++		$oldAccountId = $message->getAccountId();
+ 
+ 		$message->setType(LocalMessage::TYPE_DRAFT);
+ 		$message->setAccountId($accountId);
+@@ -196,6 +197,7 @@
+ 		}
+ 
+ 		$message = $this->service->updateMessage($account, $message, $to, $cc, $bcc, $attachments);
++		$this->eventDispatcher->dispatchTyped(new SaveOrUpdateDraftEvent($message, null, $oldAccountId));
+ 		return JsonResponse::success($message, Http::STATUS_ACCEPTED);
+ 	}
+ 
+--- a/lib/Service/DraftsService.php
++++ b/lib/Service/DraftsService.php
+@@ -157,8 +157,13 @@
+ 	}
+ 
+ 	public function handleDraft(Account $account, int $draftId): void {
+-		$message = $this->mailManager->getMessage($account->getUserId(), $draftId);
+-		$this->eventDispatcher->dispatchTyped(new DraftMessageCreatedEvent($account, $message));
++		try {
++			$message = $this->mailManager->getMessage($account->getUserId(), $draftId);
++			$this->eventDispatcher->dispatchTyped(new DraftMessageCreatedEvent($account, $message));
++		} catch (DoesNotExistException $e) {
++			// Old IMAP draft already deleted — not a fatal error, new draft can still be created
++			$this->logger->debug('Draft ' . $draftId . ' no longer exists in mail_messages, skipping IMAP cleanup');
++		}
+ 	}
+ 
+ 	/**
+@@ -172,7 +177,7 @@
+ 		try {
+ 			$this->transmission->saveLocalDraft($account, $message);
+ 		} catch (ClientException|ServiceException $e) {
+-			$this->logger->error('Could not move draft to IMAP', ['exception' => $e]);
++			// $this->logger->error('Could not move draft to IMAP', ['exception' => $e]);
+ 			// Mark as failed so the message is not moved repeatedly in background
+ 			$message->setFailed(true);
+ 			$this->mapper->update($message);
+--- a/src/components/Envelope.vue
++++ b/src/components/Envelope.vue
+@@ -835,6 +835,9 @@
+ 		},
+ 
+ 		isDraggable() {
++			if (this.draft) {
++				return false
++			}
+ 			return mailboxHasRights(this.mailbox, 'te')
+ 		},
+ 
+--- a/src/components/NewMessageModal.vue
++++ b/src/components/NewMessageModal.vue
+@@ -102,7 +102,7 @@
+ 						@update:editor-body="patchEditorBody"
+ 						@update:send-at="patchComposerData({ sendAt: $event / 1000 })"
+ 						@update:smime-sign="patchComposerData({ smimeSign: $event })"
+-						@update:smime-encrypt="patchComposerData({ smimeSign: $event })"
++						@update:smime-encrypt="patchComposerData({ smimeEncrypt: $event })"
+ 						@update:request-mdn="patchComposerData({ requestMdn: $event })"
+ 						@draft="onDraft"
+ 						@discard-draft="discardDraft"
+--- a/src/directives/drag-and-drop/draggable-envelope/draggable-envelope.js
++++ b/src/directives/drag-and-drop/draggable-envelope/draggable-envelope.js
+@@ -34,6 +34,7 @@
+ 
+ 	onDragStart(event) {
+ 		if (!this.options.isDraggable) {
++			event.preventDefault()
+ 			return
+ 		}
+ 		const { accountId, mailboxId, selectedEnvelopes } = this.options
+@@ -49,13 +50,14 @@
+ 					accountId,
+ 					mailboxId,
+ 					databaseId: envelope.databaseId,
++					threadRootId: envelope.threadRootId,
+ 					draggableLabel: `${envelope.subject} (${envelope.from[0].label})`,
+ 				})
+ 			})
+ 		} else {
+ 			// handle single dragged item
+-			const { databaseId, draggableLabel } = this.options
+-			envelopes.push({ accountId, mailboxId, databaseId, draggableLabel })
++			const { databaseId, draggableLabel, threadRootId } = this.options
++			envelopes.push({ accountId, mailboxId, databaseId, threadRootId, draggableLabel })
+ 		}
+ 
+ 		event.dataTransfer.setData('text/plain', JSON.stringify(envelopes))
+--- a/src/store/mainStore/actions.js
++++ b/src/store/mainStore/actions.js
+@@ -469,7 +469,7 @@
+ 					},
+ 				))
+ 				if (!discard) {
+-					this.showMessageComposer()
++					this.showMessageComposerMutation()
+ 					return
+ 				}
+ 			}
+@@ -477,6 +477,9 @@
+ 			return handleHttpAuthErrors(async () => {
+ 				if (reply) {
+ 					const original = await this.fetchMessage(reply.data.databaseId)
++					if (!original) {
++						throw new Error('Message no longer exists')
++					}
+ 
+ 					// Fetch and transform the body into a rich text object
+ 					if (original.hasHtmlBody) {
+@@ -564,6 +567,9 @@
+ 					}
+ 				} else if (templateMessageId) {
+ 					const message = await this.fetchMessage(templateMessageId)
++					if (!message) {
++						throw new Error('Message no longer exists')
++					}
+ 					// Merge the original into any existing data
+ 					data = {
+ 						...data,
+--- a/src/store/outboxStore.js
++++ b/src/store/outboxStore.js
+@@ -175,9 +175,10 @@
+ 		 * @param {number} data.id Id of outbox message to send
+ 		 * @param {number} data.replyToDatabaseId Database ID of the message being replied to (for thread refresh)
+ 		 * @param {number} data.accountId Account ID of the sender (for syncing sent mailbox)
++		 * @param {object} [data.itsl] Optional ITSL data to preserve through the undo flow
+ 		 * @return {Promise<boolean>} Resolves to false if sending was skipped. Resolves after UNDO_DELAY has elapsed and the message dispatch was triggered. Warning: This might take a long time, depending on UNDO_DELAY.
+ 		 */
+-		async sendMessageWithUndo({ id, replyToDatabaseId, accountId }) {
++		async sendMessageWithUndo({ id, replyToDatabaseId, accountId, itsl }) {
+ 			this.mainStore.hideMessageComposerMutation()
+ 
+ 			return new Promise((resolve, reject) => {
+@@ -191,7 +192,10 @@
+ 						logger.info('Message ' + message.id + ' stopped', { message: stopped })
+ 						await this.mainStore.startComposerSession({
+ 							type: 'outbox',
+-							data: { ...message },
++							data: {
++								...message,
++								...(itsl ? { itsl } : {}),
++							},
+ 						}, { root: true })
+ 					},
+ 					{

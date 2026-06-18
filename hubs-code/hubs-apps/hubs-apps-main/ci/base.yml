@@ -1,0 +1,77 @@
+# ci/base.yml — shared CI config; must be included before other ci/ templates.
+# Hidden jobs use `extends:`, not YAML anchors: anchors don't cross included files in GitLab CI.
+
+stages:
+  - build    # build:app (the installable tarball) + package:metadata
+  - test     # test:lint + the npm/composer audits (allow_failure, never gate the build)
+  - upload   # publish the tarball + metadata to the package registry (release refs)
+  - release  # GitLab release object (tags)
+  - notify   # scheduled upstream-drift check
+
+variables:
+  # Tag name for tag builds, branch name for branch builds; upload/release use it as the registry path.
+  VERSION: $CI_COMMIT_REF_NAME
+  # Shallow-clone the app repo to its tip — CI builds the checked-out commit and
+  # reads no git history (the version stamp uses CI_PIPELINE_IID). The default is
+  # a 50-commit fetch, redundant for a large-tree app repo.
+  GIT_DEPTH: "1"
+  # Cache archive/restore tuning: fastzip + the fastest level trade compression
+  # ratio for archive/restore speed on the big node_modules/vendor trees, which
+  # dominate build:app's wall-clock.
+  FF_USE_FASTZIP: "true"
+  CACHE_COMPRESSION_LEVEL: "fastest"
+  ARTIFACT_COMPRESSION_LEVEL: "fastest"
+
+default:
+  tags:
+    - docker_ram
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+
+# Build env: the ci-builder image (cr.itsl.se/itsl/hubs-apps/ci-builder) bakes the platform
+# toolchain (quilt + rsync + pigz over cimg/php:8.3-node) AND the platform tree itself, at the ref
+# it was built from. It is pulled as ci-builder:${PLATFORM_REF}, so each app gets the image —
+# toolchain + platform — matching the platform version it pins; a new platform lands with the
+# version bump (no manual tag bump, no runtime clone). The app projects pull this private
+# cross-project image via a group-level DOCKER_AUTH_CONFIG (a read_registry deploy token).
+# pull_policy: if-not-present reuses the runner-cached image — safe because the tag is immutable per
+# ref. Runs as root (owns the cache/artifact-restored files). /platform is baked in (symlinked to
+# /tmp/platform, the path the jobs pass), so jobs need no before_script clone.
+.build_env:
+  image:
+    name: cr.itsl.se/itsl/hubs-apps/ci-builder:${PLATFORM_REF}
+    pull_policy: if-not-present
+
+# --- Dependency cache keys (canonical reference) ---
+#
+# CI builds into .dist/ (the production lay-down: real files, no symlinks, no MODE=force). The
+# install outputs live there and persist between pipelines via GitLab's cache (hundreds of MB of
+# node_modules/vendor); the artifact channel carries only the small tarball. The lay-down's
+# clean_build_dir preserves the cache-restored dep dirs when CI sets
+# KEEP_CACHED_DEPS=1 (see assemble.sh); the installers (both in build.sh now) then reuse them:
+# build.sh skips `npm ci` when node_modules/ is present (it can't no-op), and runs `composer install`
+# (a no-op against a matching vendor/, self-healing otherwise).
+#
+# Keys (GitLab caps cache:key:files at 2 files — the #45 fix; the prefix carries CACHE_VARIANT, which
+# is tag-unique so tag builds miss → a clean install with no cache, see validate.yml):
+#   npm-modules-<VARIANT>      ← overlay/package-lock.json   → .dist/node_modules  (shared: build:app push, test:lint pull)
+#   composer-<MODE>-<VARIANT>  ← overlay/composer.lock+json  → .dist/{vendor,vendor-bin}
+#                                (prefixed per DIST_MODE — snapshot/production vendor trees differ)
+# (The .npm + .composer-cache download stores were dropped — keyed identically to their dep trees,
+# they hit/miss together and never independently helped.)
+#
+# The committed overlay lockfile IS the key, and an upstream pin move always regenerates it (make
+# deps), so the patch-package patches in upstream/patches/ — which only change with the pin — are
+# covered transitively. What the key does NOT track: bamarni bin-tool versions
+# (upstream/vendor-bin/*/composer.lock, including mozart) live in the submodule. That's fine — the
+# app's post-install-cmd hook runs `composer bin all install` on every build, reconciling each tool to
+# its lock, so a stale vendor-bin cache self-heals (same mechanism as composer install reconciling
+# vendor/). Apps whose lockfile lives in upstream/ (no overlay, e.g. notes) have no key file; their
+# cache falls back to a static key, so build.sh's npm guard installs fresh for them (gated on the
+# committed overlay lockfile existing) and composer install reconciles vendor/ itself. Bump a prefix
+# (-v1 → -v2) to force-invalidate a cache shape change. These keys are duplicated inline in
+# validate.yml (build:app) and lint.yml (test:lint) — cache:key:files can't be shared via anchors
+# across included files; keep them in sync with the table above.

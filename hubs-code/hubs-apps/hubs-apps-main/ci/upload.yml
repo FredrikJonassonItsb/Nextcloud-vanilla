@@ -1,0 +1,102 @@
+# ci/upload.yml — Push to GitLab Package Registry + create release (tags only).
+
+upload:package:
+  stage: upload
+  image: curlimages/curl:latest
+  needs:
+    - job: build:app
+      artifacts: true
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH =~ /^stable\d+$/
+    - if: $CI_COMMIT_BRANCH == "itsl/main"
+    - if: $CI_COMMIT_BRANCH =~ /^itsl\/stable\d+$/
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      # Branch builds reuse one version slug; delete the previous package
+      # first or the registry accumulates stale artifacts.
+      if [ -z "$CI_COMMIT_TAG" ]; then
+        echo "Branch build: cleaning up previous ${VERSION} package..."
+        # --fail: without it curl -s returns 0 on HTTP errors, so a failed
+        # query looks like "no package" and silently skips cleanup → stale
+        # artifact. Query failure branches to a warning (upload still
+        # proceeds); grep rc=1 is the legitimate "no existing package" case.
+        if PKG_RESP=$(curl --fail -sS --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages?package_name=${CI_PROJECT_NAME}&package_version=${VERSION_SLUG}"); then
+          PACKAGE_ID=$(printf '%s' "$PKG_RESP" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
+        else
+          echo "WARNING: could not query existing packages (registry API error); skipping cleanup, continuing with upload." >&2
+          PACKAGE_ID=""
+        fi
+        if [ -n "$PACKAGE_ID" ]; then
+          echo "Deleting package ID: $PACKAGE_ID"
+          # --fail: curl -s returns 0 on HTTP errors; -S keeps the error
+          # visible under -s. Branch on rc rather than echoing "deleted"
+          # unconditionally, which would claim success on a failed delete
+          # and leave a stale artifact. Failure is a warning, not fatal —
+          # the upload below overwrites.
+          if curl --fail -sS --request DELETE --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/${PACKAGE_ID}"; then
+            echo "Previous package deleted"
+          else
+            echo "WARNING: failed to delete previous package ID ${PACKAGE_ID}; registry may retain a stale artifact. Continuing with upload." >&2
+          fi
+        else
+          echo "No previous package found"
+        fi
+      fi
+    - |
+      curl --fail --location \
+           --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file ${CI_PROJECT_NAME}.tar.gz \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${VERSION_SLUG}/${CI_PROJECT_NAME}.tar.gz"
+    - echo "Uploaded ${CI_PROJECT_NAME}.tar.gz to package registry"
+
+upload:metadata:
+  stage: upload
+  image: curlimages/curl:latest
+  # After upload:package, else its cleanup delete could wipe metadata
+  # this job already uploaded.
+  needs:
+    - job: package:metadata
+      artifacts: true
+    - job: upload:package
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH =~ /^stable\d+$/
+    - if: $CI_COMMIT_BRANCH == "itsl/main"
+    - if: $CI_COMMIT_BRANCH =~ /^itsl\/stable\d+$/
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      curl --fail --location \
+           --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file package-metadata.json \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${VERSION_SLUG}/package-metadata.json"
+    - echo "Uploaded package-metadata.json to package registry"
+
+release:create:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - job: upload:package
+    - job: upload:metadata
+  rules:
+    - if: $CI_COMMIT_TAG
+  # release-cli from a script, not native `release:` syntax: native does
+  # literal interpolation only, so slashy tags like `itsl/v2.2.X` can't be
+  # slugified and yield broken registry URLs.
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      release-cli create \
+        --name "Release ${VERSION}" \
+        --tag-name "${VERSION}" \
+        --description "${CI_PROJECT_NAME} ${VERSION}" \
+        --assets-link "{\"name\":\"${CI_PROJECT_NAME}.tar.gz\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${VERSION_SLUG}/${CI_PROJECT_NAME}.tar.gz\",\"link_type\":\"package\",\"filepath\":\"/${CI_PROJECT_NAME}.tar.gz\"}" \
+        --assets-link "{\"name\":\"package-metadata.json\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}/${VERSION_SLUG}/package-metadata.json\",\"link_type\":\"other\"}"

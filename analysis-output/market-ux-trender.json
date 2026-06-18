@@ -1,0 +1,110 @@
+{
+    "key":  "ux-trender",
+    "topic":  "UX-trender 2025–2026 för dashboards och myndighetsgränssnitt: mönster, offentliga designsystem, tillgänglighetskrav och unified workspace-produkter",
+    "key_findings":  [
+                         "TASK-ORIENTERAD DESIGN ÄR DET DOMINERANDE SKIFTET: Dashboardtrender 2025–2026 handlar om att gå från statiska rapportvyer till gränssnitt byggda kring användarens faktiska arbetsflöde och beslut. Gartner (aug 2025) prognosticerar att 40 % av enterprise-applikationer integrerar uppgiftsspecifika AI-agenter före slutet av 2026, upp från under 5 % 2025. Bento-grid har blivit det dominerande layoutmönstret för dashboards, och rollanpassade vyer (layout som anpassas efter roll utan manuell konfiguration) är en tydlig trend.",
+                         "COMMAND PALETTE (CMD/CTRL+K) ÄR NU STANDARD I PROFESSIONELLA VERKTYG: Linear, Vercel, GitHub, Slack och Raycast har alla etablerat mönstret. Nyckelegenskapen är att det skalar med användaren — nybörjare ignorerar det, experter bygger muskelminne och blir dramatiskt snabbare. Tekniskt bygger det på combobox-mönstret med fuzzy search och fullt tangentbordsstöd. För komplexa produkter pekas det ut som en av de mest värdeskapande funktionerna för lojala/frekventa användare (t.ex. registratorer som hanterar SDK-meddelanden dagligen).",
+                         "GOV.UK:S \u0027TASK LIST\u0027-MÖNSTER ÄR DET MEST BEPRÖVADE MYNDIGHETSMÖNSTRET FÖR FLERSTEGS-ÄRENDEN: Mönstret \u0027Complete multiple tasks\u0027 använder en fast uppsättning statusar (Completed, Incomplete, In progress, Cannot start yet, There is a problem/röd), uppgiftsnamn som börjar med verb, tematisk gruppering, och låter användaren slutföra uppgifter i valfri ordning över flera sessioner. Designprincip: minimera antalet statusar initialt och lägg till fler först när användarforskning motiverar det. GOV.UK genomförde dessutom en varumärkesuppfräschning i juni 2025 (Frontend v5.11 med förbättrad Service navigation, mobilanpassning).",
+                         "SVERIGE HAR INGET ENHETLIGT NATIONELLT DESIGNSYSTEM — MEN TRE STARKA MYNDIGHETSSYSTEM ATT LÅNA FRÅN: (1) Försäkringskassans designsystem (designsystem.forsakringskassan.se) öppnades oktober 2024 som öppen källkod för andra myndigheter och organisationer — fem års arbete med riktlinjer och färdig kod. (2) Arbetsförmedlingens designsystem (designsystem.arbetsformedlingen.se) är publikt med komponenter i kod och design, designmönster och formulärriktlinjer. (3) Inera Design System (IDS) för 1177/vården: komponentbibliotek i Figma + kod, React rekommenderas (ids-react, även ids-angular), obligatoriskt för Ineras tjänster sedan 2020, täcker både medborgar- och vårdpersonalsgränssnitt. Tolv myndigheter driver gemensamt projekt kring delade designresurser med FK och AF som initiativtagare; Digg samordnar förvaltningsgemensam digital infrastruktur men har inte publicerat ett eget \u0027Sveriges designsystem\u0027.",
+                         "JURIDISKT LÄGE FÖR TILLGÄNGLIGHET (VIKTIGT FÖR KRAVSTÄLLNING): DOS-lagen (2018:1937) kräver att offentliga aktörers webbplatser/appar uppfyller EN 301 549. Gällande harmoniserad version är EN 301 549 v3.2.1 (mars 2021) som pekar på WCAG 2.1 nivå AA. EN 301 549 v4.1.1 med WCAG 2.2 AA väntas träda i kraft tidigast 2026 och får rättslig verkan först när den refereras i EU:s officiella tidning — den binder då både webbtillgänglighetsdirektivet (offentlig sektor) och tillgänglighetsdirektivet EAA (privat sektor, i kraft 28 juni 2025 som svensk lag). Praktisk slutsats: bygg mot WCAG 2.2 AA redan nu.",
+                         "WCAG 2.2:S NIO NYA KRITERIER TRÄFFAR DASHBOARDS DIREKT: De mest dashboard-relevanta är Focus Not Obscured (fokuserad komponent får inte döljas av t.ex. sticky headers/paneler), Target Size Minimum 24×24 px (klickytor i widgets, ikonknappar), Dragging Movements (drag-and-drop av widgets måste ha alternativ — relevant eftersom Nextclouds dashboard bygger på drag-and-drop), Consistent Help (hjälpfunktion på samma plats på varje sida) och Accessible Authentication (inloggning utan kognitiva test — relevant för SITHS/Freja/BankID-flöden).",
+                         "MICROSOFT VIVA CONNECTIONS = REFERENSMODELL FÖR KURATERAD, ROLLSTYRD DASHBOARD: Bygger på Adaptive Cards (ACE) med två interaktionsnivåer — Card View (utför uppgiften direkt i kortet) och Quick View (expanderad vy utan sidbyte). Kort målgruppsanpassas per roll (stämpla in, utbildning, tilldelade uppgifter). Uttalad best practice: gemensamt komponentbibliotek och designspråk så att användaren inte möter \u002710 olika gränssnitt\u0027 på samma dashboard — direkt tillämpligt på Hubs som aggregerar SDK, e-post, fax, Talk och filer.",
+                         "INBOX-ZERO/TRIAGE-PARADIGMET: Superhumans Split Inbox delar inkorgen i fokusområden per kategori och låter användaren beta av en batch i taget i stället för en lång blandad lista — motiveringen är att blandad sekventiell hantering tvingar hjärnan till ständiga kontextbyten. Linear gör samma sak med sin Triage-inkorg (alla inkommande ärenden passerar en kö med accept/avvisa/prioritera). Slacks redesign (2023–) införde en enhetlig Home-vy plus separata vyer för DMs och Activity — dvs. aggregering + uppdelning per typ, inte en enda blandad ström.",
+                         "PROGRESSIVE DISCLOSURE SOM STRATEGI, INTE BARA UI-TRICK (NN/g m.fl.): I enterprise-sammanhang innebär det att nyckeltal/status visas som summeringskort som expanderas till detaljvy utan att lämna huvudvyn; avancerade funktioner och inställningar visas först vid behov. Detta pekas ut som det viktigaste motmedlet mot \u0027data-dump\u0027-dashboards.",
+                         "NEXTCLOUDS BEFINTLIGA DASHBOARD GER TEKNISK GRUND MEN ÄR GENERISK: Widget-API (sedan Hub 20) med 12-kolumns vue-grid-layout, drag-and-drop, per-användar-anpassning och admin-styrd standardlayout via occ-kommando (config:app:set dashboard layout). Widgets utvecklas i Vue.js med dokumenterade tutorials. Begränsning: dagens Nextcloud-dashboard är en passiv widget-yta (kalender, rekommenderade filer, samtal) — inte task-orienterad och saknar statusar, triage och rollstyrning."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "GOV.UK Design System (GDS, Storbritannien)",
+                       "role":  "Offentligt designsystem / mönsterkälla",
+                       "notes":  "Mest mogna mönsterbiblioteket för myndighetstjänster; Task list-mönstret med definierade statusar är direkt återanvändbart. Brand-refresh juni 2025, Frontend v5.11."
+                   },
+                   {
+                       "name":  "Försäkringskassan (FK Designsystem)",
+                       "role":  "Svensk myndighet / öppen källkod-designsystem",
+                       "notes":  "Öppnade sitt designsystem för andra myndigheter okt 2024. Bästa svenska kandidaten för komponent- och språkkonventioner som Hubs kunder känner igen."
+                   },
+                   {
+                       "name":  "Arbetsförmedlingen",
+                       "role":  "Svensk myndighet / publikt designsystem",
+                       "notes":  "designsystem.arbetsformedlingen.se — komponenter, designmönster, formulärriktlinjer. Driver tillsammans med FK ett tolv-myndighetssamarbete kring delade designresurser."
+                   },
+                   {
+                       "name":  "Inera (1177 / IDS)",
+                       "role":  "Offentligt ägt bolag / designsystem för vården",
+                       "notes":  "Inera Design System: Figma + ids-react/ids-angular, används för både medborgare och vårdpersonal. Relevant referens om Hubs säljer mot regioner/vård."
+                   },
+                   {
+                       "name":  "Digg (Myndigheten för digital förvaltning)",
+                       "role":  "Tillsynsmyndighet DOS-lagen / samordnare",
+                       "notes":  "Utövar tillsyn enligt DOS-lagen, publicerar webbriktlinjer, samordnar förvaltningsgemensam infrastruktur (inkl. SDK). Inget eget publicerat designsystem ännu."
+                   },
+                   {
+                       "name":  "ETSI/CEN/CENELEC + EU-kommissionen",
+                       "role":  "Standardiseringsorgan",
+                       "notes":  "Äger EN 301 549. v4.1.1 med WCAG 2.2 AA väntas 2026; rättsligt bindande först vid publicering i EU:s officiella tidning."
+                   },
+                   {
+                       "name":  "USWDS (US General Services Administration)",
+                       "role":  "Offentligt designsystem (USA)",
+                       "notes":  "Mönsterbibliotek med fokus på inkluderande design; öppen källkod, version 3.x. Osäker organisatorisk framtid efter USDS-omorganisationen 2025 men koden består."
+                   },
+                   {
+                       "name":  "Microsoft (Viva Connections)",
+                       "role":  "Konkurrent/referens unified workspace",
+                       "notes":  "Adaptive Cards-modellen (Card View + Quick View, rollmålgruppsstyrning) är den mest dokumenterade referensen för kuraterad intranät-dashboard."
+                   },
+                   {
+                       "name":  "Linear, Slack, Superhuman, Notion",
+                       "role":  "Referensprodukter för moderna arbetsytor",
+                       "notes":  "Linear: triage-inkorg + Cmd+K-standardsättare. Superhuman: split inbox/inbox zero. Slack: enhetlig Home + Activity-vyer. Notion: anpassningsbar Home med widgets."
+                   },
+                   {
+                       "name":  "Nextcloud GmbH",
+                       "role":  "Plattformsleverantör (Hubs underliggande plattform)",
+                       "notes":  "Dashboard-API med widgets, 12-kolumnsgrid, admin-default via occ. Hubs kan bygga ovanpå men behöver egen task-orienterad logik."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Bygg dashboarden kring UPPGIFTER, inte information: den primära ytan bör vara en aggregerad \u0027att hantera\u0027-kö (inkommande SDK-meddelanden, säker e-post som väntar på svar, mottagna fax, mötesinbjudningar, delade filer) med GOV.UK-liknande statusar (Ny / Påbörjad / Väntar på motpart / Klar / Problem) och uppgiftsnamn som börjar med verb. Detta är det enskilt starkaste mönstret för målgruppen registratorer/handläggare.",
+                                  "Tillämpa triage-paradigmet i stället för en blandad aktivitetsström: en samlad inkorg som kan delas per kanal (SDK / säker e-post / fax / möten) à la Superhuman Split Inbox och Linear Triage, med explicit \u0027klart\u0027-tillstånd så att tom kö = inget missat. För sekretessbelagd kommunikation är \u0027inget missat\u0027 ett compliance-värde, inte bara bekvämlighet.",
+                                  "Inför Ctrl+K command palette ovanpå Nextclouds unified search: åtgärder som \u0027Skicka SDK-meddelande till [funktionsadress]\u0027, \u0027Starta säkert möte\u0027, \u0027Sök ärende\u0027 nås med tangentbord. Billigt att bygga (combobox + fuzzy search), skalar från nybörjare till expert, och differentierar mot standard-Nextcloud.",
+                                  "Återanvänd Nextclouds Dashboard-API som teknisk grund (Vue-widgets, 12-kolumnsgrid, admin-default layout via occ) men bygg rollstyrda standardlayouter à la Viva Connections: registrator, handläggare och administratör ska se olika kort som standard. Varje kort bör följa Viva-modellen Card View (agera direkt) + Quick View (detalj utan sidbyte) — progressive disclosure i praktiken.",
+                                  "Kravställ mot WCAG 2.2 AA redan nu, inte 2.1: EN 301 549 v4.1.1 väntas 2026 och kommunala/regionala kunder lyder under DOS-lagen. Konkret för dashboarden: klickytor minst 24×24 px, fokusindikator som aldrig döljs av sticky-paneler, alternativ till drag-and-drop för widgetplacering (Nextclouds default klarar inte detta), hjälp på konsekvent plats, och inloggningsflöden (SITHS/Freja) utan kognitiva test. Tillgänglighet är dessutom ett säljargument i offentlig upphandling — dokumentera efterlevnad per kriterium.",
+                                  "Låna språk, komponentkonventioner och formulärmönster från FK:s designsystem (öppen källkod) och Arbetsförmedlingens designsystem i stället för att uppfinna eget: igenkänning sänker utbildningströskeln hos myndighetsanvändare och signalerar \u0027byggt för svensk offentlig sektor\u0027. Säljs det mot regioner är Inera/IDS rätt referens.",
+                                  "Var återhållsam och konkret med AI: trenden (Gartner 40 % till 2026) talar för AI-assistans i dashboards, men Hubs hela värdeerbjudande är on-prem och dataägarskap. Om AI införs (t.ex. sammanfattning av inkommande SDK-meddelanden, prioriteringsförslag i triage-kön) måste det köras lokalt — vilket då kan vändas till en differentiator: \u0027AI-assistans utan att data lämnar er server\u0027.",
+                                  "Undvik den klassiska fällan: en dashboard full av statistik-widgets. Forskningen och trendkällorna är samstämmiga om att värdet ligger i \u0027nästa åtgärd\u0027 och status, inte i grafer. Mät framgång i tid-till-åtgärd (hur snabbt ett inkommet SDK-meddelande öppnas/besvaras), inte i tid-på-dashboarden."
+                              ],
+    "sources":  [
+                    "https://design-system.service.gov.uk/patterns/complete-multiple-tasks/",
+                    "https://design-system.service.gov.uk/components/task-list/",
+                    "https://design-system.service.gov.uk/community/roadmap/",
+                    "https://www.forsakringskassan.se/nyhetsarkiv/nyheter-press/2024-10-25-forsakringskassans-designsystem-kan-nu-anvandas-av-andra-myndigheter",
+                    "https://designsystem.forsakringskassan.se/latest/",
+                    "https://designsystem.arbetsformedlingen.se/",
+                    "https://inera.atlassian.net/wiki/spaces/USI/pages/227213974/Komponentbibliotek",
+                    "https://community.dataportal.se/topic/192/ett-v%C3%A4lfungerande-designsystem-grunden-f%C3%B6r-myndighetssamarbete",
+                    "https://www.publikt.se/nyhet/tolv-myndigheter-i-gemensamt-projekt-24080",
+                    "https://www.digg.se/webbriktlinjer/lagar-och-krav/det-har-ar-en-301-549-och-wcag",
+                    "https://www.digg.se/analys-och-uppfoljning/lagen-om-tillganglighet-till-digital-offentlig-service-dos-lagen/om-lagen",
+                    "https://pts.se/digital-inkludering/standarder/en-301-549/",
+                    "https://digital-strategy.ec.europa.eu/en/policies/latest-changes-accessibility-standard",
+                    "https://en.wikipedia.org/wiki/EN_301_549",
+                    "https://etu.se/nyheter/nu-har-de-senaste-wcag-2-2-riktlinjerna-lanserats/",
+                    "https://designsystem.digital.gov/patterns/",
+                    "https://learn.microsoft.com/en-us/viva/connections/available-dashboard-cards",
+                    "https://learn.microsoft.com/en-us/sharepoint/dev/spfx/viva/design/design-intro",
+                    "https://techcommunity.microsoft.com/blog/viva_connections_blog/a-guide-to-viva-connections-1st-party-dashboard-cards/4139175",
+                    "https://fuselabcreative.com/top-dashboard-design-trends-2025/",
+                    "https://www.sanjaydey.com/ui-ux-design-trends-2026/",
+                    "https://uxpatterns.dev/patterns/advanced/command-palette",
+                    "https://www.techinterview.org/post/3233475212/build-command-palette-cmd-k/",
+                    "https://www.nngroup.com/articles/progressive-disclosure/",
+                    "https://medium.com/@theuxarchitect/progressive-disclosure-in-enterprise-design-less-is-more-until-it-isnt-01c8c6b57da9",
+                    "https://blog.superhuman.com/how-to-split-your-inbox-in-superhuman/",
+                    "https://uit.stanford.edu/service/slack/redesign2023",
+                    "https://docs.nextcloud.com/server/latest/admin_manual/configuration_server/dashboard_configuration.html",
+                    "https://nextcloud.com/blog/nextcloud-hub-20-debuts-dashboard-unifies-search-and-notifications-integrates-with-other-technologies/",
+                    "https://nextcloud.com/blog/developer-tutorial-4-create-dashboard-widgets-with-vue-js/"
+                ]
+}

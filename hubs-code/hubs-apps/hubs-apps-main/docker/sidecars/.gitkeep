@@ -1,0 +1,8 @@
+# Generated per-app sidecar compose fragments live here:
+# docker/sidecars/<app>.yml, written by scripts/compose.sh on
+# `make webpack MODE=<hmr|watch>`, deleted by `MODE=off`, globbed into
+# the Makefile $(DC) macro. .gitignore covers `*.yml`, not this file.
+#
+# This tracked .gitkeep exists so the dir is present (owned by the host
+# user) on a fresh clone — otherwise docker's create_host_path:true
+# default invents an empty root-owned dir at the first sidecar bind.

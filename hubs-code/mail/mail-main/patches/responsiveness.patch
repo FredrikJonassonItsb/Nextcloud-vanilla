@@ -1,0 +1,17 @@
+--- a/src/components/EnvelopeSkeleton.vue
++++ b/src/components/EnvelopeSkeleton.vue
+@@ -573,12 +573,14 @@
+ 				gap: 4px;
+ 				// to align details on top instead of in the center. The right way to do it would be to change the template, but that breaks one-line layout
+ 				margin-top: -22px;
++				top: 2px;
+ 
+ 				&__details {
+ 					margin: 0 4px !important;
+ 					color: var(--color-text-maxcontrast);
+ 					height: var(--default-line-height);
+ 					font-weight: normal;
++					font-size: 12px;
+ 				}
+ 
+ 				&__extra {

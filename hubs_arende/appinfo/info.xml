@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: ITSL <info@itsl.se>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>hubs_arende</id>
+    <name>Hubs Ärende</name>
+    <summary>Standalone ärende-motor för Hubs/ITSL — koordinations-state, register och routing.</summary>
+    <description><![CDATA[
+Hubs Ärende är en **fristående ärende-motor** (egen kodbas, egen databas) för Hubs/ITSL.
+
+Den **konsumerar** sdkmc (skicka/ta emot meddelanden, taggar, korgar, retention) via OCS/events,
+men äger inte den funktionaliteten. Ärende-motorn lagrar enbart **koordinations-state**
+(register, pekare, routing) — **aldrig verksamhetsdata**, den bor i facksystemet
+(Treserva/Lifecare/Viva).
+
+Kärnegenskaper:
+- Atomär `createCase()`-orkestrering som en distribuerad SAGA (R1–R10) med kompensering.
+- `SakerhetsskyddGrind` som fail-closed-grind körd FÖRE allt annat.
+- Datadriven `ArendeTyp`-registry: en config-rad per ärendetyp, inte ny PHP per typ.
+- Verifierad facksystem-commit (`FacksystemCommitService`) bunden till callback-kvitto.
+- Invariant: `commit_destination` är ALLTID satt (NOT NULL).
+
+Beroende-not: denna app **konsumerar sdkmc** (tag-API, inflöde). sdkmc lämnas orörd.
+Designad ExApp-rent (in-process NC-app nu → paketeras som ExApp senare).
+    ]]></description>
+    <version>0.7.2</version>
+    <licence>agpl</licence>
+    <author mail="info@itsl.se">ITSL</author>
+    <namespace>HubsArende</namespace>
+    <category>integration</category>
+    <category>tools</category>
+    <bugs>https://itsl.se</bugs>
+    <dependencies>
+        <php min-version="8.1"/>
+        <nextcloud min-version="30" max-version="32"/>
+    </dependencies>
+    <background-jobs>
+        <job>OCA\HubsArende\BackgroundJob\GallringJob</job>
+    </background-jobs>
+    <repair-steps>
+        <post-migration>
+            <step>OCA\HubsArende\Migration\RegisterArendeTyper</step>
+        </post-migration>
+    </repair-steps>
+    <commands>
+        <command>OCA\HubsArende\Command\Smoke</command>
+        <command>OCA\HubsArende\Command\Status</command>
+        <command>OCA\HubsArende\Command\SeedDemo</command>
+    </commands>
+    <settings>
+        <admin>OCA\HubsArende\Settings\AdminStatus</admin>
+        <admin-section>OCA\HubsArende\Settings\AdminSection</admin-section>
+    </settings>
+</info>

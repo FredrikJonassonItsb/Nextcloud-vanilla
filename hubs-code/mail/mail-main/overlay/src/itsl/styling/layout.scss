@@ -1,0 +1,291 @@
+/**
+ * === BASE/DESKTOP LAYOUT ===
+ * Default styles for desktop (>= 600px). Mobile overrides below.
+ */
+
+// Pane container - scrollbar gutter and relative positioning for absolute sidebar
+.splitpanes__pane-details {
+	scrollbar-gutter: stable;
+	position: relative;
+}
+
+// Wide desktop (1251px+): Minimum width for details pane with sidebar on right
+// Ensures message area gets at least 440px (625px - 185px sidebar)
+@media (min-width: 1251px) {
+	.splitpanes__pane-details {
+		min-width: 625px !important;
+	}
+}
+
+// Sidebar positioned absolutely at top-right of pane
+.thread-info-sidebar {
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+
+// Let folders container extend slightly beyond section padding to fit links on one line
+.mailbox-info__folders {
+	margin-left: -4px !important;
+	margin-right: -4px !important;
+	padding-left: 4px !important;
+	width: calc(100% + 8px) !important;
+}
+
+// Main content container - responsive width with sidebar space
+// Asymmetric gaps: 2px left (content has internal padding), 8px right
+#mail-message {
+	margin-bottom: 0;
+	margin-left: 2px;
+	margin-right: 0;
+	padding-left: 0;
+	padding-right: 0;
+	width: calc(100% - 195px) !important; // 185px sidebar + 2px left margin + 8px right gap
+	max-width: none !important; // Override default 900px max-width + Thread.vue max-width: 100%
+	min-width: 0 !important; // Override default min-width: 70%
+	grid-template-columns: 1fr; // Single column, sidebar is absolute not in grid
+
+	// Constrain thread header ::before from 100vw to 100% so it doesn't
+	// extend over the sidebar area (upstream uses full-bleed background)
+	#mail-thread-header::before {
+		width: 100% !important;
+		inset-inline-start: 0 !important;
+		transform: none !important;
+	}
+}
+
+// Applied by JS when content overflows and reading comfort margin is needed
+#mail-message.needs-scroll-margin {
+	margin-bottom: 30vh;
+}
+
+// Header fills container width, align title with message content
+#mail-thread-header {
+	margin-right: 0;
+	max-width: 100%;
+	width: 100%;
+
+	> div {
+		padding-left: 0; // Remove 26px default padding to align title with messages
+	}
+}
+
+// Envelopes fill container width and clip overflow
+#mail-message > .envelope {
+	max-width: 100%;
+	width: 100%;
+	overflow: hidden;
+	box-sizing: border-box;
+	margin-left: 0;
+	margin-right: 0;
+}
+
+// Message container - remove height constraint to eliminate scrollbar
+// !important needed to override Vue scoped CSS with [data-v-*] attribute
+#message-container.scroll {
+	max-height: none !important;
+	overflow: visible !important;
+}
+
+/**
+ * === BREAKPOINT FIXES ===
+ */
+
+/**
+ * Fix 1024px breakpoint mismatch
+ *
+ * Problem: Nextcloud Vue and upstream CSS use max-width: 1024px (includes 1024)
+ * but JS isMobile uses < 1024 (excludes 1024). At exactly 1024px:
+ * - CSS thinks mobile → nav becomes position: absolute
+ * - JS thinks desktop → list content renders normally
+ * - Result: nav overlays/bleeds through content
+ *
+ * Solution: Override mobile styles to ensure desktop layout at 1024px
+ */
+@media (min-width: 1024px) {
+	// Override Nextcloud Vue NcAppNavigation mobile styles
+	// (from @nextcloud/vue/dist/assets/NcAppNavigation-*.css)
+	// !important needed because upstream uses [data-v-*] attribute selector
+	.app-navigation {
+		position: relative !important;
+	}
+
+	// Override Thread.vue mobile styles
+	// Consistent 12px visual gaps: top, bottom (to envelope), left (align with envelope)
+	#mail-thread-header-fields {
+		margin-top: 5px !important;
+		margin-left: 0 !important;
+		margin-bottom: -12px !important;
+	}
+	#mail-thread-header-fields h2 {
+		margin-top: 0 !important;
+	}
+}
+
+/**
+ * Mobile/Tablet: Consistent spacing with back button (< 1024px)
+ * - margin-top: -34px aligns subject vertically with back button center
+ * - margin-left: 50px gives 10px gap from back button (ends at 50px)
+ * - margin-bottom: -12px for consistent 12px visual gap to envelope
+ */
+@media (max-width: 1023px) {
+	#mail-thread-header-fields {
+		margin-top: -34px !important;
+		margin-left: 50px !important;
+		margin-bottom: -12px !important;
+	}
+}
+
+/**
+ * === TABLET NAV LAYOUT (768-1023px) ===
+ * At this range, nav should push content aside (not overlay) like desktop.
+ * Also ensure toggle button is visible and behaves correctly.
+ */
+@media (min-width: 768px) and (max-width: 1023px) {
+	// Nav should push content aside, not overlay. Keep ITSL blue background.
+	.app-navigation {
+		position: relative !important;
+		z-index: 1001 !important;
+		background-color: var(--color-primary-element-light) !important;
+	}
+
+	// Hide nav toggle when viewing thread details (back button shows instead)
+	body:has(.app-content-wrapper--show-details) .app-navigation-toggle {
+		display: none !important;
+	}
+}
+
+/**
+ * Always show nav toggle button at 768px+
+ * Upstream hides it at wider viewports, but we need it for collapsing nav
+ */
+@media (min-width: 768px) {
+	.app-navigation-toggle {
+		display: flex !important;
+	}
+}
+
+/**
+ * === MOBILE LAYOUT (< 768px) ===
+ */
+
+/**
+ * Nav background color when overlaying content
+ * At small sizes, nav has transparent background which shows threads behind it.
+ * Use primary-element-light color (same as "Nytt meddelande" button) for solid background.
+ */
+@media (max-width: 767px) {
+	#content-vue .app-navigation {
+		background-color: var(--color-primary-element-light) !important;
+	}
+}
+
+/**
+ * Sidebar below thread content
+ * Move sidebar from absolute right position to below content
+ * Single column layout for < 400px, 2-column grid for 400-599px
+ */
+@media (max-width: 599px) {
+	// Prevent horizontal scrollbar
+	.app-content-wrapper {
+		overflow-x: hidden !important;
+	}
+
+	// Container uses flex column layout instead of absolute positioning
+	.splitpanes__pane-details {
+		display: flex !important;
+		flex-direction: column !important;
+		position: static !important;
+	}
+
+	// Main content takes full width, remove 30vh bottom margin
+	#mail-message {
+		width: 100% !important;
+		max-width: 100% !important;
+		margin-right: 0 !important;
+		margin-bottom: 0 !important;
+	}
+
+	// Sidebar flows below content, full width
+	.thread-info-sidebar {
+		position: static !important;
+		width: 100% !important;
+		max-width: 100% !important;
+		margin-top: 16px !important;
+	}
+
+	// Fix preview text overflow in envelope subline
+	.subline .preview {
+		display: block !important;
+		overflow: hidden !important;
+		text-overflow: ellipsis !important;
+		max-width: 100% !important;
+	}
+}
+
+/**
+ * Tablet: 2-column sidebar grid (400-599px)
+ * Content-aware column sizing with 185px minimum protection
+ */
+@media (min-width: 400px) and (max-width: 599px) {
+	.thread-info-sidebar {
+		display: grid !important;
+		grid-template-columns: minmax(185px, auto) minmax(185px, auto) !important;
+		gap: 8px !important;
+	}
+
+	// Vertical divider on left column items
+	.thread-info-sidebar > .sidebar-section:nth-child(odd) {
+		border-right: 1px solid var(--color-border) !important;
+		padding-right: 8px !important;
+	}
+}
+
+/**
+ * === NARROW DESKTOP LAYOUT (1024-1250px) ===
+ * At this range, content area is too narrow with sidebar on right.
+ * Move sidebar below content with 2-column grid, same as mobile tablet.
+ */
+@media (min-width: 1024px) and (max-width: 1250px) {
+	// Shrink nav to 250px to give more room to content
+	// Only when nav is visible (not when collapsed with --close class)
+	.app-navigation:not(.app-navigation--close) {
+		width: 250px !important;
+		min-width: 250px !important;
+		flex-basis: 250px !important;
+	}
+
+	// Container uses flex column layout
+	// min-width ensures message area gets at least 440px (sidebar is bottom bar here)
+	.splitpanes__pane-details {
+		display: flex !important;
+		flex-direction: column !important;
+		position: static !important;
+		min-width: 440px !important;
+	}
+
+	// Main content takes full width
+	#mail-message {
+		width: 100% !important;
+		max-width: 100% !important;
+		margin-right: 0 !important;
+		margin-bottom: 0 !important;
+	}
+
+	// Sidebar below content with 2-column grid
+	.thread-info-sidebar {
+		position: static !important;
+		width: 100% !important;
+		max-width: 100% !important;
+		margin-top: 16px !important;
+		display: grid !important;
+		grid-template-columns: minmax(185px, auto) minmax(185px, auto) !important;
+		gap: 8px !important;
+	}
+
+	// Vertical divider on left column items
+	.thread-info-sidebar > .sidebar-section:nth-child(odd) {
+		border-right: 1px solid var(--color-border) !important;
+		padding-right: 8px !important;
+	}
+}

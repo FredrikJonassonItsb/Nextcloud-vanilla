@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<phpunit
+	bootstrap="bootstrap-local.php"
+	cacheResult="false"
+	colors="true"
+	failOnRisky="true"
+	failOnWarning="true"
+>
+	<testsuites>
+		<testsuite name="itsl">
+			<file>Unit/Model/IMAPMessageTagColorTest.php</file>
+			<file>Unit/Service/SnoozeServiceSourceMailboxTest.php</file>
+			<file>../src/itsl/tests/regression/MessageIdFoldingTest.php</file>
+		</testsuite>
+	</testsuites>
+</phpunit>

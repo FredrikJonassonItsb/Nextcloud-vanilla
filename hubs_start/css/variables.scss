@@ -1,0 +1,50 @@
+/*
+ * SPDX-FileCopyrightText: ITSL <info@itsl.se>
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ *
+ * Hubs Start design tokens. Channel colours layer on top of the Nextcloud
+ * design-system CSS variables so the dashboard follows upstream theming and the
+ * Hubs theming profile automatically. WCAG 2.2: all interactive targets ≥24px.
+ */
+
+:root {
+	--hs-channel-sdk: #2d7d9a;        /* myndighet ↔ myndighet */
+	--hs-channel-secure: #6b4fbb;     /* säker e-post till medborgare */
+	--hs-channel-internal: #3a7d44;   /* internpost */
+	--hs-channel-fax: #8a6d3b;        /* digital fax */
+	--hs-channel-sms: #b5651d;        /* sms */
+	--hs-channel-unknown: var(--color-text-maxcontrast);
+
+	--hs-status-info: var(--color-primary-element);
+	--hs-status-warning: var(--color-warning, #c7870b);
+	--hs-status-error: var(--color-error, #c7280b);
+	--hs-status-success: var(--color-success, #2d7d44);
+	--hs-status-neutral: var(--color-text-maxcontrast);
+
+	--hs-card-radius: var(--border-radius-large, 12px);
+	--hs-gap: 16px;
+	--hs-min-target: 24px;   /* WCAG 2.2 Target Size (Minimum) */
+}
+
+/* Card shell shared by all widgets */
+.hs-card {
+	background: var(--color-main-background);
+	border: 1px solid var(--color-border);
+	border-radius: var(--hs-card-radius);
+	padding: 16px;
+
+	&__title {
+		font-size: 1.05rem;
+		font-weight: 600;
+		margin: 0 0 12px;
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+}
+
+/* Ensure icon-only buttons meet the 24px minimum target size */
+.hs-target {
+	min-width: var(--hs-min-target);
+	min-height: var(--hs-min-target);
+}

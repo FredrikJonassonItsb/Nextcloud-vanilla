@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <!--
+    SPDX-FileCopyrightText: ITSL <info@itsl.se>
+    SPDX-License-Identifier: AGPL-3.0-or-later
+    -->
+    <id>hubs_start</id>
+    <name>Hubs Start</name>
+    <summary>🧭 Flödesnavet — den samlade förstavyn för säker kommunikation</summary>
+    <description><![CDATA[**🧭 Hubs Start — Flödesnavet**
+
+Den samlade förstavyn för handläggarens fyra vanligaste uppgifter:
+skicka säkert meddelande (med automatiskt kanalval), ta emot och tilldela,
+boka och genomföra säkert möte, samt identifiera motpart.
+
+En åtgärd-först-dashboard som binder ihop alla säkra kanaler i en triage-kö
+("Att hantera"), med verifierade djuplänkar ned i respektive funktion.
+Byggd som fristående app — all data stannar i kundens egen driftmiljö.
+    ]]></description>
+    <version>1.2.10</version>
+    <licence>agpl</licence>
+    <author mail="info@itsl.se" homepage="https://itsl.se">ITSL</author>
+    <namespace>HubsStart</namespace>
+    <category>dashboard</category>
+    <category>organization</category>
+    <bugs>https://itsl.se</bugs>
+    <dependencies>
+        <nextcloud min-version="30" max-version="32"/>
+        <php min-version="8.1"/>
+    </dependencies>
+    <!--
+      Landningssida styrs primärt av systemvärdet 'defaultapp' (occ
+      config:system:set defaultapp, värde 'hubs_start,dashboard,files').
+      Navigationen registreras här så att appen alltid finns överst i appmenyn.
+      Lågt order-värde gör att den hamnar tidigt.
+    -->
+    <navigations>
+        <navigation>
+            <id>hubs_start</id>
+            <name>Hubs Start</name>
+            <route>hubs_start.page.index</route>
+            <icon>app.svg</icon>
+            <order>1</order>
+        </navigation>
+    </navigations>
+    <settings>
+        <admin>OCA\HubsStart\Settings\Admin</admin>
+        <admin-section>OCA\HubsStart\Settings\AdminSection</admin-section>
+    </settings>
+    <!--
+      DEV/DEMO occ-kommandon. SeedFavoriter seedar syntetiska favoriter
+      (funktionsadresser, ingen PII) i användarens "Favoriter"-adressbok via
+      DAV-appens interna CardDavBackend (inga credentials/curl/token).
+    -->
+    <commands>
+        <command>OCA\HubsStart\Command\SeedFavoriter</command>
+    </commands>
+</info>

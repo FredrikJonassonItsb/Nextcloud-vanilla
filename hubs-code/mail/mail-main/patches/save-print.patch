@@ -1,0 +1,10 @@
+--- a/src/main.js
++++ b/src/main.js
+@@ -38,6 +38,7 @@
+ 	router,
+ 	pinia,
+ 	created() {
++		initITSL()
+ 	},
+ 	render: (h) => h(App),
+ })

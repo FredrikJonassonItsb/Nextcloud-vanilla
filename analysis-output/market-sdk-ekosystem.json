@@ -1,0 +1,120 @@
+{
+    "key":  "sdk-ekosystem",
+    "topic":  "Säker digital kommunikation (SDK) i Sverige – Diggs infrastruktur, utrullning, leverantörsmarknad och roadmap 2025–2026",
+    "key_findings":  [
+                         "Digg tog över SDK från Inera i april 2024. Augusti 2025 passerades 100 anslutna organisationer, med ytterligare ~85 i förberedelsefas. December 2025: 139 anslutna organisationer (mer än fördubbling från 62 i december 2024). Över 42 000 SDK-meddelanden skickades under 2025, och Digg beskriver nu SDK som etablerad daglig infrastruktur (\u0027frågan är inte om, utan när\u0027 organisationer ansluter).",
+                         "Kommunutrullning (Diggs anslutningslista, juni 2026): 160 kommuner anslutna till produktionsmiljön, 193 till QA-miljön och 33 har påbörjat anslutning — dvs majoriteten av Sveriges 290 kommuner är i rörelse, men en stor svans återstår. 16 av 21 regioner är i produktion (bl.a. Stockholm, VGR, Uppsala, Östergötland); Dalarna och Kronoberg i QA; Skåne har påbörjat anslutning.",
+                         "Statliga myndigheter i produktion: Arbetsförmedlingen, Försäkringskassan, IVO, Polismyndigheten, Skolverket, Socialstyrelsen och Statens institutionsstyrelse. Kammarkollegiet och Rättsmedicinalverket har påbörjat anslutning. Det är fortfarande få myndigheter — stor tillväxtpotential på statssidan.",
+                         "Godkända programvaror för meddelandesystem (Diggs officiella lista): Merkurius v1.0 (CGI Sverige), Tdialog v3.20 (Compodium), iipax SDK v4.1.1 (Ida Infront), Hubs v1.0 (ITSL Solutions), SEFOS v4.3.0 (Meaplus), Secure Appbox Connect v7.1.0 (SecureAppbox) och Visiba Care SDK Roter v1.0. Alla godkända för både meddelandetjänst och meddelandeklient. OBS: CGI, SEFOS, SecureAppbox och Visiba har även godkänt SDK API MT/MK — det har Hubs v1.0 INTE enligt listan, vilket är en synlig konkurrensskillnad.",
+                         "Tietoevry är INTE en godkänd SDK-leverantör — deras Lifecare-svit (socialtjänst/vård) har egen säker meddelandefunktion men ingen Digg-godkänd SDK-programvara hittades. Konkurrensen kommer i stället från specialisterna: Meaplus/SEFOS (komplett SDK on-prem eller SaaS, vinner kommunkunder som Ängelholm och Arvidsjaur), CGI Merkurius (störst varumärke mot offentlig sektor), Ida Infront iipax (ärendehantering/myndigheter), Compodium Tdialog och SecureAppbox.",
+                         "Privata federationsgodkända accesspunktsoperatörer: CGI, Compodium, Crediflow, Ida Infront, Meaplus, SecureAppbox. Dessutom driver 11 offentliga aktörer egna accesspunkter (bl.a. Försäkringskassan, Göteborgs stad, VGR, Region Jönköping) — många små kommuner väljer dock leverantörsdriven accesspunkt.",
+                         "Kostnad: Digg tar i dag INTE ut någon avgift för deltagande i SDK-federationen (regelverket reserverar rätten att införa avgifter med förvarning). Kostnaden ligger helt i den upphandlade tekniska lösningen (accesspunkt + meddelandetjänst + meddelandeklient) plus internt anslutningsarbete. Inga publika listpriser hos leverantörerna — prissättning sker per avrop. Jämförelse: i auktorisationssystemen för digital post/e-legitimation har Digg föreslagit transaktionsavgifter (0,18 kr/legitimering, 0,80 kr/meddelande) från 1 jan 2027 — en signal om hur SDK-avgifter skulle kunna utformas.",
+                         "Upphandling sker främst via Addas dynamiska inköpssystem \u0027Säker digital kommunikation DIS\u0027 (giltigt 2023-11-01 till 2033-10-26, ingen serviceavgift, öppet för nya leverantörer löpande). Kvalificerade leverantörer inkluderar Certezza, CGI, Compodium, Ida Infront, ITSL Solutions, Meaplus och SecureAppbox — ITSL är alltså redan inne i den viktigaste upphandlingskanalen.",
+                         "Roadmap SDK: Digg öppnar SDK för nya meddelandetyper — strukturerad information och maskin-till-maskin-kommunikation mellan verksamhetssystem (riktlinjer för meddelandetyper och förvaltningsorganisation publicerade). Diggs prognos: 2026–2027 är i princip hela offentliga sektorn ansluten. SDK är dock organisation-till-organisation; det finns ingen publicerad direkt koppling mellan SDK och eIDAS2/EUDI-wallet i dag.",
+                         "eIDAS2/EUDI-spåret löper parallellt: statliga e-legitimationen Sverige-id (tillitsnivå 4, utvecklas av Polismyndigheten) godkändes av Digg i april 2026 och ska finnas tillgänglig december 2026. EUDI-plånboken ska enligt eIDAS2 finnas i slutet av 2026; Diggs arbete med svensk identitetsplånbok startade 2025 och beräknas klart 2028. Från november 2027 blir det obligatoriskt för offentliga (och vissa privata) tjänster att acceptera EUDI-wallet-inloggning — relevant för medborgarvända delar (säker e-post till medborgare), inte för SDK:s org-till-org-flöden."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "Digg (Myndigheten för digital förvaltning)",
+                       "role":  "Federationsägare/huvudman för SDK sedan april 2024",
+                       "notes":  "Godkänner programvaror och accesspunktsoperatörer, driver adressbok och federation, publicerar anslutningslistor. Tar i dag ingen avgift. Driver även eIDAS2/EUDI-wallet-arbetet och Ena (Sveriges digitala infrastruktur)."
+                   },
+                   {
+                       "name":  "Inera AB",
+                       "role":  "Tidigare huvudman (t.o.m. mars 2024), nu SKR-bolag med kringtjänster",
+                       "notes":  "Utvecklade SDK åt kommuner/regioner; lämnade över till Digg. Var med och initierade Addas DIS."
+                   },
+                   {
+                       "name":  "Adda Inköpscentral",
+                       "role":  "Upphandlingskanal",
+                       "notes":  "Dynamiskt inköpssystem \u0027Säker digital kommunikation DIS\u0027 (2023–2033), avgiftsfritt för avropande organisationer, kravkatalog och avropsstöd. Huvudvägen in för kommuner — ITSL är kvalificerad leverantör här."
+                   },
+                   {
+                       "name":  "CGI Sverige AB",
+                       "role":  "Konkurrent — godkänd programvara Merkurius v1.0",
+                       "notes":  "Komplett lösning (accesspunkt, meddelandetjänst, meddelandeklient), godkänd accesspunktsoperatör, SDK API MT/MK-godkänd. Störst varumärke och säljkraft mot offentlig sektor."
+                   },
+                   {
+                       "name":  "Meaplus AB (SEFOS)",
+                       "role":  "Konkurrent — godkänd programvara SEFOS v4.3.0",
+                       "notes":  "Mest aktiva specialisten: komplett SDK on-prem eller SaaS, godkänd accesspunkt, API MT/MK-godkänd, publika kommunvinster (Ängelholm, Arvidsjaur), kör gratis-webbinarier som leadmotor. SEFOS är dessutom bredare säker meddelandeprodukt (säker e-post) — närmast Hubs i produktöverlapp."
+                   },
+                   {
+                       "name":  "Ida Infront AB",
+                       "role":  "Konkurrent — godkänd programvara iipax SDK v4.1.1",
+                       "notes":  "Stark inom ärende-/dokumenthantering hos myndigheter; godkänd accesspunktsoperatör."
+                   },
+                   {
+                       "name":  "Compodium International AB (Tdialog)",
+                       "role":  "Konkurrent — godkänd programvara Tdialog v3.20",
+                       "notes":  "Även godkänd accesspunktsoperatör (mars 2025). Har likt ITSL även säkra videomöten i portföljen."
+                   },
+                   {
+                       "name":  "SecureAppbox AB",
+                       "role":  "Konkurrent — godkänd programvara Secure Appbox Connect v7.1.0",
+                       "notes":  "Godkänd accesspunkt, API MT/MK-godkänd."
+                   },
+                   {
+                       "name":  "Visiba Care",
+                       "role":  "Konkurrent (nisch) — Visiba Care SDK Roter v1.0",
+                       "notes":  "Vård-/videoplattform som integrerat SDK; exempel på att verksamhetssystem börjar bygga in SDK direkt."
+                   },
+                   {
+                       "name":  "ITSL Solutions AB (Hubs)",
+                       "role":  "Uppdragsgivaren — godkänd programvara Hubs v1.0",
+                       "notes":  "Digg-godkänd för meddelandetjänst + meddelandeklient, kvalificerad i Addas DIS. Saknar enligt Diggs lista API MT/MK-godkännande (till skillnad från CGI/SEFOS/SecureAppbox/Visiba). Positionerar sig som svenskt suveränt alternativ till amerikanska molntjänster."
+                   },
+                   {
+                       "name":  "Tietoevry (Lifecare)",
+                       "role":  "Verksamhetssystemleverantör — EJ godkänd SDK-leverantör",
+                       "notes":  "Dominant i socialtjänst/vård men ingen Digg-godkänd SDK-programvara funnen; potentiell framtida konkurrent om SDK byggs in i Lifecare när maskin-till-maskin-meddelandetyper öppnas."
+                   },
+                   {
+                       "name":  "Certezza AB",
+                       "role":  "Konsult/integratör, kvalificerad i Addas DIS",
+                       "notes":  "Hjälper kommuner med SDK-anslutning (rådgivning, kravställning) snarare än egen produkt."
+                   },
+                   {
+                       "name":  "Polismyndigheten",
+                       "role":  "Utvecklar statliga e-legitimationen Sverige-id",
+                       "notes":  "Godkänd av Digg april 2026, tillgänglig december 2026, tillitsnivå 4. Grund för kommande EUDI-wallet-utfärdande."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "SDK-status är ett dashboard-objekt i sig: marknaden är mitt i utrullningskurvan (160/290 kommuner i produktion, 33 i kö, nästan alla regioner klara). Dashboarden bör visa SDK-inkorg/utkorg, olästa meddelanden, leveranskvitton och adressboksstatus som förstaklassens widget — handläggare använder SDK dagligen nu (42 000+ meddelanden 2025 och brant stigande).",
+                                  "Konkurrensgap att täppa: Hubs v1.0 saknar SDK API MT/MK-godkännande på Diggs lista medan CGI, SEFOS, SecureAppbox och Visiba har det. Prioritera certifiering av API:erna — det blir skall-krav i allt fler avrop via Addas DIS, och en dashboard som ska aggregera SDK-data bygger rimligen ändå på MT/MK-API:erna.",
+                                  "Diggs roadmap mot nya meddelandetyper (strukturerad info, maskin-till-maskin) betyder att SDK-trafik framöver kommer från verksamhetssystem, inte bara manuella klienter. Dashboarden bör designas för att visa/routa även systemgenererade meddelanden (köer, fel, kvittenser per meddelandetyp) — det skiljer en plattform från en enkel meddelandeklient och försvårar för verksamhetssystemleverantörer (Tietoevry m.fl.) att gå förbi Hubs.",
+                                  "Närmaste konkurrenten i produktbredd är SEFOS (säker e-post + SDK + accesspunkt, on-prem/SaaS) och Compodium (SDK + video). Hubs differentiator är helheten på egen server (SDK + säker e-post + fax + Talk + filer + nu dashboard) — dashboarden bör explicit visa ALLA kanaler i en vy (SDK-meddelanden, säker e-post till medborgare, fax, möten, delade filer), eftersom ingen konkurrent erbjuder den samlade bilden i dag.",
+                                  "Målgruppsprioritering: den återstående marknaden är (a) ~130 kommuner som inte nått produktion — ofta små, vill ha färdig SaaS/managed lösning med leverantörsdriven accesspunkt, låg tröskel och enkel dashboard; (b) statliga myndigheter där bara 7 är i produktion — större affärer, högre säkerhetskrav, on-prem-argumentet väger tungt. Dashboard-onboarding (\u0027kom igång med SDK på en dag\u0027) är ett säljargument mot segment (a).",
+                                  "Prissättning: Digg tar ingen federationsavgift och Addas DIS är avgiftsfritt — hela betalningsviljan ligger hos klient-/driftleverantören och inga publika listpriser finns. Det ger prissättningsfrihet men betyder att varje affär vinns i avrop via Addas DIS; se till att dashboard-funktionalitet syns i svaren på DIS-kravkatalogen (spårbarhet, behörighet, loggning, statusöversikt).",
+                                  "eIDAS2/EUDI-wallet rör inte SDK:s org-till-org-flöden men träffar Hubs medborgarvända delar: från november 2027 ska offentliga tjänster acceptera EUDI-wallet-inloggning, Sverige-id kommer december 2026. Lägg in EUDI-wallet/Sverige-id som autentiseringsmetod på roadmapen för säker e-post till medborgare och möten — och kommunicera det redan nu i anbud som framtidssäkring.",
+                                  "Avgiftsrisk att bevaka: Diggs föreslagna transaktionsavgifter i grannsystemen (0,80 kr/meddelande i Skicka digitala meddelanden från 2027) visar att SDK kan bli avgiftsbelagt. Bygg mätning/volymstatistik per organisation i dashboarden från start — kunderna kommer behöva kostnadsuppföljning om avgifter införs, och det blir en feature ingen konkurrent har klar."
+                              ],
+    "sources":  [
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2025-08-19-milstolpe-for-saker-digital-kommunikation---over-100-organisationer-anslutna",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2026-02-02-sdk-ar-har-for-att-stanna---och-anvands-mer-an-nagonsin",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2025-04-01-digg-firar-1-ar-med-sdk---fler-anslutna-och-okad-digital-sakerhet",
+                    "https://www.digg.se/saker-digital-kommunikation/vilka-ar-anslutna-till-sdk/programvaror-for-meddelandesystem--som-kan-anvandas-inom-sdk",
+                    "https://www.digg.se/saker-digital-kommunikation/vilka-ar-anslutna-till-sdk/plattforms--och-federationsgodkanda-accesspunktsoperatorer",
+                    "https://www.digg.se/saker-digital-kommunikation/vilka-ar-anslutna-till-sdk/anslutna-kommuner",
+                    "https://www.digg.se/saker-digital-kommunikation/vilka-ar-anslutna-till-sdk/anslutna-regioner",
+                    "https://www.digg.se/saker-digital-kommunikation/vilka-ar-anslutna-till-sdk/anslutna-statliga-myndigheter",
+                    "https://www.digg.se/saker-digital-kommunikation/sdk-for-deltagarorganisationer/anslutningsavtal-regelverk-samt-bilagor/regelverk-for-deltagarorganisationer-inom-sdk",
+                    "https://www.digg.se/saker-digital-kommunikation/sdk-for-leverantorer-av-meddelandesystem/nya-meddelandetyper/riktlinjer-for-meddelandetyper",
+                    "https://www.adda.se/upphandling-och-ramavtal/ramavtal-och-avtalskategorier/it-produkter-och-tjanster/saker-digital-kommunikation-dis/",
+                    "https://www.digg.se/saker-digital-kommunikation/sdk-for-deltagarorganisationer/vagledningar-och-rekommendationer-infor-anslutning-till-sdk/forberedelser-infor-anslutning-till-sdk/upphandling-av-teknisk-losning-via-addas-dynamiska-inkopssystem-dis",
+                    "https://www.cgi.com/se/sv/article/offentlig-sektor/cgi-s-losning-godkand-saker-digital-kommunikation-sdk",
+                    "https://www.cgi.com/se/sv/offentlig-sektor/sdk-saker-digital-kommunikation",
+                    "https://sefos.se/en/sdk/",
+                    "https://www.meaplus.com/en/sdk/",
+                    "https://idainfront.se/sakert-informationsutbyte/saker-digital-kommunikation-sdk/",
+                    "https://itsl.se/secure-digital-communication/",
+                    "https://www.mynewsdesk.com/se/bizmaker/pressreleases/godkaennande-oeppnar-miljardmarknad-foer-tech-startup-3347095",
+                    "https://sdk.se/lista-har-hittar-du-godkanda-leverantorer-for-sdk/",
+                    "https://www.digg.se/om-oss/nyheter/digital-identitet/nyheter/2026-04-21-den-statliga-e-legitimationen-sverige-id-godkand-av-digg",
+                    "https://www.digg.se/styrning-och-samordning/ena---sveriges-digitala-infrastruktur/strategisk-fardplan-ena-2030/digital-identitetsplanbok",
+                    "https://www.digg.se/digitala-tjanster/digital-post/digital-post-for-dig-som-offentlig-aktor/infor-anslutning/overgripande-information-om-auktorisationssystem/avgifter-och-ersattning-inom-auktorisationssystem-elektronisk-identifiering-och-digital-post",
+                    "https://www.inera.se/aktuellt/nyheter/nytt-inkopssystem-forenklar-upphandling-av-saker-digital-kommunikation/",
+                    "https://certezza.net/case/anslutning-till-saker-digital-kommunikation-for-kommun-sdk/"
+                ]
+}

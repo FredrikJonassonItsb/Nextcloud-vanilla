@@ -1,0 +1,45 @@
+--- a/src/store/outboxStore.js
++++ b/src/store/outboxStore.js
+@@ -135,9 +135,11 @@
+ 		 * @param {object} data Action data
+ 		 * @param {number} data.id Id of outbox message to send
+ 		 * @param {boolean} data.force Force sending a message even if it has no sendAt timestamp
++		 * @param {number} data.replyToDatabaseId Database ID of the message being replied to (for thread refresh)
++		 * @param {number} data.accountId Account ID of the sender (for syncing sent mailbox)
+ 		 * @return {Promise<boolean>} Resolves to false if sending was skipped
+ 		 */
+-		async sendMessage({ id, force = false }) {
++		async sendMessage({ id, force = false, replyToDatabaseId, accountId }) {
+ 			// Skip if the message has been deleted/undone in the meantime
+ 			const message = this.getMessage(id)
+ 			logger.debug('Sending message ' + id, { message, force })
+@@ -162,6 +164,7 @@
+ 			}
+ 
+ 			this.deleteMessageMutation({ id })
++
+ 			return true
+ 		},
+ 
+@@ -170,9 +173,11 @@
+ 		 *
+ 		 * @param {object} data Action data
+ 		 * @param {number} data.id Id of outbox message to send
++		 * @param {number} data.replyToDatabaseId Database ID of the message being replied to (for thread refresh)
++		 * @param {number} data.accountId Account ID of the sender (for syncing sent mailbox)
+ 		 * @return {Promise<boolean>} Resolves to false if sending was skipped. Resolves after UNDO_DELAY has elapsed and the message dispatch was triggered. Warning: This might take a long time, depending on UNDO_DELAY.
+ 		 */
+-		async sendMessageWithUndo({ id }) {
++		async sendMessageWithUndo({ id, replyToDatabaseId, accountId }) {
+ 			this.mainStore.hideMessageComposerMutation()
+ 
+ 			return new Promise((resolve, reject) => {
+@@ -197,7 +202,7 @@
+ 
+ 				setTimeout(async () => {
+ 					try {
+-						const wasSent = await this.sendMessage({ id: message.id, force: false })
++						const wasSent = await this.sendMessage({ id: message.id, force: false, replyToDatabaseId, accountId })
+ 						if (wasSent) {
+ 							showSuccess(t('mail', 'Message sent'))
+ 						}

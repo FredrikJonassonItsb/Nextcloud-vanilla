@@ -1,0 +1,47 @@
+--- a/lib/Controller/DraftsController.php
++++ b/lib/Controller/DraftsController.php
+@@ -125,6 +125,7 @@
+ 		}
+ 
+ 		$this->service->saveMessage($account, $message, $to, $cc, $bcc, $attachments);
++		$this->eventDispatcher->dispatchTyped(new SaveOrUpdateDraftEvent($message, $draftId));
+ 
+ 		return JsonResponse::success($message, Http::STATUS_CREATED);
+ 	}
+--- a/lib/Service/MailTransmission.php
++++ b/lib/Service/MailTransmission.php
+@@ -51,6 +51,7 @@
+ use OCP\EventDispatcher\IEventDispatcher;
+ use Psr\Log\LoggerInterface;
+ use OCA\SdkMc\Event\SendEmailEvent;
++use OCA\SdkMc\Event\DraftSentEvent;
+ 
+ class MailTransmission implements IMailTransmission {
+ 	private const RETRIABLE_CODES = [
+@@ -262,6 +263,7 @@
+ 		}
+ 
+ 		$this->eventDispatcher->dispatchTyped(new DraftSavedEvent($account, null));
++		$this->eventDispatcher->dispatchTyped(new DraftSentEvent($account, $message, $mail->getRaw(false)));
+ 		$perfLogger->step('emit post local draft save event');
+ 
+ 		$perfLogger->end();
+--- a/lib/Service/OutboxService.php
++++ b/lib/Service/OutboxService.php
+@@ -26,6 +26,8 @@
+ use OCP\EventDispatcher\IEventDispatcher;
+ use Psr\Log\LoggerInterface;
+ use Throwable;
++use OCA\SdkMc\Event\ScheduleEmailSendEvent;
++use OCP\EventDispatcher\IEventListener;
+ 
+ class OutboxService {
+ 
+@@ -257,6 +259,7 @@
+ 		$outboxMessage = clone $draftMessage;
+ 		$outboxMessage->setType(LocalMessage::TYPE_OUTGOING);
+ 		$outboxMessage->setSendAt($sendAt);
++		$this->eventDispatcher->dispatchTyped(new ScheduleEmailSendEvent($outboxMessage));
+ 		return $this->mapper->update($outboxMessage);
+ 	}
+ }

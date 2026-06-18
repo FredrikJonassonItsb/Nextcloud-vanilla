@@ -1,0 +1,63 @@
+--- a/lib/Db/ThreadMapper.php
++++ b/lib/Db/ThreadMapper.php
+@@ -22,11 +22,11 @@
+ 	}
+ 
+ 	/**
+-	 * @return array<array-key, array{mailboxName: string, messageUid: int}>
++	 * @return array<array-key, array{mailboxName: string, messageUid: int, mailboxId: int}> // itsl
+ 	 */
+ 	public function findMessageUidsAndMailboxNamesByAccountAndThreadRoot(MailAccount $mailAccount, string $threadRootId, bool $trash): array {
+ 		$qb = $this->db->getQueryBuilder();
+-		$qb->select('messages.uid', 'mailboxes.name')
++		$qb->select('messages.uid', 'mailboxes.name', 'mailboxes.id') // itsl
+ 			->from($this->tableName, 'messages')
+ 			->join('messages', 'mail_mailboxes', 'mailboxes', 'messages.mailbox_id = mailboxes.id')
+ 			->where(
+@@ -46,6 +46,7 @@
+ 		$result = $qb->executeQuery();
+ 		$rows = array_map(static fn (array $row) => [
+ 			'messageUid' => (int)$row[0],
++			'mailboxId' => (int)$row[2], // itsl
+ 			'mailboxName' => (string)$row[1]
+ 		], $result->fetchAll(\PDO::FETCH_NUM));
+ 		$result->closeCursor();
+--- a/lib/Service/MailManager.php
++++ b/lib/Service/MailManager.php
+@@ -921,7 +921,10 @@
+ 				$dstMailbox->getName()
+ 			);
+ 			if ($newUid !== null) {
+-				$newUids[] = $newUid;
++				$newUids[$message['messageUid']] = [
++					'newUid' => $newUid,
++					'srcMailboxId' => $message['mailboxId'], // itsl
++				];
+ 			}
+ 		}
+ 		return $newUids;
+--- a/lib/Service/SnoozeService.php
++++ b/lib/Service/SnoozeService.php
+@@ -216,6 +216,13 @@
+ 		$messages = $this->messageMapper->findThread($srcAccount, $selectedMessage->getThreadRootId());
+ 
+ 		foreach ($messages as $message) {
++			try {
++				$originalMailboxId = $this->messageSnoozeMapper->getSrcMailboxId($message->getMailboxId(), $message->getUid()); // itsl
++				$originalMailboxName = $originalMailboxId !== null ? $this->mailboxMapper->findById($originalMailboxId)->getName() : 'INBOX'; // itsl
++			} catch (DoesNotExistException) {
++				$originalMailboxName = 'INBOX';
++			}
++
+ 			$this->mailManager->moveMessage(
+ 				$srcAccount,
+ 				$snoozedMailbox->getName(),
+@@ -267,6 +274,8 @@
+ 	 */
+ 	public function snoozeThreadDB(array $uids, Mailbox $dstMailbox, int $unixTimestamp, Mailbox $srcMailbox): void {
+ 		foreach ($uids as $uid) {
++			$srcMailbox->setId($uid['srcMailboxId']); // itsl
++			$uid = $uid['newUid'];
+ 			$snooze = new MessageSnooze();
+ 			$snooze->setMailboxId($dstMailbox->getId());
+ 			$snooze->setUid($uid);

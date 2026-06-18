@@ -1,0 +1,13 @@
+# Directories to exclude from string extraction
+vendor
+vendor-bin
+node_modules
+tests
+test
+cypress
+build
+js
+__pycache__
+# Quilt build artifacts
+.git
+.pc

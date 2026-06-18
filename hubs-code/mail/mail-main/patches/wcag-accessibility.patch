@@ -1,0 +1,41 @@
+--- a/src/components/ComposerAttachments.vue
++++ b/src/components/ComposerAttachments.vue
+@@ -36,6 +36,7 @@
+ 			type="file"
+ 			multiple
+ 			style="display: none;"
++			aria-label="t('mail', 'Add attachments')"
+ 			@change="onLocalAttachmentSelected">
+ 		<FilePicker
+ 			v-if="isAttachementPickerOpen"
+--- a/src/components/Navigation.vue
++++ b/src/components/Navigation.vue
+@@ -71,6 +71,7 @@
+ 					class="mail-settings__button"
+ 					:close-after-click="true"
+ 					:name="t('mail', 'Mail settings')"
++					:title="' '"
+ 					@click="showMailSettings">
+ 					<template #icon>
+ 						<IconSetting :size="20" />
+--- a/src/components/NavigationAccountExpandCollapse.vue
++++ b/src/components/NavigationAccountExpandCollapse.vue
+@@ -4,7 +4,7 @@
+ -->
+ 
+ <template>
+-	<AppNavigationItem :name="title" @click="toggleCollapse" />
++	<AppNavigationItem :name="title" @click="toggleCollapse" :title="' '" />
+ </template>
+ 
+ <script>
+--- a/src/components/NavigationMailbox.vue
++++ b/src/components/NavigationMailbox.vue
+@@ -18,6 +18,7 @@
+ 		:menu-open.sync="menuOpen"
+ 		:force-menu="true"
+ 		:name="title"
++		:title="' '"
+ 		:to="to"
+ 		:open.sync="showSubMailboxes"
+ 		@update:menuOpen="onMenuToggle">

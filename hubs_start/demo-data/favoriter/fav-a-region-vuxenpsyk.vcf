@@ -1,0 +1,16 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-a-region-vuxenpsyk
+FN:Vuxenpsykiatrin, mottagning (Region Skåne)
+N:Vuxenpsykiatrin mottagning;;;;
+ORG:Region Skåne;Vuxenpsykiatrin – mottagning
+KIND:org
+EMAIL;TYPE=INTERNET:vuxenpsyk-mottagning@sdk
+X-HUBS-SDK-REF:SE2321000255-vuxenpsyk
+X-HUBS-FAVORIT-KLASS:sdk-pekare
+X-HUBS-RESOLVED-AT:2026-06-15T08:00:00
+CATEGORIES:Favoriter,funktion,myndighet
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). Funktionsadress\, ej medborgar-PII. Pekare mot DIGG/SDK – auktoritativ adress resolvas färskt\, kopieras aldrig. Prov-case för favorit-driven vidarebefordran (inf-9).
+REV:2026-06-15T08:00:00Z
+END:VCARD

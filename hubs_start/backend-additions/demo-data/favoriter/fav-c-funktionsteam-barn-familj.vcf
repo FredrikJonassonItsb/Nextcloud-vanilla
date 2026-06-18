@@ -1,0 +1,14 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-c-funktionsteam-barn-familj
+FN:Barn & familj-enheten (team)
+N:Barn och familj-enheten;;;;
+ORG:Individ- och familjeomsorg;Barn & familj-enheten
+KIND:group
+X-HUBS-USER-REF:barn-familj
+X-HUBS-FAVORIT-KLASS:intern-anvandare
+CATEGORIES:Favoriter,intern,team
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). Pekare mot intern funktions-/teamkatalog\, ej kopierad uppgift. Resolvas mot användarkatalogen. Fiktivt team.
+REV:2026-06-15T08:00:00Z
+END:VCARD

@@ -1,0 +1,7 @@
+# .ansible-lint
+exclude_paths:
+  - "*.git/*.yml"
+  - "*.git/*.yaml"
+  - "*.github/*.yaml"
+  - "*.gitlab-ci.yml"
+  - "*.gitlab-ci.yaml"

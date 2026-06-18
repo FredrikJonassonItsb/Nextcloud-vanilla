@@ -1,0 +1,27 @@
+# ci/build.yml — pipeline metadata sidecar.
+#
+# The installable artifact (<app>.tar.gz) is built by build:app in ci/validate.yml. This file holds
+# only the metadata sidecar (version/commit/branch/tag/pipeline), uploaded next to the tarball on
+# release refs (ci/upload.yml). Kept in build.yml so apps' include lists don't change on the bump.
+
+package:metadata:
+  stage: build
+  image: alpine:latest
+  needs: []
+  script:
+    - |
+      cat > package-metadata.json <<EOF
+      {
+        "version": "${CI_COMMIT_TAG:-${CI_COMMIT_REF_NAME}}",
+        "commit": "${CI_COMMIT_SHORT_SHA}",
+        "branch": "${CI_COMMIT_BRANCH:-}",
+        "tag": "${CI_COMMIT_TAG:-}",
+        "timestamp": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')",
+        "pipeline": "${CI_PIPELINE_ID}"
+      }
+      EOF
+    - cat package-metadata.json
+  artifacts:
+    paths:
+      - package-metadata.json
+    expire_in: 30 days

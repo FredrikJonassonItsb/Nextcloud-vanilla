@@ -1,0 +1,346 @@
+--- a/lib/BackgroundJob/FollowUpClassifierJob.php
++++ b/lib/BackgroundJob/FollowUpClassifierJob.php
+@@ -47,6 +47,10 @@
+ 			return;
+ 		}
+ 
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return;
++		}
++
+ 		try {
+ 			$mailbox = $this->mailManager->getMailbox($userId, $mailboxId);
+ 			$account = $this->accountService->find($userId, $mailbox->getAccountId());
+--- a/lib/BackgroundJob/TrainImportanceClassifierJob.php
++++ b/lib/BackgroundJob/TrainImportanceClassifierJob.php
+@@ -60,6 +60,11 @@
+ 			return;
+ 		}
+ 
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			$this->logger->debug("AI processing is turned off by admin for account $accountId");
++			return;
++		}
++
+ 		if (!$account->getClassificationEnabled()) {
+ 			$this->logger->debug("classification is turned off for account $accountId");
+ 			return;
+--- a/lib/Command/PredictImportance.php
++++ b/lib/Command/PredictImportance.php
+@@ -73,6 +73,12 @@
+ 			$output->writeln("<error>account $accountId does not exist</error>");
+ 			return 1;
+ 		}
++
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			$output->writeln('<error>AI processing is turned off by admin</error>');
++			return 2;
++		}
++
+ 		$fakeMessage = new Message();
+ 		$fakeMessage->setUid(0);
+ 		$fakeMessage->setFrom(AddressList::parse("Name <$sender>"));
+--- a/lib/Command/RunMetaEstimator.php
++++ b/lib/Command/RunMetaEstimator.php
+@@ -73,6 +73,11 @@
+ 			return 1;
+ 		}
+ 
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			$output->writeln('<error>AI processing is turned off by admin</error>');
++			return 2;
++		}
++
+ 		$consoleLogger = new ConsoleLoggerDecorator(
+ 			$this->logger,
+ 			$output
+--- a/lib/Command/TrainAccount.php
++++ b/lib/Command/TrainAccount.php
+@@ -72,6 +72,11 @@
+ 			return 1;
+ 		}
+ 
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			$output->writeln('<info>AI processing is turned off by admin</info>');
++			return 2;
++		}
++
+ 		if (!$force && !$account->getClassificationEnabled()) {
+ 			$output->writeln("<info>classification is turned off for account $accountId</info>");
+ 			return 2;
+--- a/lib/Controller/AccountsController.php
++++ b/lib/Controller/AccountsController.php
+@@ -285,6 +285,12 @@
+ 			$dbAccount->setSearchBody($searchBody);
+ 		}
+ 		if ($classificationEnabled !== null) {
++			// ITSL: Silently reject enable when admin AI override is OFF.
++			// The response returns the persisted state (false), correcting the UI.
++			if ($classificationEnabled === true
++				&& !\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++				$classificationEnabled = false;
++			}
+ 			$dbAccount->setClassificationEnabled($classificationEnabled);
+ 		}
+ 		if ($imipCreate !== null) {
+@@ -392,6 +398,10 @@
+ 				],
+ 			);
+ 		}
++		if ($classificationEnabled === true
++			&& !\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			$classificationEnabled = false;
++		}
+ 		try {
+ 			$account = $this->setup->createNewAccount($accountName, $emailAddress, $imapHost, $imapPort, $imapSslMode, $imapUser, $imapPassword, $smtpHost, $smtpPort, $smtpSslMode, $smtpUser, $smtpPassword, $this->currentUserId, $authMethod, null, $classificationEnabled);
+ 			// Set initial heartbeat
+--- a/lib/Controller/MessagesController.php
++++ b/lib/Controller/MessagesController.php
+@@ -915,6 +915,9 @@
+ 	 */
+ 	#[TrapError]
+ 	public function smartReply(int $messageId):JSONResponse {
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return new JSONResponse([], Http::STATUS_FORBIDDEN);
++		}
+ 		try {
+ 			$message = $this->mailManager->getMessage($this->currentUserId, $messageId);
+ 			$mailbox = $this->mailManager->getMailbox($this->currentUserId, $message->getMailboxId());
+@@ -943,6 +946,9 @@
+ 	 */
+ 	#[TrapError]
+ 	public function needsTranslation(int $messageId): JSONResponse {
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return new JSONResponse([], Http::STATUS_NOT_IMPLEMENTED);
++		}
+ 		if ($this->currentUserId === null) {
+ 			return new JSONResponse([], Http::STATUS_FORBIDDEN);
+ 		}
+--- a/lib/Controller/PageController.php
++++ b/lib/Controller/PageController.php
+@@ -304,24 +304,25 @@
+ 			$this->config->getAppValue('mail', 'allow_new_mail_accounts', 'yes') === 'yes'
+ 		);
+ 
++		$aiEnabled = $this->classificationSettingsService->isAiProcessingEnabled();
+ 		$this->initialStateService->provideInitialState(
+ 			'llm_summaries_available',
+-			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(SummaryTaskType::class)
++			$aiEnabled && $this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(SummaryTaskType::class)
+ 		);
+ 
+ 		$this->initialStateService->provideInitialState(
+ 			'llm_translation_enabled',
+-			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isTaskAvailable('core:text2text:translate')
++			$aiEnabled && $this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isTaskAvailable('core:text2text:translate')
+ 		);
+ 
+ 		$this->initialStateService->provideInitialState(
+ 			'llm_freeprompt_available',
+-			$this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(FreePromptTaskType::class)
++			$aiEnabled && $this->aiIntegrationsService->isLlmProcessingEnabled() && $this->aiIntegrationsService->isLlmAvailable(FreePromptTaskType::class)
+ 		);
+ 
+ 		$this->initialStateService->provideInitialState(
+ 			'llm_followup_available',
+-			$this->aiIntegrationsService->isLlmProcessingEnabled()
++			$aiEnabled && $this->aiIntegrationsService->isLlmProcessingEnabled()
+ 			&& $this->aiIntegrationsService->isLlmAvailable(FreePromptTaskType::class)
+ 		);
+ 
+--- a/lib/Controller/ThreadController.php
++++ b/lib/Controller/ThreadController.php
+@@ -142,6 +142,9 @@
+ 	 * @return JSONResponse
+ 	 */
+ 	public function summarize(int $id): JSONResponse {
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return new JSONResponse([], Http::STATUS_FORBIDDEN);
++		}
+ 		try {
+ 			$message = $this->mailManager->getMessage($this->currentUserId, $id);
+ 			$mailbox = $this->mailManager->getMailbox($this->currentUserId, $message->getMailboxId());
+@@ -174,6 +177,9 @@
+ 	 * @NoAdminRequired
+ 	 */
+ 	public function generateEventData(int $id): JSONResponse {
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return new JSONResponse([], Http::STATUS_FORBIDDEN);
++		}
+ 		try {
+ 			$message = $this->mailManager->getMessage($this->currentUserId, $id);
+ 			$mailbox = $this->mailManager->getMailbox($this->currentUserId, $message->getMailboxId());
+--- a/lib/Db/MailAccount.php
++++ b/lib/Db/MailAccount.php
+@@ -190,7 +190,7 @@
+ 	protected $oooFollowsSystem;
+ 
+ 	protected bool $debug = false;
+-	protected bool $classificationEnabled = true;
++	protected bool $classificationEnabled = false;
+ 
+ 	protected bool $imipCreate = false;
+ 
+--- a/lib/Listener/FollowUpClassifierListener.php
++++ b/lib/Listener/FollowUpClassifierListener.php
+@@ -46,6 +46,10 @@
+ 			return;
+ 		}
+ 
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return;
++		}
++
+ 		if (!$this->aiService->isLlmAvailable(FreePromptTaskType::class)) {
+ 			return;
+ 		}
+--- a/lib/Listener/NewMessagesSummarizeListener.php
++++ b/lib/Listener/NewMessagesSummarizeListener.php
+@@ -34,6 +34,11 @@
+ 		if ($this->appConfig->getAppValueBool('llm_processing', false) === false) {
+ 			return;
+ 		}
++
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return;
++		}
++
+ 		if (!($event instanceof NewMessagesSynchronized)) {
+ 			return;
+ 		}
+--- a/lib/Migration/Version5007Date20251024153423.php
++++ b/lib/Migration/Version5007Date20251024153423.php
+@@ -38,7 +38,7 @@
+ 		$accountsTable = $schema->getTable('mail_accounts');
+ 		if (!$accountsTable->hasColumn('classification_enabled')) {
+ 			$accountsTable->addColumn('classification_enabled', Types::BOOLEAN, [
+-				'default' => true,
++				'default' => false,
+ 				'notNull' => false,
+ 			]);
+ 		}
+@@ -46,49 +46,14 @@
+ 	}
+ 
+ 	public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
+-
+-		// If value not set or is true, we only care about users who have explicitly disabled classification
+-		// If classification is enabled by default we care about users who enabled it
+-		$isEnabledBydefault = $this->appConfig->getAppValueBool('importance_classification_default', true);
+-		$qb = $this->db->getQueryBuilder();
+-		$qb->select('userid')
+-			->from('preferences')
+-			->where(
+-				$qb->expr()->andx(
+-					$qb->expr()->eq('appid', $qb->createNamedParameter('mail')),
+-					$qb->expr()->eq('configkey', $qb->createNamedParameter('tag-classified-messages')),
+-					$qb->expr()->eq('configvalue', $qb->createNamedParameter($isEnabledBydefault ? 'false' : 'true'))
+-				)
+-			);
+-
+-		$res = $qb->executeQuery();
+-		$users = $res->fetchAll(\PDO::FETCH_COLUMN);
+-		$res->closeCursor();
+-
+-		$output->info('Migrating classification user preferences to mail_accounts table');
+-		$output->startProgress();
+-
+-		// If classification is disabled by default we first disable it for all users
+-		if (!$isEnabledBydefault) {
+-			$qb = $this->db->getQueryBuilder();
+-			$qb->update('mail_accounts')
+-				->set('classification_enabled', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL));
+-			$qb->executeStatement();
+-
+-		}
+-		// Then if classification is disabled by default, we re-enable it for users who did so previously
+-		// If classification is enabled by default, we disbale it users who did so previously
++		// ITSL: Force classification OFF for all accounts. Legal requirement.
++		$output->info('Setting classification_enabled = false for all accounts');
+ 		$qb = $this->db->getQueryBuilder();
+ 		$qb->update('mail_accounts')
+-			->set('classification_enabled', $qb->createNamedParameter(!$isEnabledBydefault, IQueryBuilder::PARAM_BOOL))
+-			->where($qb->expr()->in('user_id', $qb->createParameter('users')));
+-		foreach (array_chunk($users, 1000) as $chunk) {
+-			$output->advance();
+-			$qb->setParameter('users', $chunk, IQueryBuilder::PARAM_STR_ARRAY);
+-			$qb->executeStatement();
+-		}
+-		$output->finishProgress();
+-		$output->info('Removing old classification user preferences from preferences table');
++			->set('classification_enabled', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL));
++		$qb->executeStatement();
++
++		// Clean up old per-user preferences (no longer used)
+ 		$qb = $this->db->getQueryBuilder();
+ 		$qb->delete('preferences')
+ 			->where(
+--- a/lib/Service/Classification/ClassificationSettingsService.php
++++ b/lib/Service/Classification/ClassificationSettingsService.php
+@@ -28,11 +28,21 @@
+ 		return $this->config->getAppValue(
+ 			Application::APP_ID,
+ 			'importance_classification_default',
+-			'yes'
++			'no'
+ 		) === 'yes';
+ 	}
+ 
+ 	/**
++	 * ITSL: Admin hard-override for ALL AI/ML/LLM processing.
++	 * When importance_classification_default is not 'yes', no AI system
++	 * may read, classify, train on, summarize, or process any user email.
++	 * Legal requirement: Swedish law.
++	 */
++	public function isAiProcessingEnabled(): bool {
++		return $this->isClassificationEnabledByDefault();
++	}
++
++	/**
+ 	 * Enable or disable the classification of important mails for all users that did not yet toggle
+ 	 * the preference themselves.
+ 	 */
+--- a/lib/Service/Classification/NewMessagesClassifier.php
++++ b/lib/Service/Classification/NewMessagesClassifier.php
+@@ -57,6 +57,10 @@
+ 		Account $account,
+ 		Tag $importantTag,
+ 	): bool {
++		if (!\OCP\Server::get(\OCA\Mail\Service\Classification\ClassificationSettingsService::class)->isAiProcessingEnabled()) {
++			return false;
++		}
++
+ 		if (!$account->getClassificationEnabled()) {
+ 			return false;
+ 		}
+--- a/src/components/AccountForm.vue
++++ b/src/components/AccountForm.vue
+@@ -334,7 +334,7 @@
+ 			mode: 'auto',
+ 			accountName: this.displayName,
+ 			emailAddress: this.email,
+-			classificationEnabled: fromAccountOr('classificationEnabled', loadState('mail', 'importance_classification_default', true)),
++			classificationEnabled: fromAccountOr('classificationEnabled', loadState('mail', 'importance_classification_default', false)),
+ 			autoConfig: {
+ 				password: '',
+ 			},
+--- a/src/components/settings/AdminSettings.vue
++++ b/src/components/settings/AdminSettings.vue
+@@ -158,7 +158,7 @@
+ 			<h3>{{ t('mail', 'Enable classification by importance by default') }}</h3>
+ 			<article>
+ 				<p>
+-					{{ t('mail', 'The Mail app can classify incoming emails by importance using machine learning. This feature is enabled by default but can be disabled by default here. Individual users will still be able to toggle the feature for their accounts.') }}
++					{{ t('mail', 'The Mail app can use AI and machine learning to classify, summarize, and analyze emails. When disabled, no AI/ML processing will run for any user. When enabled, individual users can toggle importance classification for their accounts.') }}
+ 				</p>
+ 				<p>
+ 					<NcCheckboxRadioSwitch
+@@ -372,7 +372,7 @@
+ 			isLlmEnabled: loadState('mail', 'llm_processing', true),
+ 			isLlmFreePromptConfigured: loadState('mail', 'enabled_llm_free_prompt_backend'),
+ 			layoutMessageView: loadState('mail', 'layout_message_view'),
+-			isImportanceClassificationEnabledByDefault: loadState('mail', 'importance_classification_default', true),
++			isImportanceClassificationEnabledByDefault: loadState('mail', 'importance_classification_default', false),
+ 		}
+ 	},
+ 

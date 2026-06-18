@@ -1,0 +1,195 @@
+---
+
+- name: Install SDKMC App on Nextcloud docker based
+  hosts: deploy_development_servers
+  become: true
+  vars:
+    nc_html_dir: "/var/www/html"  # Set this to the Nextcloud directory
+    nc_apps_dir: "{{ nc_html_dir }}/apps"  # Set this to the Nextcloud apps directory
+    sdkmc_tar: "sdkmc_v0.9.*.tar.gz"  # Set this to the local app archive
+    sdkmc_base_uri: "{{ vault_sdkmc_base_uri }}"
+    # Must match the MW config setting "SdkMcMw:MessageClient:SecretPassword"
+    sdkmc_secret_password: "{{ vault_sdkmc_secret_password }}"
+    occ_cmd: "sudo -u www-data -E php occ"
+    docker_exec_cmd: "docker exec --user root {{ container_name }}"
+    ca_certificate_content: "{{ vault_ca_certificate_content }}"
+
+  tasks:
+    - name: Artifact
+      block:
+        - name: "Find sdkmc tar.gz file matching pattern {{ sdkmc_tar }}"
+          ansible.builtin.find:
+            paths: "{{ playbook_dir }}/.."
+            patterns: "{{ sdkmc_tar }}"
+            file_type: file
+            recurse: false
+          register: sdkmc_tar_files
+          delegate_to: localhost
+
+        - name: Fail if no sdkmc tar.gz file found
+          ansible.builtin.fail:
+            msg: "No sdkmc tar.gz file matching '{{ sdkmc_tar }}' found in '{{ playbook_dir }}'"
+          when: sdkmc_tar_files.files | length == 0
+          delegate_to: localhost
+
+        - name: Set sdkmc_tar to the found file
+          ansible.builtin.set_fact:
+            sdkmc_tar: "{{ sdkmc_tar_files.files[0].path | basename }}"
+          delegate_to: localhost
+
+    - name: Docker
+      block:
+        - name: Check if docker command is available
+          ansible.builtin.command: "docker --version"
+          register: docker_check
+          ignore_errors: true
+          changed_when: false
+
+        - name: Fail if docker command is not available
+          ansible.builtin.fail:
+            msg: "Docker command is not available. Please ensure Docker is installed."
+          when: docker_check.rc != 0
+
+    - name: Directories
+      block:
+        - name: Check if destination directory exists in the container
+          ansible.builtin.command: "{{ docker_exec_cmd }} test -d {{ nc_apps_dir }}"
+          register: nc_apps_dir_check
+          ignore_errors: true
+          changed_when: nc_apps_dir_check.rc != 0
+
+        - name: Fail if destination directory does not exist in the container
+          ansible.builtin.fail:
+            msg: "Destination directory {{ nc_apps_dir }} does not exist in the Docker container {{ container_name }}"
+          when: nc_apps_dir_check.rc != 0
+
+    - name: TAR
+      block:
+        - name: "Check if file exists on control node '{{ sdkmc_tar }}'"
+          ansible.builtin.stat:
+            path: "{{ playbook_dir }}/../{{ sdkmc_tar }}"
+          register: sdkmc_tar_stat
+          delegate_to: localhost
+
+        - name: "Fail if does not exist '{{ sdkmc_tar }}'"
+          ansible.builtin.fail:
+            msg: "{{ sdkmc_tar }} file is not found in the playbook directory"
+          when: not sdkmc_tar_stat.stat.exists
+          delegate_to: localhost
+
+    - name: TAR file
+      block:
+        - name: Copy SDKMC tar.gz
+          ansible.builtin.copy:
+            src: "{{ playbook_dir }}/../{{ sdkmc_tar }}"
+            dest: "/tmp/{{ sdkmc_tar }}"
+            mode: "0644"
+          when: sdkmc_tar_files.files | length > 0
+
+        - name: "Copy to container '{{ sdkmc_tar }}'"
+          ansible.builtin.command: "docker cp /tmp/{{ sdkmc_tar }} {{ container_name }}:/tmp/{{ sdkmc_tar }}"
+          when: sdkmc_tar_stat.stat.exists
+          changed_when: true
+
+    - name: Nextcloud
+      block:
+        - name: Backup existing sdkmc directory in the container
+          ansible.builtin.shell: |
+            {{ docker_exec_cmd }} /bin/bash -c "
+            if [ -d {{ nc_apps_dir }}/sdkmc ]; then
+              tar -czf {{ nc_apps_dir }}/sdkmc_backup_$(date +%Y%m%d_%H%M%S).tar.gz -C {{ nc_apps_dir }} sdkmc;
+            fi
+            "
+          when: sdkmc_tar_stat.stat.exists
+          changed_when: false
+
+        - name: Disable sdkmc app
+          ansible.builtin.command: "{{ docker_exec_cmd }} {{ occ_cmd }} app:disable sdkmc"
+          changed_when: false
+          failed_when: false
+
+        - name: Remove existing sdkmc directory in the container
+          ansible.builtin.shell: |
+            {{ docker_exec_cmd }} /bin/bash -c "
+            if [ -d {{ nc_apps_dir }}/sdkmc ]; then
+              rm -rf {{ nc_apps_dir }}/sdkmc;
+            fi
+            "
+          when: sdkmc_tar_stat.stat.exists
+          changed_when: false
+
+        - name: "Extract archive in the container '{{ sdkmc_tar }}'"
+          ansible.builtin.command: "{{ docker_exec_cmd }} tar -xzf /tmp/{{ sdkmc_tar }} -C {{ nc_apps_dir }}"
+          when: sdkmc_tar_stat.stat.exists
+          changed_when: false
+
+        - name: Set permissions on sdkmc directory
+          ansible.builtin.command: "{{ docker_exec_cmd }} chown -R 33:33 {{ nc_apps_dir }}/sdkmc"
+          changed_when: false
+
+        - name: Enable sdkmc app
+          ansible.builtin.command: "{{ docker_exec_cmd }} {{ occ_cmd }} app:enable sdkmc"
+          register: sdkmc_app_enabled
+          changed_when: false
+
+        - name: Check if sdkmc app is enabled
+          ansible.builtin.fail:
+            msg: "Failed to enable sdkmc app."
+          when: sdkmc_app_enabled.rc != 0
+
+        - name: Configure SDKMC app Secret Password
+          ansible.builtin.command: "{{ docker_exec_cmd }} {{ occ_cmd }} config:app:set sdkmc sdkmcmwSecretPassword --value {{ sdkmc_secret_password }}"
+          when: sdkmc_app_enabled.rc == 0
+          changed_when: false
+
+        # Implement tests
+
+        - name: List all backups made by this playbook
+          ansible.builtin.shell: |
+            {{ docker_exec_cmd }} /bin/bash -c "
+            ls {{ nc_apps_dir }}/sdkmc_backup_*.tar.gz
+            "
+          register: sdkmc_backups
+          changed_when: false
+          ignore_errors: true
+
+        - name: Display backup files
+          ansible.builtin.debug:
+            msg: "{{ sdkmc_backups.stdout_lines }}"
+          when: sdkmc_backups.stdout_lines | length > 0
+          failed_when: false
+
+        - name: Middleware certificate
+          when: sdkmc_app_enabled.rc == 0
+          block:
+            - name: Write CA certificate to a temporary file
+              ansible.builtin.tempfile:
+                state: file
+                suffix: ".crt"
+              register: temp_cert_file
+
+            - name: Write the CA certificate content to the temporary file
+              ansible.builtin.copy:
+                content: "{{ ca_certificate_content }}"
+                dest: "{{ temp_cert_file.path }}"
+                mode: "0640"
+
+            - name: Docker cp the CA certificate to the container
+              ansible.builtin.command: "docker cp {{ temp_cert_file.path }} {{ container_name }}:/usr/local/share/ca-certificates/itsl-ca.crt"
+              changed_when: false
+
+            - name: Set permissions on the CA certificate inside the container
+              ansible.builtin.command: "{{ docker_exec_cmd }} chmod 660 /usr/local/share/ca-certificates/itsl-ca.crt"
+              changed_when: false
+
+            - name: Set ownership on the CA certificate inside the container
+              ansible.builtin.command: "{{ docker_exec_cmd }} chown www-data:root /usr/local/share/ca-certificates/itsl-ca.crt"
+              changed_when: false
+
+            - name: Docker exec update-ca-certificates
+              ansible.builtin.command: "{{ docker_exec_cmd }} /bin/bash -c 'update-ca-certificates'"
+              changed_when: false
+
+            - name: Docker exec import the CA certificate
+              ansible.builtin.command: "{{ docker_exec_cmd }} {{ occ_cmd }} security:certificates:import /usr/local/share/ca-certificates/itsl-ca.crt"
+              changed_when: false

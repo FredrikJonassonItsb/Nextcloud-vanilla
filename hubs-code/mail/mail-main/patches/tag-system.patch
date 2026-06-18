@@ -1,0 +1,205 @@
+--- a/lib/BackgroundJob/FollowUpClassifierJob.php
++++ b/lib/BackgroundJob/FollowUpClassifierJob.php
+@@ -99,6 +99,8 @@
+ 		}
+ 
+ 		$this->logger->debug('Message requires follow-up: ' . $message->getId());
++		\OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->tagMessageWithMetadata($userId, $account->getId(), '$follow_up', $message->getMessageId(), 'Follow up', '#d77000');
++		return;
+ 		$tag = $this->mailManager->createTag('Follow up', '#d77000', $userId);
+ 		$this->mailManager->tagMessage(
+ 			$account,
+--- a/lib/Controller/PageController.php
++++ b/lib/Controller/PageController.php
+@@ -182,7 +182,7 @@
+ 		);
+ 		$this->initialStateService->provideInitialState(
+ 			'tags',
+-			$this->tagMapper->getAllTagsForUser($this->currentUserId)
++			\OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->getAllTagsKeyedByAccount(array_combine(array_map(fn($a) => $a->getId(), $mailAccounts), array_map(fn($a) => $a->getEmail(), $mailAccounts)))
+ 		);
+ 
+ 		$this->initialStateService->provideInitialState(
+--- a/lib/Db/MessageMapper.php
++++ b/lib/Db/MessageMapper.php
+@@ -334,7 +334,7 @@
+ 					}
+ 				}
+ 				foreach ($message->getTags() as $tag) {
+-					$this->tagMapper->tagMessage($tag, $message->getMessageId(), $account->getUserId());
++					\OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->syncTag($account->getEmail(), $message->getMessageId(), $tag);
+ 				}
+ 			}
+ 
+@@ -499,7 +499,7 @@
+ 			// get all tags before the loop and create a mapping [message_id => [tag,...]] but only if permflags are enabled
+ 			$tags = [];
+ 			if ($permflagsEnabled) {
+-				$tags = $this->tagMapper->getAllTagsForMessages($messages, $account->getUserId());
++				$tags = \OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->getTagsForMessages(array_map(fn($m) => $m->getMessageId(), $messages), $account->getEmail());
+ 				$perf->step('Selected Tags for all messages');
+ 			}
+ 
+@@ -540,7 +540,7 @@
+ 
+ 		$toAdd = array_udiff($imapTags, $dbTags, static fn (Tag $a, Tag $b) => strcmp($a->getImapLabel(), $b->getImapLabel()));
+ 		foreach ($toAdd as $tag) {
+-			$this->tagMapper->tagMessage($tag, $message->getMessageId(), $account->getUserId());
++			\OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->syncTag($account->getEmail(), $message->getMessageId(), $tag);
+ 		}
+ 		$perf->step('Tagged messages');
+ 
+@@ -551,7 +551,7 @@
+ 
+ 		$toRemove = array_udiff($dbTags, $imapTags, static fn (Tag $a, Tag $b) => strcmp($a->getImapLabel(), $b->getImapLabel()));
+ 		foreach ($toRemove as $tag) {
+-			$this->tagMapper->untagMessage($tag, $message->getMessageId());
++			\OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->unsyncTag($account->getEmail(), $message->getMessageId(), $tag);
+ 		}
+ 		$perf->step('Untagged messages');
+ 	}
+@@ -833,8 +833,9 @@
+ 			$qb->expr()->eq('m.mailbox_id', $qb->createNamedParameter($mailbox->getId()), IQueryBuilder::PARAM_INT)
+ 		);
+ 
++		\OCA\SdkMc\Service\TagSearchHelper::processAndClearTags($qb, $select, $query);
+ 		if (!empty($query->getTags())) {
+-			$select->innerJoin('m', 'mail_message_tags', 'tags', 'm.message_id = tags.imap_message_id');
++			$select->innerJoin('m', 'sdkmc_itsl_message_tag', 'tags', 'm.message_id = tags.imap_message_id');
+ 			$select->andWhere(
+ 				$qb->expr()->in('tags.tag_id', $qb->createNamedParameter($query->getTags(), IQueryBuilder::PARAM_STR_ARRAY))
+ 			);
+@@ -1053,6 +1054,7 @@
+ 			$qb->expr()->in('m.mailbox_id', $qb->createFunction($selectMailboxIds->getSQL()), IQueryBuilder::PARAM_INT_ARRAY)
+ 		);
+ 
++		\OCA\SdkMc\Service\TagSearchHelper::processAndClearTags($qb, $select, $query);
+ 		if (!empty($query->getFrom())) {
+ 			$select->andWhere(
+ 				$qb->expr()->in('r0.email', $qb->createNamedParameter($query->getFrom(), IQueryBuilder::PARAM_STR_ARRAY))
+@@ -1337,7 +1339,7 @@
+ 	 */
+ 	public function findRelatedData(array $messages, string $userId): array {
+ 		$messages = $this->findRecipients($messages);
+-		$tags = $this->tagMapper->getAllTagsForMessages($messages, $userId);
++		$tags = !empty($messages) ? \OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->getTagsForMessagesByMailboxId(array_map(fn($m) => $m->getMessageId(), $messages), $messages[0]->getMailboxId()) : [];
+ 		/** @var Message $message */
+ 		$messages = array_map(static function ($message) use ($tags) {
+ 			$message->setTags($tags[$message->getMessageId()] ?? []);
+--- a/lib/Migration/AddMissingDefaultTags.php
++++ b/lib/Migration/AddMissingDefaultTags.php
+@@ -39,6 +39,7 @@
+ 	 */
+ 	#[\Override]
+ 	public function run(IOutput $output) {
++		return $output->info('Default tags - skipped (sdkmc)');
+ 		$output->info('Looking up default tags');
+ 		$accounts = $this->accountMapper->getAllAccounts();
+ 
+--- a/lib/Model/IMAPMessage.php
++++ b/lib/Model/IMAPMessage.php
+@@ -620,6 +620,7 @@
+ 			$tag->setImapLabel($keyword);
+ 			$tag->setDisplayName($displayName);
+ 			$tag->setUserId($userId);
++			$tag->setColor('#808080'); // itsl
+ 			$t[] = $tag;
+ 		}
+ 		return $t;
+--- a/lib/Service/Classification/NewMessagesClassifier.php
++++ b/lib/Service/Classification/NewMessagesClassifier.php
+@@ -78,6 +78,7 @@
+ 			$account->getUserId(),
+ 			Tag::LABEL_IMPORTANT
+ 		);
++		$doNotReclassify = \OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->getTaggedMessageIdsFromMessages($messages, $account->getEmail(), Tag::LABEL_IMPORTANT);
+ 		$messages = array_filter($messages, static fn ($message) => $message->getFlagImportant() === false || in_array($message->getMessageId(), $doNotReclassify, true));
+ 
+ 		try {
+@@ -93,7 +94,7 @@
+ 				if ($prediction) {
+ 					$message->setFlagImportant(true);
+ 					$this->mailManager->flagMessage($account, $mailbox->getName(), $message->getUid(), Tag::LABEL_IMPORTANT, true);
+-					$this->mailManager->tagMessage($account, $mailbox->getName(), $message, $importantTag, true);
++					\OCP\Server::get(\OCP\EventDispatcher\IEventDispatcher::class)->dispatchTyped(new \OCA\SdkMc\Event\MessageImportantClassifiedEvent($account, $mailbox, $message, $importantTag));
+ 				}
+ 			}
+ 		} catch (ServiceException $e) {
+--- a/lib/Service/SetupService.php
++++ b/lib/Service/SetupService.php
+@@ -115,7 +115,6 @@
+ 		$this->accountService->save($newAccount);
+ 		$this->logger->debug('account created ' . $newAccount->getId());
+ 
+-		$this->tagMapper->createDefaultTags($newAccount);
+ 
+ 		return $account;
+ 	}
+--- a/lib/Service/Sync/ImapToDbSynchronizer.php
++++ b/lib/Service/Sync/ImapToDbSynchronizer.php
+@@ -437,7 +437,7 @@
+ 
+ 			$importantTag = null;
+ 			try {
+-				$importantTag = $this->tagMapper->getTagByImapLabel(Tag::LABEL_IMPORTANT, $account->getUserId());
++				$importantTag = \OCP\Server::get(\OCA\SdkMc\Service\ItslTagService::class)->getImportantTagAsMailTag($account->getEmail(), $account->getUserId());
+ 			} catch (DoesNotExistException $e) {
+ 				$this->logger->error('Could not find important tag for ' . $account->getUserId() . ' ' . $e->getMessage(), [
+ 					'exception' => $e,
+--- a/src/components/MailboxThread.vue
++++ b/src/components/MailboxThread.vue
+@@ -17,6 +17,10 @@
+ 						:mailbox="mailbox"
+ 						:account-id="account.accountId"
+ 						@search-changed="onUpdateSearchQuery" />
++					<TagSearchIndicator
++						v-if="!showThread || !isMobile"
++						:search-query="searchQuery"
++						@search-changed="onUpdateSearchQuery" />
+ 				</div>
+ 				<AppContentList
+ 					v-infinite-scroll="onScroll"
+@@ -205,6 +209,7 @@
+ import NoMessageSelected from './NoMessageSelected.vue'
+ import SearchMessages from './SearchMessages.vue'
+ import SectionTitle from './SectionTitle.vue'
++import TagSearchIndicator from '../itsl/components/TagSearchIndicator.vue'
+ import Thread from './Thread.vue'
+ import infiniteScroll from '../directives/infinite-scroll.js'
+ import logger from '../logger.js'
+@@ -240,6 +245,7 @@
+ 		NcPopover,
+ 		SectionTitle,
+ 		SearchMessages,
++		TagSearchIndicator,
+ 		Thread,
+ 	},
+ 
+--- a/src/components/SearchMessages.vue
++++ b/src/components/SearchMessages.vue
+@@ -324,6 +324,7 @@
+ import { findRecipient } from '../service/AutocompleteService.js'
+ import useMainStore from '../store/mainStore.js'
+ import { hiddenTags } from './tags.js'
++import { searchMessagesMixin } from '@itsl/mixins/searchMessagesMixin.js'
+ 
+ const debouncedSearch = debouncePromise(findRecipient, 500)
+ 
+@@ -338,6 +339,7 @@
+ 		FilterVariantIcon,
+ 		Close,
+ 	},
++	mixins: [searchMessagesMixin],
+ 
+ 	props: {
+ 		mailbox: {
+--- a/src/components/Thread.vue
++++ b/src/components/Thread.vue
+@@ -66,6 +66,7 @@
+ 				@move="onMove(env.databaseId)"
+ 				@toggle-expand="toggleExpand(env.databaseId)"
+ 				@print="print" />
++			<ThreadInfoSidebar v-if="thread.length" :envelope="thread[0]" :thread="thread" />
+ 		</template>
+ 	</AppContentDetails>
+ </template>

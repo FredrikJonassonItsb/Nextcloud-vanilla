@@ -1,0 +1,63 @@
+# hubs-apps ships the reusable CI templates under ci/ that the app repos
+# include — it builds no app of its own. The ONE thing it builds is the CI
+# builder image (docker/ci-builder/Dockerfile): the platform toolchain baked so
+# app pipelines skip the per-job apt install. So the only pipeline this repo
+# runs is the build-image job, and only when that Dockerfile changes.
+#
+# App repos consume the ci/ templates by naming the files explicitly (NOT this
+# root file), so changes here never affect them:
+#
+#   include:
+#     - project: 'itsl/hubs-apps'
+#       ref: '<tag>'
+#       file:
+#         # base.yml first: it defines the shared .build_env hidden job the
+#         # others extend (GitLab anchors do not cross included files).
+#         - 'ci/base.yml'
+#         - 'ci/validate.yml'
+#         - 'ci/build.yml'
+#         - 'ci/lint.yml'
+#         - 'ci/security.yml'
+#         - 'ci/upload.yml'
+#         - 'ci/notify.yml'
+#   variables:
+#     # Must match the include ref — selects which platform version the build
+#     # scripts clone at runtime.
+#     PLATFORM_REF: '<tag>'
+
+workflow:
+  rules:
+    # The ci-builder image bakes the platform tree, so it must rebuild whenever the platform
+    # changes — i.e. on every tag (so ci-builder:<tag> exists for any app pinning that ref) and
+    # every branch push (the layer cache keeps the toolchain layers; only the COPY layer
+    # rebuilds), plus manual web/api runs. Nothing else creates a pipeline — the app repos run
+    # the ci/ templates; this repo has nothing else of its own to build.
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "api"
+    - when: never
+
+# build-image — build + push the CI builder image (toolchain + the baked platform tree), TAGGED
+# by the ref it is built from ($CI_COMMIT_REF_NAME — branch or tag). Context is the repo root (+
+# docker/ci-builder/Dockerfile.dockerignore) so the platform is baked in. .build_env (ci/base.yml)
+# pulls ci-builder:$PLATFORM_REF, so the image — toolchain + platform — tracks the platform
+# version each app pins; no manual bump, no runtime clone. Shell runner so docker build/push run
+# natively (no docker-in-docker). :latest is also pushed as a convenience pointer — NOT pulled.
+build-image:
+  # A regular stage, not .pre: this is the only job in the repo's pipeline, and
+  # GitLab refuses to create a pipeline containing only .pre/.post jobs.
+  # (backport-bot uses .pre because it has other jobs; here it's standalone.)
+  stage: build
+  tags:
+    - shell
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "api"
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -t "$CI_REGISTRY_IMAGE/ci-builder:$CI_COMMIT_REF_NAME" -t "$CI_REGISTRY_IMAGE/ci-builder:latest" -f docker/ci-builder/Dockerfile .
+    - docker push "$CI_REGISTRY_IMAGE/ci-builder:$CI_COMMIT_REF_NAME"
+    - docker push "$CI_REGISTRY_IMAGE/ci-builder:latest"

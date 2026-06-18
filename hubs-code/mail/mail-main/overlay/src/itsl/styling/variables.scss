@@ -1,0 +1,72 @@
+// ITSL Custom Theme Variables
+// Uses Nextcloud's data-theme attribute system for automatic dark mode adaptation.
+
+// Mixin to avoid duplicating dark values
+@mixin itsl-dark-theme {
+	// Message type badges
+	--itsl-badge-sdk-bg: rgba(100, 181, 246, 0.15);
+	--itsl-badge-sdk-text: #64b5f6;
+	--itsl-badge-secure-bg: rgba(129, 199, 132, 0.15);
+	--itsl-badge-secure-text: #81c784;
+	--itsl-badge-internal-bg: rgba(189, 189, 189, 0.15);
+	--itsl-badge-internal-text: #bdbdbd;
+	--itsl-badge-fax-bg: rgba(179, 136, 255, 0.15);
+	--itsl-badge-fax-text: #b39ddb;
+	--itsl-badge-sms-bg: rgba(255, 171, 145, 0.15);
+	--itsl-badge-sms-text: #ffab91;
+
+	// Participant role badges
+	--itsl-role-started-bg: rgba(129, 199, 132, 0.2);
+	--itsl-role-started-text: #81c784;
+	--itsl-role-recipient-bg: rgba(100, 181, 246, 0.2);
+	--itsl-role-recipient-text: #64b5f6;
+	--itsl-role-reply-bg: rgba(255, 171, 145, 0.2);
+	--itsl-role-reply-text: #ffab91;
+
+	// Status indicators
+	--itsl-snooze-active: #ff8a65;
+	--itsl-important-flag: #ffd740;
+	--itsl-starred-active: #ffb74d;
+}
+
+// Light theme defaults (applied globally)
+:root {
+	// Message type badges
+	--itsl-badge-sdk-bg: rgba(0, 103, 158, 0.1);
+	--itsl-badge-sdk-text: #00679e;
+	--itsl-badge-secure-bg: rgba(45, 123, 65, 0.1);
+	--itsl-badge-secure-text: #2d7b41;
+	--itsl-badge-internal-bg: rgba(107, 107, 107, 0.1);
+	--itsl-badge-internal-text: #6b6b6b;
+	--itsl-badge-fax-bg: rgba(124, 58, 237, 0.1);
+	--itsl-badge-fax-text: #7c3aed;
+	--itsl-badge-sms-bg: rgba(234, 88, 12, 0.1);
+	--itsl-badge-sms-text: #ea580c;
+
+	// Participant role badges
+	--itsl-role-started-bg: rgba(45, 123, 65, 0.15);
+	--itsl-role-started-text: #2d7b41;
+	--itsl-role-recipient-bg: rgba(0, 103, 158, 0.15);
+	--itsl-role-recipient-text: #00679e;
+	--itsl-role-reply-bg: rgba(234, 88, 12, 0.15);
+	--itsl-role-reply-text: #ea580c;
+
+	// Status indicators
+	--itsl-snooze-active: #ea580c;
+	--itsl-important-flag: #ffcc00;
+	--itsl-starred-active: #f5a623;
+}
+
+// Dark theme (explicit dark theme selected by user)
+[data-theme-dark],
+[data-themes*=dark] {
+	@include itsl-dark-theme;
+}
+
+// System preference fallback (user on "default" theme with system dark mode)
+@media (prefers-color-scheme: dark) {
+	[data-theme-default],
+	[data-themes*=default] {
+		@include itsl-dark-theme;
+	}
+}

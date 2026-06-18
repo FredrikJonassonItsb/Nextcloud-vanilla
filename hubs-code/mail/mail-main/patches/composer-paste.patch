@@ -1,0 +1,18 @@
+--- a/src/components/TextEditor.vue
++++ b/src/components/TextEditor.vue
+@@ -55,6 +55,7 @@
+ import MailPlugin from '../ckeditor/mail/MailPlugin.js'
+ import QuotePlugin from '../ckeditor/quote/QuotePlugin.js'
+ import SignaturePlugin from '../ckeditor/signature/SignaturePlugin.js'
++import { getRegisteredPlugins } from '../ckeditor/pluginRegistry.js'
+ import PickerPlugin from '../ckeditor/smartpicker/PickerPlugin.js'
+ import logger from '../logger.js'
+ import { autoCompleteByName } from '../service/ContactIntegrationService.js'
+@@ -119,6 +120,7 @@
+ 		const plugins = [
+ 			Essentials,
+ 			Paragraph,
++			...getRegisteredPlugins(),
+ 			SignaturePlugin,
+ 			QuotePlugin,
+ 			PickerPlugin,

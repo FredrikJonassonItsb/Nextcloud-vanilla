@@ -1,0 +1,4141 @@
+# Translations for mail.
+# Copyright (C) ITSL Solutions AB
+# This file is distributed under the GNU AGPL v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Säker Digital Kommunikation\n"
+"Report-Msgid-Bugs-To: support@itsl.se\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: Swedish\n"
+"Language: sv\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Could not mark as read"
+msgstr "Kunde inte markera som läst"
+
+msgid "Could not mark as unread"
+msgstr "Kunde inte markera som oläst"
+
+#: .pc/forward-internal.patch/lib/Controller/MessagesController.php:688
+#: .pc/forward-internal.patch/lib/Controller/MessagesController.php:781
+#: .pc/priority-inbox.patch/lib/Controller/MessagesController.php:679
+#: .pc/priority-inbox.patch/lib/Controller/MessagesController.php:772
+#: .pc/sdk-messaging.patch/lib/Controller/MessagesController.php:679
+#: .pc/sdk-messaging.patch/lib/Controller/MessagesController.php:772
+#: lib/Controller/MessagesController.php:690
+#: lib/Controller/MessagesController.php:783
+#, php-format
+msgid "Embedded message %s"
+msgstr "Inbäddat meddelande %s"
+
+#: appinfo/info.xml:10
+#: lib/Notification/Notifier.php:40
+#: lib/UserMigration/MailAccountMigrator.php:184
+msgid "Mail"
+msgstr "Säker Digital Kommunikation"
+
+#: appinfo/info.xml:11
+msgid "💌 A mail app for Nextcloud"
+msgstr "Säker Digital Kommunikation"
+
+#: appinfo/info.xml:12
+msgid ""
+"**Säker Digital Kommunikation (ITSL Hubs)**\n"
+"\n"
+"A secure communication platform for the Swedish public sector.\n"
+"\n"
+"- **Multiple channels** – SDK, Secure Email, internal messages, SMS, and FAX\n"
+"- **Secure by design** – all communication handled through secure channels\n"
+"- **Integration** – connects to your organization's existing systems\n"
+"- **Built on Nextcloud Mail** – ITSL-customized build of the upstream Nextcloud Mail app, with SDK messaging, tagging, assignment, FAX, and audit logging for Swedish public-sector workflows"
+msgstr ""
+"**Säker Digital Kommunikation (ITSL Hubs)**\n"
+"\n"
+"En plattform för säker meddelandehantering inom den svenska offentliga sektorn.\n"
+"\n"
+"- **Flera kanaler** – SDK, Säker E-post, interna meddelanden, SMS och FAX\n"
+"- **Säker design** – all kommunikation hanteras via säkra kanaler\n"
+"- **Integration** – ansluter till din organisations befintliga system\n"
+"- **Bygger på Nextcloud Mail** – ITSL-anpassad version av Nextcloud Mail-appen, med SDK-meddelanden, taggning, tilldelning, FAX och granskningsloggning för arbetsflöden inom den svenska offentliga sektorn\n"
+
+#: lib/Dashboard/ImportantMailWidget.php:30
+msgid "Important mail"
+msgstr "Viktiga meddelanden"
+
+#: lib/Dashboard/MailWidget.php:175
+msgid "No message found yet"
+msgstr "Inget meddelande har ännu hittats"
+
+#: lib/Dashboard/MailWidget.php:200
+msgid "Set up an account"
+msgstr "Skapa ett konto"
+
+#: lib/Dashboard/UnreadMailWidget.php:30
+msgid "Unread mail"
+msgstr "Olästa meddelanden"
+
+#: lib/Db/TagMapper.php:197
+#: src/components/Envelope.vue:236
+#: src/components/MenuEnvelope.vue:19
+#: src/components/SearchMessages.vue:244
+msgid "Important"
+msgstr "Sätt Hög Prioritet"
+
+#: lib/Db/TagMapper.php:202
+msgid "Work"
+msgstr "Arbete"
+
+#: lib/Db/TagMapper.php:207
+msgid "Personal"
+msgstr "Personligt"
+
+#: lib/Db/TagMapper.php:212
+msgid "To Do"
+msgstr "Att göra"
+
+#: lib/Db/TagMapper.php:217
+msgid "Later"
+msgstr "Senare"
+
+#: lib/Notification/Notifier.php:58
+#, python-brace-format
+msgid "You are reaching your mailbox quota limit for {account_email}"
+msgstr "Du närmar dig lagringskvoten för {account_email}"
+
+#: lib/Notification/Notifier.php:66
+#, python-brace-format
+msgid "You are currently using {percentage} of your mailbox storage. Please make some space by deleting unneeded emails."
+msgstr "Du använder för närvarande {percentage} av ditt lagringsutrymme. Frigör utrymme genom att ta bort meddelanden du inte behöver."
+
+#: lib/Provider/MailProvider.php:52
+msgid "Mail Application"
+msgstr "Säker Digital Kommunikation"
+
+#: lib/Search/Provider.php:59
+msgid "Mails"
+msgstr "Meddelanden"
+
+#: lib/Service/PhishingDetection/ContactCheck.php:40
+#, php-format
+msgid "Sender email: %1$s is not in the address book, but the sender name: %2$s is in the address book with the following email: %3$s"
+msgstr "Avsändaradressen: %1$s finns inte i adressboken, men avsändarnamnet: %2$s finns i adressboken med följande adress: %3$s"
+
+#: lib/Service/PhishingDetection/ContactCheck.php:42
+#, php-format
+msgid "Sender email: %1$s is not in the address book, but the sender name: %2$s is in the address book with the following emails: %3$s"
+msgstr "Avsändaradressen: %1$s finns inte i adressboken, men avsändarnamnet: %2$s finns i adressboken med följande adresser: %3$s"
+
+#: lib/Service/PhishingDetection/CustomEmailCheck.php:29
+#, php-format
+msgid "Sender is using a custom email: %1$s instead of the sender email: %2$s"
+msgstr "Avsändaren använder en anpassad adress: %1$s istället för avsändaradressen: %2$s"
+
+#: lib/Service/PhishingDetection/DateCheck.php:33
+msgid "Sent date is in the future"
+msgstr "Skickat datum ligger i framtiden"
+
+#: lib/Service/PhishingDetection/ImapFlagCheck.php:33
+msgid "Mail server marked this message as phishing attempt"
+msgstr "Mailservern markerade detta meddelande som nätfiskeförsök"
+
+#: lib/Service/PhishingDetection/LinkCheck.php:89
+msgid "Some addresses in this message are not matching the link text"
+msgstr "Vissa adresser i detta meddelande matchar inte länktexten"
+
+#: lib/Service/PhishingDetection/ReplyToCheck.php:30
+#, php-format
+msgid "Reply-To email: %1$s is different from sender email: %2$s"
+msgstr "Reply-To-adress: %1$s skiljer sig från avsändarens adress: %2$s"
+
+#: lib/SetupChecks/MailConnectionPerformance.php:36
+msgid "Mail connection performance"
+msgstr "Prestanda för mailanslutning"
+
+#: lib/SetupChecks/MailConnectionPerformance.php:106
+#, php-format
+msgid "Slow mail service detected (%1$s) an attempt to connect to several accounts took an average of %2$s seconds per account"
+msgstr "Långsam mailtjänst upptäcktes (%1$s): ett försök att ansluta till flera brevlådor tog i genomsnitt %2$s sekunder per brevlåda"
+
+#: lib/SetupChecks/MailConnectionPerformance.php:111
+#, php-format
+msgid "Slow mail service detected (%1$s) an attempt to perform a mail box list operation on several accounts took an average of %2$s seconds per account"
+msgstr "Långsam mailtjänst upptäcktes (%1$s): ett försök att lista mappar för flera brevlådor tog i genomsnitt %2$s sekunder per brevlåda"
+
+#: lib/SetupChecks/MailTransport.php:26
+msgid "Mail Transport configuration"
+msgstr "Transportkonfiguration"
+
+#: lib/SetupChecks/MailTransport.php:43
+msgid "The app.mail.transport setting is not set to smtp. This configuration can cause issues with modern email security measures such as SPF and DKIM because emails are sent directly from the web server, which is often not properly configured for this purpose. To address this, we have discontinued support for the mail transport. Please remove app.mail.transport from your configuration to use the SMTP transport and hide this message. A properly configured SMTP setup is required to ensure email delivery."
+msgstr "Inställningen app.mail.transport är inte inställd på smtp. Denna konfiguration kan orsaka problem med moderna e-postsäkerhetsåtgärder som SPF och DKIM eftersom e-post skickas direkt från webbservern, som ofta inte är korrekt konfigurerad för detta ändamål. För att åtgärda detta har vi avvecklat stödet för e-posttransporten. Ta bort app.mail.transport från din konfiguration för att använda SMTP-transport och dölja detta meddelande. En korrekt konfigurerad SMTP-uppsättning krävs för att säkerställa e-postleverans."
+
+#: lib/UserMigration/MailAccountMigrator.php:188
+msgid "Mail account parameters, aliases and preferences"
+msgstr "Brevlådans parametrar, alias och inställningar"
+
+#: src/App.vue:36
+msgid "Your session has expired. The page will be reloaded."
+msgstr "Din session har gått ut. Sidan kommer att laddas om."
+
+#: src/components/AccountDefaultsSettings.vue:9
+msgid "Drafts are saved in:"
+msgstr "Utkast sparas i:"
+
+#: src/components/AccountDefaultsSettings.vue:14
+msgid "Sent messages are saved in:"
+msgstr "Skickade meddelanden sparas i:"
+
+#: src/components/AccountDefaultsSettings.vue:19
+msgid "Deleted messages are moved in:"
+msgstr "Raderade meddelanden flyttas till:"
+
+#: src/components/AccountDefaultsSettings.vue:24
+msgid "Archived messages are moved in:"
+msgstr "Behandlade meddelanden flyttas till:"
+
+#: src/components/AccountDefaultsSettings.vue:29
+msgid "Snoozed messages are moved in:"
+msgstr "Pausade meddelanden flyttas till:"
+
+#: src/components/AccountDefaultsSettings.vue:35
+msgid "Junk messages are saved in:"
+msgstr "Skräppost sparas i:"
+
+#: src/components/AccountForm.vue:11
+msgid "Auto"
+msgstr "Auto"
+
+#: src/components/AccountForm.vue:15
+#: src/components/AccountForm.vue:17
+#: src/components/AccountForm.vue:51
+#: src/components/AccountForm.vue:53
+#: src/components/AliasSettings.vue:43
+#: src/components/mailFilter/UpdateModal.vue:17
+msgid "Name"
+msgstr "Namn"
+
+#: src/components/AccountForm.vue:23
+#: src/components/AccountForm.vue:58
+msgid "Mail address"
+msgstr "Adress"
+
+#: src/components/AccountForm.vue:25
+#: src/components/AccountForm.vue:60
+msgid "name@example.org"
+msgstr "namn@exempel.se"
+
+#: src/components/AccountForm.vue:30
+#: src/components/AccountForm.vue:65
+msgid "Please enter an email of the format name@example.com"
+msgstr "Ange en adress i formatet namn@exempel.se"
+
+#: src/components/AccountForm.vue:37
+#: src/components/smime/SmimeCertificateModal.vue:114
+#: src/components/smime/SmimeCertificateModal.vue:115
+msgid "Password"
+msgstr "Lösenord"
+
+#: src/components/AccountForm.vue:232
+#: src/components/AccountForm.vue:44
+#: src/components/AccountSettings.vue:80
+msgid "Enable mark as important classification"
+msgstr "Aktivera klassificering av viktiga meddelanden"
+
+#: src/components/AccountForm.vue:47
+msgid "Manual"
+msgstr "Manuellt"
+
+#: src/components/AccountForm.vue:68
+msgid "IMAP Settings"
+msgstr "IMAP-inställningar"
+
+#: src/components/AccountForm.vue:72
+#: src/components/AccountForm.vue:74
+msgid "IMAP Host"
+msgstr "IMAP-värd"
+
+#: src/components/AccountForm.vue:79
+msgid "IMAP Security"
+msgstr "IMAP-säkerhet"
+
+#: src/components/AccountForm.vue:173
+#: src/components/AccountForm.vue:92
+#: src/components/SieveAccountForm.vue:22
+#: src/components/settings/ProvisioningSettings.vue:158
+#: src/components/settings/ProvisioningSettings.vue:268
+#: src/components/settings/ProvisioningSettings.vue:84
+msgid "None"
+msgstr "Ingen"
+
+#: src/components/AccountForm.vue:104
+#: src/components/AccountForm.vue:185
+#: src/components/SieveAccountForm.vue:27
+#: src/components/settings/ProvisioningSettings.vue:169
+#: src/components/settings/ProvisioningSettings.vue:279
+#: src/components/settings/ProvisioningSettings.vue:95
+msgid "SSL/TLS"
+msgstr "SSL/TLS"
+
+#: src/components/AccountForm.vue:116
+#: src/components/AccountForm.vue:197
+#: src/components/SieveAccountForm.vue:32
+#: src/components/settings/ProvisioningSettings.vue:106
+#: src/components/settings/ProvisioningSettings.vue:180
+#: src/components/settings/ProvisioningSettings.vue:290
+msgid "STARTTLS"
+msgstr "STARTTLS"
+
+#: src/components/AccountForm.vue:122
+#: src/components/AccountForm.vue:124
+msgid "IMAP Port"
+msgstr "IMAP-port"
+
+#: src/components/AccountForm.vue:131
+#: src/components/AccountForm.vue:133
+msgid "IMAP User"
+msgstr "Användare"
+
+#: src/components/AccountForm.vue:142
+msgid "IMAP Password"
+msgstr "IMAP-lösenord"
+
+#: src/components/AccountForm.vue:147
+msgid "SMTP Settings"
+msgstr "SMTP-inställningar"
+
+#: src/components/AccountForm.vue:152
+#: src/components/AccountForm.vue:155
+msgid "SMTP Host"
+msgstr "SMTP-värd"
+
+#: src/components/AccountForm.vue:160
+msgid "SMTP Security"
+msgstr "SMTP-säkerhet"
+
+#: src/components/AccountForm.vue:202
+#: src/components/AccountForm.vue:205
+msgid "SMTP Port"
+msgstr "SMTP-port"
+
+#: src/components/AccountForm.vue:212
+#: src/components/AccountForm.vue:214
+msgid "SMTP User"
+msgstr "SMTP-användare"
+
+#: src/components/AccountForm.vue:221
+msgid "SMTP Password"
+msgstr "SMTP-lösenord"
+
+#: src/components/AccountForm.vue:237
+msgid "For the Google account to work with this app you need to enable two-factor authentication for Google and generate an app password."
+msgstr "För att Google-kontot ska fungera med denna app måste du aktivera tvåfaktorsautentisering för Google och generera ett applösenord."
+
+#: src/components/AccountForm.vue:427
+msgid "Connecting"
+msgstr "Ansluter"
+
+#: src/components/AccountForm.vue:431
+msgid "Reconnect Google account"
+msgstr "Återanslut Google-konto"
+
+#: src/components/AccountForm.vue:431
+msgid "Sign in with Google"
+msgstr "Logga in med Google"
+
+#: src/components/AccountForm.vue:433
+msgid "Reconnect Microsoft account"
+msgstr "Återanslut Microsoft-konto"
+
+#: src/components/AccountForm.vue:433
+msgid "Sign in with Microsoft"
+msgstr "Logga in med Microsoft"
+
+#: src/components/AccountForm.vue:436
+msgid "Connect"
+msgstr "Anslut"
+
+#: src/components/AccountForm.vue:436
+#: src/components/mailFilter/UpdateModal.vue:81
+#: src/components/quickActions/Settings.vue:111
+#: src/components/settings/AntiSpamSettings.vue:40
+#: src/components/settings/AntiSpamSettings.vue:47
+#: src/components/settings/GmailAdminOauthSettings.vue:23
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:29
+msgid "Save"
+msgstr "Spara"
+
+#: src/components/AccountForm.vue:517
+msgid "Looking up configuration"
+msgstr "Söker konfiguration"
+
+#: src/components/AccountForm.vue:544
+msgid "Checking mail host connectivity"
+msgstr "Kontrollerar serveranslutning"
+
+#: src/components/AccountForm.vue:578
+msgid "Configuration discovery failed. Please use the manual settings"
+msgstr "Automatisk konfiguration misslyckades. Använd manuella inställningar"
+
+#: src/components/AccountForm.vue:601
+#: src/components/AccountForm.vue:605
+msgid "Password required"
+msgstr "Lösenord krävs"
+
+#: src/components/AccountForm.vue:609
+msgid "Testing authentication"
+msgstr "Testar autentisering"
+
+#: src/components/AccountForm.vue:626
+#: src/components/AccountForm.vue:657
+msgid "Awaiting user consent"
+msgstr "Väntar på användarens godkännande"
+
+#: src/components/AccountForm.vue:629
+msgid "Account created. Please follow the pop-up instructions to link your Google account"
+msgstr "Konto skapat. Följ instruktionerna i popup-fönstret för att länka ditt Google-konto"
+
+#: src/components/AccountForm.vue:634
+msgid "Account created. Please follow the pop-up instructions to link your Microsoft account"
+msgstr "Konto skapat. Följ instruktionerna i popup-fönstret för att länka ditt Microsoft-konto"
+
+#: src/components/AccountForm.vue:647
+msgid "Loading account"
+msgstr "Läser in konto"
+
+#: src/components/AccountForm.vue:660
+msgid "Account updated. Please follow the pop-up instructions to reconnect your Google account"
+msgstr "Konto uppdaterat. Följ instruktionerna i popup-fönstret för att återansluta ditt Google-konto"
+
+#: src/components/AccountForm.vue:665
+msgid "Account updated. Please follow the pop-up instructions to reconnect your Microsoft account"
+msgstr "Konto uppdaterat. Följ instruktionerna i popup-fönstret för att återansluta ditt Microsoft-konto"
+
+#: src/components/AccountForm.vue:681
+msgid "Account updated"
+msgstr "Konto uppdaterat"
+
+#: src/components/AccountForm.vue:688
+msgid "IMAP server is not reachable"
+msgstr "IMAP-servern kan inte nås"
+
+#: src/components/AccountForm.vue:690
+msgid "SMTP server is not reachable"
+msgstr "SMTP-servern kan inte nås"
+
+#: src/components/AccountForm.vue:694
+msgid "IMAP username or password is wrong"
+msgstr "IMAP-användarnamn eller lösenord är felaktigt"
+
+#: src/components/AccountForm.vue:696
+msgid "SMTP username or password is wrong"
+msgstr "SMTP-användarnamn eller lösenord är felaktigt"
+
+#: src/components/AccountForm.vue:700
+msgid "IMAP server denied authentication"
+msgstr "IMAP-servern nekade autentisering"
+
+#: src/components/AccountForm.vue:702
+msgid "SMTP server denied authentication"
+msgstr "SMTP-servern nekade autentisering"
+
+#: src/components/AccountForm.vue:706
+msgid "IMAP authentication error"
+msgstr "Autentiseringsfel mot IMAP"
+
+#: src/components/AccountForm.vue:708
+msgid "SMTP authentication error"
+msgstr "Autentiseringsfel mot SMTP"
+
+#: src/components/AccountForm.vue:712
+msgid "IMAP connection failed"
+msgstr "IMAP-anslutning misslyckades"
+
+#: src/components/AccountForm.vue:714
+msgid "SMTP connection failed"
+msgstr "SMTP-anslutning misslyckades"
+
+#: src/components/AccountForm.vue:716
+msgid "Authorization pop-up closed"
+msgstr "Auktoriseringsfönstret stängdes"
+
+#: src/components/AccountForm.vue:718
+msgid "Configuration discovery temporarily not available. Please try again later."
+msgstr "Automatisk konfiguration är tillfälligt otillgänglig. Försök igen senare."
+
+#: src/components/AccountForm.vue:720
+msgid "There was an error while setting up your account"
+msgstr "Ett fel uppstod vid konfiguration av ditt konto"
+
+#: src/components/AccountSettings.vue:12
+#: src/components/AppSettingsMenu.vue:23
+#: src/components/AppSettingsMenu.vue:28
+#: src/components/NavigationAccount.vue:37
+msgid "Account settings"
+msgstr "Kontoinställningar"
+
+#: src/components/AccountSettings.vue:16
+msgid "Aliases"
+msgstr "Alias"
+
+#: src/components/AccountSettings.vue:21
+msgid "Alias to S/MIME certificate mapping"
+msgstr "Mappning av alias till S/MIME-certifikat"
+
+#: src/components/AccountSettings.vue:24
+msgid "Signature"
+msgstr "Signatur"
+
+#: src/components/AccountSettings.vue:26
+msgid "A signature is added to the text of new messages and replies."
+msgstr "En signatur läggs till i texten för nya meddelanden och svar."
+
+#: src/components/AccountSettings.vue:30
+msgid "Writing mode"
+msgstr "Skrivläge"
+
+#: src/components/AccountSettings.vue:32
+msgid "Preferred writing mode for new messages and replies."
+msgstr "Föredraget skrivläge för nya meddelanden och svar."
+
+#: src/components/AccountSettings.vue:36
+msgid "Default folders"
+msgstr "Standardmappar"
+
+#: src/components/AccountSettings.vue:39
+msgid "The folders to use for drafts, sent messages, deleted messages, archived messages and junk messages."
+msgstr "Mapparna som ska användas för utkast, skickade meddelanden, raderade meddelanden, behandlade meddelanden och skräppost."
+
+#: src/components/AccountSettings.vue:44
+msgid "Automatic trash deletion"
+msgstr "Automatisk borttagning av papperskorg"
+
+#: src/components/AccountSettings.vue:46
+msgid "Days after which messages in Trash will automatically be deleted:"
+msgstr "Antal dagar varefter meddelanden i papperskorgen automatiskt raderas:"
+
+#: src/components/AccountSettings.vue:53
+msgid "Autoresponder"
+msgstr "Autosvar"
+
+#: src/components/AccountSettings.vue:55
+msgid "Automated reply to incoming messages. If someone sends you several messages, this automated reply will be sent at most once every 4 days."
+msgstr "Automatiskt svar på inkommande meddelanden. Om någon skickar dig flera meddelanden skickas detta automatiska svar högst en gång var fjärde dag."
+
+#: src/components/AccountSettings.vue:59
+msgid "The autoresponder uses Sieve, a scripting language supported by many email providers. If you're unsure whether yours does, check with your provider. If Sieve is available, click the button to go to the settings and enable it."
+msgstr "Autosvararen använder Sieve, ett skriptspråk som stöds av många mailleverantörer. Om du är osäker på om din leverantör gör det, kontakta dem. Om Sieve finns tillgängligt, klicka på knappen för att gå till inställningarna och aktivera det."
+
+#: src/components/AccountSettings.vue:60
+#: src/components/AccountSettings.vue:61
+msgid "Go to Sieve settings"
+msgstr "Gå till Sieve-inställningar"
+
+#: src/components/AccountSettings.vue:68
+msgid "Calendar settings"
+msgstr "Kalenderinställningar"
+
+#: src/components/AccountSettings.vue:74
+msgid "Classification settings"
+msgstr "Klassificeringsinställningar"
+
+#: src/components/AccountSettings.vue:86
+msgid "Filters"
+msgstr "Filter"
+
+#: src/components/AccountSettings.vue:94
+#: src/components/Envelope.vue:254
+msgid "Quick actions"
+msgstr "Snabbåtgärder"
+
+#: src/components/AccountSettings.vue:100
+msgid "Sieve script editor"
+msgstr "Sieve-skriptredigerare"
+
+#: src/components/AccountSettings.vue:111
+msgid "Mail server"
+msgstr "Server"
+
+#: src/components/AccountSettings.vue:124
+msgid "Sieve server"
+msgstr "Sieve-server"
+
+#: src/components/AccountSettings.vue:133
+msgid "Folder search"
+msgstr "Mappsökning"
+
+#: src/components/AliasForm.vue:33
+#: src/components/AliasForm.vue:36
+msgid "Update alias"
+msgstr "Uppdatera alias"
+
+#: src/components/AliasForm.vue:50
+msgid "Rename alias"
+msgstr "Byt namn på alias"
+
+#: src/components/AliasForm.vue:51
+msgid "Show update alias form"
+msgstr "Visa formulär för aliasuppdatering"
+
+#: src/components/AliasForm.vue:60
+#: src/components/AliasForm.vue:61
+msgid "Delete alias"
+msgstr "Radera alias"
+
+#: src/components/AliasSettings.vue:19
+#: src/components/MessageAttachment.vue:67
+#: src/components/NewMessageModal.vue:44
+#: src/components/NewMessageModal.vue:45
+#: src/components/NewMessageModal.vue:61
+#: src/components/NewMessageModal.vue:62
+#: src/components/RecipientBubble.vue:90
+#: src/components/RecipientBubble.vue:95
+msgid "Go back"
+msgstr "Gå tillbaka"
+
+#: src/components/AliasSettings.vue:20
+msgid "Change name"
+msgstr "Byt namn"
+
+#: src/components/AliasSettings.vue:48
+msgid "Email address"
+msgstr "Adress"
+
+#: src/components/AliasSettings.vue:58
+#: src/components/AliasSettings.vue:60
+msgid "Add alias"
+msgstr "Lägg till alias"
+
+#: src/components/AliasSettings.vue:68
+#: src/components/AliasSettings.vue:74
+msgid "Create alias"
+msgstr "Skapa alias"
+
+#: src/components/AliasSettings.vue:80
+#: src/components/AliasSettings.vue:82
+#: src/components/AppSettingsMenu.vue:256
+#: src/components/ConfirmationModal.vue:13
+#: src/components/NavigationAccount.vue:240
+#: src/components/NavigationMailbox.vue:667
+#: src/components/NavigationMailbox.vue:691
+#: src/components/mailFilter/DeleteModal.vue:42
+#: src/components/textBlocks/ListItem.vue:92
+msgid "Cancel"
+msgstr "Avbryt"
+
+#: src/components/AppSettingsMenu.vue:9
+#: src/components/Navigation.vue:72
+msgid "Mail settings"
+msgstr "Inställningar"
+
+#: src/components/AppSettingsMenu.vue:14
+#: src/components/settings/ProvisioningSettings.vue:13
+msgid "General"
+msgstr "Allmänt"
+
+#: src/components/AppSettingsMenu.vue:17
+#: src/components/AppSettingsMenu.vue:20
+msgid "Set as default mail app"
+msgstr "Använd som standardapp för mail"
+
+#: src/components/AppSettingsMenu.vue:39
+#: src/components/AppSettingsMenu.vue:44
+msgid "Add mail account"
+msgstr "Lägg till brevlåda"
+
+#: src/components/AppSettingsMenu.vue:50
+msgid "Appearance"
+msgstr "Utseende"
+
+#: src/components/AppSettingsMenu.vue:54
+#: src/components/settings/AdminSettings.vue:267
+msgid "Show all messages in thread"
+msgstr "Visa alla meddelanden i ärendet"
+
+#: src/components/AppSettingsMenu.vue:55
+msgid "When off, only the selected message will be shown"
+msgstr "När avstängt visas endast det valda meddelandet"
+
+#: src/components/AppSettingsMenu.vue:60
+msgid "Sort favorites up"
+msgstr "Sortera favoriter överst"
+
+#: src/components/AppSettingsMenu.vue:62
+msgid "When on, favorite messages will be sorted to the top of folders"
+msgstr "När aktiverat sorteras favoritmeddelanden överst i mappar"
+
+#: src/components/AppSettingsMenu.vue:64
+msgid "Layout"
+msgstr "Layout"
+
+#: src/components/AppSettingsMenu.vue:65
+msgid "Vertical split"
+msgstr "Vertikal delning"
+
+#: src/components/AppSettingsMenu.vue:70
+msgid "Horizontal split"
+msgstr "Horisontell delning"
+
+#: src/components/AppSettingsMenu.vue:75
+msgid "List"
+msgstr "Lista"
+
+#: src/components/AppSettingsMenu.vue:85
+msgid "Use compact mode"
+msgstr "Använd kompakt läge"
+
+#: src/components/AppSettingsMenu.vue:88
+msgid "Sorting"
+msgstr "Sortering"
+
+#: src/components/AppSettingsMenu.vue:89
+msgid "Newest first"
+msgstr "Nyast först"
+
+#: src/components/AppSettingsMenu.vue:90
+msgid "Oldest first"
+msgstr "Äldst först"
+
+#: src/components/AppSettingsMenu.vue:98
+msgid "Avatars from Gravatar and favicons"
+msgstr "Avatarer från Gravatar och favicons"
+
+#: src/components/AppSettingsMenu.vue:108
+msgid "Reply position"
+msgstr "Svarsposition"
+
+#: src/components/AppSettingsMenu.vue:109
+msgid "Top"
+msgstr "Överst"
+
+#: src/components/AppSettingsMenu.vue:110
+msgid "Bottom"
+msgstr "Underst"
+
+#: src/components/AppSettingsMenu.vue:114
+#: src/components/Composer.vue:374
+#: src/components/Composer.vue:378
+#: src/components/textBlocks/TextBlockModal.vue:6
+msgid "Text blocks"
+msgstr "Textblock"
+
+#: src/components/AppSettingsMenu.vue:115
+msgid "Reusable pieces of text that can be inserted in messages"
+msgstr "Återanvändbara textstycken som kan infogas i meddelanden"
+
+#: src/components/AppSettingsMenu.vue:123
+#: src/components/AppSettingsMenu.vue:237
+msgid "New text block"
+msgstr "Nytt textblock"
+
+#: src/components/AppSettingsMenu.vue:126
+msgid "Shared with me"
+msgstr "Delat med mig"
+
+#: src/components/AppSettingsMenu.vue:135
+msgid "Privacy"
+msgstr "Integritet"
+
+#: src/components/AppSettingsMenu.vue:138
+msgid "Data collection"
+msgstr "Datainsamling"
+
+#: src/components/AppSettingsMenu.vue:139
+msgid "Allow the app to collect and process data locally to adapt to your preferences"
+msgstr "Tillåt appen att samla in och bearbeta data lokalt för att anpassa efter dina inställningar"
+
+#: src/components/AppSettingsMenu.vue:141
+msgid "Always show images from"
+msgstr "Visa alltid bilder från"
+
+#: src/components/AppSettingsMenu.vue:145
+msgid "Security"
+msgstr "Säkerhet"
+
+#: src/components/AppSettingsMenu.vue:150
+msgid "Manage your internal addresses and domains to ensure recognized contacts stay unmarked"
+msgstr "Hantera dina interna adresser och domäner så att kända kontakter förblir omarkerade"
+
+#: src/components/AppSettingsMenu.vue:153
+msgid "S/MIME"
+msgstr "S/MIME"
+
+#: src/components/AppSettingsMenu.vue:157
+#: src/components/AppSettingsMenu.vue:163
+msgid "Manage certificates"
+msgstr "Hantera certifikat"
+
+#: src/components/AppSettingsMenu.vue:170
+msgid "Mailvelope"
+msgstr "Mailvelope"
+
+#: src/components/AppSettingsMenu.vue:172
+msgid "Mailvelope is enabled for the current domain."
+msgstr "Mailvelope är aktiverat för den aktuella domänen."
+
+#: src/components/AppSettingsMenu.vue:179
+msgid "Step 1"
+msgstr "Steg 1"
+
+#: src/components/AppSettingsMenu.vue:180
+msgid "Install the browser extension"
+msgstr "Installera webbläsartillägget"
+
+#: src/components/AppSettingsMenu.vue:183
+msgid "Step 2"
+msgstr "Steg 2"
+
+#: src/components/AppSettingsMenu.vue:184
+msgid "Enable for the current domain"
+msgstr "Aktivera för den aktuella domänen"
+
+#: src/components/AppSettingsMenu.vue:195
+msgid "Assistance features"
+msgstr "Hjälpfunktioner"
+
+#: src/components/AppSettingsMenu.vue:204
+msgid "Context Chat integration"
+msgstr "Context Chat-integration"
+
+#: src/components/AppSettingsMenu.vue:216
+msgid "Compose new message"
+msgstr "Skapa nytt meddelande"
+
+#: src/components/AppSettingsMenu.vue:217
+msgid "Newer message"
+msgstr "Nyare meddelande"
+
+#: src/components/AppSettingsMenu.vue:218
+msgid "Older message"
+msgstr "Äldre meddelande"
+
+#: src/components/AppSettingsMenu.vue:219
+msgid "Toggle star"
+msgstr "Växla stjärna"
+
+#: src/components/AppSettingsMenu.vue:220
+msgid "Toggle unread"
+msgstr "Växla oläst"
+
+#: src/components/AppSettingsMenu.vue:221
+#: src/i18n/MailboxTranslator.js:15
+msgid "Archive"
+msgstr "Behandlat"
+
+#: src/components/AppSettingsMenu.vue:222
+#: src/components/OutboxMessageListItem.vue:52
+#: src/components/SignatureSettings.vue:54
+#: src/components/SignatureSettings.vue:58
+#: src/components/quickActions/Settings.vue:25
+msgid "Delete"
+msgstr "Ta bort"
+
+#: src/components/AppSettingsMenu.vue:223
+#: src/components/SearchMessages.vue:383
+msgid "Search"
+msgstr "Sök"
+
+#: src/components/AppSettingsMenu.vue:224
+#: src/components/Composer.vue:877
+msgid "Send"
+msgstr "Skicka"
+
+#: src/components/AppSettingsMenu.vue:225
+#: src/components/NewMessageButtonHeader.vue:20
+msgid "Refresh"
+msgstr "Uppdatera"
+
+#: src/components/AppSettingsMenu.vue:229
+msgid "About"
+msgstr "Om"
+
+#: src/components/AppSettingsMenu.vue:231
+msgid "Acknowledgements"
+msgstr "Tack till"
+
+#: src/components/AppSettingsMenu.vue:232
+msgid "This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2."
+msgstr "Denna app innehåller CKEditor, en editor med öppen källkod. Copyright © CKEditor-bidragsgivare. Licensierad under GPLv2."
+
+#: src/components/AppSettingsMenu.vue:240
+#: src/components/textBlocks/ListItem.vue:39
+msgid "Title of the text block"
+msgstr "Textblockets titel"
+
+#: src/components/AppSettingsMenu.vue:245
+#: src/components/textBlocks/ListItem.vue:45
+msgid "Content of the text block"
+msgstr "Textblockets innehåll"
+
+#: src/components/AppSettingsMenu.vue:266
+#: src/components/textBlocks/ListItem.vue:103
+msgid "Ok"
+msgstr "Ok"
+
+#: src/components/AppSettingsMenu.vue:358
+msgid "Search the body of messages in priority Inbox"
+msgstr "Sök i meddelandetexten i Prioriterad inkorg"
+
+#: src/components/AppSettingsMenu.vue:361
+msgid "Activate"
+msgstr "Aktivera"
+
+#: src/components/AppSettingsMenu.vue:365
+msgid "Make mails available to Context Chat"
+msgstr "Gör meddelanden tillgängliga för Context Chat"
+
+#: src/components/AppSettingsMenu.vue:366
+msgid "Remind about messages that require a reply but received none"
+msgstr "Påminn om meddelanden som kräver svar men inte fått något"
+
+#: src/components/AppSettingsMenu.vue:367
+msgid "Highlight external addresses"
+msgstr "Markera externa adresser"
+
+#: src/components/AppSettingsMenu.vue:676
+#: src/components/AppSettingsMenu.vue:690
+#: src/components/AppSettingsMenu.vue:706
+#: src/components/AppSettingsMenu.vue:722
+msgid "Could not update preference"
+msgstr "Kunde inte uppdatera inställningar"
+
+#: src/components/CalendarSettings.vue:13
+msgid "Automatically create tentative appointments in calendar"
+msgstr "Skapa automatiskt preliminära möten i kalendern"
+
+#: src/components/CertificateSettings.vue:13
+#: src/components/CertificateSettings.vue:14
+#: src/components/SignatureSettings.vue:22
+msgid "Select an alias"
+msgstr "Välj ett alias"
+
+#: src/components/CertificateSettings.vue:22
+msgid "Select certificates"
+msgstr "Välj certifikat"
+
+#: src/components/CertificateSettings.vue:28
+#: src/components/CertificateSettings.vue:30
+msgid "Update Certificate"
+msgstr "Uppdatera certifikat"
+
+#: src/components/CertificateSettings.vue:35
+msgid "The selected certificate is not trusted by the server. Recipients might not be able to verify your signature."
+msgstr "Det valda certifikatet är inte betrott av servern. Mottagare kanske inte kan verifiera din signatur."
+
+#: src/components/CertificateSettings.vue:142
+msgid "No certificate"
+msgstr "Inget certifikat"
+
+#: src/components/CertificateSettings.vue:155
+#: src/components/CertificateSettings.vue:168
+msgid "Certificate updated"
+msgstr "Certifikat uppdaterat"
+
+#: src/components/CertificateSettings.vue:158
+#: src/components/CertificateSettings.vue:171
+msgid "Could not update certificate"
+msgstr "Kunde inte uppdatera certifikat"
+
+#: src/components/CertificateSettings.vue:183
+#, python-brace-format
+msgid "{commonName} - Valid until {expiryDate}"
+msgstr "{commonName} - Giltigt till {expiryDate}"
+
+#: src/components/Composer.vue:15
+#: src/components/SearchMessages.vue:97
+#: src/components/Thread.vue:469
+msgid "From"
+msgstr "Från"
+
+#: src/components/Composer.vue:25
+#: src/components/Composer.vue:26
+msgid "Select account"
+msgstr "Välj konto"
+
+#: src/components/Composer.vue:44
+#: src/components/SearchMessages.vue:122
+#: src/components/Thread.vue:477
+msgid "To"
+msgstr "Till"
+
+#: src/components/Composer.vue:47
+msgid "Cc/Bcc"
+msgstr "Cc/Bcc"
+
+#: src/components/Composer.vue:58
+msgid "Select recipient"
+msgstr "Välj mottagare"
+
+#: src/components/Composer.vue:119
+#: src/components/Composer.vue:120
+#: src/components/Composer.vue:132
+#: src/components/Composer.vue:176
+#: src/components/Composer.vue:177
+#: src/components/Composer.vue:189
+#: src/components/Composer.vue:75
+#: src/components/EventModal.vue:69
+msgid "Contact or email address …"
+msgstr "Kontakt eller adress …"
+
+#: src/components/Composer.vue:102
+#: src/components/SearchMessages.vue:146
+msgid "Cc"
+msgstr "Cc"
+
+#: src/components/Composer.vue:159
+#: src/components/SearchMessages.vue:170
+msgid "Bcc"
+msgstr "Bcc"
+
+#: src/components/Composer.vue:217
+#: src/components/OutOfOfficeForm.vue:81
+#: src/components/SearchMessages.vue:49
+#: src/components/Thread.vue:465
+#: src/components/mailFilter/CreateModal.vue:103
+#: src/components/mailFilter/Test.vue:137
+msgid "Subject"
+msgstr "Ämne"
+
+#: src/components/Composer.vue:226
+msgid "Subject …"
+msgstr "Ämne …"
+
+#: src/components/Composer.vue:230
+msgid "This message came from a noreply address so your reply will probably not be read."
+msgstr "Det här meddelandet kom från en noreply adress så ditt svar kommer förmodligen inte att läsas."
+
+#: src/components/Composer.vue:234
+#, python-brace-format
+msgid "The following recipients do not have a S/MIME certificate: {recipients}."
+msgstr "Följande mottagare har inget S/MIME-certifikat: {recipients}."
+
+#: src/components/Composer.vue:241
+#, python-brace-format
+msgid "The following recipients do not have a PGP key: {recipients}."
+msgstr "Följande mottagare har ingen PGP-nyckel: {recipients}."
+
+#: src/components/Composer.vue:256
+msgid "Write message …"
+msgstr "Skriv meddelande …"
+
+#: src/components/Composer.vue:282
+msgid "Saving draft …"
+msgstr "Sparar utkast …"
+
+#: src/components/Composer.vue:283
+msgid "Error saving draft"
+msgstr "Kunde inte spara utkast"
+
+#: src/components/Composer.vue:284
+#: src/components/NewMessageModal.vue:359
+msgid "Draft saved"
+msgstr "Utkast sparat"
+
+#: src/components/Composer.vue:290
+#: src/components/Composer.vue:293
+msgid "Save draft"
+msgstr "Spara utkast"
+
+#: src/components/Composer.vue:300
+#: src/components/Composer.vue:303
+msgid "Discard & close draft"
+msgstr "Stäng och radera utkast"
+
+#: src/components/Composer.vue:311
+#: src/components/Composer.vue:314
+msgid "Enable formatting"
+msgstr "Aktivera formatering"
+
+#: src/components/Composer.vue:321
+#: src/components/Composer.vue:324
+msgid "Disable formatting"
+msgstr "Inaktivera formatering"
+
+#: src/components/Composer.vue:337
+msgid "Upload attachment"
+msgstr "Ladda upp bilaga"
+
+#: src/components/Composer.vue:345
+msgid "Add attachment from Files"
+msgstr "Lägg till bilaga från Filer"
+
+#: src/components/Composer.vue:353
+msgid "Add share link from Files"
+msgstr "Lägg till delningslänk från Filer"
+
+#: src/components/Composer.vue:367
+msgid "Smart picker"
+msgstr "Smart picker"
+
+#: src/components/Composer.vue:386
+#: src/components/Composer.vue:389
+#: src/components/Composer.vue:429
+#: src/components/Composer.vue:431
+#: src/components/Composer.vue:875
+msgid "Send later"
+msgstr "Skicka senare"
+
+#: src/components/Composer.vue:396
+msgid "Request a read receipt"
+msgstr "Begär läskvitto"
+
+#: src/components/Composer.vue:403
+msgid "Sign message with S/MIME"
+msgstr "Signera meddelande med S/MIME"
+
+#: src/components/Composer.vue:411
+msgid "Encrypt message with S/MIME"
+msgstr "Kryptera meddelande med S/MIME"
+
+#: src/components/Composer.vue:420
+msgid "Encrypt message with Mailvelope"
+msgstr " Kryptera meddelande med \"Mailvelope\""
+
+#: src/components/Composer.vue:439
+#: src/components/OutboxMessageListItem.vue:39
+#: src/components/OutboxMessageListItem.vue:42
+msgid "Send now"
+msgstr "Skicka nu"
+
+#: src/components/Composer.vue:446
+msgid "Tomorrow morning"
+msgstr "Imorgon bitti"
+
+#: src/components/Composer.vue:453
+msgid "Tomorrow afternoon"
+msgstr "Imorgon eftermiddag"
+
+#: src/components/Composer.vue:460
+msgid "Monday morning"
+msgstr "Måndag morgon"
+
+#: src/components/Composer.vue:467
+msgid "Custom date and time"
+msgstr "Anpassat datum och tid"
+
+#: src/components/Composer.vue:481
+msgid "Enter a date"
+msgstr "Ange datum"
+
+#: src/components/Composer.vue:862
+msgid "Encrypt with S/MIME and send later"
+msgstr "Kryptera med S/MIME och skicka senare"
+
+#: src/components/Composer.vue:864
+msgid "Encrypt with S/MIME and send"
+msgstr "Kryptera med S/MIME och skicka"
+
+#: src/components/Composer.vue:869
+msgid "Encrypt with Mailvelope and send later"
+msgstr "Kryptera med Mailvelope och skicka senare"
+
+#: src/components/Composer.vue:871
+msgid "Encrypt with Mailvelope and send"
+msgstr "Kryptera med Mailvelope och skicka"
+
+#: src/components/Composer.vue:1096
+#, python-brace-format
+msgid "Message {id} could not be found"
+msgstr "Meddelandet {id} hittades inte"
+
+#: src/components/Composer.vue:1363
+msgid "Sign or Encrypt with S/MIME was selected, but we don't have a certificate for the selected alias. The message will not be signed or encrypted."
+msgstr "Signera eller kryptera med S/MIME valdes, men vi har inget certifikat för det valda aliaset. Meddelandet kommer inte att signeras eller krypteras."
+
+#: src/components/Composer.vue:1607
+msgid "Any existing formatting (for example bold, italic, underline or inline images) will be removed."
+msgstr "All befintlig formatering (till exempel fetstil, kursiv, understrykning eller infogade bilder) kommer att tas bort."
+
+#: src/components/Composer.vue:1608
+msgid "Turn off formatting"
+msgstr "Stäng av formatering"
+
+#: src/components/Composer.vue:1611
+msgid "Turn off and remove formatting"
+msgstr "Stäng av och ta bort formatering"
+
+#: src/components/Composer.vue:1613
+msgid "Keep formatting"
+msgstr "Behåll formatering"
+
+#: src/components/ComposerAttachments.vue:14
+#, python-brace-format
+msgid "{count} attachment"
+msgid_plural "{count} attachments"
+msgstr[0] "{count} bilaga"
+msgstr[1] "{count} bilagor"
+
+#: src/components/ComposerAttachments.vue:39
+msgid "Add attachments"
+msgstr "Lägg till bilagor"
+
+#: src/components/ComposerAttachments.vue:43
+msgid "Choose a file to add as attachment"
+msgstr "Välj en fil att lägga som bilaga"
+
+#: src/components/ComposerAttachments.vue:49
+msgid "Choose a file to share as a link"
+msgstr "Välj en fil att dela som länk"
+
+#: src/components/ComposerAttachments.vue:122
+#: src/components/ComposerAttachments.vue:130
+#: src/components/MailboxPicker.vue:122
+#: src/components/MailboxPicker.vue:127
+#: src/components/MessageAttachment.vue:173
+#: src/components/MessageAttachments.vue:116
+msgid "Choose"
+msgstr "Välj"
+
+#: src/components/ComposerAttachments.vue:410
+#, python-brace-format
+msgid "The attachment exceed the allowed attachments size of {size}. Please share the file via link instead."
+msgid_plural "The attachments exceed the allowed attachments size of {size}. Please share the files via link instead."
+msgstr[0] "Bilagan överskrider den tillåtna bilagstorleken på {size}. Dela filen via länk istället."
+msgstr[1] "Bilagorna överskrider den tillåtna bilagstorleken på {size}. Dela filerna via länk istället."
+
+#: src/components/ComposerSessionIndicator.vue:21
+msgid "Expand composer"
+msgstr "Expandera meddelanderedigerare"
+
+#: src/components/ComposerSessionIndicator.vue:31
+msgid "Close composer"
+msgstr "Stäng meddelanderedigerare"
+
+#: src/components/ComposerSessionIndicator.vue:71
+msgid "Untitled message"
+msgstr "Namnlöst meddelande"
+
+#: src/components/ConfirmationModal.vue:49
+msgid "Confirm"
+msgstr "Bekräfta"
+
+#: src/components/DeleteTagModal.vue:11
+msgid "The tag will be deleted from all messages."
+msgstr "Taggen kommer att raderas från alla meddelanden."
+
+#: src/components/DeleteTagModal.vue:74
+#, python-brace-format
+msgid "Tag: {name} deleted"
+msgstr "Tagg: {name} raderad"
+
+#: src/components/DeleteTagModal.vue:76
+msgid "An error occurred, unable to delete the tag."
+msgstr "Ett fel uppstod, kunde inte radera taggen."
+
+#: src/components/EditorSettings.vue:16
+msgid "Plain text"
+msgstr "Oformaterad text"
+
+#: src/components/EditorSettings.vue:25
+msgid "Rich text"
+msgstr "Formaterad text"
+
+#: src/components/EmptyMailbox.vue:6
+msgid "No messages in this folder"
+msgstr "Inga meddelanden i denna mapp"
+
+#: src/components/EmptyMailboxSection.vue:6
+msgid "No messages"
+msgstr "Inga meddelanden"
+
+#: src/components/Envelope.vue:175
+msgid "This summary was AI generated"
+msgstr "Denna sammanfattning genererades av AI"
+
+#: src/components/Envelope.vue:177
+#: src/components/ThreadEnvelope.vue:76
+msgid "Encrypted message"
+msgstr "Krypterat meddelande"
+
+#: src/components/Envelope.vue:187
+msgid "This message is unread"
+msgstr "Detta meddelande är oläst"
+
+#: src/components/Envelope.vue:206
+#: src/components/SearchMessages.vue:253
+msgid "Favorite"
+msgstr "Favorit"
+
+#: src/components/Envelope.vue:206
+msgid "Unfavorite"
+msgstr "Ta bort favorit"
+
+#: src/components/Envelope.vue:223
+msgid "Read"
+msgstr "Läst"
+
+#: src/components/Envelope.vue:223
+#: src/components/SearchMessages.vue:290
+#: src/components/SearchMessages.vue:291
+#: src/components/SearchMessages.vue:293
+msgid "Unread"
+msgstr "Oläst"
+
+#: src/components/Envelope.vue:236
+#: src/components/MenuEnvelope.vue:19
+msgid "Unimportant"
+msgstr "Sätt Låg Prioritet"
+
+#: src/components/Envelope.vue:264
+#: src/components/MenuEnvelope.vue:38
+#: src/components/MenuEnvelope.vue:42
+#: src/components/quickActions/Action.vue:96
+#: src/components/quickActions/Settings.vue:58
+msgid "Mark as spam"
+msgstr "Markera som skräppost"
+
+#: src/components/Envelope.vue:264
+#: src/components/MenuEnvelope.vue:38
+#: src/components/MenuEnvelope.vue:42
+msgid "Mark not spam"
+msgstr "Markera som ej skräppost"
+
+#: src/components/Envelope.vue:274
+#: src/components/MenuEnvelope.vue:51
+#: src/components/MenuEnvelope.vue:54
+msgid "Edit tags"
+msgstr "Redigera taggar"
+
+#: src/components/Envelope.vue:282
+#: src/components/Envelope.vue:286
+#: src/components/MenuEnvelope.vue:73
+#: src/components/MenuEnvelope.vue:76
+msgid "Snooze"
+msgstr "Skjut upp"
+
+#: src/components/Envelope.vue:295
+#: src/components/Envelope.vue:298
+#: src/components/MenuEnvelope.vue:84
+#: src/components/MenuEnvelope.vue:87
+msgid "Unsnooze"
+msgstr "Återaktivera"
+
+#: src/components/Envelope.vue:308
+#: src/components/MoveModal.vue:10
+#: src/components/quickActions/Action.vue:100
+#: src/components/quickActions/Settings.vue:70
+msgid "Move thread"
+msgstr "Flytta ärende"
+
+#: src/components/Envelope.vue:311
+msgid "Move Message"
+msgstr "Flytta meddelande"
+
+#: src/components/Envelope.vue:323
+msgid "Archive thread"
+msgstr "Markera som behandlat"
+
+#: src/components/Envelope.vue:326
+#: src/components/ThreadEnvelope.vue:197
+#: src/components/ThreadEnvelope.vue:202
+#: src/components/ThreadEnvelope.vue:205
+msgid "Archive message"
+msgstr "Markera som behandlat"
+
+#: src/components/Envelope.vue:337
+#: src/components/EnvelopeSingleClickActions.vue:38
+#: src/components/quickActions/Action.vue:102
+#: src/components/quickActions/Settings.vue:76
+msgid "Delete thread"
+msgstr "Radera ärende"
+
+#: src/components/Envelope.vue:340
+#: src/components/ThreadEnvelope.vue:210
+#: src/components/ThreadEnvelope.vue:215
+#: src/components/ThreadEnvelope.vue:218
+msgid "Delete message"
+msgstr "Radera meddelande"
+
+#: src/components/Envelope.vue:349
+#: src/components/Envelope.vue:405
+#: src/components/MenuEnvelope.vue:105
+#: src/components/MenuEnvelope.vue:108
+#: src/components/MenuEnvelope.vue:117
+#: src/components/MenuEnvelope.vue:119
+msgid "More actions"
+msgstr "Fler åtgärder"
+
+#: src/components/Envelope.vue:360
+#: src/components/MenuEnvelope.vue:221
+#: src/components/smime/SmimeCertificateModal.vue:127
+#: src/components/smime/SmimeCertificateModal.vue:129
+msgid "Back"
+msgstr "Tillbaka"
+
+#: src/components/Envelope.vue:389
+#: src/components/Envelope.vue:395
+#: src/components/MenuEnvelope.vue:248
+#: src/components/MenuEnvelope.vue:254
+msgid "Set custom snooze"
+msgstr "Ställ in anpassad paus"
+
+#: src/components/Envelope.vue:413
+#: src/components/MenuEnvelope.vue:137
+#: src/components/MenuEnvelope.vue:140
+msgid "Edit as new message"
+msgstr "Redigera som nytt meddelande"
+
+#: src/components/Envelope.vue:421
+#: src/components/MenuEnvelope.vue:147
+#: src/components/MenuEnvelope.vue:150
+msgid "Reply with meeting"
+msgstr "Svara med möte"
+
+#: src/components/Envelope.vue:429
+#: src/components/MenuEnvelope.vue:157
+#: src/components/MenuEnvelope.vue:160
+#: src/components/TaskModal.vue:8
+msgid "Create task"
+msgstr "Skapa uppgift"
+
+#: src/components/Envelope.vue:437
+#: src/components/MenuEnvelope.vue:187
+msgid "Download message"
+msgstr "Ladda ner meddelande"
+
+#: src/components/Envelope.vue:447
+msgid "Back to all actions"
+msgstr "Tillbaka till alla åtgärder"
+
+#: src/components/Envelope.vue:463
+#: src/components/EnvelopeList.vue:159
+msgid "Manage quick actions"
+msgstr "Hantera snabbåtgärder"
+
+#: src/components/Envelope.vue:758
+msgid "Blind copy recipients only"
+msgstr "Endast mottagare för blindkopior"
+
+#: src/components/Envelope.vue:850
+#: src/components/OutboxMessageListItem.vue:142
+#: src/components/Thread.vue:197
+msgid "No subject"
+msgstr "Ingen ämnesrad"
+
+#: src/components/Envelope.vue:852
+#, python-brace-format
+msgid "{markup-start}Draft:{markup-end} {subject}"
+msgstr "{markup-start}Utkast:{markup-end} {subject}"
+
+#: src/components/Envelope.vue:933
+#: src/components/MenuEnvelope.vue:472
+#, python-brace-format
+msgid "Later today – {timeLocale}"
+msgstr "Senare idag – {timeLocale}"
+
+#: src/components/Envelope.vue:934
+#: src/components/MenuEnvelope.vue:473
+msgid "Set reminder for later today"
+msgstr "Ställ in påminnelse för senare idag"
+
+#: src/components/Envelope.vue:939
+#: src/components/MenuEnvelope.vue:478
+#, python-brace-format
+msgid "Tomorrow – {timeLocale}"
+msgstr "Imorgon – {timeLocale}"
+
+#: src/components/Envelope.vue:940
+#: src/components/MenuEnvelope.vue:479
+msgid "Set reminder for tomorrow"
+msgstr "Ställ in påminnelse för imorgon"
+
+#: src/components/Envelope.vue:945
+#: src/components/MenuEnvelope.vue:484
+#, python-brace-format
+msgid "This weekend – {timeLocale}"
+msgstr "Helgen – {timeLocale}"
+
+#: src/components/Envelope.vue:946
+#: src/components/MenuEnvelope.vue:485
+msgid "Set reminder for this weekend"
+msgstr "Ställ in påminnelse för helgen"
+
+#: src/components/Envelope.vue:951
+#: src/components/MenuEnvelope.vue:490
+#, python-brace-format
+msgid "Next week – {timeLocale}"
+msgstr "Nästa vecka – {timeLocale}"
+
+#: src/components/Envelope.vue:952
+#: src/components/MenuEnvelope.vue:491
+msgid "Set reminder for next week"
+msgstr "Ställ in påminnelse för nästa vecka"
+
+#: src/components/Envelope.vue:1040
+#: src/components/Envelope.vue:1102
+msgid "Could not apply tag, configured tag not found"
+msgstr "Kunde inte tillämpa tagg, konfigurerad tagg hittades inte"
+
+#: src/components/Envelope.vue:1076
+msgid "Could not move thread, destination mailbox not found"
+msgstr "Kunde inte flytta ärendet, målmappen hittades inte"
+
+#: src/components/Envelope.vue:1088
+msgid "Could not execute quick action"
+msgstr "Kunde inte utföra snabbåtgärd"
+
+#: src/components/Envelope.vue:1092
+msgid "Quick action executed"
+msgstr "Snabbåtgärd utförd"
+
+#: src/components/Envelope.vue:1267
+#: src/components/EnvelopeList.vue:502
+#: src/components/Mailbox.vue:427
+#: src/components/ThreadEnvelope.vue:946
+msgid "No trash folder configured"
+msgstr "Ingen papperskorgmapp konfigurerad"
+
+#: src/components/Envelope.vue:1271
+#: src/components/EnvelopeList.vue:506
+#: src/components/Mailbox.vue:430
+#: src/components/OutboxMessageListItem.vue:166
+#: src/components/ThreadEnvelope.vue:950
+msgid "Could not delete message"
+msgstr "Kunde inte radera meddelande"
+
+#: src/components/Envelope.vue:1322
+#: src/components/Mailbox.vue:467
+#: src/components/ThreadEnvelope.vue:974
+msgid "Could not archive message"
+msgstr "Kunde inte markera meddelandet som behandlat"
+
+#: src/components/Envelope.vue:1348
+msgid "Thread was snoozed"
+msgstr "Ärendet pausades"
+
+#: src/components/Envelope.vue:1351
+msgid "Could not snooze thread"
+msgstr "Kunde inte pausa ärendet"
+
+#: src/components/Envelope.vue:1369
+msgid "Thread was unsnoozed"
+msgstr "Ärendet återaktiverades"
+
+#: src/components/Envelope.vue:1372
+msgid "Could not unsnooze thread"
+msgstr "Kunde inte återaktivera ärendet"
+
+#: src/components/EnvelopeList.vue:13
+#, python-brace-format
+msgid "Mark {number} read"
+msgid_plural "Mark {number} read"
+msgstr[0] "Markera {number} meddelande som läst"
+msgstr[1] "Markera {number} meddelanden som lästa"
+
+#: src/components/EnvelopeList.vue:21
+#, python-brace-format
+msgid "Mark {number} unread"
+msgid_plural "Mark {number} unread"
+msgstr[0] "Markera {number} meddelande som oläst"
+msgstr[1] "Markera {number} meddelanden som olästa"
+
+#: src/components/EnvelopeList.vue:29
+#, python-brace-format
+msgid "Mark {number} as important"
+msgid_plural "Mark {number} as important"
+msgstr[0] "Markera {number} meddelande som viktigt"
+msgstr[1] "Markera {number} meddelanden som viktiga"
+
+#: src/components/EnvelopeList.vue:37
+#, python-brace-format
+msgid "Mark {number} as unimportant"
+msgid_plural "Mark {number} as unimportant"
+msgstr[0] "Markera {number} meddelande som oviktigt"
+msgstr[1] "Markera {number} meddelanden som oviktiga"
+
+#: src/components/EnvelopeList.vue:45
+#, python-brace-format
+msgid "Unfavorite {number}"
+msgid_plural "Unfavorite {number}"
+msgstr[0] "Ta bort {number} från favoriter"
+msgstr[1] "Ta bort {number} från favoriter"
+
+#: src/components/EnvelopeList.vue:53
+#, python-brace-format
+msgid "Favorite {number}"
+msgid_plural "Favorite {number}"
+msgstr[0] "Lägg till {number} som favorit"
+msgstr[1] "Lägg till {number} som favoriter"
+
+#: src/components/EnvelopeList.vue:60
+#, python-brace-format
+msgid "Unselect {number}"
+msgid_plural "Unselect {number}"
+msgstr[0] "Avmarkera {number}"
+msgstr[1] "Avmarkera {number}"
+
+#: src/components/EnvelopeList.vue:67
+#, python-brace-format
+msgid "Delete {number} thread"
+msgid_plural "Delete {number} threads"
+msgstr[0] "Ta bort {number} ärende"
+msgstr[1] "Ta bort {number} ärenden"
+
+#: src/components/EnvelopeList.vue:87
+#, python-brace-format
+msgid "Mark {number} as spam"
+msgid_plural "Mark {number} as spam"
+msgstr[0] "Markera {number} som skräppost"
+msgstr[1] "Markera {number} som skräppost"
+
+#: src/components/EnvelopeList.vue:95
+#, python-brace-format
+msgid "Mark {number} as not spam"
+msgid_plural "Mark {number} as not spam"
+msgstr[0] "Markera {number} som inte skräppost"
+msgstr[1] "Markera {number} som inte skräppost"
+
+#: src/components/EnvelopeList.vue:101
+#, python-brace-format
+msgid "Edit tags for {number}"
+msgid_plural "Edit tags for {number}"
+msgstr[0] "Redigera taggar för {number}"
+msgstr[1] "Redigera taggar för {number}"
+
+#: src/components/EnvelopeList.vue:107
+#, python-brace-format
+msgid "Move {number} thread"
+msgid_plural "Move {number} threads"
+msgstr[0] "Flytta {number} ärende"
+msgstr[1] "Flytta {number} ärenden"
+
+#: src/components/EnvelopeList.vue:113
+#, python-brace-format
+msgid "Forward {number} as attachment"
+msgid_plural "Forward {number} as attachment"
+msgstr[0] "Vidarebefordra {number} som bilaga"
+msgstr[1] "Vidarebefordra {number} som bilagor"
+
+#: src/components/EnvelopeList.vue:227
+msgid "Load more"
+msgstr "Ladda mer"
+
+#: src/components/EnvelopeSingleClickActions.vue:11
+#: src/components/ThreadEnvelope.vue:178
+#: src/components/ThreadEnvelope.vue:184
+#: src/components/ThreadEnvelope.vue:191
+#: src/components/quickActions/Action.vue:106
+#: src/components/quickActions/Settings.vue:88
+msgid "Mark as unread"
+msgstr "Markera som oläst"
+
+#: src/components/EnvelopeSingleClickActions.vue:18
+#: src/components/ThreadEnvelope.vue:178
+#: src/components/ThreadEnvelope.vue:188
+#: src/components/ThreadEnvelope.vue:191
+#: src/components/quickActions/Action.vue:104
+#: src/components/quickActions/Settings.vue:82
+msgid "Mark as read"
+msgstr "Markera som läst"
+
+#: src/components/EnvelopeSingleClickActions.vue:25
+msgid "Mark as unimportant"
+msgstr "Markera som oviktigt"
+
+#: src/components/EnvelopeSingleClickActions.vue:32
+#: src/components/quickActions/Action.vue:108
+#: src/components/quickActions/Settings.vue:94
+msgid "Mark as important"
+msgstr "Markera som viktig"
+
+#: src/components/Error.vue:17
+#: src/components/Error.vue:19
+msgid "Report this bug"
+msgstr "Rapportera detta fel"
+
+#: src/components/EventModal.vue:11
+#: src/components/EventModal.vue:8
+msgid "Create event"
+msgstr "Skapa evenemang"
+
+#: src/components/EventModal.vue:42
+#: src/components/TaskModal.vue:41
+msgid "All day"
+msgstr "Hela dagen"
+
+#: src/components/EventModal.vue:46
+msgid "Attendees"
+msgstr "Deltagare"
+
+#: src/components/EventModal.vue:48
+msgid "You can only invite attendees if your account has an email address set"
+msgstr "Du kan endast bjuda in deltagare om din brevlåda har en adress konfigurerad"
+
+#: src/components/EventModal.vue:87
+#: src/components/TaskModal.vue:49
+#: src/components/TaskModal.vue:50
+msgid "Select calendar"
+msgstr "Välj kalender"
+
+#: src/components/EventModal.vue:98
+#: src/components/TaskModal.vue:32
+msgid "Description"
+msgstr "Beskrivning"
+
+#: src/components/EventModal.vue:107
+#: src/components/TaskModal.vue:70
+msgid "Create"
+msgstr "Skapa"
+
+#: src/components/EventModal.vue:319
+msgid "Event created"
+msgstr "Evenemang skapat"
+
+#: src/components/EventModal.vue:322
+#: src/components/MessageAttachment.vue:266
+#: src/components/itinerary/EventReservation.vue:133
+#: src/components/itinerary/FlightReservation.vue:162
+#: src/components/itinerary/TrainReservation.vue:165
+msgid "Could not create event"
+msgstr "Kunde inte skapa händelse"
+
+#: src/components/Imip.vue:13
+msgid "You accepted this invitation"
+msgstr "Du accepterade denna inbjudan"
+
+#: src/components/Imip.vue:16
+msgid "You tentatively accepted this invitation"
+msgstr "Du accepterade preliminärt denna inbjudan"
+
+#: src/components/Imip.vue:19
+msgid "You declined this invitation"
+msgstr "Du avböjde denna inbjudan"
+
+#: src/components/Imip.vue:22
+msgid "You already reacted to this invitation"
+msgstr "Du har redan svarat på denna inbjudan"
+
+#: src/components/Imip.vue:25
+msgid "You have been invited to an event"
+msgstr "Du har bjudits in till en händelse"
+
+#: src/components/Imip.vue:39
+msgid "This event was cancelled"
+msgstr "Denna händelse har ställts in"
+
+#: src/components/Imip.vue:50
+msgid "Save to"
+msgstr "Spara till"
+
+#: src/components/Imip.vue:56
+msgid "Select"
+msgstr "Välj"
+
+#: src/components/Imip.vue:69
+msgid "Comment"
+msgstr "Kommentar"
+
+#: src/components/Imip.vue:81
+#: src/components/Imip.vue:83
+msgid "Accept"
+msgstr "Acceptera"
+
+#: src/components/Imip.vue:88
+#: src/components/Imip.vue:90
+msgid "Decline"
+msgstr "Avböj"
+
+#: src/components/Imip.vue:95
+#: src/components/Imip.vue:97
+msgid "Tentatively accept"
+msgstr "Acceptera preliminärt"
+
+#: src/components/Imip.vue:103
+#: src/components/Imip.vue:105
+msgid "More options"
+msgstr "Fler alternativ"
+
+#: src/components/Imip.vue:110
+msgid "This message has an attached invitation but the invitation dates are in the past"
+msgstr "Detta meddelande har en bifogad inbjudan men inbjudans datum har redan passerat"
+
+#: src/components/Imip.vue:114
+msgid "This message has an attached invitation but the invitation does not contain a participant that matches any configured mail account address"
+msgstr "Detta meddelande har en bifogad inbjudan men inbjudan innehåller ingen deltagare som matchar någon konfigurerad brevlådeadress"
+
+#: src/components/Imip.vue:352
+msgid "This event was updated"
+msgstr "Denna händelse har uppdaterats"
+
+#: src/components/Imip.vue:359
+#, python-brace-format
+msgid "{attendeeName} accepted your invitation"
+msgstr "{attendeeName} accepterade din inbjudan"
+
+#: src/components/Imip.vue:363
+#, python-brace-format
+msgid "{attendeeName} tentatively accepted your invitation"
+msgstr "{attendeeName} accepterade preliminärt din inbjudan"
+
+#: src/components/Imip.vue:367
+#, python-brace-format
+msgid "{attendeeName} declined your invitation"
+msgstr "{attendeeName} avböjde din inbjudan"
+
+#: src/components/Imip.vue:372
+#, python-brace-format
+msgid "{attendeeName} reacted to your invitation"
+msgstr "{attendeeName} reagerade på din inbjudan"
+
+#: src/components/Imip.vue:480
+#: src/components/Imip.vue:507
+msgid "Failed to save your participation status"
+msgstr "Kunde inte spara din deltagarstatus"
+
+#: src/components/InternalAddress.vue:20
+#: src/components/InternalAddress.vue:21
+#: src/components/InternalAddress.vue:42
+#: src/components/InternalAddress.vue:43
+#: src/components/TrustedSenders.vue:20
+#: src/components/TrustedSenders.vue:21
+msgid "Remove"
+msgstr "Ta bort"
+
+#: src/components/InternalAddress.vue:59
+#: src/components/InternalAddress.vue:64
+msgid "Add internal address"
+msgstr "Lägg till intern adress"
+
+#: src/components/InternalAddress.vue:66
+msgid "Add internal email or domain"
+msgstr "Lägg till intern adress eller domän"
+
+#: src/components/InternalAddress.vue:147
+#, python-brace-format
+msgid "Could not remove internal address {sender}"
+msgstr "Kunde inte ta bort intern adress {sender}"
+
+#: src/components/InternalAddress.vue:167
+#, python-brace-format
+msgid "Could not add internal address {address}"
+msgstr "Kunde inte lägga till intern adress {address}"
+
+#: src/components/InternalAddress.vue:189
+#: src/components/TrustedSenders.vue:98
+msgid "individual"
+msgstr "individ"
+
+#: src/components/InternalAddress.vue:191
+#: src/components/TrustedSenders.vue:100
+msgid "domain"
+msgstr "domän"
+
+#: src/components/Itinerary.vue:27
+#, python-brace-format
+msgid "Itinerary for {type} is not supported yet"
+msgstr "Resplan för {type} stöds inte än"
+
+#: src/components/Mailbox.vue:10
+msgid "Could not open folder"
+msgstr "Kunde inte öppna mappen"
+
+#: src/components/Mailbox.vue:16
+msgid "Loading messages …"
+msgstr "Laddar meddelanden …"
+
+#: src/components/Mailbox.vue:17
+msgid "Indexing your messages. This can take a bit longer for larger folders."
+msgstr "Indexerar dina meddelanden. Det kan ta lite längre tid för större mappar."
+
+#: src/components/Mailbox.vue:440
+msgid "To archive a message please configure an archive folder in account settings"
+msgstr "För att markera ett meddelande som behandlat, konfigurera en mapp för behandlat i brevlådeinställningarna"
+
+#: src/components/Mailbox.vue:445
+msgid "You are not allowed to move this message to the archive folder and/or delete this message from the current folder"
+msgstr "Du har inte behörighet att flytta detta meddelande till mappen för behandlade meddelanden och/eller ta bort detta meddelande från den aktuella mappen"
+
+#: src/components/Mailbox.vue:486
+msgid "Your IMAP server does not support storing the seen/unseen state."
+msgstr "Din IMAP-server stöder inte att spara lästa/olästa-status."
+
+#: src/components/Mailbox.vue:498
+msgid "Could not mark message as seen/unseen"
+msgstr "Kunde inte markera meddelandet som läst/oläst"
+
+#: src/components/Mailbox.vue:610
+msgid "Last hour"
+msgstr "Senaste timmen"
+
+#: src/components/Mailbox.vue:612
+msgid "Today"
+msgstr "Idag"
+
+#: src/components/Mailbox.vue:614
+msgid "Yesterday"
+msgstr "Igår"
+
+#: src/components/Mailbox.vue:616
+msgid "Last week"
+msgstr "Senaste veckan"
+
+#: src/components/Mailbox.vue:618
+msgid "Last month"
+msgstr "Senaste månaden"
+
+#: src/components/MailboxPicker.vue:9
+msgid "Choose target folder"
+msgstr "Välj målmapp"
+
+#: src/components/MailboxPicker.vue:54
+msgid "No more submailboxes in here"
+msgstr "Inga fler undermappar här"
+
+#: src/components/MailboxThread.vue:42
+#: src/components/MailboxThread.vue:87
+#: src/i18n/MailboxTranslator.js:23
+msgid "Favorites"
+msgstr "Favoriter"
+
+#: src/components/MailboxThread.vue:47
+#: src/components/MailboxThread.vue:92
+msgid "Favorites info"
+msgstr "Info om favoriter"
+
+#: src/components/MailboxThread.vue:106
+#: src/components/MailboxThread.vue:61
+msgid "Load more favorites"
+msgstr "Ladda fler favoriter"
+
+#: src/components/MailboxThread.vue:120
+#: src/components/ThreadEnvelope.vue:687
+#: src/util/tag.js:17
+msgid "Follow up"
+msgstr "Uppföljning"
+
+#: src/components/MailboxThread.vue:125
+msgid "Follow up info"
+msgstr "Uppföljningsinformation"
+
+#: src/components/MailboxThread.vue:139
+msgid "Load more follow ups"
+msgstr "Ladda fler uppföljningar"
+
+#: src/components/MailboxThread.vue:151
+msgid "ImportantLabel"
+msgstr "Hög Prioritet"
+
+#: src/components/MailboxThread.vue:156
+msgid "Important info"
+msgstr "Viktig info"
+
+#: src/components/MailboxThread.vue:171
+msgid "Load more important messages"
+msgstr "Ladda fler viktiga meddelanden"
+
+#: src/components/MailboxThread.vue:183
+msgid "Other"
+msgstr "Övrigt"
+
+#: src/components/MailboxThread.vue:186
+msgid "Load more other messages"
+msgstr "Ladda fler övriga meddelanden"
+
+#: src/components/MailboxThread.vue:268
+msgid "Messages will automatically be marked as important based on which messages you interacted with or marked as important. In the beginning you might have to manually change the importance to teach the system, but it will improve over time."
+msgstr "Meddelanden kommer automatiskt att markeras som viktiga baserat på vilka meddelanden du interagerade med eller har markerat som viktiga. I början kan du behöva ändra vikten manuellt, men det kommer att förbättras med tiden."
+
+#: src/components/MailboxThread.vue:269
+msgid "Messages that you marked as favorite will be shown at the top of folders. You can disable this behavior in the app settings"
+msgstr "Meddelanden du markerat som favorit visas överst i mappar. Du kan stänga av detta beteende i appens inställningar"
+
+#: src/components/MailboxThread.vue:270
+msgid "Messages sent by you that require a reply but did not receive one after a couple of days will be shown here."
+msgstr "Meddelanden skickade av dig som kräver svar men inte fått något efter ett par dagar visas här."
+
+#: src/components/MdnRequest.vue:8
+msgid "The sender of this message has asked to be notified when you read this message."
+msgstr "Avsändaren av detta meddelande har bett om att bli meddelad när du läser detta meddelande."
+
+#: src/components/MdnRequest.vue:12
+msgid "Notify the sender"
+msgstr "Meddela avsändaren"
+
+#: src/components/MdnRequest.vue:18
+msgid "You sent a read confirmation to the sender of this message."
+msgstr "Du har skickat ett läskvitto till meddelandets avsändare."
+
+#: src/components/MdnRequest.vue:68
+msgid "Could not send mdn"
+msgstr "Kunde inte skicka läskvitto"
+
+#: src/components/MenuEnvelope.vue:27
+#: src/components/MenuEnvelope.vue:30
+#: src/components/NewMessageModal.vue:214
+msgid "Forward"
+msgstr "Vidarebefordra"
+
+#: src/components/MenuEnvelope.vue:62
+#: src/components/MenuEnvelope.vue:65
+#: src/components/MoveModal.vue:10
+msgid "Move message"
+msgstr "Flytta meddelande"
+
+#: src/components/MenuEnvelope.vue:95
+#: src/components/MenuEnvelope.vue:98
+#: src/components/NeedsTranslationInfo.vue:14
+#: src/components/TranslationModal.vue:46
+msgid "Translate"
+msgstr "Översätt"
+
+#: src/components/MenuEnvelope.vue:127
+#: src/components/MenuEnvelope.vue:130
+msgid "Forward message as attachment"
+msgstr "Vidarebefordra meddelande som bilaga"
+
+#: src/components/MenuEnvelope.vue:168
+#: src/components/MenuEnvelope.vue:171
+msgid "View source"
+msgstr "Visa källa"
+
+#: src/components/MenuEnvelope.vue:179
+msgid "Print message"
+msgstr "Skriv ut meddelande"
+
+#: src/components/MenuEnvelope.vue:195
+#: src/components/MenuEnvelope.vue:198
+#: src/components/mailFilter/CreateModal.vue:34
+msgid "Create mail filter"
+msgstr "Skapa mailfilter"
+
+#: src/components/MenuEnvelope.vue:207
+#: src/components/MenuEnvelope.vue:210
+msgid "Download thread data for debugging"
+msgstr "Ladda ner ärendedata för felsökning"
+
+#: src/components/MenuEnvelope.vue:531
+msgid "Message was snoozed"
+msgstr "Meddelandet pausades"
+
+#: src/components/MenuEnvelope.vue:534
+msgid "Could not snooze message"
+msgstr "Kunde inte pausa meddelandet"
+
+#: src/components/MenuEnvelope.vue:550
+msgid "Message was unsnoozed"
+msgstr "Meddelandet återaktiverades"
+
+#: src/components/MenuEnvelope.vue:553
+msgid "Could not unsnooze message"
+msgstr "Kunde inte återaktivera meddelandet"
+
+#: src/components/Message.vue:10
+msgid "Message body"
+msgstr "Meddelandetext"
+
+#: src/components/Message.vue:20
+msgid "Warning: The S/MIME signature of this message is  unverified. The sender might be impersonating someone!"
+msgstr "Varning: S/MIME-signaturen för detta meddelande är overifierad. Avsändaren kan utge sig för att vara någon annan!"
+
+#: src/components/MessageAttachment.vue:24
+msgid "Choose a folder to store the attachment in"
+msgstr "Välj en mapp att spara den bifogade filen i"
+
+#: src/components/MessageAttachment.vue:41
+msgid "Import into calendar"
+msgstr "Importera till kalender"
+
+#: src/components/MessageAttachment.vue:49
+msgid "Download attachment"
+msgstr "Hämta bilaga"
+
+#: src/components/MessageAttachment.vue:59
+msgid "Save to Files"
+msgstr "Spara till filer"
+
+#: src/components/MessageAttachment.vue:121
+msgid "Unnamed"
+msgstr "Namnlös"
+
+#: src/components/MessageAttachment.vue:186
+#: src/components/MessageAttachment.vue:193
+msgid "Embedded message"
+msgstr "Inbäddat meddelande"
+
+#: src/components/MessageAttachment.vue:231
+msgid "Attachment saved to Files"
+msgstr "Bilaga sparad i Filer"
+
+#: src/components/MessageAttachment.vue:234
+msgid "Attachment could not be saved"
+msgstr "Bilagan kunde inte sparas"
+
+#: src/components/MessageAttachment.vue:262
+msgid "calendar imported"
+msgstr "kalender importerad"
+
+#: src/components/MessageAttachments.vue:34
+#, python-brace-format
+msgid "View {count} more attachment"
+msgid_plural "View {count} more attachments"
+msgstr[0] "Visa {count} till bilaga"
+msgstr[1] "Visa {count} till bilagor"
+
+#: src/components/MessageAttachments.vue:37
+msgid "View fewer attachments"
+msgstr "Visa färre bilagor"
+
+#: src/components/MessageAttachments.vue:43
+msgid "Choose a folder to store the attachments in"
+msgstr "Välj en mapp att spara bifogade filer i"
+
+#: src/components/MessageAttachments.vue:55
+msgid "Save all to Files"
+msgstr "Spara alla i filer"
+
+#: src/components/MessageAttachments.vue:61
+msgid "Download Zip"
+msgstr "Ladda ner arkiv"
+
+#: src/components/MessageAttachments.vue:171
+msgid "Attachments saved to Files"
+msgstr "Bilagor sparade i Filer"
+
+#: src/components/MessageAttachments.vue:174
+msgid "Error while saving attachments"
+msgstr "Fel vid sparande av bilagor"
+
+#: src/components/MessageEncryptedBody.vue:10
+msgid "This message is encrypted with PGP. Install Mailvelope to decrypt it."
+msgstr "Detta meddelande är krypterat med PGP. Installera \"Mailvelope\" för att dekryptera det."
+
+#: src/components/MessageHTMLBody.vue:13
+msgid "The images have been blocked to protect your privacy."
+msgstr "Bilderna har blockerats av säkerhetsskäl."
+
+#: src/components/MessageHTMLBody.vue:14
+msgid "Show images"
+msgstr "Visa bilder"
+
+#: src/components/MessageHTMLBody.vue:19
+msgid "Show images temporarily"
+msgstr "Visa bilder den här gången"
+
+#: src/components/MessageHTMLBody.vue:27
+#, python-brace-format
+msgid "Always show images from {sender}"
+msgstr "Visa alltid bilder från {sender}"
+
+#: src/components/MessageHTMLBody.vue:35
+#, python-brace-format
+msgid "Always show images from {domain}"
+msgstr "Visa alltid bilder från {domain}"
+
+#: src/components/MessageHTMLBody.vue:43
+msgid "Message frame"
+msgstr "Meddelanderam"
+
+#: src/components/MessagePlainTextBody.vue:58
+msgid "Quoted text"
+msgstr "Citerad text"
+
+#: src/components/MoveMailboxModal.vue:12
+msgid "Move"
+msgstr "Flytta"
+
+#: src/components/MoveMailboxModal.vue:13
+msgid "Moving"
+msgstr "Flyttar"
+
+#: src/components/MoveModal.vue:11
+msgid "Moving message"
+msgstr "Flyttar meddelande"
+
+#: src/components/MoveModal.vue:11
+msgid "Moving thread"
+msgstr "Flyttar ärende"
+
+#: src/components/Navigation.vue:34
+msgid "This account cannot connect"
+msgstr "Denna brevlåda kan inte ansluta"
+
+#: src/components/Navigation.vue:36
+msgid "Connection failed. Please verify your information and try again"
+msgstr "Anslutningen misslyckades. Kontrollera dina uppgifter och försök igen"
+
+#: src/components/NavigationAccount.vue:17
+msgid "Provisioned account is disabled"
+msgstr "Provisionerat konto är inaktiverat"
+
+#: src/components/NavigationAccount.vue:21
+msgid "Please login using a password to enable this account. The current session is using passwordless authentication, e.g. SSO or WebAuthn."
+msgstr "Logga in med ett lösenord för att aktivera detta konto. Den aktuella sessionen använder lösenordslös autentisering, t.ex. SSO eller WebAuthn."
+
+#: src/components/NavigationAccount.vue:43
+msgid "Show only subscribed folders"
+msgstr "Visa endast prenumererade mappar"
+
+#: src/components/NavigationAccount.vue:49
+msgid "Add folder"
+msgstr "Lägg till mapp"
+
+#: src/components/NavigationAccount.vue:58
+msgid "Folder name"
+msgstr "Mappnamn"
+
+#: src/components/NavigationAccount.vue:64
+#: src/components/NavigationMailbox.vue:152
+msgid "Saving"
+msgstr "Sparar"
+
+#: src/components/NavigationAccount.vue:70
+msgid "Move up"
+msgstr "Flytta upp"
+
+#: src/components/NavigationAccount.vue:76
+msgid "Move down"
+msgstr "Flytta ner"
+
+#: src/components/NavigationAccount.vue:236
+#: src/components/NavigationAccount.vue:82
+msgid "Remove account"
+msgstr "Ta bort konto"
+
+#: src/components/NavigationAccount.vue:188
+#, python-brace-format
+msgid "Used quota: {quota}% ({limit})"
+msgstr "Använd kvot: {quota}% ({limit})"
+
+#: src/components/NavigationAccount.vue:194
+#, python-brace-format
+msgid "Used quota: {quota}%"
+msgstr "Använd kvot: {quota}%"
+
+#: src/components/NavigationAccount.vue:214
+msgid "Unable to create mailbox. The name likely contains invalid characters. Please try another name."
+msgstr "Kunde inte skapa mappen. Namnet innehåller troligen ogiltiga tecken. Försök med ett annat namn."
+
+#: src/components/NavigationAccount.vue:237
+#, python-brace-format
+msgid "The account for {email} and cached email data will be removed from Nextcloud, but not from your email provider."
+msgstr "Du kommer att kopplas bort från brevlådan {email}. Brevlådan och dess meddelanden förblir tillgängliga för andra användare."
+
+#: src/components/NavigationAccount.vue:243
+#, python-brace-format
+msgid "Remove {email}"
+msgstr "Ta bort {email}"
+
+#: src/components/NavigationAccountExpandCollapse.vue:37
+msgid "Show all subscribed folders"
+msgstr "Visa alla prenumererade mappar"
+
+#: src/components/NavigationAccountExpandCollapse.vue:39
+msgid "Show all folders"
+msgstr "Visa alla mappar"
+
+#: src/components/NavigationAccountExpandCollapse.vue:41
+msgid "Collapse folders"
+msgstr "Fäll ihop mappar"
+
+#: src/components/NavigationMailbox.vue:107
+msgid "Mark all as read"
+msgstr "Markera alla som lästa"
+
+#: src/components/NavigationMailbox.vue:120
+msgid "Add subfolder"
+msgstr "Lägg till undermapp"
+
+#: src/components/NavigationMailbox.vue:136
+#: src/components/NavigationMailbox.vue:144
+msgid "Rename"
+msgstr "Byt namn"
+
+#: src/components/NavigationMailbox.vue:162
+msgid "Move folder"
+msgstr "Flytta mapp"
+
+#: src/components/NavigationMailbox.vue:171
+msgid "Repair folder"
+msgstr "Reparera mapp"
+
+#: src/components/NavigationMailbox.vue:175
+msgid "Clear cache"
+msgstr "Rensa cachen"
+
+#: src/components/NavigationMailbox.vue:181
+msgid "Clear locally cached data, in case there are issues with synchronization."
+msgstr "Rensa lokalt cachad data, ifall det finns problem med synkronisering."
+
+#: src/components/NavigationMailbox.vue:189
+msgid "Subscribed"
+msgstr "Prenumeration aktiverad"
+
+#: src/components/NavigationMailbox.vue:197
+msgid "Sync in background"
+msgstr "Synkronisera i bakgrunden"
+
+#: src/components/NavigationMailbox.vue:207
+msgid "Delete all messages"
+msgstr "Ta bort alla meddelanden"
+
+#: src/components/NavigationMailbox.vue:216
+#: src/components/NavigationMailbox.vue:686
+msgid "Delete folder"
+msgstr "Ta bort mapp"
+
+#: src/components/NavigationMailbox.vue:423
+#, python-brace-format
+msgid "{total} message"
+msgid_plural "{total} messages"
+msgstr[0] "{total} meddelande"
+msgstr[1] "{total} meddelanden"
+
+#: src/components/NavigationMailbox.vue:427
+#, python-brace-format
+msgid "{unread} unread of {total}"
+msgid_plural "{unread} unread of {total}"
+msgstr[0] "{unread} olästa av {total}"
+msgstr[1] "{unread} olästa av {total}"
+
+#: src/components/NavigationMailbox.vue:439
+msgid "Loading …"
+msgstr "Laddar …"
+
+#: src/components/NavigationMailbox.vue:661
+msgid "All messages in mailbox will be deleted."
+msgstr "Alla meddelanden i mappen kommer att raderas."
+
+#: src/components/NavigationMailbox.vue:662
+#, python-brace-format
+msgid "Clear mailbox {name}"
+msgstr "Rensa mappen {name}"
+
+#: src/components/NavigationMailbox.vue:665
+msgid "Clear folder"
+msgstr "Töm mapp"
+
+#: src/components/NavigationMailbox.vue:685
+msgid "The folder and all messages in it will be deleted."
+msgstr "Mappen och alla meddelanden i den kommer att tas bort."
+
+#: src/components/NavigationMailbox.vue:689
+#, python-brace-format
+msgid "Delete folder {name}"
+msgstr "Ta bort mappen {name}"
+
+#: src/components/NavigationMailbox.vue:730
+msgid "An error occurred, unable to rename the mailbox."
+msgstr "Ett fel inträffade, det gick inte att byta namn på mappen."
+
+#: src/components/NavigationMailbox.vue:814
+msgid "Please wait 10 minutes before repairing again"
+msgstr "Vänta 10 minuter innan du reparerar igen"
+
+#: src/components/NavigationOutbox.vue:10
+msgid "Outbox"
+msgstr "Utkorg"
+
+#: src/components/NeedsTranslationInfo.vue:10
+#, python-brace-format
+msgid "Translate this message to {language}"
+msgstr "Översätt detta meddelande till {language}"
+
+#: src/components/NewMessageButtonHeader.vue:16
+#: src/components/NewMessageButtonHeader.vue:8
+#: src/components/NewMessageModal.vue:216
+msgid "New message"
+msgstr "Nytt meddelande"
+
+#: src/components/NewMessageModal.vue:17
+msgid "Maximize composer"
+msgstr "Maximera meddelanderedigerare"
+
+#: src/components/NewMessageModal.vue:18
+msgid "Hide recipient details"
+msgstr "Dölj mottagaruppgifter"
+
+#: src/components/NewMessageModal.vue:18
+msgid "Show recipient details"
+msgstr "Visa mottagaruppgifter"
+
+#: src/components/NewMessageModal.vue:28
+#: src/components/NewMessageModal.vue:29
+msgid "Minimize composer"
+msgstr "Minimera meddelanderedigerare"
+
+#: src/components/NewMessageModal.vue:39
+msgid "Error sending your message"
+msgstr "Ett fel inträffade när ditt meddelande skulle skickas"
+
+#: src/components/NewMessageModal.vue:47
+#: src/components/NewMessageModal.vue:48
+msgid "Retry"
+msgstr "Försök igen"
+
+#: src/components/NewMessageModal.vue:54
+msgid "Warning sending your message"
+msgstr "Varning vid sändning av ditt meddelande"
+
+#: src/components/NewMessageModal.vue:64
+#: src/components/NewMessageModal.vue:65
+msgid "Send anyway"
+msgstr "Skicka ändå"
+
+#: src/components/NewMessageModal.vue:205
+msgid "Edit message"
+msgstr "Redigera meddelande"
+
+#: src/components/NewMessageModal.vue:208
+#: src/components/mailFilter/ActionAddSystemFlag.vue:75
+msgid "Draft"
+msgstr "Utkast"
+
+#: src/components/NewMessageModal.vue:211
+#: src/components/RecipientBubble.vue:33
+#: src/components/RecipientBubble.vue:39
+#: src/components/ThreadEnvelope.vue:139
+#: src/components/ThreadEnvelope.vue:142
+#: src/components/ThreadEnvelope.vue:694
+msgid "Reply"
+msgstr "Svara"
+
+#: src/components/NewMessageModal.vue:357
+msgid "Message saved"
+msgstr "Meddelande sparat"
+
+#: src/components/NewMessageModal.vue:373
+msgid "Failed to save message"
+msgstr "Kunde inte spara meddelande"
+
+#: src/components/NewMessageModal.vue:375
+msgid "Failed to save draft"
+msgstr "Kunde inte spara utkast"
+
+#: src/components/NewMessageModal.vue:450
+msgid "attachment"
+msgstr "bilaga"
+
+#: src/components/NewMessageModal.vue:451
+msgid "attached"
+msgstr "bifogad"
+
+#: src/components/NewMessageModal.vue:502
+msgid "No \"sent\" folder configured. Please pick one in the account settings."
+msgstr "Ingen \"Skickat\"-mapp konfigurerad. Välj en i brevlådeinställningarna."
+
+#: src/components/NewMessageModal.vue:506
+msgid "You are trying to send to many recipients in To and/or Cc. Consider using Bcc to hide recipient addresses."
+msgstr "Du försöker skicka till många mottagare i Till och/eller Cc. Överväg att använda Bcc för att dölja mottagaradresser."
+
+#: src/components/NewMessageModal.vue:515
+msgid "Your message has no subject. Do you want to send it anyway?"
+msgstr "Ditt meddelande saknar ämne. Vill du skicka det ändå?"
+
+#: src/components/NewMessageModal.vue:519
+msgid "You mentioned an attachment. Did you forget to add it?"
+msgstr "Du nämnde en bilaga. Glömde du att lägga till den?"
+
+#: src/components/NewMessageModal.vue:579
+msgid "Message discarded"
+msgstr "Meddelande kasserat"
+
+#: src/components/NewMessageModal.vue:582
+msgid "Could not discard message"
+msgstr "Kunde inte kassera meddelande"
+
+#: src/components/NoMessageSelected.vue:11
+#, python-brace-format
+msgid "Welcome to {productName} Mail"
+msgstr "Välkommen till {productName} Säker Digital Kommunikation"
+
+#: src/components/NoMessageSelected.vue:14
+msgid "Start writing a message by clicking below or select an existing message to display its contents"
+msgstr "Börja skriva ett meddelande genom att klicka nedan eller välj ett befintligt meddelande för att visa dess innehåll"
+
+#: src/components/OutOfOfficeForm.vue:17
+msgid "Autoresponder off"
+msgstr "Autosvar av"
+
+#: src/components/OutOfOfficeForm.vue:28
+msgid "Autoresponder on"
+msgstr "Autosvar på"
+
+#: src/components/OutOfOfficeForm.vue:39
+msgid "Autoresponder follows system settings"
+msgstr "Autosvar följer systeminställningar"
+
+#: src/components/OutOfOfficeForm.vue:44
+msgid "The autoresponder follows your personal absence period settings."
+msgstr "Autosvaret följer dina personliga frånvaroinställningar."
+
+#: src/components/OutOfOfficeForm.vue:49
+msgid "Edit absence settings"
+msgstr "Redigera frånvaroinställningar"
+
+#: src/components/OutOfOfficeForm.vue:55
+msgid "First day"
+msgstr "Första dagen"
+
+#: src/components/OutOfOfficeForm.vue:70
+msgid "Last day (optional)"
+msgstr "Sista dagen (valfritt)"
+
+#: src/components/OutOfOfficeForm.vue:88
+#, python-brace-format
+msgid "${subject} will be replaced with the subject of the message you are responding to"
+msgstr "${subject} kommer att ersättas med ämnesraden för meddelandet du svarar på"
+
+#: src/components/OutOfOfficeForm.vue:93
+msgid "Message"
+msgstr "Meddelande"
+
+#: src/components/OutOfOfficeForm.vue:104
+#: src/components/SieveFilterForm.vue:14
+msgid "Oh Snap!"
+msgstr "Hoppsan!"
+
+#: src/components/OutOfOfficeForm.vue:111
+#: src/components/OutOfOfficeForm.vue:116
+msgid "Save autoresponder"
+msgstr "Spara autosvar"
+
+#: src/components/Outbox.vue:17
+msgid "Could not open outbox"
+msgstr "Kunde inte öppna utkorgen"
+
+#: src/components/OutboxMessageContent.vue:6
+msgid "Pending or not sent messages will show up here"
+msgstr "Väntande eller ej skickade meddelanden visas här"
+
+#: src/components/OutboxMessageListItem.vue:28
+msgid "Copy to \"Sent\" Folder"
+msgstr "Kopiera till mappen \"Skickat\""
+
+#: src/components/OutboxMessageListItem.vue:31
+msgid "Copy to Sent Folder"
+msgstr "Kopiera till mappen Skickat"
+
+#: src/components/OutboxMessageListItem.vue:119
+msgid "Could not copy to \"Sent\" folder"
+msgstr "Kunde inte kopiera till mappen \"Skickat\""
+
+#: src/components/OutboxMessageListItem.vue:121
+msgid "Mail server error"
+msgstr "Serverfel"
+
+#: src/components/OutboxMessageListItem.vue:123
+msgid "Message could not be sent"
+msgstr "Meddelandet kunde inte skickas"
+
+#: src/components/OutboxMessageListItem.vue:161
+msgid "Message deleted"
+msgstr "Meddelande raderat"
+
+#: src/components/PhishingWarning.vue:8
+msgid "Phishing email"
+msgstr "Nätfiskemeddelande"
+
+#: src/components/PhishingWarning.vue:9
+msgid "This email might be a phishing attempt"
+msgstr "Detta meddelande kan vara ett nätfiskeförsök"
+
+#: src/components/PhishingWarning.vue:18
+msgid "Hide suspicious links"
+msgstr "Dölj misstänkta länkar"
+
+#: src/components/PhishingWarning.vue:18
+msgid "Show suspicious links"
+msgstr "Visa misstänkta länkar"
+
+#: src/components/PhishingWarning.vue:23
+msgid "link text"
+msgstr "länktext"
+
+#: src/components/RecipientBubble.vue:24
+#: src/components/RecipientBubble.vue:29
+msgid "Contacts with this address"
+msgstr "Kontakter med den här adressen"
+
+#: src/components/RecipientBubble.vue:43
+#: src/components/RecipientBubble.vue:48
+msgid "Add to Contact"
+msgstr "Lägg till i Kontakter"
+
+#: src/components/RecipientBubble.vue:52
+#: src/components/RecipientBubble.vue:57
+msgid "New Contact"
+msgstr "Ny kontakt"
+
+#: src/components/RecipientBubble.vue:61
+#: src/components/RecipientBubble.vue:66
+msgid "Copy to clipboard"
+msgstr "Kopiera till urklipp"
+
+#: src/components/RecipientBubble.vue:79
+msgid "Contact name …"
+msgstr "Kontaktnamn …"
+
+#: src/components/RecipientBubble.vue:102
+#: src/components/RecipientBubble.vue:107
+msgid "Add"
+msgstr "Lägg till"
+
+#: src/components/RecipientBubble.vue:224
+msgid "Copied email address to clipboard"
+msgstr "Adressen kopierades till urklipp"
+
+#: src/components/RecipientBubble.vue:226
+msgid "Could not copy email address to clipboard"
+msgstr "Kunde inte kopiera adressen till urklipp"
+
+#: src/components/RecipientInfo.vue:45
+msgid "Show less"
+msgstr "Visa mindre"
+
+#: src/components/RecipientInfo.vue:50
+msgid "Show more"
+msgstr "Visa mer"
+
+#: src/components/SearchMessages.vue:12
+#: src/components/SearchMessages.vue:13
+msgid "Search in folder"
+msgstr "Sök i mappen"
+
+#: src/components/SearchMessages.vue:18
+msgid "Open search modal"
+msgstr "Öppna sökdialog"
+
+#: src/components/SearchMessages.vue:27
+msgid "Close"
+msgstr "Stäng"
+
+#: src/components/SearchMessages.vue:41
+msgid "Search parameters"
+msgstr "Sökparametrar"
+
+#: src/components/SearchMessages.vue:57
+msgid "Search subject"
+msgstr "Sök i ämnesrad"
+
+#: src/components/SearchMessages.vue:62
+msgid "Body"
+msgstr "Textyta"
+
+#: src/components/SearchMessages.vue:70
+msgid "Search body"
+msgstr "Sök i meddelande"
+
+#: src/components/SearchMessages.vue:75
+#: src/components/Thread.vue:473
+msgid "Date"
+msgstr "Datum"
+
+#: src/components/SearchMessages.vue:82
+msgid "Pick a start date"
+msgstr "Välj ett startdatum"
+
+#: src/components/SearchMessages.vue:90
+msgid "Pick an end date"
+msgstr "Välj ett slutdatum"
+
+#: src/components/SearchMessages.vue:107
+#: src/components/SearchMessages.vue:108
+msgid "Select senders"
+msgstr "Välj avsändare"
+
+#: src/components/SearchMessages.vue:132
+#: src/components/SearchMessages.vue:133
+msgid "Select recipients"
+msgstr "Välj mottagare"
+
+#: src/components/SearchMessages.vue:156
+#: src/components/SearchMessages.vue:157
+msgid "Select CC recipients"
+msgstr "Välj CC-mottagare"
+
+#: src/components/SearchMessages.vue:180
+#: src/components/SearchMessages.vue:181
+msgid "Select BCC recipients"
+msgstr "Välj BCC-mottagare"
+
+#: src/components/SearchMessages.vue:194
+msgid "Tags"
+msgstr "Taggar"
+
+#: src/components/SearchMessages.vue:205
+#: src/components/SearchMessages.vue:206
+msgid "Select tags"
+msgstr "Välj taggar"
+
+#: src/components/SearchMessages.vue:235
+msgid "Marked as"
+msgstr "Markerat som"
+
+#: src/components/SearchMessages.vue:262
+msgid "Has attachments"
+msgstr "Har bifogade filer"
+
+#: src/components/SearchMessages.vue:267
+msgid "Mentions me"
+msgstr "Nämner mig"
+
+#: src/components/SearchMessages.vue:280
+#: src/components/SearchMessages.vue:281
+#: src/components/SearchMessages.vue:284
+msgid "Has attachment"
+msgstr "Har bilaga"
+
+#: src/components/SearchMessages.vue:299
+#: src/components/SearchMessages.vue:300
+#: src/components/SearchMessages.vue:302
+msgid "To me"
+msgstr "Till mig"
+
+#: src/components/SearchMessages.vue:377
+msgid "Clear"
+msgstr "Rensa"
+
+#: src/components/SearchSettings.vue:13
+msgid "Enable mail body search"
+msgstr "Aktivera sökning i meddelandetext"
+
+#: src/components/SieveAccountForm.vue:8
+msgid "Sieve is a powerful language for writing filters for your mailbox. You can manage the sieve scripts in Mail if your email service supports it. Sieve is also required to use Autoresponder and Filters."
+msgstr "Sieve är ett kraftfullt språk för att skriva meddelandefilter. Du kan hantera dina sieve-skript här. Sieve krävs också för att använda Autosvar och Filter."
+
+#: src/components/SieveAccountForm.vue:12
+msgid "Enable sieve filter"
+msgstr "Aktivera sieve-filter"
+
+#: src/components/SieveAccountForm.vue:16
+msgid "Sieve host"
+msgstr "Sieve-värd"
+
+#: src/components/SieveAccountForm.vue:17
+msgid "Sieve security"
+msgstr "Sieve-säkerhet"
+
+#: src/components/SieveAccountForm.vue:35
+msgid "Sieve Port"
+msgstr "Sieve-port"
+
+#: src/components/SieveAccountForm.vue:36
+msgid "Sieve credentials"
+msgstr "Sieve-uppgifter"
+
+#: src/components/SieveAccountForm.vue:41
+msgid "IMAP credentials"
+msgstr "IMAP-uppgifter"
+
+#: src/components/SieveAccountForm.vue:46
+msgid "Custom"
+msgstr "Anpassad"
+
+#: src/components/SieveAccountForm.vue:50
+msgid "Sieve User"
+msgstr "Sieve-användare"
+
+#: src/components/SieveAccountForm.vue:51
+msgid "Sieve Password"
+msgstr "Sieve-lösenord"
+
+#: src/components/SieveAccountForm.vue:56
+msgid "Oh snap!"
+msgstr "Hoppsan!"
+
+#: src/components/SieveAccountForm.vue:62
+#: src/components/SieveAccountForm.vue:64
+msgid "Save sieve settings"
+msgstr "Spara sieve-inställningar"
+
+#: src/components/SieveFilterForm.vue:20
+#: src/components/SieveFilterForm.vue:26
+msgid "Save sieve script"
+msgstr "Spara sieve-skript"
+
+#: src/components/SieveFilterForm.vue:96
+msgid "The syntax seems to be incorrect:"
+msgstr "Syntaxen verkar vara felaktig:"
+
+#: src/components/SignatureSettings.vue:15
+msgid "Place signature above quoted text"
+msgstr "Placera signaturen ovanför citerad text"
+
+#: src/components/SignatureSettings.vue:33
+msgid "Signature …"
+msgstr "Signatur …"
+
+#: src/components/SignatureSettings.vue:39
+msgid "Your signature is larger than 2 MB. This may affect the performance of your editor."
+msgstr "Din signatur är större än 2 MB. Detta kan påverka redigerarens prestanda."
+
+#: src/components/SignatureSettings.vue:44
+#: src/components/SignatureSettings.vue:50
+msgid "Save signature"
+msgstr "Spara signatur"
+
+#: src/components/SourceModal.vue:8
+msgid "Message source"
+msgstr "Meddelandekälla"
+
+#: src/components/TagItem.vue:22
+msgid "Edit name or color"
+msgstr "Redigera namn och färg"
+
+#: src/components/TagItem.vue:39
+msgid "Saving new tag name …"
+msgstr "Sparar nytt taggnamn …"
+
+#: src/components/TagItem.vue:47
+msgid "Delete tag"
+msgstr "Radera tagg"
+
+#: src/components/TagItem.vue:54
+msgid "Set tag"
+msgstr "Sätt tagg"
+
+#: src/components/TagItem.vue:60
+msgid "Unset tag"
+msgstr "Ta bort tagg"
+
+#: src/components/TagItem.vue:133
+#: src/components/TagItem.vue:161
+#: src/components/TagModal.vue:225
+msgid "An error occurred, unable to rename the tag."
+msgstr "Ett fel uppstod, kunde inte byta taggens namn."
+
+#: src/components/TagModal.vue:16
+msgid "Add default tags"
+msgstr "Lägg till standardtaggar"
+
+#: src/components/TagModal.vue:26
+#: src/components/TagModal.vue:36
+msgid "Add tag"
+msgstr "Lägg till tagg"
+
+#: src/components/TagModal.vue:47
+msgid "Saving tag …"
+msgstr "Sparar tagg …"
+
+#: src/components/TagModal.vue:165
+msgid "Tag name is a hidden system tag"
+msgstr "Taggnamnet är en dold systemtagg"
+
+#: src/components/TagModal.vue:169
+msgid "Tag already exists"
+msgstr "Taggen finns redan"
+
+#: src/components/TagModal.vue:173
+msgid "Tag name cannot be empty"
+msgstr "Taggnamnet kan inte vara tomt"
+
+#: src/components/TagModal.vue:183
+msgid "An error occurred, unable to create the tag."
+msgstr "Ett fel uppstod, kunde inte spara taggen."
+
+#: src/components/TaskModal.vue:65
+msgid "No calendars with task list support"
+msgstr "Inga kalendrar med stöd för uppgiftslistor"
+
+#: src/components/TaskModal.vue:233
+msgid "Task created"
+msgstr "Uppgift skapad"
+
+#: src/components/TaskModal.vue:237
+msgid "Could not create task"
+msgstr "Kunde inte skapa uppgift"
+
+#: src/components/Thread.vue:8
+msgid "Loading thread"
+msgstr "Läser in ärende"
+
+#: src/components/Thread.vue:11
+#: src/components/ThreadEnvelope.vue:288
+msgid "Not found"
+msgstr "Hittades inte"
+
+#: src/components/Thread.vue:244
+msgid "Summarizing thread failed."
+msgstr "Sammanfattning av ärende misslyckades."
+
+#: src/components/Thread.vue:358
+#: src/components/Thread.vue:365
+msgid "Could not load your message thread"
+msgstr "Det gick inte att ladda ärendet"
+
+#: src/components/Thread.vue:359
+msgid "The thread doesn't exist or has been deleted"
+msgstr "Ärendet finns inte eller har tagits bort"
+
+#: src/components/Thread.vue:362
+msgid "Email was not able to be opened"
+msgstr "Meddelandet kunde inte öppnas"
+
+#: src/components/Thread.vue:392
+msgid "Print"
+msgstr "Skriv ut"
+
+#: src/components/Thread.vue:580
+msgid "Could not print message"
+msgstr "Kunde inte skriva ut meddelandet"
+
+#: src/components/ThreadEnvelope.vue:15
+#, python-brace-format
+msgid "You've sent this message on {date}"
+msgstr "Du skickade detta meddelande {date}"
+
+#: src/components/ThreadEnvelope.vue:19
+msgid "Disable reminder"
+msgstr "Inaktivera påminnelse"
+
+#: src/components/ThreadEnvelope.vue:101
+#: src/components/ThreadEnvelope.vue:295
+#: src/components/ThreadEnvelope.vue:303
+msgid "Unsubscribe"
+msgstr "Avsluta prenumeration"
+
+#: src/components/ThreadEnvelope.vue:135
+#: src/components/ThreadEnvelope.vue:691
+msgid "Reply all"
+msgstr "Svara alla"
+
+#: src/components/ThreadEnvelope.vue:150
+#: src/components/ThreadEnvelope.vue:153
+msgid "Reply to sender only"
+msgstr "Svara endast avsändaren"
+
+#: src/components/ThreadEnvelope.vue:159
+#: src/components/ThreadEnvelope.vue:169
+#: src/components/ThreadEnvelope.vue:172
+#: src/components/quickActions/Action.vue:110
+#: src/components/quickActions/Settings.vue:100
+msgid "Mark as favorite"
+msgstr "Markera som favorit"
+
+#: src/components/ThreadEnvelope.vue:159
+#: src/components/ThreadEnvelope.vue:165
+#: src/components/ThreadEnvelope.vue:172
+msgid "Mark as unfavorite"
+msgstr "Ta bort från favoriter"
+
+#: src/components/ThreadEnvelope.vue:296
+#: src/components/ThreadEnvelope.vue:305
+msgid "Unsubscribe via link"
+msgstr "Avprenumerera via länk"
+
+#: src/components/ThreadEnvelope.vue:299
+#: src/components/ThreadEnvelope.vue:308
+#: src/components/ThreadEnvelope.vue:317
+#, python-brace-format
+msgid "Unsubscribing will stop all messages from the mailing list {sender}"
+msgstr "Avprenumeration stoppar alla meddelanden från sändlistan {sender}"
+
+#: src/components/ThreadEnvelope.vue:312
+msgid "Send unsubscribe email"
+msgstr "Skicka avprenumerationsbegäran"
+
+#: src/components/ThreadEnvelope.vue:313
+msgid "Unsubscribe via email"
+msgstr "Avprenumerera via meddelande"
+
+#: src/components/ThreadEnvelope.vue:641
+msgid "Encrypted & verified "
+msgstr "Krypterad och verifierad "
+
+#: src/components/ThreadEnvelope.vue:645
+msgid "Signature verified"
+msgstr "Signatur verifierad"
+
+#: src/components/ThreadEnvelope.vue:648
+msgid "Signature unverified "
+msgstr "Signatur overifierad "
+
+#: src/components/ThreadEnvelope.vue:653
+msgid "This message was encrypted by the sender before it was sent."
+msgstr "Detta meddelande krypterades av avsändaren innan det skickades."
+
+#: src/components/ThreadEnvelope.vue:657
+msgid "This message contains a verified digital S/MIME signature. The message wasn't changed since it was sent."
+msgstr "Det här meddelandet innehåller en verifierad digital S/MIME-signatur. Meddelandet har inte ändrats sedan det skickades."
+
+#: src/components/ThreadEnvelope.vue:660
+msgid "This message contains an unverified digital S/MIME signature. The message might have been changed since it was sent or the certificate of the signer is untrusted."
+msgstr "Detta meddelande innehåller en overifierad digital S/MIME-signatur. Meddelandet kan ha ändrats sedan det skickades eller så är signerarens certifikat inte betrott."
+
+#: src/components/ThreadEnvelope.vue:1037
+#: src/components/ThreadEnvelope.vue:989
+msgid "Unsubscribe request sent"
+msgstr "Begäran om avprenumeration skickad"
+
+#: src/components/ThreadEnvelope.vue:1040
+#: src/components/ThreadEnvelope.vue:992
+msgid "Could not unsubscribe from mailing list"
+msgstr "Kunde inte avprenumerera från sändlistan"
+
+#: src/components/ThreadEnvelope.vue:1094
+msgid "Please wait for the message to load"
+msgstr "Vänta tills meddelandet har laddats"
+
+#: src/components/ThreadSummary.vue:14
+msgid "Thread summary"
+msgstr "Sammanfattning"
+
+#: src/components/ThreadSummary.vue:23
+msgid "Go to latest message"
+msgstr "Gå till senaste meddelande"
+
+#: src/components/ThreadSummary.vue:26
+msgid "Newest message"
+msgstr "Nyaste meddelandet"
+
+#: src/components/ThreadSummary.vue:40
+msgid "This summary is AI generated and may contain mistakes."
+msgstr "Denna sammanfattning är AI-genererad och kan innehålla fel."
+
+#: src/components/ThreadSummary.vue:78
+#: src/components/ThreadSummary.vue:80
+#, python-brace-format
+msgid "{name} Assistant"
+msgstr "{name}-assistent"
+
+#: src/components/TranslationModal.vue:10
+msgid "Translate message"
+msgstr "Översätt meddelande"
+
+#: src/components/TranslationModal.vue:21
+msgid "Source language to translate from"
+msgstr "Språk att översätta från"
+
+#: src/components/TranslationModal.vue:22
+msgid "Translate from"
+msgstr "Översätt från"
+
+#: src/components/TranslationModal.vue:33
+msgid "Target language to translate into"
+msgstr "Språk att översätta till"
+
+#: src/components/TranslationModal.vue:34
+msgid "Translate to"
+msgstr "Översätt till"
+
+#: src/components/TranslationModal.vue:46
+msgid "Translating"
+msgstr "Översätter"
+
+#: src/components/TranslationModal.vue:71
+msgid "Copy translated text"
+msgstr "Kopiera översatt text"
+
+#: src/components/TranslationModal.vue:157
+msgid "Please select languages to translate to and from"
+msgstr "Välj språk att översätta till och från"
+
+#: src/components/TranslationModal.vue:171
+msgid "The message could not be translated"
+msgstr "Meddelandet kunde inte översättas"
+
+#: src/components/TranslationModal.vue:180
+msgid "Translation copied to clipboard"
+msgstr "Översättningen har kopierats till urklipp"
+
+#: src/components/TranslationModal.vue:182
+msgid "Translation could not be copied"
+msgstr "Översättningen kunde inte kopieras"
+
+#: src/components/TrashRetentionSettings.vue:13
+msgid "Disable trash retention by leaving the field empty or setting it to 0. Only mails deleted after enabling trash retention will be processed."
+msgstr "Inaktivera papperskorgslagring genom att lämna fältet tomt eller sätta det till 0. Endast meddelanden som raderas efter att papperskorgslagring aktiverats kommer att behandlas."
+
+#: src/components/TrustedSenders.vue:29
+msgid "No senders are trusted at the moment."
+msgstr "Inga avsändare är betrodda för tillfället."
+
+#: src/components/TrustedSenders.vue:87
+#, python-brace-format
+msgid "Could not remove trusted sender {sender}"
+msgstr "Kunde inte ta bort betrodd avsändare {sender}"
+
+#: src/components/imip/EventData.vue:39
+msgid "(organizer)"
+msgstr "(arrangör)"
+
+#: src/components/imip/EventData.vue:105
+msgid "Untitled event"
+msgstr "Namnlös händelse"
+
+#: src/components/itinerary/CalendarImport.vue:19
+#, python-brace-format
+msgid "Import into {calendar}"
+msgstr "Importera till {calendar}"
+
+#: src/components/itinerary/EventReservation.vue:129
+#: src/components/itinerary/FlightReservation.vue:158
+#: src/components/itinerary/TrainReservation.vue:161
+#, python-brace-format
+msgid "Event imported into {calendar}"
+msgstr "Händelse importerad till {calendar}"
+
+#: src/components/itinerary/FlightReservation.vue:22
+msgid "Airplane"
+msgstr "Flygplan"
+
+#: src/components/itinerary/FlightReservation.vue:25
+#, python-brace-format
+msgid "Reservation {id}"
+msgstr "Bokning {id}"
+
+#: src/components/itinerary/FlightReservation.vue:135
+#, python-brace-format
+msgid "Flight {flightNr} from {depAirport} to {arrAirport}"
+msgstr "Flyg {flightNr} från {depAirport} till {arrAirport}"
+
+#: src/components/itinerary/TrainReservation.vue:19
+msgid "Train"
+msgstr "Tåg"
+
+#: src/components/itinerary/TrainReservation.vue:124
+#, python-brace-format
+msgid "{trainNr} from {depStation} to {arrStation}"
+msgstr "{trainNr} från {depStation} till {arrStation}"
+
+#: src/components/itinerary/TrainReservation.vue:133
+#, python-brace-format
+msgid "Train from {depStation} to {arrStation}"
+msgstr "Tåg från {depStation} till {arrStation}"
+
+#: src/components/mailFilter/Action.vue:25
+msgid "Delete action"
+msgstr "Radera åtgärd"
+
+#: src/components/mailFilter/Action.vue:74
+msgid "Mark message as"
+msgstr "Markera meddelande som"
+
+#: src/components/mailFilter/Action.vue:78
+msgid "Add flag"
+msgstr "Lägg till flagga"
+
+#: src/components/mailFilter/Action.vue:82
+msgid "Move into folder"
+msgstr "Flytta till mapp"
+
+#: src/components/mailFilter/Action.vue:86
+msgid "Stop"
+msgstr "Stoppa"
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:71
+msgid "Answered"
+msgstr "Besvarat"
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:73
+msgid "Deleted"
+msgstr "Borttaget"
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:77
+msgid "Flagged"
+msgstr "Flaggat"
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:79
+msgid "Seen"
+msgstr "Läst"
+
+#: src/components/mailFilter/ActionAddflag.vue:10
+msgid "Enter flag"
+msgstr "Ange flagga"
+
+#: src/components/mailFilter/ActionStop.vue:7
+msgid "Stop ends all processing"
+msgstr "Stoppa avslutar all bearbetning"
+
+#: src/components/mailFilter/CreateModal.vue:11
+msgid "Create a new mail filter"
+msgstr "Skapa ett nytt mailfilter"
+
+#: src/components/mailFilter/CreateModal.vue:14
+msgid "Choose the headers you want to use to create your filter. In the next step, you will be able to refine the filter conditions and specify the actions to be taken on messages that match your criteria."
+msgstr "Välj de huvuden du vill använda för att skapa ditt filter. I nästa steg kan du finjustera filtervillkoren och ange vilka åtgärder som ska utföras på meddelanden som matchar dina kriterier."
+
+#: src/components/mailFilter/CreateModal.vue:112
+#: src/components/mailFilter/Test.vue:139
+msgid "Sender"
+msgstr "Avsändare"
+
+#: src/components/mailFilter/CreateModal.vue:122
+#: src/components/mailFilter/Test.vue:141
+msgid "Recipient"
+msgstr "Mottagare"
+
+#: src/components/mailFilter/DeleteModal.vue:7
+#, python-brace-format
+msgid "Delete mail filter {filterName}?"
+msgstr "Ta bort filter {filterName}?"
+
+#: src/components/mailFilter/DeleteModal.vue:9
+msgid "Are you sure to delete the mail filter?"
+msgstr "Är du säker på att du vill ta bort filtret?"
+
+#: src/components/mailFilter/DeleteModal.vue:47
+#: src/components/mailFilter/MailFilters.vue:29
+msgid "Delete filter"
+msgstr "Ta bort filter"
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:121
+#: src/components/mailFilter/MailFilters.vue:141
+#: src/components/mailFilter/MailFilters.vue:37
+#: src/components/mailFilter/MailFilters.vue:39
+#: src/components/mailFilter/UpdateModal.vue:12
+#: src/components/mailFilter/UpdateModal.vue:9
+msgid "New filter"
+msgstr "Nytt filter"
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:154
+#: src/components/mailFilter/MailFilters.vue:179
+msgid "Filter saved"
+msgstr "Filter sparat"
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:159
+#: src/components/mailFilter/MailFilters.vue:184
+msgid "Could not save filter"
+msgstr "Kunde inte spara filter"
+
+#: src/components/mailFilter/MailFilters.vue:7
+msgid "Take control of your email chaos. Filters help you to prioritize what matters and eliminate clutter."
+msgstr "Filter hjälper dig att prioritera det som är viktigt och sålla bort det oviktiga."
+
+#: src/components/mailFilter/MailFilters.vue:10
+msgid "Hang tight while the filters load"
+msgstr "Vänta medan filtren laddas"
+
+#: src/components/mailFilter/MailFilters.vue:21
+msgid "Filter is active"
+msgstr "Filter är aktivt"
+
+#: src/components/mailFilter/MailFilters.vue:22
+msgid "Filter is not active"
+msgstr "Filter är inte aktivt"
+
+#: src/components/mailFilter/MailFilters.vue:197
+msgid "Filter deleted"
+msgstr "Filter raderat"
+
+#: src/components/mailFilter/MailFilters.vue:201
+msgid "Could not delete filter"
+msgstr "Kunde inte radera filter"
+
+#: src/components/mailFilter/Operator.vue:18
+msgid "Help"
+msgstr "Hjälp"
+
+#: src/components/mailFilter/Operator.vue:27
+msgid "A substring match. The field matches if the provided value is contained within it. For example, \"report\" would match \"port\"."
+msgstr "En delsträngsmatchning. Fältet matchar om det angivna värdet finns i det. Till exempel skulle \"rapport\" matcha \"port\"."
+
+#: src/components/mailFilter/Operator.vue:27
+#: src/components/mailFilter/Test.vue:151
+msgid "contains"
+msgstr "innehåller"
+
+#: src/components/mailFilter/Operator.vue:30
+msgid "A pattern match using wildcards. The \"*\" symbol represents any number of characters (including none), while \"?\" represents exactly one character. For example, \"*report*\" would match \"Business report 2024\"."
+msgstr "En mönstermatchning med jokertecken. Symbolen \"*\" representerar valfritt antal tecken (inklusive inga), medan \"?\" representerar exakt ett tecken. Till exempel skulle \"*rapport*\" matcha \"Affärsrapport 2024\"."
+
+#: src/components/mailFilter/Operator.vue:30
+#: src/components/mailFilter/Test.vue:153
+msgid "matches"
+msgstr "matchar"
+
+#: src/components/mailFilter/Operator.vue:62
+msgid "If all the conditions are met, the actions will be performed"
+msgstr "Om alla villkor är uppfyllda utförs åtgärderna"
+
+#: src/components/mailFilter/Operator.vue:63
+msgid "If any of the conditions are met, the actions will be performed"
+msgstr "Om något av villkoren är uppfyllt utförs åtgärderna"
+
+#: src/components/mailFilter/Test.vue:111
+msgid "Enter subject"
+msgstr "Ange ämne"
+
+#: src/components/mailFilter/Test.vue:113
+msgid "Enter sender"
+msgstr "Ange avsändare"
+
+#: src/components/mailFilter/Test.vue:115
+msgid "Enter recipient"
+msgstr "Ange mottagare"
+
+#: src/components/mailFilter/Test.vue:149
+msgid "is exactly"
+msgstr "är exakt"
+
+#: src/components/mailFilter/UpdateModal.vue:22
+msgid "Conditions"
+msgstr "Villkor"
+
+#: src/components/mailFilter/UpdateModal.vue:36
+#: src/components/mailFilter/UpdateModal.vue:38
+msgid "Add condition"
+msgstr "Lägg till villkor"
+
+#: src/components/mailFilter/UpdateModal.vue:43
+msgid "Actions"
+msgstr "Funktioner"
+
+#: src/components/mailFilter/UpdateModal.vue:56
+#: src/components/mailFilter/UpdateModal.vue:58
+msgid "Add action"
+msgstr "Lägg till åtgärd"
+
+#: src/components/mailFilter/UpdateModal.vue:66
+msgid "Priority"
+msgstr "Prioritet"
+
+#: src/components/mailFilter/UpdateModal.vue:70
+msgid "Enable filter"
+msgstr "Aktivera filter"
+
+#: src/components/quickActions/Action.vue:21
+msgid "delete"
+msgstr "ta bort"
+
+#: src/components/quickActions/Action.vue:98
+#: src/components/quickActions/Settings.vue:64
+msgid "Tag"
+msgstr "Tagg"
+
+#: src/components/quickActions/Settings.vue:8
+msgid "No quick actions yet."
+msgstr "Inga snabbåtgärder ännu."
+
+#: src/components/quickActions/Settings.vue:19
+msgid "Edit"
+msgstr "Redigera"
+
+#: src/components/quickActions/Settings.vue:192
+#: src/components/quickActions/Settings.vue:30
+msgid "Add quick action"
+msgstr "Lägg till snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:35
+msgid "Quick action name"
+msgstr "Namn på snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:36
+msgid "Do the following actions"
+msgstr "Utför följande åtgärder"
+
+#: src/components/quickActions/Settings.vue:50
+msgid "Add another action"
+msgstr "Lägg till ytterligare åtgärd"
+
+#: src/components/quickActions/Settings.vue:192
+msgid "Edit quick action"
+msgstr "Redigera snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:216
+msgid "Quick action deleted"
+msgstr "Snabbåtgärd borttagen"
+
+#: src/components/quickActions/Settings.vue:221
+msgid "Failed to delete quick action"
+msgstr "Kunde inte ta bort snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:258
+msgid "Failed to update quick action"
+msgstr "Kunde inte uppdatera snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:269
+msgid "Failed to update step in quick action"
+msgstr "Kunde inte uppdatera steg i snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:279
+msgid "Quick action updated"
+msgstr "Snabbåtgärd uppdaterad"
+
+#: src/components/quickActions/Settings.vue:289
+msgid "Failed to create quick action"
+msgstr "Kunde inte skapa snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:304
+msgid "Failed to add steps to quick action"
+msgstr "Kunde inte lägga till steg i snabbåtgärd"
+
+#: src/components/quickActions/Settings.vue:308
+msgid "Quick action created"
+msgstr "Snabbåtgärd skapad"
+
+#: src/components/quickActions/Settings.vue:361
+msgid "Failed to delete action step"
+msgstr "Kunde inte ta bort åtgärdssteg"
+
+#: src/components/settings/AdminSettings.vue:8
+msgid "Mail app"
+msgstr "Säkra meddelanden"
+
+#: src/components/settings/AdminSettings.vue:9
+msgid "The mail app allows users to read mails on their IMAP accounts."
+msgstr "Appen låter användare läsa meddelanden i sina brevlådor."
+
+#: src/components/settings/AdminSettings.vue:12
+msgid "Here you can find instance-wide settings. User specific settings are found in the app itself (bottom-left corner)."
+msgstr "Här hittar du instansövergripande inställningar. Användarspecifika inställningar finns i själva appen (nedre vänstra hörnet)."
+
+#: src/components/settings/AdminSettings.vue:21
+msgid "Account provisioning"
+msgstr "Kontoprovisionering"
+
+#: src/components/settings/AdminSettings.vue:30
+msgid "A provisioning configuration will provision all accounts with a matching email address."
+msgstr "En provisioneringskonfiguration kommer att tillhandahålla alla brevlådor med en matchande adress."
+
+#: src/components/settings/AdminSettings.vue:36
+msgid "Using the wildcard (*) in the provisioning domain field will create a configuration that applies to all users, provided they do not match another configuration."
+msgstr "Genom att använda jokertecknet (*) i provisioneringsdomänfältet skapas en konfiguration som gäller för alla användare, förutsatt att de inte matchar en annan konfiguration."
+
+#: src/components/settings/AdminSettings.vue:43
+msgid "The provisioning mechanism will prioritise specific domain configurations over the wildcard domain configuration."
+msgstr "Provisioneringsmekanismen kommer att prioritera specifika domänkonfigurationer framför jokerteckendomänkonfigurationen."
+
+#: src/components/settings/AdminSettings.vue:49
+msgid "Should a new matching configuration be found after the user was already provisioned with another configuration, the new configuration will take precedence and the user will be reprovisioned with the configuration."
+msgstr "Om en ny matchande konfiguration hittas efter att användaren redan har provisionerats med en annan konfiguration, kommer den nya konfigurationen att ha företräde och användaren omprovisioneras med den nya konfigurationen."
+
+#: src/components/settings/AdminSettings.vue:56
+msgid "There can only be one configuration per domain and only one wildcard domain configuration."
+msgstr "Det kan bara finnas en konfiguration per domän och endast en jokerteckendomänkonfiguration."
+
+#: src/components/settings/AdminSettings.vue:63
+msgid "These settings can be used in conjunction with each other."
+msgstr "Dessa inställningar kan användas tillsammans med varandra."
+
+#: src/components/settings/AdminSettings.vue:70
+msgid "If you only want to provision one domain for all users, use the wildcard (*)."
+msgstr "Om du bara vill provisionera en domän för alla användare, använd jokertecknet (*)."
+
+#: src/components/settings/AdminSettings.vue:77
+msgid "This setting only makes most sense if you use the same user back-end for your Nextcloud and mail server of your organization."
+msgstr "Den här inställningen är endast meningsfull om du använder samma användarbackend för ditt system och din server."
+
+#: src/components/settings/AdminSettings.vue:87
+msgid "Provisioning Configurations"
+msgstr "Provisioneringskonfigurationer"
+
+#: src/components/settings/AdminSettings.vue:101
+#: src/components/settings/AdminSettings.vue:96
+msgid "Add new config"
+msgstr "Lägg till ny konfiguration"
+
+#: src/components/settings/AdminSettings.vue:105
+#: src/components/settings/AdminSettings.vue:110
+msgid "Provision all accounts"
+msgstr "Provisionera alla konton"
+
+#: src/components/settings/AdminSettings.vue:127
+msgid "Allow additional mail accounts"
+msgstr "Tillåt ytterligare brevlådor"
+
+#: src/components/settings/AdminSettings.vue:134
+msgid "Allow additional Mail accounts from User Settings"
+msgstr "Tillåt ytterligare brevlådor från användarinställningar"
+
+#: src/components/settings/AdminSettings.vue:142
+msgid "Enable text processing through LLMs"
+msgstr "Aktivera textbearbetning genom LLM:er"
+
+#: src/components/settings/AdminSettings.vue:145
+msgid "The Mail app can process user data with the help of the configured large language model and provide assistance features like thread summaries, smart replies and event agendas."
+msgstr "Appen kan bearbeta användardata med hjälp av den konfigurerade stora språkmodellen och tillhandahålla hjälpfunktioner som ärendesammanfattningar, smarta svar och eventdagordningar."
+
+#: src/components/settings/AdminSettings.vue:152
+msgid "Enable LLM processing"
+msgstr "Aktivera LLM-bearbetning"
+
+#: src/components/settings/AdminSettings.vue:158
+msgid "Enable classification by importance by default"
+msgstr "Aktivera klassificering efter prioritet som standard"
+
+#: src/components/settings/AdminSettings.vue:161
+msgid "The Mail app can use AI and machine learning to classify, summarize, and analyze emails. When disabled, no AI/ML processing will run for any user. When enabled, individual users can toggle importance classification for their accounts."
+msgstr "Mail-appen kan använda AI och maskininlärning för att klassificera, sammanfatta och analysera meddelanden. När det är avstängt körs ingen AI/ML-bearbetning för någon användare. När det är aktiverat kan enskilda användare själva slå på klassificering av viktiga meddelanden för sina brevlådor."
+
+#: src/components/settings/AdminSettings.vue:168
+msgid "Enable classification of important mails by default"
+msgstr "Aktivera klassificering av viktiga meddelanden som standard"
+
+#: src/components/settings/AdminSettings.vue:176
+msgid "Anti Spam Service"
+msgstr "Antispam-tjänst"
+
+#: src/components/settings/AdminSettings.vue:185
+msgid "You can set up an anti spam service email address here."
+msgstr "Du kan konfigurera en antispam-adress här."
+
+#: src/components/settings/AdminSettings.vue:192
+msgid "Any email that is marked as spam will be sent to the anti spam service."
+msgstr "Meddelanden som markeras som spam skickas till antispam-tjänsten."
+
+#: src/components/settings/AdminSettings.vue:204
+msgid "Gmail integration"
+msgstr "Gmail-integration"
+
+#: src/components/settings/AdminSettings.vue:213
+msgid "Gmail allows users to access their email via IMAP. For security reasons this access is only possible with an OAuth 2.0 connection or Google accounts that use two-factor authentication and app passwords."
+msgstr "Gmail tillåter användare att komma åt sin e-post via IMAP. Av säkerhetsskäl är denna åtkomst endast möjlig med en OAuth 2.0-anslutning eller Google-konton som använder tvåfaktorsautentisering och applösenord."
+
+#: src/components/settings/AdminSettings.vue:221
+#, python-brace-format
+msgid "You have to register a new Client ID for a \"Web application\" in the Google Cloud console. Add the URL {url} as authorized redirect URI."
+msgstr "Du måste registrera ett nytt klient-ID för en \"Webbapplikation\" i Google Cloud-konsolen. Lägg till URL:en {url} som auktoriserad omdirigerings-URI."
+
+#: src/components/settings/AdminSettings.vue:235
+msgid "Microsoft integration"
+msgstr "Microsoft-integration"
+
+#: src/components/settings/AdminSettings.vue:239
+msgid "Microsoft requires you to access your emails via IMAP using OAuth 2.0 authentication. To do this, you need to register an app with Microsoft Entra ID, formerly known as Microsoft Azure Active Directory."
+msgstr "Microsoft kräver att du hämtar dina meddelanden via IMAP med OAuth 2.0-autentisering. För att göra detta behöver du registrera en app hos Microsoft Entra ID, tidigare känt som Microsoft Azure Active Directory."
+
+#: src/components/settings/AdminSettings.vue:242
+msgid "Redirect URI"
+msgstr "Redirect-URI"
+
+#: src/components/settings/AdminSettings.vue:244
+msgid "For more details, please click here to open our documentation."
+msgstr "Klicka här för mer information i vår dokumentation."
+
+#: src/components/settings/AdminSettings.vue:249
+msgid "User Interface Preference Defaults"
+msgstr "Standardinställningar för användargränssnitt"
+
+#: src/components/settings/AdminSettings.vue:252
+msgid "These settings are used to pre-configure the user interface preferences they can be overridden by the user in the mail settings"
+msgstr "Dessa inställningar används för att förkonfigurera användargränssnittets förinställningar. Användaren kan ändra dem i mailinställningarna."
+
+#: src/components/settings/AdminSettings.vue:258
+msgid "Message View Mode"
+msgstr "Visningsläge för meddelanden"
+
+#: src/components/settings/AdminSettings.vue:275
+msgid "Show only the selected message"
+msgstr "Visa endast det valda meddelandet"
+
+#: src/components/settings/AdminSettings.vue:383
+#, python-brace-format
+msgid "Successfully updated config for \"{domain}\""
+msgstr "Konfigurationen för \"{domain}\" har uppdaterats"
+
+#: src/components/settings/AdminSettings.vue:385
+msgid "Error saving config"
+msgstr "Fel vid sparande av konfiguration"
+
+#: src/components/settings/AdminSettings.vue:397
+#, python-brace-format
+msgid "Saved config for \"{domain}\""
+msgstr "Sparade konfiguration för \"{domain}\""
+
+#: src/components/settings/AdminSettings.vue:399
+msgid "Could not save provisioning setting"
+msgstr "Kunde inte spara provisioneringsinställning"
+
+#: src/components/settings/AdminSettings.vue:411
+#, python-brace-format
+msgid "Successfully provisioned {count} account."
+msgid_plural "Successfully provisioned {count} accounts."
+msgstr[0] "{count} konto provisionerades."
+msgstr[1] "{count} konton provisionerades."
+
+#: src/components/settings/AdminSettings.vue:413
+msgid "There was an error when provisioning accounts."
+msgstr "Ett fel uppstod vid provisionering av konton."
+
+#: src/components/settings/AdminSettings.vue:424
+#, python-brace-format
+msgid "Successfully deleted and deprovisioned accounts for \"{domain}\""
+msgstr "Brevlådor för \"{domain}\" har tagits bort och avprovisionerats"
+
+#: src/components/settings/AdminSettings.vue:426
+#, python-brace-format
+msgid "Error when deleting and deprovisioning accounts for \"{domain}\""
+msgstr "Fel vid borttagning och avprovisionering av brevlådor för \"{domain}\""
+
+#: src/components/settings/AdminSettings.vue:452
+msgid "Could not save default classification setting"
+msgstr "Kunde inte spara standardklassificeringsinställning"
+
+#: src/components/settings/AntiSpamSettings.vue:8
+msgid "Anti Spam"
+msgstr "Antispam"
+
+#: src/components/settings/AntiSpamSettings.vue:10
+msgid "Add the email address of your anti spam report service here."
+msgstr "Lägg till adressen för din antispam-tjänst här."
+
+#: src/components/settings/AntiSpamSettings.vue:13
+msgid "When using this setting, a report email will be sent to the SPAM report server when a user clicks \"Mark as spam\"."
+msgstr "När den här inställningen används skickas ett rapportmeddelande till SPAM-rapportservern när en användare klickar \"Markera som skräppost\"."
+
+#: src/components/settings/AntiSpamSettings.vue:14
+msgid "The original message will be attached as a \"message/rfc822\" attachment."
+msgstr "Det ursprungliga meddelandet bifogas som en \"message/rfc822\"-bilaga."
+
+#: src/components/settings/AntiSpamSettings.vue:20
+msgid "\"Mark as Spam\" Email Address"
+msgstr "\"Markera som skräppost\" Adress"
+
+#: src/components/settings/AntiSpamSettings.vue:29
+msgid "\"Mark Not Junk\" Email Address"
+msgstr "\"Markera ej skräppost\" Adress"
+
+#: src/components/settings/AntiSpamSettings.vue:51
+#: src/components/settings/AntiSpamSettings.vue:58
+msgid "Reset"
+msgstr "Återställ"
+
+#: src/components/settings/AntiSpamSettings.vue:100
+msgid "Successfully set up anti spam email addresses"
+msgstr "Antispam-adresserna har konfigurerats"
+
+#: src/components/settings/AntiSpamSettings.vue:103
+msgid "Error saving anti spam email addresses"
+msgstr "Fel vid sparning av antispam-adresser"
+
+#: src/components/settings/AntiSpamSettings.vue:114
+msgid "Successfully deleted anti spam reporting email"
+msgstr "Antispam-adressen har tagits bort"
+
+#: src/components/settings/AntiSpamSettings.vue:117
+msgid "Error deleting anti spam reporting email"
+msgstr "Fel vid borttagning av antispam-adress"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:8
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:14
+msgid "Client ID"
+msgstr "Klient-ID"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:15
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:21
+msgid "Client secret"
+msgstr "Klienthemlighet"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:26
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:32
+msgid "Unlink"
+msgstr "Koppla bort"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:61
+msgid "Google integration configured"
+msgstr "Google-integration konfigurerad"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:64
+msgid "Could not configure Google integration"
+msgstr "Kunde inte konfigurera Google-integration"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:76
+msgid "Google integration unlinked"
+msgstr "Google-integration bortkopplad"
+
+#: src/components/settings/GmailAdminOauthSettings.vue:79
+msgid "Could not unlink Google integration"
+msgstr "Kunde inte koppla bort Google-integration"
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:8
+msgid "Tenant ID (optional)"
+msgstr "Klient-ID (valfritt)"
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:74
+msgid "Microsoft integration configured"
+msgstr "Microsoft-integration konfigurerad"
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:77
+msgid "Could not configure Microsoft integration"
+msgstr "Kunde inte konfigurera Microsoft-integration"
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:89
+msgid "Microsoft integration unlinked"
+msgstr "Microsoft-integration bortkopplad"
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:92
+msgid "Could not unlink Microsoft integration"
+msgstr "Kunde inte koppla bort Microsoft-integration"
+
+#: src/components/settings/ProvisionPreview.vue:13
+#, python-brace-format
+msgid "Domain Match: {provisioningDomain}"
+msgstr "Domänmatchning: {provisioningDomain}"
+
+#: src/components/settings/ProvisionPreview.vue:15
+#, python-brace-format
+msgid "Email: {email}"
+msgstr "Adress: {email}"
+
+#: src/components/settings/ProvisionPreview.vue:17
+#, python-brace-format
+msgid "IMAP: {user} on {host}:{port} ({ssl} encryption)"
+msgstr "IMAP: {user} på {host}:{port} ({ssl}-krypterat)"
+
+#: src/components/settings/ProvisionPreview.vue:25
+#, python-brace-format
+msgid "SMTP: {user} on {host}:{port} ({ssl} encryption)"
+msgstr "SMTP: {user} på {host}:{port} ({ssl}-krypterat)"
+
+#: src/components/settings/ProvisionPreview.vue:34
+#, python-brace-format
+msgid "Sieve: {user} on {host}:{port} ({ssl} encryption)"
+msgstr "Sieve: {user} på {host}:{port} ({ssl}-kryptering)"
+
+#: src/components/settings/ProvisioningSettings.vue:8
+#, python-brace-format
+msgid "Configuration for \"{provisioningDomain}\""
+msgstr "Konfiguration för \"{provisioningDomain}\""
+
+#: src/components/settings/ProvisioningSettings.vue:17
+msgid "Provisioning domain"
+msgstr "Provisioneringsdomän"
+
+#: src/components/settings/ProvisioningSettings.vue:26
+msgid "Email address template"
+msgstr "Adressmall"
+
+#: src/components/settings/ProvisioningSettings.vue:38
+msgid "IMAP"
+msgstr "IMAP"
+
+#: src/components/settings/ProvisioningSettings.vue:116
+#: src/components/settings/ProvisioningSettings.vue:226
+#: src/components/settings/ProvisioningSettings.vue:42
+msgid "User"
+msgstr "Användare"
+
+#: src/components/settings/ProvisioningSettings.vue:127
+#: src/components/settings/ProvisioningSettings.vue:237
+#: src/components/settings/ProvisioningSettings.vue:53
+msgid "Host"
+msgstr "Server"
+
+#: src/components/settings/ProvisioningSettings.vue:137
+#: src/components/settings/ProvisioningSettings.vue:247
+#: src/components/settings/ProvisioningSettings.vue:63
+msgid "Port"
+msgstr "Port"
+
+#: src/components/settings/ProvisioningSettings.vue:112
+msgid "SMTP"
+msgstr "SMTP"
+
+#: src/components/settings/ProvisioningSettings.vue:186
+#: src/components/settings/ProvisioningSettings.vue:206
+msgid "Master password"
+msgstr "Huvudlösenord"
+
+#: src/components/settings/ProvisioningSettings.vue:196
+msgid "Use master password"
+msgstr "Använd huvudlösenord"
+
+#: src/components/settings/ProvisioningSettings.vue:212
+msgid "Sieve"
+msgstr "Sieve"
+
+#: src/components/settings/ProvisioningSettings.vue:222
+msgid "Enable sieve integration"
+msgstr "Aktivera sieve-integration"
+
+#: src/components/settings/ProvisioningSettings.vue:296
+msgid "LDAP aliases integration"
+msgstr "LDAP-aliasintegration"
+
+#: src/components/settings/ProvisioningSettings.vue:306
+msgid "Enable LDAP aliases integration"
+msgstr "Aktivera LDAP-aliasintegration"
+
+#: src/components/settings/ProvisioningSettings.vue:308
+msgid "The LDAP aliases integration reads an attribute from the configured LDAP directory to provision email aliases."
+msgstr "LDAP-aliasintegreringen läser ett attribut från den konfigurerade LDAP-katalogen för att tillhandahålla alias."
+
+#: src/components/settings/ProvisioningSettings.vue:312
+msgid "LDAP attribute for aliases"
+msgstr "LDAP-attribut för alias"
+
+#: src/components/settings/ProvisioningSettings.vue:321
+msgid "A multi value attribute to provision email aliases. For each value an alias is created. Aliases existing in Nextcloud which are not in the LDAP directory are deleted."
+msgstr "Ett flervärdesattribut för att tillhandahålla alias. För varje värde skapas ett alias. Alias som finns i systemet men inte i LDAP-katalogen tas bort."
+
+#: src/components/settings/ProvisioningSettings.vue:330
+#: src/components/settings/ProvisioningSettings.vue:337
+msgid "Save Config"
+msgstr "Spara inställningar"
+
+#: src/components/settings/ProvisioningSettings.vue:343
+#: src/components/settings/ProvisioningSettings.vue:349
+msgid "Unprovision & Delete Config"
+msgstr "Avprovisionera & radera konfiguration"
+
+#: src/components/settings/ProvisioningSettings.vue:353
+msgid "* %USERID% and %EMAIL% will be replaced with the user's UID and email"
+msgstr "* %USERID% och %EMAIL% ersätts med användarens UID och adress"
+
+#: src/components/settings/ProvisioningSettings.vue:362
+msgid "With the settings above, the app will create account settings in the following way:"
+msgstr "Med inställningarna ovan skapar appen kontoinställningar på följande sätt:"
+
+#: src/components/smime/SmimeCertificateModal.vue:10
+msgid "S/MIME certificates"
+msgstr "S/MIME-certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:15
+msgid "Certificate name"
+msgstr "Certifikatnamn"
+
+#: src/components/smime/SmimeCertificateModal.vue:16
+msgid "E-mail address"
+msgstr "Meddelandeadress"
+
+#: src/components/smime/SmimeCertificateModal.vue:17
+msgid "Valid until"
+msgstr "Giltigt till"
+
+#: src/components/smime/SmimeCertificateModal.vue:35
+#: src/components/smime/SmimeCertificateModal.vue:39
+msgid "Delete certificate"
+msgstr "Ta bort certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:50
+msgid "No certificate imported yet"
+msgstr "Inget certifikat importerat ännu"
+
+#: src/components/smime/SmimeCertificateModal.vue:54
+#: src/components/smime/SmimeCertificateModal.vue:56
+msgid "Import certificate"
+msgstr "Importera certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:64
+msgid "Import S/MIME certificate"
+msgstr "Importera S/MIME-certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:75
+msgid "PKCS #12 Certificate"
+msgstr "PKCS #12-certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:87
+msgid "PEM Certificate"
+msgstr "PEM-certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:93
+msgid "Certificate"
+msgstr "Certifikat"
+
+#: src/components/smime/SmimeCertificateModal.vue:104
+msgid "Private key (optional)"
+msgstr "Privat nyckel (valfritt)"
+
+#: src/components/smime/SmimeCertificateModal.vue:120
+msgid "The private key is only required if you intend to send signed and encrypted emails using this certificate."
+msgstr "Den privata nyckeln krävs endast om du avser att skicka signerade och krypterade meddelanden med detta certifikat."
+
+#: src/components/smime/SmimeCertificateModal.vue:133
+#: src/components/smime/SmimeCertificateModal.vue:136
+msgid "Submit"
+msgstr "Skicka"
+
+#: src/components/smime/SmimeCertificateModal.vue:214
+msgid "The provided PKCS #12 certificate must contain at least one certificate and exactly one private key."
+msgstr "Det angivna PKCS #12-certifikatet måste innehålla minst ett certifikat och exakt en privat nyckel."
+
+#: src/components/smime/SmimeCertificateModal.vue:217
+msgid "Failed to import the certificate. Please check the password."
+msgstr "Kunde inte importera certifikatet. Kontrollera lösenordet."
+
+#: src/components/smime/SmimeCertificateModal.vue:234
+msgid "Certificate imported successfully"
+msgstr "Certifikat importerades"
+
+#: src/components/smime/SmimeCertificateModal.vue:242
+msgid "Failed to import the certificate. Please make sure that the private key matches the certificate and is not protected by a passphrase."
+msgstr "Kunde inte importera certifikatet. Kontrollera att den privata nyckeln matchar certifikatet och inte är skyddad av en lösenfras."
+
+#: src/components/smime/SmimeCertificateModal.vue:244
+msgid "Failed to import the certificate"
+msgstr "Kunde inte importera certifikatet"
+
+#: src/components/textBlocks/List.vue:13
+msgid "No text blocks available"
+msgstr "Inga textblock tillgängliga"
+
+#: src/components/textBlocks/ListItem.vue:17
+msgid "Shared"
+msgstr "Delad"
+
+#: src/components/textBlocks/ListItem.vue:19
+#, python-brace-format
+msgid "Edit {title}"
+msgstr "Redigera {title}"
+
+#: src/components/textBlocks/ListItem.vue:27
+#, python-brace-format
+msgid "Delete {title}"
+msgstr "Ta bort {title}"
+
+#: src/components/textBlocks/ListItem.vue:33
+msgid "Edit text block"
+msgstr "Redigera textblock"
+
+#: src/components/textBlocks/ListItem.vue:49
+msgid "Shares"
+msgstr "Delningar"
+
+#: src/components/textBlocks/ListItem.vue:54
+msgid "Search for users or groups"
+msgstr "Sök efter användare eller grupper"
+
+#: src/components/textBlocks/ListItem.vue:211
+msgid "Text block deleted"
+msgstr "Textblock borttaget"
+
+#: src/components/textBlocks/ListItem.vue:213
+msgid "Failed to delete text block"
+msgstr "Kunde inte ta bort textblock"
+
+#: src/components/textBlocks/ListItem.vue:222
+#, python-brace-format
+msgid "Text block shared with {sharee}"
+msgstr "Textblock delat med {sharee}"
+
+#: src/components/textBlocks/ListItem.vue:225
+#, python-brace-format
+msgid "Failed to share text block with {sharee}"
+msgstr "Kunde inte dela textblock med {sharee}"
+
+#: src/components/textBlocks/ListItem.vue:233
+#, python-brace-format
+msgid "Share deleted for {name}"
+msgstr "Delning borttagen för {name}"
+
+#: src/components/textBlocks/ListItem.vue:235
+#, python-brace-format
+msgid "Failed to delete share with {name}"
+msgstr "Kunde inte ta bort delning med {name}"
+
+#: src/components/textBlocks/ListItem.vue:322
+msgid "Guest"
+msgstr "Gäst"
+
+#: src/components/textBlocks/ListItem.vue:327
+msgid "Group"
+msgstr "Grupp"
+
+#: src/components/textBlocks/ListItem.vue:381
+msgid "Failed to save text block"
+msgstr "Kunde inte spara textblock"
+
+#: src/components/textBlocks/TextBlockModal.vue:7
+msgid "Choose a text block to insert at the cursor"
+msgstr "Välj ett textblock att infoga vid markören"
+
+#: src/components/textBlocks/TextBlockModal.vue:27
+msgid "Insert"
+msgstr "Infoga"
+
+#: src/components/textBlocks/TextBlockModal.vue:29
+msgid "Insert text block"
+msgstr "Infoga textblock"
+
+#: src/i18n/MailboxTranslator.js:11
+msgid "All"
+msgstr "Alla"
+
+#: src/i18n/MailboxTranslator.js:19
+msgid "Drafts"
+msgstr "Utkast"
+
+#: src/i18n/MailboxTranslator.js:28
+msgid "Priority inbox"
+msgstr "Prioriterad inkorg"
+
+#: src/i18n/MailboxTranslator.js:31
+msgid "All inboxes"
+msgstr "Alla inkorgar"
+
+#: src/i18n/MailboxTranslator.js:34
+msgid "Inbox"
+msgstr "Inkorg"
+
+#: src/i18n/MailboxTranslator.js:39
+msgid "Junk"
+msgstr "Skräp"
+
+#: src/i18n/MailboxTranslator.js:43
+msgid "Sent"
+msgstr "Skickat"
+
+#: src/i18n/MailboxTranslator.js:47
+msgid "Trash"
+msgstr "Papperskorg"
+
+#: src/integration/oauth.js:14
+msgid "Connect OAUTH2 account"
+msgstr "Anslut OAUTH2-konto"
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "recipientpersonmodalTitle"
+msgstr "Personreferens för mottagare"
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "recipientreferencemodalTitle"
+msgstr "Dokumentreferens för mottagare"
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "senderpersonmodalTitle"
+msgstr "Personreferens för avsändare"
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "senderreferencemodalTitle"
+msgstr "Dokumentreferens för avsändare"
+
+#: src/service/FileSharingService.js:41
+msgid "Error while sharing file"
+msgstr "Fel vid delning av fil"
+
+#: src/service/NotificationService.js:63
+#, python-brace-format
+msgid ""
+"{from}\n"
+"{subject}"
+msgstr ""
+"{from}\n"
+"{subject}"
+
+#: src/service/NotificationService.js:71
+#, python-brace-format
+msgid ""
+"%n new message \n"
+"from {from}"
+msgid_plural ""
+"%n new messages \n"
+"from {from}"
+msgstr[0] ""
+"%n nytt meddelande \n"
+"från {from}"
+msgstr[1] ""
+"%n nya meddelanden \n"
+"från {from}"
+
+#: src/service/NotificationService.js:79
+msgid "Nextcloud Mail"
+msgstr "ITSL Hubs"
+
+#: src/service/NotificationService.js:80
+msgid "You have a new secure message in ITSL Hubs"
+msgstr "Du har ett nytt säkert meddelande i ITSL Hubs"
+
+#: src/store/mainStore/actions.js:459
+msgid "There is already a message in progress. All unsaved changes will be lost if you continue!"
+msgstr "Det finns redan ett meddelande under arbete. Alla osparade ändringar försvinner om du fortsätter!"
+
+#: src/store/mainStore/actions.js:460
+msgid "Discard changes"
+msgstr "Släng ändringar"
+
+#: src/store/mainStore/actions.js:463
+msgid "Discard unsaved changes"
+msgstr "Släng osparade ändringar"
+
+#: src/store/mainStore/actions.js:465
+msgid "Keep editing message"
+msgstr "Fortsätt redigera meddelande"
+
+#: src/store/mainStore/actions.js:592
+msgid "Attachments were not copied. Please add them manually."
+msgstr "Bifogade filer kopierades inte, lägg till dem manuellt."
+
+#: src/store/mainStore/actions.js:1714
+msgid "Could not create snooze mailbox"
+msgstr "Kunde inte skapa pausmapp"
+
+#: src/store/mainStore/actions.js:2490
+msgid "Sorry, the message could not be loaded. The draft may no longer exist. Please refresh the page and try again."
+msgstr "Meddelandet kunde inte laddas. Utkastet kanske inte längre finns. Uppdatera sidan och försök igen."
+
+#: src/store/outboxStore.js:188
+msgid "Sending message…"
+msgstr "Skickar meddelande…"
+
+#: src/store/outboxStore.js:211
+msgid "Message sent"
+msgstr "Meddelande skickat"
+
+#: src/store/outboxStore.js:215
+msgid "Could not send message"
+msgstr "Kunde inte skicka meddelande"
+
+#: src/store/outboxStore.js:236
+msgid "Message copied to \"Sent\" folder"
+msgstr "Meddelandet kopierades till mappen \"Skickat\""
+
+#: src/store/outboxStore.js:238
+msgid "Could not copy message to \"Sent\" folder"
+msgstr "Kunde inte kopiera meddelandet till mappen \"Skickat\""
+
+#: src/util/ErrorMessageFactory.js:20
+#: src/util/ErrorMessageFactory.js:23
+#, python-brace-format
+msgid "Could not load {tag}{name}{endtag}"
+msgstr "Kunde inte läsa in {tag}{name}{endtag}"
+
+#: src/util/ErrorMessageFactory.js:26
+#, python-brace-format
+msgid "There was a problem loading {tag}{name}{endtag}"
+msgstr "Det uppstod ett problem vis inläsning av {tag}{name}{endtag}"
+
+#: src/util/ErrorMessageFactory.js:40
+msgid "Could not load your message"
+msgstr "Kunde inte läsa in ditt meddelande"
+
+#: src/util/ErrorMessageFactory.js:41
+msgid "Could not load the desired message"
+msgstr "Kunde inte läsa in önskat meddelande"
+
+#: src/util/ErrorMessageFactory.js:42
+msgid "Could not load the message"
+msgstr "Kunde inte läsa in meddelandet"
+
+#: src/views/OauthDone.vue:8
+msgid "Account connected"
+msgstr "Konto anslutet"
+
+#: src/views/OauthDone.vue:9
+msgid "You can close this window"
+msgstr "Du kan stänga det här fönstret"
+
+#: src/views/Setup.vue:16
+msgid "Connect your mail account"
+msgstr "Anslut din brevlåda"
+
+#: src/views/Setup.vue:29
+msgid "To add a mail account, please contact your administrator."
+msgstr "För att få tillgång till en brevlåda, kontakta din administratör."
+
+#: templates/error.php:10
+msgid "Error loading message"
+msgstr "Fel vid inläsning av meddelande"
+
+#: templates/redirect.php:18
+#, php-format
+msgid "Forwarding to %s"
+msgstr "Vidarebefordrar till %s"
+
+#: templates/redirect.php:19
+msgid "Click here if you are not automatically redirected within the next few seconds."
+msgstr "Klicka här om du inte blir omdirigerad inom några sekunder."
+
+#: templates/redirect.php:25
+msgid "Redirect"
+msgstr "Omdirigera"
+
+#: templates/redirect.php:26
+#, php-format
+msgid "The link leads to %s"
+msgstr "Länken pekar mot %s"
+
+#: templates/redirect.php:27
+#, php-format
+msgid "If you do not want to visit that page, you can return to <a href=\"%s\">Mail</a>."
+msgstr "Om du inte vill besöka den sidan kan du återgå till <a href=\"%s\">Mail</a>."
+
+#: templates/redirect.php:32
+#, php-format
+msgid "Continue to %s"
+msgstr "Fortsätt till %s"

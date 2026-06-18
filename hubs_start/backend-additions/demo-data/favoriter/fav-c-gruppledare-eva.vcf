@@ -1,0 +1,14 @@
+BEGIN:VCARD
+VERSION:3.0
+PRODID:-//ITSL//Hubs Start SYNTHETIC DEMO//SV
+UID:hubs-demo-fav-c-gruppledare-eva
+FN:Eva (gruppledare)
+N:Eva gruppledare;;;;
+ORG:Mottagningsgruppen;Gruppledare
+KIND:individual
+X-HUBS-USER-REF:eva
+X-HUBS-FAVORIT-KLASS:intern-anvandare
+CATEGORIES:Favoriter,intern
+NOTE:SYNTETISK DEMO-DATA (ITSL Hubs Start). Pekare mot intern användarkatalog (uid)\, ej kopierad kontaktuppgift. Namn/närvaro resolvas därifrån. Fiktiv medarbetare.
+REV:2026-06-15T08:00:00Z
+END:VCARD

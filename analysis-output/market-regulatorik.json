@@ -1,0 +1,116 @@
+{
+    "key":  "regulatorik",
+    "topic":  "Regulatoriska drivkrafter för säker kommunikation i svensk offentlig sektor 2025–2026",
+    "key_findings":  [
+                         "Nya cybersäkerhetslagen (2025:1506) som genomför NIS2 trädde i kraft 15 januari 2026 och omfattar ca 8 000 organisationer i 18 sektorer. Sverige gick längre än NIS2-direktivet: ALLA kommuner och regioner omfattas oavsett storlek. Verksamhetsutövare ska anmäla sig till MCF (f.d. MSB, central tillsynsmyndighet enligt MCFFS 2026:1), bedriva systematiskt riskbaserat cybersäkerhetsarbete, rapportera betydande incidenter och ledningen har personligt ansvar. Föreskrifter om säkerhetsåtgärder och utbildning var på remiss hösten 2025.",
+                         "OSL styr fortfarande grundbulten: sekretessreglerade uppgifter får inte röjas i digitala kanaler. Sedan 1 juli 2023 finns den sekretessbrytande bestämmelsen 10 kap. 2 a § OSL som tillåter utlämnande till leverantör för \u0027endast teknisk bearbetning eller teknisk lagring\u0027 om det inte är olämpligt — kopplad till tystnadspliktslagen (2020:914). Det legaliserar utkontrakterad drift men kräver lämplighetsbedömning i varje fall; eSam:s vägledning \u0027Utkontraktering – sekretess och dataskydd\u0027 (ES2023-06, juli 2023) är de facto-standard för bedömningen, och vanlig e-post/molnsamarbetsytor utan skydd anses fortsatt otillräckliga för sekretessbelagd information.",
+                         "Schrems II-problematiken lever: IMY har avrått från Microsofts Azure AD och Teams för känsliga uppgifter och fällt fyra bolag för Google Analytics (olovlig tredjelandsöverföring). EU:s adekvansbeslut för USA (Data Privacy Framework, 2023) gäller formellt, men IMY och jurister (JP Infonet, mars 2025) flaggar att det politiska läget i USA gör DPF skört — \u0027ett Schrems III\u0027 är en reell risk. CLOUD Act innebär att amerikanska leverantörer kan tvingas lämna ut data även när den lagras i Sverige, vilket gör on-prem/EU-drift till den robusta linjen för sekretessbelagt material.",
+                         "Digital suveränitet har gått från juridik till geopolitik 2025–2026: över 70 % av europeiska myndigheter/företag använder amerikanska moln (AWS, Microsoft, Google kontrollerar ~72 % av marknaden). Schleswig-Holstein har bytt till öppen källkod, Nextcloud+Ionos lanserar suveränt M365-alternativ, och i Sverige driver riksdagsmotioner och debatt (Realtid: \u0027Sverige i molnjättarnas grepp\u0027) frågan — samtidigt som 60 % av svenska kommuner saknar strategi för öppen källkod. Regeringsutredningen \u0027Säker och kostnadseffektiv it-drift\u0027 (SOU 2021:97) pekade redan på behovet av statligt suverän drift och frågan har fått ny fart efter Ukrainakriget.",
+                         "SDK (Säker digital kommunikation, Diggs infrastruktur) passerade 100 anslutna organisationer i augusti 2025 med 85 till i anslutningsförberedelse; Diggs mål var att en majoritet av 290 kommuner skulle vara anslutna vid utgången av 2025. Region Stockholm anslöt september 2025. Digg planerar nya meddelandetyper inkl. maskin-till-maskin-utbyte. SDK ersätter fax, post och okrypterad e-post för känslig information mellan offentliga aktörer — anslutning kräver Diggs godkännande (federationsägare).",
+                         "Identifiering: Diggs tillitsramverk för svensk e-legitimation definierar tillitsnivå 2–4 (motsv. LOA). Tillitsnivå 3 är de facto-krav för tjänster som hanterar känsliga personuppgifter; godkända på nivå 3 är bl.a. BankID, Freja eID Plus och SITHS. Freja godkändes december 2024 även på nivå 3 för icke-bofasta (utan svenskt personnummer-krav på folkbokföring). Polismyndigheten har regeringsuppdrag (mars/april 2025) att ge ut statlig e-legitimation på högsta tillitsnivå (4), klar att utfärdas senast 2 november 2026.",
+                         "eIDAS2 (förordning EU 2024/1183) kräver att varje medlemsstat tillhandahåller en EUDI-plånbok ungefär årsskiftet 2026/27, och offentliga organ måste acceptera den för inloggning; plånboken ska motsvara högsta tillitsnivå. Diggs färdplan (Ena 2030) anger projektstart 2025 med leverans mot 2028 för svensk identitetsplånbok. Detta tvingar alla medborgarriktade inloggningsflöden i offentlig sektor att stödja EUDI-wallet inom planeringshorisonten.",
+                         "Interoperabilitetsförordningen (Interoperable Europe Act, EU 2024/903) gäller sedan 12 januari 2025: obligatoriska interoperabilitetsbedömningar för nya it-system i offentlig sektor, och uttrycklig prioritering av delning/återanvändning av lösningar inklusive öppen källkod. Digg föreslås bli behörig myndighet. Det ger formellt upphandlingsstöd för open source-baserade plattformar.",
+                         "DORA (EU 2022/2554) tillämpas sedan 17 januari 2025 för finanssektorn med FI som tillsynsmyndighet. Den träffar inte kommuner direkt, men ställer krav på kritiska IKT-tredjepartsleverantörer och har normerat marknadens förväntan på leverantörsstyrning, incidentrapportering och resilienstester — krav som nu speglas i offentliga upphandlingar via NIS2.",
+                         "Pengarna finns nu: nationell cybersäkerhetsstrategi 2025–2029 och \u0027cybermiljarden\u0027 — kommuner får 200 mkr/år och regioner 50 mkr/år från 2026 öronmärkt för motståndskraft och NIS2-genomförande (totalt 300 mkr 2026, 350 mkr 2027, 400 mkr 2028 i den nationella satsningen). MSB/MCF har dessutom uppdrag att kartlägga kommunernas tekniska cybersäkerhetsförmåga genom tekniska it-säkerhetsanalyser — resultaten skapar konkret åtgärdstryck per kommun.",
+                         "Vad driver kommuners inköpsbeslut just nu: (1) lagkrav med datum — cybersäkerhetslagen 15 jan 2026 med anmälningsplikt och ledningsansvar, (2) öronmärkta statsbidrag 2026–2028 som ska omsättas i upphandlingar, (3) MCF:s kartläggningar och kommande tillsyn som synliggör brister, (4) OSL-/GDPR-risken med amerikanska moln som gör \u0027data i Sverige, kunden äger datan\u0027 till ett upphandlingskriterium, (5) SDK-anslutningsvågen där majoriteten av kommuner är anslutna eller på väg och behöver klientlösningar, (6) krav på LOA3-inloggning (BankID/Freja) i alla medborgar- och handläggarflöden."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "MCF (Myndigheten för civilt försvar, f.d. MSB)",
+                       "role":  "Central tillsyns- och föreskriftsmyndighet för cybersäkerhetslagen/NIS2",
+                       "notes":  "MCFFS 2026:1 om anmälan; remiss om säkerhetsåtgärder/utbildning; kartlägger kommuners tekniska cybersäkerhetsförmåga. Sex sektorsmyndigheter (bl.a. IVO, PTS, FI) sköter sektorstillsyn."
+                   },
+                   {
+                       "name":  "Digg",
+                       "role":  "Federationsägare för SDK, ansvarig för tillitsramverket, eIDAS2/EUDI-wallet och föreslagen behörig myndighet för interoperabilitetsförordningen",
+                       "notes":  "SDK \u003e100 anslutna org aug 2025, mål: majoritet av kommunerna. Identitetsplånboksprojekt 2025–2028 inom Ena."
+                   },
+                   {
+                       "name":  "IMY",
+                       "role":  "Dataskyddsmyndighet, tillsyn tredjelandsöverföring",
+                       "notes":  "Avrått från Azure AD/Teams, fällt Google Analytics-användning; bevakar DPF:s hållbarhet."
+                   },
+                   {
+                       "name":  "eSam",
+                       "role":  "Samverkansorgan som ger vägledningar om sekretess/utkontraktering",
+                       "notes":  "ES2023-06 \u0027Utkontraktering – sekretess och dataskydd\u0027 är referensdokumentet kommunjurister använder vid molnbedömningar."
+                   },
+                   {
+                       "name":  "SKR",
+                       "role":  "Intresseorganisation, metodstöd cybersäkerhet, dynamiskt inköpssystem för it-säkerhet, PM om digital post",
+                       "notes":  "Kanal in i kommunernas beslutsprocesser; driver SDK-införande tillsammans med Inera."
+                   },
+                   {
+                       "name":  "Polismyndigheten",
+                       "role":  "Utfärdare av kommande statlig e-legitimation på högsta tillitsnivå",
+                       "notes":  "Klar senast 2 november 2026; samarbetar med Digg."
+                   },
+                   {
+                       "name":  "BankID och Freja (eID-utfärdare)",
+                       "role":  "Godkända e-legitimationer på tillitsnivå 3 enligt Diggs tillitsramverk",
+                       "notes":  "Freja godkänd dec 2024 även för icke-bofasta på nivå 3 — relevant för t.ex. nyanlända/utlandsanknutna användare."
+                   },
+                   {
+                       "name":  "Microsoft/AWS/Google",
+                       "role":  "Dominerande molnleverantörer och måltavla för suveränitetsdebatten",
+                       "notes":  "CLOUD Act-exponering; Microsoft lanserar \u0027sovereign cloud\u0027-budskap i Sverige (maj 2026) som motdrag — konkurrerande narrativ mot on-prem."
+                   },
+                   {
+                       "name":  "Nextcloud GmbH (+ Ionos)",
+                       "role":  "Plattformsleverantör Hubs bygger på; positionerar sig som suveränt M365-alternativ i Europa",
+                       "notes":  "Medvind ger draghjälp åt Hubs positionering, men också fler Nextcloud-baserade konkurrenter."
+                   },
+                   {
+                       "name":  "Finansinspektionen",
+                       "role":  "Behörig myndighet för DORA och sektorstillsyn under cybersäkerhetslagen",
+                       "notes":  "DORA tillämpas sedan 17 jan 2025; normerar leverantörsstyrningskrav."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Dashboarden bör byggas som ett \u0027compliance-fönster\u0027: kommunernas ledning har nu personligt ansvar enligt cybersäkerhetslagen — widgets som visar incidentstatus, ej hanterade säkra meddelanden, utgående SDK-svar med tidsfrist och loggning/spårbarhet ger direkt stöd för NIS2:s krav på systematiskt arbete och blir säljargument mot ledningsnivån, inte bara IT.",
+                                  "Tidsfönstret är nu: lagen gällde från 15 jan 2026 och kommunerna har öronmärkta statsbidrag (200 mkr/år) 2026–2028 att omsätta — Hubs bör paketera dashboarden så att den uppenbart kvalificerar som \u0027NIS2-åtgärd\u0027 i bidrags- och budgetmotiveringar.",
+                                  "SDK-vågen är Hubs starkaste krok: majoriteten av kommunerna är anslutna eller på väg, och Digg lanserar nya meddelandetyper. Dashboarden bör göra SDK-inkorgen/utkorgen till förstavyn (olästa, kvitterade, svarstider) eftersom det är där handläggarens vardagsbehov finns — ITSL syns redan i SDK-sammanhang och bör äga \u0027arbetsytan ovanpå SDK\u0027.",
+                                  "Positionera mot OSL 10:2a + eSam ES2023-06: Hubs on-prem-modell (\u0027kunden äger sin data, inga tredjelandsöverföringar, ingen CLOUD Act-exponering\u0027) eliminerar hela lämplighetsbedömningen som plågar Microsoft-alternativen — gör detta till ett standardstycke i upphandlingssvar och visa det i dashboarden (t.ex. \u0027all data lagrad i er driftmiljö\u0027).",
+                                  "Inloggning till dashboarden måste vara LOA3 från dag ett (BankID, Freja eID Plus, gärna SITHS för vård/omsorg) och arkitekturen förberedas för statlig e-legitimation (nov 2026) och EUDI-wallet (2026/27–2028) — att kunna säga \u0027eIDAS2-redo\u0027 blir differentierande i upphandlingar redan 2026.",
+                                  "Interoperabilitetsförordningen ger formellt stöd för öppen källkod och återanvändning i offentlig upphandling — lyft Nextcloud-basen och öppna standarder (SDK:s specifikationer, öppna API:er) som svar på kommunernas obligatoriska interoperabilitetsbedömningar.",
+                                  "Bygg in incidentrapporteringsstöd: cybersäkerhetslagen kräver rapportering av betydande incidenter till MCF — en dashboard-funktion som samlar säkerhetshändelser (misslyckade inloggningar, avvikande delningar) och förenklar underlag till incidentrapport adresserar ett konkret nytt lagkrav som få konkurrenter löser.",
+                                  "Räkna med Microsofts motoffensiv (\u0027sovereign cloud\u0027 i Sverige 2026): Hubs budskap bör vara att suveränitet kräver mer än EU-datacenter — ägarskap, jurisdiktion och öppen kod — och dashboarden är platsen där det beviset visualiseras (var data ligger, vem som har åtkomst, fullständig logg)."
+                              ],
+    "sources":  [
+                    "https://www.msb.se/sv/amnesomraden/informationssakerhet-cybersakerhet-och-sakra-kommunikationer/krav-och-regler-inom-informationssakerhet-och-cybersakerhet/nis-direktivet/det-har-ar-nis2-direktivet/",
+                    "https://www.bginstitute.se/nis2-direktivet-i-sverige-guide-till-cybersakerhetslagen-2026/",
+                    "https://www.fi.se/sv/publicerat/nyheter/2026/det-har-galler-for-nya-cybersakerhetslagen/",
+                    "https://rib.msb.se/filer/pdf/31243.pdf",
+                    "https://www.regeringen.se/pressmeddelanden/2025/09/uppdrag-till-msb-och-pts-att-forbereda-for-ny-cybersakerhetslag/",
+                    "https://www.msb.se/sv/regler/remisser-om-foreskrifter-och-allmanna-rad/remiss-forslag-till-nya-foreskrifter-om-sakerhetsatgarder-och-utbildning-enligt-ny-cybersakerhetslag/",
+                    "https://www.riksdagen.se/sv/dokument-och-lagar/dokument/proposition/sekretessgenombrott-vid-utlamnande-for-teknisk_ha0397/html/",
+                    "https://www.esamverka.se/download/18.43a3add4188b9f2345a2fe78/1687332814480/ES2023-06%20V%C3%A4gledning%20Utkontraktering%20-%20sekretess%20och%20dataskydd.pdf",
+                    "https://www.esamverka.se/vad-vi-gor/molnfragan.html",
+                    "https://www.imy.se/nyheter/fyra-bolag-maste-sluta-anvanda-google-analytics",
+                    "https://techlaw.se/sverige-imy-avrader-fran-anvandning-av-microsofts-molntjanster-azure-ad-och-teams/",
+                    "https://www.imy.se/verksamhet/dataskydd/det-har-galler-enligt-gdpr/overforing-till-tredje-land/",
+                    "https://www.jpinfonet.se/kunskap/nyheter4/2025/mars/laget-rorande-tredjelandsoverforing-och-situationen-i-usa/",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2025-08-19-milstolpe-for-saker-digital-kommunikation---over-100-organisationer-anslutna",
+                    "https://www.digg.se/digitala-tjanster/saker-digital-kommunikation-sdk",
+                    "https://skr.se/digitaliseringivalfarden/digitalinfrastruktur/sakerdigitalkommunikationsdk.9116.html",
+                    "https://www.regionstockholm.se/nyheter/2025/09/region-stockholm-ansluter-till-saker-digital-kommunikation/",
+                    "https://www.digg.se/digitala-tjanster/e-legitimering/om-e-legitimering/tillitsnivaer-for-e-legitimering",
+                    "https://www.digg.se/om-oss/nyheter/digital-identitet/nyheter/2024-12-18-digg-godkanner-freja-pa-tillitsniva-3-for-icke-bofasta",
+                    "https://regeringen.se/regeringsuppdrag/2025/04/uppdrag-att-utfarda-en-statlig-e-legitimation-pa-hogsta-tillitsniva/",
+                    "https://www.digg.se/kunskap-och-stod/eu-rattsakter/eidas-forordningen",
+                    "https://www.digg.se/styrning-och-samordning/ena---sveriges-digitala-infrastruktur/strategisk-fardplan-ena-2030/digital-identitetsplanbok",
+                    "https://www.digg.se/kunskap-och-stod/eu-rattsakter/interoperabilitetsforordningen",
+                    "https://en.wikipedia.org/wiki/Interoperable_Europe_Act",
+                    "https://www.deloitte.com/se/sv/services/consulting-risk/perspectives/forordningen-om-digital-operativ-motstandskraft.html",
+                    "https://www.fi.se/sv/publicerat/nyheter/2025/fi-granskar-den-finansiella-sektorns-digitala-operativa-motstandskraft/",
+                    "https://www.regeringen.se/pressmeddelanden/2025/09/nationell-satsning-pa-cybersakerhet/",
+                    "https://www.dagensinfrastruktur.se/2025/03/21/ny-nationell-strategi-for-cybersakerhet/",
+                    "https://www.cgi.com/se/sv/blogg/offentlig-sektor/fa-storst-varde-och-sakerhet-med-cybermiljarden",
+                    "https://computersweden.se/article/4066153/ett-europeiskt-alternativ-till-m365-nextcloud-vill-dra-nytta-av-intresset-for-digital-suveranitet.html",
+                    "https://news.microsoft.com/source/emea/2026/05/hur-microsoft-adresserar-digital-suveranitet-i-sverige/?lang=sv",
+                    "https://www.realtid.se/debatt/sverige-i-molnjattarnas-grepp-sa-bryter-vi-usa-beroendet/",
+                    "https://www.regeringen.se/rattsliga-dokument/statens-offentliga-utredningar/2021/12/sou-202197/",
+                    "https://www.ri.se/sv/bloggpost/digital-suveranitet-fran-osynliga-beroenden-till-strategiska-val",
+                    "https://itsl.se/sdk-for-snabb-och-trygg-kontakt-med-kommun-och-myndighet/"
+                ]
+}

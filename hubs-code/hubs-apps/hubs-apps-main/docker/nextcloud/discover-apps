@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+#
+# discover-apps — reconcile NC's apps-extra/ wiring and enabled-app set
+# against the apps actually cloned under /srv/apps/. Three steps:
+#   1. symlink each cloned app into apps-extra/ (quilt → .build/,
+#      standalone → app root);
+#   2. `occ app:enable` every wired app + the baked hmr_enabler;
+#   3. `occ app:disable` any app still enabled in NC's DB whose code is
+#      gone, and drop the orphaned apps-extra symlink — the symmetric
+#      counterpart to step 2, so removing an app self-heals on the next
+#      container start instead of needing `make distclean` to clear the
+#      stale DB enable.
+#
+# Image-baked internal tooling, two callers / two behaviors:
+#   --strict   crash if any quilt app lacks .build/ — entrypoint.sh at
+#              container start. No .build/ means NC has nothing to serve
+#              for that app; that IS the failure to surface.
+#   (default)  skip+warn apps without .build/ — `make new-app`'s
+#              post-scaffold step, landing a new app in a running NC
+#              without a down/up cycle; sibling apps lacking .build/
+#              must not block the new app from registering.
+#
+# No operator-facing Makefile target wraps this on purpose: exposing
+# internal NC tooling as an operator gesture leaks the wrong abstraction.
+# Recovery for a clone made outside `make new-app` is `make nc-down &&
+# make nc-up` — entrypoint re-runs --strict, rewires apps-extra, and
+# disables apps whose code was removed (step 3).
+#
+# Quilt classification = upstream/ existence. Same primitive as
+# entrypoint's symlink loop, regen-htaccess's reachability walk, the
+# Makefile's sidecar lookup, l10n-tools' auto-detection — keep aligned.
+#
+#   Quilt (upstream/ + .build/)  → apps-extra/<app> -> /srv/apps/<app>/.build
+#   Quilt (upstream/ no .build/) → strict: fail / default: skip+warn
+#   Standalone (no upstream/)    → apps-extra/<app> -> /srv/apps/<app>
+#
+# server/ skipped: NC core is bind-mounted live at /var/www/html/ from
+# apps/server, served by the bind, not as an apps-extra entry.
+# hmr_enabler is image-baked into the apps-extra named volume on first
+# mount; it's a real directory (not a symlink), so step 3 never reaps it.
+
+set -euo pipefail
+shopt -s nullglob
+
+NC_ROOT="/var/www/html"
+STRICT=0
+[ "${1:-}" = "--strict" ] && STRICT=1
+
+# 1. Wire each cloned app into apps-extra/. nullglob makes an empty
+# /srv/apps/ a no-op loop; steps 2 and 3 still run (they manage the baked
+# hmr_enabler and any orphaned symlinks regardless of cloned-app count).
+for app_dir in /srv/apps/*/; do
+    app_dir="${app_dir%/}"
+    app=$(basename "$app_dir")
+    [ "$app" = "server" ] && continue
+    if [ -d "$app_dir/upstream" ]; then
+        if [ ! -d "$app_dir/.build" ]; then
+            if [ "$STRICT" = "1" ]; then
+                echo "ERROR: quilt app '$app' has no .build/. Run 'cd apps/$app && make assemble MODE=force' before 'make nc-up'." >&2
+                exit 1
+            fi
+            echo "==> skip $app — no .build/ (run 'cd apps/$app && make assemble MODE=force' then 'docker compose exec nextcloud /usr/local/bin/discover-apps')"
+            continue
+        fi
+        target="$app_dir/.build"
+    else
+        target="$app_dir"
+    fi
+    ln -sfn "$target" "$NC_ROOT/apps-extra/$app"
+done
+
+# 2. Enable every wired app + the baked hmr_enabler — idempotent. Also
+# re-enables apps NC auto-disabled when their boot-time hooks threw (e.g.
+# hmr_enabler if LaxifyCSP.handle() crashed). The `*/` glob matches only
+# symlinks that resolve to a directory, so an orphaned (dangling) symlink
+# left by a removed app is skipped here and reaped in step 3.
+for app_dir in "$NC_ROOT"/apps-extra/*/; do
+    php occ app:enable "$(basename "$app_dir")"
+done
+
+# 3. Disable-absent reap — the symmetric counterpart to step 2. An
+# apps-extra/ symlink whose source app is gone from /srv/apps/ is a
+# removed app: NC keeps the DB `enabled` row and keeps trying to load code
+# that no longer exists. Disable it and drop the orphaned symlink so the
+# stale state self-heals here instead of needing a teardown.
+#
+# Keyed on the *source* (/srv/apps/<app>), NOT on whether the symlink
+# resolves: a present-but-unbuilt quilt app (the step-1 skip+warn path)
+# also has a dangling symlink but must NOT be disabled. `-L` skips
+# hmr_enabler (a real baked directory, not a symlink); NC core apps live
+# under apps/, never apps-extra, so they're never iterated here.
+#
+# `occ app:disable` exits 2 if disableApp() throws — its command catches
+# the exception (apps/server core/Command/App/Disable.php). For a
+# code-gone app that's an edge case, but a crash here would abort
+# container startup over a best-effort cleanup, so on failure we warn and
+# leave the stale enable (no worse than before — `make status` still
+# flags it, `make distclean` still clears it) and keep the symlink so the
+# next start retries. Drop the symlink only once the disable succeeds.
+# (Step 2's enable stays unguarded by contrast: a present app that won't
+# enable is a real fault to surface.)
+for entry in "$NC_ROOT"/apps-extra/*; do
+    [ -L "$entry" ] || continue
+    app=$(basename "$entry")
+    [ -d "/srv/apps/$app" ] && continue
+    echo "==> disabling stale app '$app' (enabled in NC but no longer cloned under /srv/apps/)"
+    rc=0
+    php occ app:disable "$app" || rc=$?
+    if [ "$rc" -eq 0 ]; then
+        rm -f "$entry"
+    else
+        echo "==> WARNING: 'occ app:disable $app' exited $rc — leaving the stale enable + symlink; 'make status' flags it, 'make distclean' clears it" >&2
+    fi
+done

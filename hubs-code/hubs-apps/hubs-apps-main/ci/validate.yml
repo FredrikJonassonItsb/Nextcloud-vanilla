@@ -1,0 +1,114 @@
+# ci/validate.yml — build the installable artifact (and validate that patches apply).
+#
+# One job replaces the old split (assemble:dev + build). It assembles the app into .dist/ (rsync
+# upstream + `quilt push -a` — patches MUST apply, the MR gate — + overlay as real files), installs
+# deps reusing the GitLab dependency cache, compiles JS, and tars <app>.tar.gz. It is the priority
+# job: the installable artifact is produced first; lint + audits run afterwards and never gate it.
+#
+# DIST_MODE selects which `make package` mode runs: `snapshot` (fast — dev deps, unminified webpack)
+# on every non-tag pipeline, `production` (--no-dev + Mozart + minified — the customer artifact) on
+# tags. node_modules and vendor ride the cache, never the artifact, so the tarball stays small. (The
+# historical filename "validate" is kept so apps' include lists don't change on the v2.0.3 bump; the
+# old assemble:dev "do patches apply?" gate is subsumed by the `quilt push -a`.)
+
+build:app:
+  extends: .build_env
+  stage: build
+  variables:
+    # Non-tag (snapshot) defaults; the $CI_COMMIT_TAG rule below overrides them
+    # for the clean customer build. CACHE_POLICY + CACHE_VARIANT drive the cache
+    # stanza: non-tag = a normal read-write dependency cache (cross-pipeline
+    # reuse); tag = NO cache — a clean production build from the locked deps,
+    # never reusing a dev-warmed cache (see the rule).
+    DIST_MODE: snapshot
+    # Preserve the cache-restored dep dirs across assemble's clean_build_dir.
+    KEEP_CACHED_DEPS: "1"
+    CACHE_POLICY: pull-push
+    CACHE_VARIANT: v2
+  cache:
+    # node_modules — skip-installable (build.sh guards npm ci on its presence).
+    # Shared with test:lint (lint.yml) on the SAME non-tag key; keep in sync.
+    # upstream rides this entry too (extra path, same key): the submodule pin moves iff
+    # overlay/package-lock.json moves, so the npm key invalidates it exactly. Caching it
+    # skips the per-build clone (heavy for spreed). The script's submodule fetch MUST be
+    # guarded on a warm upstream — see the build:app script. (-v1 -> -v2: shape change.)
+    - key:
+        files:
+          - overlay/package-lock.json
+        prefix: npm-modules-${CACHE_VARIANT}
+      paths:
+        - .dist/node_modules
+        - upstream
+      policy: ${CACHE_POLICY}
+    # composer vendor + bin tools. composer install no-ops against a matching
+    # vendor/. Keyed on composer.lock (which deps) + composer.json (the
+    # extra.mozart wrap config that shapes the install's runtime tree), and on
+    # DIST_MODE in the prefix: the snapshot (with-dev) and production (--no-dev)
+    # vendor trees differ, so a shared key would make a tag build and a feature
+    # build reconcile each other's vendor on every switch. lib/Vendor/ is NOT
+    # cached — it is regenerated from vendor/ by the app's composer
+    # post-install-cmd hook on every build (build.sh). Bin-tool versions
+    # (upstream/vendor-bin/*/composer.lock) aren't in this key either; the hook's
+    # `composer bin all install` reconciles them each build, so a stale
+    # vendor-bin cache self-heals. (The .npm + .composer-cache download stores
+    # are gone: keyed identically to their dep trees, they hit/miss together
+    # with node_modules/vendor and so never independently accelerate anything.)
+    - key:
+        files:
+          - overlay/composer.lock
+          - overlay/composer.json
+        prefix: composer-${DIST_MODE}-${CACHE_VARIANT}
+      paths:
+        - .dist/vendor
+        - .dist/vendor-bin
+      policy: ${CACHE_POLICY}
+  rules:
+    # Tags build the customer artifact: production flavor, CLEAN build, no cache.
+    # CACHE_VARIANT makes the keys tag-unique (guaranteed miss → fresh npm ci +
+    # composer install --no-dev); policy: pull means nothing is archived (no
+    # production-flavored pollution of the dev cache). KEEP_CACHED_DEPS cleared
+    # so assemble's clean_build_dir does a full clean (nothing cached to keep).
+    - if: '$CI_COMMIT_TAG'
+      variables:
+        DIST_MODE: production
+        CACHE_POLICY: pull
+        CACHE_VARIANT: "uncached-${CI_COMMIT_TAG}"
+        KEEP_CACHED_DEPS: ""
+    - when: on_success
+  script:
+    # Fetch the pinned upstream source — ONLY on a cache miss. upstream/ rides the
+    # npm-modules cache (see the cache block), so on a warm job it is already restored.
+    # DO NOT remove this guard or drop `upstream` from the cache: re-running the submodule
+    # update over a restored tree fatals with "could not get a repository handle for
+    # submodule 'upstream'" (the cached .git gitlink dangles against the freshly-cloned
+    # superproject) — that crash is why naive upstream-caching keeps getting torn back out.
+    # assemble.sh rsyncs upstream minus .git, so a restored tree is all the build needs.
+    - '[ -n "$(ls -A upstream 2>/dev/null)" ] || git submodule update --init --depth 1 upstream'
+    - |
+      # Version-stamp env inputs for package.sh (the platform script knows nothing about GitLab
+      # vars). Same mapping as before, now applied to BOTH flavors — the dev tarballs uploaded on
+      # develop/main/stable need a unique version too:
+      #   STAMP_VERSION (tag builds):    literal X.Y.Z from the tag.
+      #   STAMP_PIPELINE_IID (branches): pipeline IID appended to the post-overlay X.Y.
+      # Opt-out: apps advertising info.xml version via the NC capabilities API (e.g. spreed) set
+      # SKIP_VERSION_STAMP=1 in their root .gitlab-ci.yml; then neither is exported.
+      if [ "${SKIP_VERSION_STAMP:-0}" != "1" ]; then
+        TAG_VERSION=$(echo "${CI_COMMIT_TAG:-}" | sed -n 's|.*v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$|\1|p')
+        if [ -n "$TAG_VERSION" ]; then
+          export STAMP_VERSION="$TAG_VERSION"
+          echo "Will stamp tag version: ${STAMP_VERSION}"
+        else
+          export STAMP_PIPELINE_IID="$CI_PIPELINE_IID"
+          echo "Will stamp X.Y.${STAMP_PIPELINE_IID} (X.Y read from post-overlay info.xml inside package.sh)"
+        fi
+      else
+        echo "SKIP_VERSION_STAMP=1 — no stamp"
+      fi
+    # make package = build (assemble .dist/ + cached install + webpack) then package.sh (composer +
+    # Mozart-via-hook + stamp + tar). MODE=$DIST_MODE (snapshot/production); KEEP_CACHED_DEPS reaches
+    # the recipes as job env. Tarball lands at $APP_ROOT/$APP_NAME.tar.gz = $PWD/$CI_PROJECT_NAME.tar.gz.
+    - APP_ROOT="$PWD" APP_NAME="$CI_PROJECT_NAME" PLATFORM_ROOT=/tmp/platform make package MODE="$DIST_MODE"
+  artifacts:
+    paths:
+      - ${CI_PROJECT_NAME}.tar.gz
+    expire_in: 30 days

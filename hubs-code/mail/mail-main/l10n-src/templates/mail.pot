@@ -1,0 +1,4127 @@
+# Translations for mail.
+# Copyright (C) ITSL Solutions AB
+# This file is distributed under the GNU AGPL v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: mail\n"
+"Report-Msgid-Bugs-To: support@itsl.se\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+msgid "Could not mark as read"
+msgstr ""
+
+msgid "Could not mark as unread"
+msgstr ""
+
+#: .pc/forward-internal.patch/lib/Controller/MessagesController.php:688
+#: .pc/forward-internal.patch/lib/Controller/MessagesController.php:781
+#: .pc/priority-inbox.patch/lib/Controller/MessagesController.php:679
+#: .pc/priority-inbox.patch/lib/Controller/MessagesController.php:772
+#: .pc/sdk-messaging.patch/lib/Controller/MessagesController.php:679
+#: .pc/sdk-messaging.patch/lib/Controller/MessagesController.php:772
+#: lib/Controller/MessagesController.php:690
+#: lib/Controller/MessagesController.php:783
+#, php-format
+msgid "Embedded message %s"
+msgstr ""
+
+#: appinfo/info.xml:10
+#: lib/Notification/Notifier.php:40
+#: lib/UserMigration/MailAccountMigrator.php:184
+msgid "Mail"
+msgstr ""
+
+#: appinfo/info.xml:11
+msgid "💌 A mail app for Nextcloud"
+msgstr ""
+
+#: appinfo/info.xml:12
+msgid ""
+"**Säker Digital Kommunikation (ITSL Hubs)**\n"
+"\n"
+"A secure communication platform for the Swedish public sector.\n"
+"\n"
+"- **Multiple channels** – SDK, Secure Email, internal messages, SMS, and FAX\n"
+"- **Secure by design** – all communication handled through secure channels\n"
+"- **Integration** – connects to your organization's existing systems\n"
+"- **Built on Nextcloud Mail** – ITSL-customized build of the upstream Nextcloud Mail app, with SDK messaging, tagging, assignment, FAX, and audit logging for Swedish public-sector workflows"
+msgstr ""
+
+#: lib/Dashboard/ImportantMailWidget.php:30
+msgid "Important mail"
+msgstr ""
+
+#: lib/Dashboard/MailWidget.php:175
+msgid "No message found yet"
+msgstr ""
+
+#: lib/Dashboard/MailWidget.php:200
+msgid "Set up an account"
+msgstr ""
+
+#: lib/Dashboard/UnreadMailWidget.php:30
+msgid "Unread mail"
+msgstr ""
+
+#: lib/Db/TagMapper.php:197
+#: src/components/Envelope.vue:236
+#: src/components/MenuEnvelope.vue:19
+#: src/components/SearchMessages.vue:244
+msgid "Important"
+msgstr ""
+
+#: lib/Db/TagMapper.php:202
+msgid "Work"
+msgstr ""
+
+#: lib/Db/TagMapper.php:207
+msgid "Personal"
+msgstr ""
+
+#: lib/Db/TagMapper.php:212
+msgid "To Do"
+msgstr ""
+
+#: lib/Db/TagMapper.php:217
+msgid "Later"
+msgstr ""
+
+#: lib/Notification/Notifier.php:58
+#, python-brace-format
+msgid "You are reaching your mailbox quota limit for {account_email}"
+msgstr ""
+
+#: lib/Notification/Notifier.php:66
+#, python-brace-format
+msgid "You are currently using {percentage} of your mailbox storage. Please make some space by deleting unneeded emails."
+msgstr ""
+
+#: lib/Provider/MailProvider.php:52
+msgid "Mail Application"
+msgstr ""
+
+#: lib/Search/Provider.php:59
+msgid "Mails"
+msgstr ""
+
+#: lib/Service/PhishingDetection/ContactCheck.php:40
+#, php-format
+msgid "Sender email: %1$s is not in the address book, but the sender name: %2$s is in the address book with the following email: %3$s"
+msgstr ""
+
+#: lib/Service/PhishingDetection/ContactCheck.php:42
+#, php-format
+msgid "Sender email: %1$s is not in the address book, but the sender name: %2$s is in the address book with the following emails: %3$s"
+msgstr ""
+
+#: lib/Service/PhishingDetection/CustomEmailCheck.php:29
+#, php-format
+msgid "Sender is using a custom email: %1$s instead of the sender email: %2$s"
+msgstr ""
+
+#: lib/Service/PhishingDetection/DateCheck.php:33
+msgid "Sent date is in the future"
+msgstr ""
+
+#: lib/Service/PhishingDetection/ImapFlagCheck.php:33
+msgid "Mail server marked this message as phishing attempt"
+msgstr ""
+
+#: lib/Service/PhishingDetection/LinkCheck.php:89
+msgid "Some addresses in this message are not matching the link text"
+msgstr ""
+
+#: lib/Service/PhishingDetection/ReplyToCheck.php:30
+#, php-format
+msgid "Reply-To email: %1$s is different from sender email: %2$s"
+msgstr ""
+
+#: lib/SetupChecks/MailConnectionPerformance.php:36
+msgid "Mail connection performance"
+msgstr ""
+
+#: lib/SetupChecks/MailConnectionPerformance.php:106
+#, php-format
+msgid "Slow mail service detected (%1$s) an attempt to connect to several accounts took an average of %2$s seconds per account"
+msgstr ""
+
+#: lib/SetupChecks/MailConnectionPerformance.php:111
+#, php-format
+msgid "Slow mail service detected (%1$s) an attempt to perform a mail box list operation on several accounts took an average of %2$s seconds per account"
+msgstr ""
+
+#: lib/SetupChecks/MailTransport.php:26
+msgid "Mail Transport configuration"
+msgstr ""
+
+#: lib/SetupChecks/MailTransport.php:43
+msgid "The app.mail.transport setting is not set to smtp. This configuration can cause issues with modern email security measures such as SPF and DKIM because emails are sent directly from the web server, which is often not properly configured for this purpose. To address this, we have discontinued support for the mail transport. Please remove app.mail.transport from your configuration to use the SMTP transport and hide this message. A properly configured SMTP setup is required to ensure email delivery."
+msgstr ""
+
+#: lib/UserMigration/MailAccountMigrator.php:188
+msgid "Mail account parameters, aliases and preferences"
+msgstr ""
+
+#: src/App.vue:36
+msgid "Your session has expired. The page will be reloaded."
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:9
+msgid "Drafts are saved in:"
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:14
+msgid "Sent messages are saved in:"
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:19
+msgid "Deleted messages are moved in:"
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:24
+msgid "Archived messages are moved in:"
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:29
+msgid "Snoozed messages are moved in:"
+msgstr ""
+
+#: src/components/AccountDefaultsSettings.vue:35
+msgid "Junk messages are saved in:"
+msgstr ""
+
+#: src/components/AccountForm.vue:11
+msgid "Auto"
+msgstr ""
+
+#: src/components/AccountForm.vue:15
+#: src/components/AccountForm.vue:17
+#: src/components/AccountForm.vue:51
+#: src/components/AccountForm.vue:53
+#: src/components/AliasSettings.vue:43
+#: src/components/mailFilter/UpdateModal.vue:17
+msgid "Name"
+msgstr ""
+
+#: src/components/AccountForm.vue:23
+#: src/components/AccountForm.vue:58
+msgid "Mail address"
+msgstr ""
+
+#: src/components/AccountForm.vue:25
+#: src/components/AccountForm.vue:60
+msgid "name@example.org"
+msgstr ""
+
+#: src/components/AccountForm.vue:30
+#: src/components/AccountForm.vue:65
+msgid "Please enter an email of the format name@example.com"
+msgstr ""
+
+#: src/components/AccountForm.vue:37
+#: src/components/smime/SmimeCertificateModal.vue:114
+#: src/components/smime/SmimeCertificateModal.vue:115
+msgid "Password"
+msgstr ""
+
+#: src/components/AccountForm.vue:232
+#: src/components/AccountForm.vue:44
+#: src/components/AccountSettings.vue:80
+msgid "Enable mark as important classification"
+msgstr ""
+
+#: src/components/AccountForm.vue:47
+msgid "Manual"
+msgstr ""
+
+#: src/components/AccountForm.vue:68
+msgid "IMAP Settings"
+msgstr ""
+
+#: src/components/AccountForm.vue:72
+#: src/components/AccountForm.vue:74
+msgid "IMAP Host"
+msgstr ""
+
+#: src/components/AccountForm.vue:79
+msgid "IMAP Security"
+msgstr ""
+
+#: src/components/AccountForm.vue:173
+#: src/components/AccountForm.vue:92
+#: src/components/SieveAccountForm.vue:22
+#: src/components/settings/ProvisioningSettings.vue:158
+#: src/components/settings/ProvisioningSettings.vue:268
+#: src/components/settings/ProvisioningSettings.vue:84
+msgid "None"
+msgstr ""
+
+#: src/components/AccountForm.vue:104
+#: src/components/AccountForm.vue:185
+#: src/components/SieveAccountForm.vue:27
+#: src/components/settings/ProvisioningSettings.vue:169
+#: src/components/settings/ProvisioningSettings.vue:279
+#: src/components/settings/ProvisioningSettings.vue:95
+msgid "SSL/TLS"
+msgstr ""
+
+#: src/components/AccountForm.vue:116
+#: src/components/AccountForm.vue:197
+#: src/components/SieveAccountForm.vue:32
+#: src/components/settings/ProvisioningSettings.vue:106
+#: src/components/settings/ProvisioningSettings.vue:180
+#: src/components/settings/ProvisioningSettings.vue:290
+msgid "STARTTLS"
+msgstr ""
+
+#: src/components/AccountForm.vue:122
+#: src/components/AccountForm.vue:124
+msgid "IMAP Port"
+msgstr ""
+
+#: src/components/AccountForm.vue:131
+#: src/components/AccountForm.vue:133
+msgid "IMAP User"
+msgstr ""
+
+#: src/components/AccountForm.vue:142
+msgid "IMAP Password"
+msgstr ""
+
+#: src/components/AccountForm.vue:147
+msgid "SMTP Settings"
+msgstr ""
+
+#: src/components/AccountForm.vue:152
+#: src/components/AccountForm.vue:155
+msgid "SMTP Host"
+msgstr ""
+
+#: src/components/AccountForm.vue:160
+msgid "SMTP Security"
+msgstr ""
+
+#: src/components/AccountForm.vue:202
+#: src/components/AccountForm.vue:205
+msgid "SMTP Port"
+msgstr ""
+
+#: src/components/AccountForm.vue:212
+#: src/components/AccountForm.vue:214
+msgid "SMTP User"
+msgstr ""
+
+#: src/components/AccountForm.vue:221
+msgid "SMTP Password"
+msgstr ""
+
+#: src/components/AccountForm.vue:237
+msgid "For the Google account to work with this app you need to enable two-factor authentication for Google and generate an app password."
+msgstr ""
+
+#: src/components/AccountForm.vue:427
+msgid "Connecting"
+msgstr ""
+
+#: src/components/AccountForm.vue:431
+msgid "Reconnect Google account"
+msgstr ""
+
+#: src/components/AccountForm.vue:431
+msgid "Sign in with Google"
+msgstr ""
+
+#: src/components/AccountForm.vue:433
+msgid "Reconnect Microsoft account"
+msgstr ""
+
+#: src/components/AccountForm.vue:433
+msgid "Sign in with Microsoft"
+msgstr ""
+
+#: src/components/AccountForm.vue:436
+msgid "Connect"
+msgstr ""
+
+#: src/components/AccountForm.vue:436
+#: src/components/mailFilter/UpdateModal.vue:81
+#: src/components/quickActions/Settings.vue:111
+#: src/components/settings/AntiSpamSettings.vue:40
+#: src/components/settings/AntiSpamSettings.vue:47
+#: src/components/settings/GmailAdminOauthSettings.vue:23
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:29
+msgid "Save"
+msgstr ""
+
+#: src/components/AccountForm.vue:517
+msgid "Looking up configuration"
+msgstr ""
+
+#: src/components/AccountForm.vue:544
+msgid "Checking mail host connectivity"
+msgstr ""
+
+#: src/components/AccountForm.vue:578
+msgid "Configuration discovery failed. Please use the manual settings"
+msgstr ""
+
+#: src/components/AccountForm.vue:601
+#: src/components/AccountForm.vue:605
+msgid "Password required"
+msgstr ""
+
+#: src/components/AccountForm.vue:609
+msgid "Testing authentication"
+msgstr ""
+
+#: src/components/AccountForm.vue:626
+#: src/components/AccountForm.vue:657
+msgid "Awaiting user consent"
+msgstr ""
+
+#: src/components/AccountForm.vue:629
+msgid "Account created. Please follow the pop-up instructions to link your Google account"
+msgstr ""
+
+#: src/components/AccountForm.vue:634
+msgid "Account created. Please follow the pop-up instructions to link your Microsoft account"
+msgstr ""
+
+#: src/components/AccountForm.vue:647
+msgid "Loading account"
+msgstr ""
+
+#: src/components/AccountForm.vue:660
+msgid "Account updated. Please follow the pop-up instructions to reconnect your Google account"
+msgstr ""
+
+#: src/components/AccountForm.vue:665
+msgid "Account updated. Please follow the pop-up instructions to reconnect your Microsoft account"
+msgstr ""
+
+#: src/components/AccountForm.vue:681
+msgid "Account updated"
+msgstr ""
+
+#: src/components/AccountForm.vue:688
+msgid "IMAP server is not reachable"
+msgstr ""
+
+#: src/components/AccountForm.vue:690
+msgid "SMTP server is not reachable"
+msgstr ""
+
+#: src/components/AccountForm.vue:694
+msgid "IMAP username or password is wrong"
+msgstr ""
+
+#: src/components/AccountForm.vue:696
+msgid "SMTP username or password is wrong"
+msgstr ""
+
+#: src/components/AccountForm.vue:700
+msgid "IMAP server denied authentication"
+msgstr ""
+
+#: src/components/AccountForm.vue:702
+msgid "SMTP server denied authentication"
+msgstr ""
+
+#: src/components/AccountForm.vue:706
+msgid "IMAP authentication error"
+msgstr ""
+
+#: src/components/AccountForm.vue:708
+msgid "SMTP authentication error"
+msgstr ""
+
+#: src/components/AccountForm.vue:712
+msgid "IMAP connection failed"
+msgstr ""
+
+#: src/components/AccountForm.vue:714
+msgid "SMTP connection failed"
+msgstr ""
+
+#: src/components/AccountForm.vue:716
+msgid "Authorization pop-up closed"
+msgstr ""
+
+#: src/components/AccountForm.vue:718
+msgid "Configuration discovery temporarily not available. Please try again later."
+msgstr ""
+
+#: src/components/AccountForm.vue:720
+msgid "There was an error while setting up your account"
+msgstr ""
+
+#: src/components/AccountSettings.vue:12
+#: src/components/AppSettingsMenu.vue:23
+#: src/components/AppSettingsMenu.vue:28
+#: src/components/NavigationAccount.vue:37
+msgid "Account settings"
+msgstr ""
+
+#: src/components/AccountSettings.vue:16
+msgid "Aliases"
+msgstr ""
+
+#: src/components/AccountSettings.vue:21
+msgid "Alias to S/MIME certificate mapping"
+msgstr ""
+
+#: src/components/AccountSettings.vue:24
+msgid "Signature"
+msgstr ""
+
+#: src/components/AccountSettings.vue:26
+msgid "A signature is added to the text of new messages and replies."
+msgstr ""
+
+#: src/components/AccountSettings.vue:30
+msgid "Writing mode"
+msgstr ""
+
+#: src/components/AccountSettings.vue:32
+msgid "Preferred writing mode for new messages and replies."
+msgstr ""
+
+#: src/components/AccountSettings.vue:36
+msgid "Default folders"
+msgstr ""
+
+#: src/components/AccountSettings.vue:39
+msgid "The folders to use for drafts, sent messages, deleted messages, archived messages and junk messages."
+msgstr ""
+
+#: src/components/AccountSettings.vue:44
+msgid "Automatic trash deletion"
+msgstr ""
+
+#: src/components/AccountSettings.vue:46
+msgid "Days after which messages in Trash will automatically be deleted:"
+msgstr ""
+
+#: src/components/AccountSettings.vue:53
+msgid "Autoresponder"
+msgstr ""
+
+#: src/components/AccountSettings.vue:55
+msgid "Automated reply to incoming messages. If someone sends you several messages, this automated reply will be sent at most once every 4 days."
+msgstr ""
+
+#: src/components/AccountSettings.vue:59
+msgid "The autoresponder uses Sieve, a scripting language supported by many email providers. If you're unsure whether yours does, check with your provider. If Sieve is available, click the button to go to the settings and enable it."
+msgstr ""
+
+#: src/components/AccountSettings.vue:60
+#: src/components/AccountSettings.vue:61
+msgid "Go to Sieve settings"
+msgstr ""
+
+#: src/components/AccountSettings.vue:68
+msgid "Calendar settings"
+msgstr ""
+
+#: src/components/AccountSettings.vue:74
+msgid "Classification settings"
+msgstr ""
+
+#: src/components/AccountSettings.vue:86
+msgid "Filters"
+msgstr ""
+
+#: src/components/AccountSettings.vue:94
+#: src/components/Envelope.vue:254
+msgid "Quick actions"
+msgstr ""
+
+#: src/components/AccountSettings.vue:100
+msgid "Sieve script editor"
+msgstr ""
+
+#: src/components/AccountSettings.vue:111
+msgid "Mail server"
+msgstr ""
+
+#: src/components/AccountSettings.vue:124
+msgid "Sieve server"
+msgstr ""
+
+#: src/components/AccountSettings.vue:133
+msgid "Folder search"
+msgstr ""
+
+#: src/components/AliasForm.vue:33
+#: src/components/AliasForm.vue:36
+msgid "Update alias"
+msgstr ""
+
+#: src/components/AliasForm.vue:50
+msgid "Rename alias"
+msgstr ""
+
+#: src/components/AliasForm.vue:51
+msgid "Show update alias form"
+msgstr ""
+
+#: src/components/AliasForm.vue:60
+#: src/components/AliasForm.vue:61
+msgid "Delete alias"
+msgstr ""
+
+#: src/components/AliasSettings.vue:19
+#: src/components/MessageAttachment.vue:67
+#: src/components/NewMessageModal.vue:44
+#: src/components/NewMessageModal.vue:45
+#: src/components/NewMessageModal.vue:61
+#: src/components/NewMessageModal.vue:62
+#: src/components/RecipientBubble.vue:90
+#: src/components/RecipientBubble.vue:95
+msgid "Go back"
+msgstr ""
+
+#: src/components/AliasSettings.vue:20
+msgid "Change name"
+msgstr ""
+
+#: src/components/AliasSettings.vue:48
+msgid "Email address"
+msgstr ""
+
+#: src/components/AliasSettings.vue:58
+#: src/components/AliasSettings.vue:60
+msgid "Add alias"
+msgstr ""
+
+#: src/components/AliasSettings.vue:68
+#: src/components/AliasSettings.vue:74
+msgid "Create alias"
+msgstr ""
+
+#: src/components/AliasSettings.vue:80
+#: src/components/AliasSettings.vue:82
+#: src/components/AppSettingsMenu.vue:256
+#: src/components/ConfirmationModal.vue:13
+#: src/components/NavigationAccount.vue:240
+#: src/components/NavigationMailbox.vue:667
+#: src/components/NavigationMailbox.vue:691
+#: src/components/mailFilter/DeleteModal.vue:42
+#: src/components/textBlocks/ListItem.vue:92
+msgid "Cancel"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:9
+#: src/components/Navigation.vue:72
+msgid "Mail settings"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:14
+#: src/components/settings/ProvisioningSettings.vue:13
+msgid "General"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:17
+#: src/components/AppSettingsMenu.vue:20
+msgid "Set as default mail app"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:39
+#: src/components/AppSettingsMenu.vue:44
+msgid "Add mail account"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:50
+msgid "Appearance"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:54
+#: src/components/settings/AdminSettings.vue:267
+msgid "Show all messages in thread"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:55
+msgid "When off, only the selected message will be shown"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:60
+msgid "Sort favorites up"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:62
+msgid "When on, favorite messages will be sorted to the top of folders"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:64
+msgid "Layout"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:65
+msgid "Vertical split"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:70
+msgid "Horizontal split"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:75
+msgid "List"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:85
+msgid "Use compact mode"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:88
+msgid "Sorting"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:89
+msgid "Newest first"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:90
+msgid "Oldest first"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:98
+msgid "Avatars from Gravatar and favicons"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:108
+msgid "Reply position"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:109
+msgid "Top"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:110
+msgid "Bottom"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:114
+#: src/components/Composer.vue:374
+#: src/components/Composer.vue:378
+#: src/components/textBlocks/TextBlockModal.vue:6
+msgid "Text blocks"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:115
+msgid "Reusable pieces of text that can be inserted in messages"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:123
+#: src/components/AppSettingsMenu.vue:237
+msgid "New text block"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:126
+msgid "Shared with me"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:135
+msgid "Privacy"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:138
+msgid "Data collection"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:139
+msgid "Allow the app to collect and process data locally to adapt to your preferences"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:141
+msgid "Always show images from"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:145
+msgid "Security"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:150
+msgid "Manage your internal addresses and domains to ensure recognized contacts stay unmarked"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:153
+msgid "S/MIME"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:157
+#: src/components/AppSettingsMenu.vue:163
+msgid "Manage certificates"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:170
+msgid "Mailvelope"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:172
+msgid "Mailvelope is enabled for the current domain."
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:179
+msgid "Step 1"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:180
+msgid "Install the browser extension"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:183
+msgid "Step 2"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:184
+msgid "Enable for the current domain"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:195
+msgid "Assistance features"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:204
+msgid "Context Chat integration"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:216
+msgid "Compose new message"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:217
+msgid "Newer message"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:218
+msgid "Older message"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:219
+msgid "Toggle star"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:220
+msgid "Toggle unread"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:221
+#: src/i18n/MailboxTranslator.js:15
+msgid "Archive"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:222
+#: src/components/OutboxMessageListItem.vue:52
+#: src/components/SignatureSettings.vue:54
+#: src/components/SignatureSettings.vue:58
+#: src/components/quickActions/Settings.vue:25
+msgid "Delete"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:223
+#: src/components/SearchMessages.vue:383
+msgid "Search"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:224
+#: src/components/Composer.vue:877
+msgid "Send"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:225
+#: src/components/NewMessageButtonHeader.vue:20
+msgid "Refresh"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:229
+msgid "About"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:231
+msgid "Acknowledgements"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:232
+msgid "This application includes CKEditor, an open-source editor. Copyright © CKEditor contributors. Licensed under GPLv2."
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:240
+#: src/components/textBlocks/ListItem.vue:39
+msgid "Title of the text block"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:245
+#: src/components/textBlocks/ListItem.vue:45
+msgid "Content of the text block"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:266
+#: src/components/textBlocks/ListItem.vue:103
+msgid "Ok"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:358
+msgid "Search the body of messages in priority Inbox"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:361
+msgid "Activate"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:365
+msgid "Make mails available to Context Chat"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:366
+msgid "Remind about messages that require a reply but received none"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:367
+msgid "Highlight external addresses"
+msgstr ""
+
+#: src/components/AppSettingsMenu.vue:676
+#: src/components/AppSettingsMenu.vue:690
+#: src/components/AppSettingsMenu.vue:706
+#: src/components/AppSettingsMenu.vue:722
+msgid "Could not update preference"
+msgstr ""
+
+#: src/components/CalendarSettings.vue:13
+msgid "Automatically create tentative appointments in calendar"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:13
+#: src/components/CertificateSettings.vue:14
+#: src/components/SignatureSettings.vue:22
+msgid "Select an alias"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:22
+msgid "Select certificates"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:28
+#: src/components/CertificateSettings.vue:30
+msgid "Update Certificate"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:35
+msgid "The selected certificate is not trusted by the server. Recipients might not be able to verify your signature."
+msgstr ""
+
+#: src/components/CertificateSettings.vue:142
+msgid "No certificate"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:155
+#: src/components/CertificateSettings.vue:168
+msgid "Certificate updated"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:158
+#: src/components/CertificateSettings.vue:171
+msgid "Could not update certificate"
+msgstr ""
+
+#: src/components/CertificateSettings.vue:183
+#, python-brace-format
+msgid "{commonName} - Valid until {expiryDate}"
+msgstr ""
+
+#: src/components/Composer.vue:15
+#: src/components/SearchMessages.vue:97
+#: src/components/Thread.vue:469
+msgid "From"
+msgstr ""
+
+#: src/components/Composer.vue:25
+#: src/components/Composer.vue:26
+msgid "Select account"
+msgstr ""
+
+#: src/components/Composer.vue:44
+#: src/components/SearchMessages.vue:122
+#: src/components/Thread.vue:477
+msgid "To"
+msgstr ""
+
+#: src/components/Composer.vue:47
+msgid "Cc/Bcc"
+msgstr ""
+
+#: src/components/Composer.vue:58
+msgid "Select recipient"
+msgstr ""
+
+#: src/components/Composer.vue:119
+#: src/components/Composer.vue:120
+#: src/components/Composer.vue:132
+#: src/components/Composer.vue:176
+#: src/components/Composer.vue:177
+#: src/components/Composer.vue:189
+#: src/components/Composer.vue:75
+#: src/components/EventModal.vue:69
+msgid "Contact or email address …"
+msgstr ""
+
+#: src/components/Composer.vue:102
+#: src/components/SearchMessages.vue:146
+msgid "Cc"
+msgstr ""
+
+#: src/components/Composer.vue:159
+#: src/components/SearchMessages.vue:170
+msgid "Bcc"
+msgstr ""
+
+#: src/components/Composer.vue:217
+#: src/components/OutOfOfficeForm.vue:81
+#: src/components/SearchMessages.vue:49
+#: src/components/Thread.vue:465
+#: src/components/mailFilter/CreateModal.vue:103
+#: src/components/mailFilter/Test.vue:137
+msgid "Subject"
+msgstr ""
+
+#: src/components/Composer.vue:226
+msgid "Subject …"
+msgstr ""
+
+#: src/components/Composer.vue:230
+msgid "This message came from a noreply address so your reply will probably not be read."
+msgstr ""
+
+#: src/components/Composer.vue:234
+#, python-brace-format
+msgid "The following recipients do not have a S/MIME certificate: {recipients}."
+msgstr ""
+
+#: src/components/Composer.vue:241
+#, python-brace-format
+msgid "The following recipients do not have a PGP key: {recipients}."
+msgstr ""
+
+#: src/components/Composer.vue:256
+msgid "Write message …"
+msgstr ""
+
+#: src/components/Composer.vue:282
+msgid "Saving draft …"
+msgstr ""
+
+#: src/components/Composer.vue:283
+msgid "Error saving draft"
+msgstr ""
+
+#: src/components/Composer.vue:284
+#: src/components/NewMessageModal.vue:359
+msgid "Draft saved"
+msgstr ""
+
+#: src/components/Composer.vue:290
+#: src/components/Composer.vue:293
+msgid "Save draft"
+msgstr ""
+
+#: src/components/Composer.vue:300
+#: src/components/Composer.vue:303
+msgid "Discard & close draft"
+msgstr ""
+
+#: src/components/Composer.vue:311
+#: src/components/Composer.vue:314
+msgid "Enable formatting"
+msgstr ""
+
+#: src/components/Composer.vue:321
+#: src/components/Composer.vue:324
+msgid "Disable formatting"
+msgstr ""
+
+#: src/components/Composer.vue:337
+msgid "Upload attachment"
+msgstr ""
+
+#: src/components/Composer.vue:345
+msgid "Add attachment from Files"
+msgstr ""
+
+#: src/components/Composer.vue:353
+msgid "Add share link from Files"
+msgstr ""
+
+#: src/components/Composer.vue:367
+msgid "Smart picker"
+msgstr ""
+
+#: src/components/Composer.vue:386
+#: src/components/Composer.vue:389
+#: src/components/Composer.vue:429
+#: src/components/Composer.vue:431
+#: src/components/Composer.vue:875
+msgid "Send later"
+msgstr ""
+
+#: src/components/Composer.vue:396
+msgid "Request a read receipt"
+msgstr ""
+
+#: src/components/Composer.vue:403
+msgid "Sign message with S/MIME"
+msgstr ""
+
+#: src/components/Composer.vue:411
+msgid "Encrypt message with S/MIME"
+msgstr ""
+
+#: src/components/Composer.vue:420
+msgid "Encrypt message with Mailvelope"
+msgstr ""
+
+#: src/components/Composer.vue:439
+#: src/components/OutboxMessageListItem.vue:39
+#: src/components/OutboxMessageListItem.vue:42
+msgid "Send now"
+msgstr ""
+
+#: src/components/Composer.vue:446
+msgid "Tomorrow morning"
+msgstr ""
+
+#: src/components/Composer.vue:453
+msgid "Tomorrow afternoon"
+msgstr ""
+
+#: src/components/Composer.vue:460
+msgid "Monday morning"
+msgstr ""
+
+#: src/components/Composer.vue:467
+msgid "Custom date and time"
+msgstr ""
+
+#: src/components/Composer.vue:481
+msgid "Enter a date"
+msgstr ""
+
+#: src/components/Composer.vue:862
+msgid "Encrypt with S/MIME and send later"
+msgstr ""
+
+#: src/components/Composer.vue:864
+msgid "Encrypt with S/MIME and send"
+msgstr ""
+
+#: src/components/Composer.vue:869
+msgid "Encrypt with Mailvelope and send later"
+msgstr ""
+
+#: src/components/Composer.vue:871
+msgid "Encrypt with Mailvelope and send"
+msgstr ""
+
+#: src/components/Composer.vue:1096
+#, python-brace-format
+msgid "Message {id} could not be found"
+msgstr ""
+
+#: src/components/Composer.vue:1363
+msgid "Sign or Encrypt with S/MIME was selected, but we don't have a certificate for the selected alias. The message will not be signed or encrypted."
+msgstr ""
+
+#: src/components/Composer.vue:1607
+msgid "Any existing formatting (for example bold, italic, underline or inline images) will be removed."
+msgstr ""
+
+#: src/components/Composer.vue:1608
+msgid "Turn off formatting"
+msgstr ""
+
+#: src/components/Composer.vue:1611
+msgid "Turn off and remove formatting"
+msgstr ""
+
+#: src/components/Composer.vue:1613
+msgid "Keep formatting"
+msgstr ""
+
+#: src/components/ComposerAttachments.vue:14
+#, python-brace-format
+msgid "{count} attachment"
+msgid_plural "{count} attachments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/ComposerAttachments.vue:39
+msgid "Add attachments"
+msgstr ""
+
+#: src/components/ComposerAttachments.vue:43
+msgid "Choose a file to add as attachment"
+msgstr ""
+
+#: src/components/ComposerAttachments.vue:49
+msgid "Choose a file to share as a link"
+msgstr ""
+
+#: src/components/ComposerAttachments.vue:122
+#: src/components/ComposerAttachments.vue:130
+#: src/components/MailboxPicker.vue:122
+#: src/components/MailboxPicker.vue:127
+#: src/components/MessageAttachment.vue:173
+#: src/components/MessageAttachments.vue:116
+msgid "Choose"
+msgstr ""
+
+#: src/components/ComposerAttachments.vue:410
+#, python-brace-format
+msgid "The attachment exceed the allowed attachments size of {size}. Please share the file via link instead."
+msgid_plural "The attachments exceed the allowed attachments size of {size}. Please share the files via link instead."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/ComposerSessionIndicator.vue:21
+msgid "Expand composer"
+msgstr ""
+
+#: src/components/ComposerSessionIndicator.vue:31
+msgid "Close composer"
+msgstr ""
+
+#: src/components/ComposerSessionIndicator.vue:71
+msgid "Untitled message"
+msgstr ""
+
+#: src/components/ConfirmationModal.vue:49
+msgid "Confirm"
+msgstr ""
+
+#: src/components/DeleteTagModal.vue:11
+msgid "The tag will be deleted from all messages."
+msgstr ""
+
+#: src/components/DeleteTagModal.vue:74
+#, python-brace-format
+msgid "Tag: {name} deleted"
+msgstr ""
+
+#: src/components/DeleteTagModal.vue:76
+msgid "An error occurred, unable to delete the tag."
+msgstr ""
+
+#: src/components/EditorSettings.vue:16
+msgid "Plain text"
+msgstr ""
+
+#: src/components/EditorSettings.vue:25
+msgid "Rich text"
+msgstr ""
+
+#: src/components/EmptyMailbox.vue:6
+msgid "No messages in this folder"
+msgstr ""
+
+#: src/components/EmptyMailboxSection.vue:6
+msgid "No messages"
+msgstr ""
+
+#: src/components/Envelope.vue:175
+msgid "This summary was AI generated"
+msgstr ""
+
+#: src/components/Envelope.vue:177
+#: src/components/ThreadEnvelope.vue:76
+msgid "Encrypted message"
+msgstr ""
+
+#: src/components/Envelope.vue:187
+msgid "This message is unread"
+msgstr ""
+
+#: src/components/Envelope.vue:206
+#: src/components/SearchMessages.vue:253
+msgid "Favorite"
+msgstr ""
+
+#: src/components/Envelope.vue:206
+msgid "Unfavorite"
+msgstr ""
+
+#: src/components/Envelope.vue:223
+msgid "Read"
+msgstr ""
+
+#: src/components/Envelope.vue:223
+#: src/components/SearchMessages.vue:290
+#: src/components/SearchMessages.vue:291
+#: src/components/SearchMessages.vue:293
+msgid "Unread"
+msgstr ""
+
+#: src/components/Envelope.vue:236
+#: src/components/MenuEnvelope.vue:19
+msgid "Unimportant"
+msgstr ""
+
+#: src/components/Envelope.vue:264
+#: src/components/MenuEnvelope.vue:38
+#: src/components/MenuEnvelope.vue:42
+#: src/components/quickActions/Action.vue:96
+#: src/components/quickActions/Settings.vue:58
+msgid "Mark as spam"
+msgstr ""
+
+#: src/components/Envelope.vue:264
+#: src/components/MenuEnvelope.vue:38
+#: src/components/MenuEnvelope.vue:42
+msgid "Mark not spam"
+msgstr ""
+
+#: src/components/Envelope.vue:274
+#: src/components/MenuEnvelope.vue:51
+#: src/components/MenuEnvelope.vue:54
+msgid "Edit tags"
+msgstr ""
+
+#: src/components/Envelope.vue:282
+#: src/components/Envelope.vue:286
+#: src/components/MenuEnvelope.vue:73
+#: src/components/MenuEnvelope.vue:76
+msgid "Snooze"
+msgstr ""
+
+#: src/components/Envelope.vue:295
+#: src/components/Envelope.vue:298
+#: src/components/MenuEnvelope.vue:84
+#: src/components/MenuEnvelope.vue:87
+msgid "Unsnooze"
+msgstr ""
+
+#: src/components/Envelope.vue:308
+#: src/components/MoveModal.vue:10
+#: src/components/quickActions/Action.vue:100
+#: src/components/quickActions/Settings.vue:70
+msgid "Move thread"
+msgstr ""
+
+#: src/components/Envelope.vue:311
+msgid "Move Message"
+msgstr ""
+
+#: src/components/Envelope.vue:323
+msgid "Archive thread"
+msgstr ""
+
+#: src/components/Envelope.vue:326
+#: src/components/ThreadEnvelope.vue:197
+#: src/components/ThreadEnvelope.vue:202
+#: src/components/ThreadEnvelope.vue:205
+msgid "Archive message"
+msgstr ""
+
+#: src/components/Envelope.vue:337
+#: src/components/EnvelopeSingleClickActions.vue:38
+#: src/components/quickActions/Action.vue:102
+#: src/components/quickActions/Settings.vue:76
+msgid "Delete thread"
+msgstr ""
+
+#: src/components/Envelope.vue:340
+#: src/components/ThreadEnvelope.vue:210
+#: src/components/ThreadEnvelope.vue:215
+#: src/components/ThreadEnvelope.vue:218
+msgid "Delete message"
+msgstr ""
+
+#: src/components/Envelope.vue:349
+#: src/components/Envelope.vue:405
+#: src/components/MenuEnvelope.vue:105
+#: src/components/MenuEnvelope.vue:108
+#: src/components/MenuEnvelope.vue:117
+#: src/components/MenuEnvelope.vue:119
+msgid "More actions"
+msgstr ""
+
+#: src/components/Envelope.vue:360
+#: src/components/MenuEnvelope.vue:221
+#: src/components/smime/SmimeCertificateModal.vue:127
+#: src/components/smime/SmimeCertificateModal.vue:129
+msgid "Back"
+msgstr ""
+
+#: src/components/Envelope.vue:389
+#: src/components/Envelope.vue:395
+#: src/components/MenuEnvelope.vue:248
+#: src/components/MenuEnvelope.vue:254
+msgid "Set custom snooze"
+msgstr ""
+
+#: src/components/Envelope.vue:413
+#: src/components/MenuEnvelope.vue:137
+#: src/components/MenuEnvelope.vue:140
+msgid "Edit as new message"
+msgstr ""
+
+#: src/components/Envelope.vue:421
+#: src/components/MenuEnvelope.vue:147
+#: src/components/MenuEnvelope.vue:150
+msgid "Reply with meeting"
+msgstr ""
+
+#: src/components/Envelope.vue:429
+#: src/components/MenuEnvelope.vue:157
+#: src/components/MenuEnvelope.vue:160
+#: src/components/TaskModal.vue:8
+msgid "Create task"
+msgstr ""
+
+#: src/components/Envelope.vue:437
+#: src/components/MenuEnvelope.vue:187
+msgid "Download message"
+msgstr ""
+
+#: src/components/Envelope.vue:447
+msgid "Back to all actions"
+msgstr ""
+
+#: src/components/Envelope.vue:463
+#: src/components/EnvelopeList.vue:159
+msgid "Manage quick actions"
+msgstr ""
+
+#: src/components/Envelope.vue:758
+msgid "Blind copy recipients only"
+msgstr ""
+
+#: src/components/Envelope.vue:850
+#: src/components/OutboxMessageListItem.vue:142
+#: src/components/Thread.vue:197
+msgid "No subject"
+msgstr ""
+
+#: src/components/Envelope.vue:852
+#, python-brace-format
+msgid "{markup-start}Draft:{markup-end} {subject}"
+msgstr ""
+
+#: src/components/Envelope.vue:933
+#: src/components/MenuEnvelope.vue:472
+#, python-brace-format
+msgid "Later today – {timeLocale}"
+msgstr ""
+
+#: src/components/Envelope.vue:934
+#: src/components/MenuEnvelope.vue:473
+msgid "Set reminder for later today"
+msgstr ""
+
+#: src/components/Envelope.vue:939
+#: src/components/MenuEnvelope.vue:478
+#, python-brace-format
+msgid "Tomorrow – {timeLocale}"
+msgstr ""
+
+#: src/components/Envelope.vue:940
+#: src/components/MenuEnvelope.vue:479
+msgid "Set reminder for tomorrow"
+msgstr ""
+
+#: src/components/Envelope.vue:945
+#: src/components/MenuEnvelope.vue:484
+#, python-brace-format
+msgid "This weekend – {timeLocale}"
+msgstr ""
+
+#: src/components/Envelope.vue:946
+#: src/components/MenuEnvelope.vue:485
+msgid "Set reminder for this weekend"
+msgstr ""
+
+#: src/components/Envelope.vue:951
+#: src/components/MenuEnvelope.vue:490
+#, python-brace-format
+msgid "Next week – {timeLocale}"
+msgstr ""
+
+#: src/components/Envelope.vue:952
+#: src/components/MenuEnvelope.vue:491
+msgid "Set reminder for next week"
+msgstr ""
+
+#: src/components/Envelope.vue:1040
+#: src/components/Envelope.vue:1102
+msgid "Could not apply tag, configured tag not found"
+msgstr ""
+
+#: src/components/Envelope.vue:1076
+msgid "Could not move thread, destination mailbox not found"
+msgstr ""
+
+#: src/components/Envelope.vue:1088
+msgid "Could not execute quick action"
+msgstr ""
+
+#: src/components/Envelope.vue:1092
+msgid "Quick action executed"
+msgstr ""
+
+#: src/components/Envelope.vue:1267
+#: src/components/EnvelopeList.vue:502
+#: src/components/Mailbox.vue:427
+#: src/components/ThreadEnvelope.vue:946
+msgid "No trash folder configured"
+msgstr ""
+
+#: src/components/Envelope.vue:1271
+#: src/components/EnvelopeList.vue:506
+#: src/components/Mailbox.vue:430
+#: src/components/OutboxMessageListItem.vue:166
+#: src/components/ThreadEnvelope.vue:950
+msgid "Could not delete message"
+msgstr ""
+
+#: src/components/Envelope.vue:1322
+#: src/components/Mailbox.vue:467
+#: src/components/ThreadEnvelope.vue:974
+msgid "Could not archive message"
+msgstr ""
+
+#: src/components/Envelope.vue:1348
+msgid "Thread was snoozed"
+msgstr ""
+
+#: src/components/Envelope.vue:1351
+msgid "Could not snooze thread"
+msgstr ""
+
+#: src/components/Envelope.vue:1369
+msgid "Thread was unsnoozed"
+msgstr ""
+
+#: src/components/Envelope.vue:1372
+msgid "Could not unsnooze thread"
+msgstr ""
+
+#: src/components/EnvelopeList.vue:13
+#, python-brace-format
+msgid "Mark {number} read"
+msgid_plural "Mark {number} read"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:21
+#, python-brace-format
+msgid "Mark {number} unread"
+msgid_plural "Mark {number} unread"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:29
+#, python-brace-format
+msgid "Mark {number} as important"
+msgid_plural "Mark {number} as important"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:37
+#, python-brace-format
+msgid "Mark {number} as unimportant"
+msgid_plural "Mark {number} as unimportant"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:45
+#, python-brace-format
+msgid "Unfavorite {number}"
+msgid_plural "Unfavorite {number}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:53
+#, python-brace-format
+msgid "Favorite {number}"
+msgid_plural "Favorite {number}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:60
+#, python-brace-format
+msgid "Unselect {number}"
+msgid_plural "Unselect {number}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:67
+#, python-brace-format
+msgid "Delete {number} thread"
+msgid_plural "Delete {number} threads"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:87
+#, python-brace-format
+msgid "Mark {number} as spam"
+msgid_plural "Mark {number} as spam"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:95
+#, python-brace-format
+msgid "Mark {number} as not spam"
+msgid_plural "Mark {number} as not spam"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:101
+#, python-brace-format
+msgid "Edit tags for {number}"
+msgid_plural "Edit tags for {number}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:107
+#, python-brace-format
+msgid "Move {number} thread"
+msgid_plural "Move {number} threads"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:113
+#, python-brace-format
+msgid "Forward {number} as attachment"
+msgid_plural "Forward {number} as attachment"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/EnvelopeList.vue:227
+msgid "Load more"
+msgstr ""
+
+#: src/components/EnvelopeSingleClickActions.vue:11
+#: src/components/ThreadEnvelope.vue:178
+#: src/components/ThreadEnvelope.vue:184
+#: src/components/ThreadEnvelope.vue:191
+#: src/components/quickActions/Action.vue:106
+#: src/components/quickActions/Settings.vue:88
+msgid "Mark as unread"
+msgstr ""
+
+#: src/components/EnvelopeSingleClickActions.vue:18
+#: src/components/ThreadEnvelope.vue:178
+#: src/components/ThreadEnvelope.vue:188
+#: src/components/ThreadEnvelope.vue:191
+#: src/components/quickActions/Action.vue:104
+#: src/components/quickActions/Settings.vue:82
+msgid "Mark as read"
+msgstr ""
+
+#: src/components/EnvelopeSingleClickActions.vue:25
+msgid "Mark as unimportant"
+msgstr ""
+
+#: src/components/EnvelopeSingleClickActions.vue:32
+#: src/components/quickActions/Action.vue:108
+#: src/components/quickActions/Settings.vue:94
+msgid "Mark as important"
+msgstr ""
+
+#: src/components/Error.vue:17
+#: src/components/Error.vue:19
+msgid "Report this bug"
+msgstr ""
+
+#: src/components/EventModal.vue:11
+#: src/components/EventModal.vue:8
+msgid "Create event"
+msgstr ""
+
+#: src/components/EventModal.vue:42
+#: src/components/TaskModal.vue:41
+msgid "All day"
+msgstr ""
+
+#: src/components/EventModal.vue:46
+msgid "Attendees"
+msgstr ""
+
+#: src/components/EventModal.vue:48
+msgid "You can only invite attendees if your account has an email address set"
+msgstr ""
+
+#: src/components/EventModal.vue:87
+#: src/components/TaskModal.vue:49
+#: src/components/TaskModal.vue:50
+msgid "Select calendar"
+msgstr ""
+
+#: src/components/EventModal.vue:98
+#: src/components/TaskModal.vue:32
+msgid "Description"
+msgstr ""
+
+#: src/components/EventModal.vue:107
+#: src/components/TaskModal.vue:70
+msgid "Create"
+msgstr ""
+
+#: src/components/EventModal.vue:319
+msgid "Event created"
+msgstr ""
+
+#: src/components/EventModal.vue:322
+#: src/components/MessageAttachment.vue:266
+#: src/components/itinerary/EventReservation.vue:133
+#: src/components/itinerary/FlightReservation.vue:162
+#: src/components/itinerary/TrainReservation.vue:165
+msgid "Could not create event"
+msgstr ""
+
+#: src/components/Imip.vue:13
+msgid "You accepted this invitation"
+msgstr ""
+
+#: src/components/Imip.vue:16
+msgid "You tentatively accepted this invitation"
+msgstr ""
+
+#: src/components/Imip.vue:19
+msgid "You declined this invitation"
+msgstr ""
+
+#: src/components/Imip.vue:22
+msgid "You already reacted to this invitation"
+msgstr ""
+
+#: src/components/Imip.vue:25
+msgid "You have been invited to an event"
+msgstr ""
+
+#: src/components/Imip.vue:39
+msgid "This event was cancelled"
+msgstr ""
+
+#: src/components/Imip.vue:50
+msgid "Save to"
+msgstr ""
+
+#: src/components/Imip.vue:56
+msgid "Select"
+msgstr ""
+
+#: src/components/Imip.vue:69
+msgid "Comment"
+msgstr ""
+
+#: src/components/Imip.vue:81
+#: src/components/Imip.vue:83
+msgid "Accept"
+msgstr ""
+
+#: src/components/Imip.vue:88
+#: src/components/Imip.vue:90
+msgid "Decline"
+msgstr ""
+
+#: src/components/Imip.vue:95
+#: src/components/Imip.vue:97
+msgid "Tentatively accept"
+msgstr ""
+
+#: src/components/Imip.vue:103
+#: src/components/Imip.vue:105
+msgid "More options"
+msgstr ""
+
+#: src/components/Imip.vue:110
+msgid "This message has an attached invitation but the invitation dates are in the past"
+msgstr ""
+
+#: src/components/Imip.vue:114
+msgid "This message has an attached invitation but the invitation does not contain a participant that matches any configured mail account address"
+msgstr ""
+
+#: src/components/Imip.vue:352
+msgid "This event was updated"
+msgstr ""
+
+#: src/components/Imip.vue:359
+#, python-brace-format
+msgid "{attendeeName} accepted your invitation"
+msgstr ""
+
+#: src/components/Imip.vue:363
+#, python-brace-format
+msgid "{attendeeName} tentatively accepted your invitation"
+msgstr ""
+
+#: src/components/Imip.vue:367
+#, python-brace-format
+msgid "{attendeeName} declined your invitation"
+msgstr ""
+
+#: src/components/Imip.vue:372
+#, python-brace-format
+msgid "{attendeeName} reacted to your invitation"
+msgstr ""
+
+#: src/components/Imip.vue:480
+#: src/components/Imip.vue:507
+msgid "Failed to save your participation status"
+msgstr ""
+
+#: src/components/InternalAddress.vue:20
+#: src/components/InternalAddress.vue:21
+#: src/components/InternalAddress.vue:42
+#: src/components/InternalAddress.vue:43
+#: src/components/TrustedSenders.vue:20
+#: src/components/TrustedSenders.vue:21
+msgid "Remove"
+msgstr ""
+
+#: src/components/InternalAddress.vue:59
+#: src/components/InternalAddress.vue:64
+msgid "Add internal address"
+msgstr ""
+
+#: src/components/InternalAddress.vue:66
+msgid "Add internal email or domain"
+msgstr ""
+
+#: src/components/InternalAddress.vue:147
+#, python-brace-format
+msgid "Could not remove internal address {sender}"
+msgstr ""
+
+#: src/components/InternalAddress.vue:167
+#, python-brace-format
+msgid "Could not add internal address {address}"
+msgstr ""
+
+#: src/components/InternalAddress.vue:189
+#: src/components/TrustedSenders.vue:98
+msgid "individual"
+msgstr ""
+
+#: src/components/InternalAddress.vue:191
+#: src/components/TrustedSenders.vue:100
+msgid "domain"
+msgstr ""
+
+#: src/components/Itinerary.vue:27
+#, python-brace-format
+msgid "Itinerary for {type} is not supported yet"
+msgstr ""
+
+#: src/components/Mailbox.vue:10
+msgid "Could not open folder"
+msgstr ""
+
+#: src/components/Mailbox.vue:16
+msgid "Loading messages …"
+msgstr ""
+
+#: src/components/Mailbox.vue:17
+msgid "Indexing your messages. This can take a bit longer for larger folders."
+msgstr ""
+
+#: src/components/Mailbox.vue:440
+msgid "To archive a message please configure an archive folder in account settings"
+msgstr ""
+
+#: src/components/Mailbox.vue:445
+msgid "You are not allowed to move this message to the archive folder and/or delete this message from the current folder"
+msgstr ""
+
+#: src/components/Mailbox.vue:486
+msgid "Your IMAP server does not support storing the seen/unseen state."
+msgstr ""
+
+#: src/components/Mailbox.vue:498
+msgid "Could not mark message as seen/unseen"
+msgstr ""
+
+#: src/components/Mailbox.vue:610
+msgid "Last hour"
+msgstr ""
+
+#: src/components/Mailbox.vue:612
+msgid "Today"
+msgstr ""
+
+#: src/components/Mailbox.vue:614
+msgid "Yesterday"
+msgstr ""
+
+#: src/components/Mailbox.vue:616
+msgid "Last week"
+msgstr ""
+
+#: src/components/Mailbox.vue:618
+msgid "Last month"
+msgstr ""
+
+#: src/components/MailboxPicker.vue:9
+msgid "Choose target folder"
+msgstr ""
+
+#: src/components/MailboxPicker.vue:54
+msgid "No more submailboxes in here"
+msgstr ""
+
+#: src/components/MailboxThread.vue:42
+#: src/components/MailboxThread.vue:87
+#: src/i18n/MailboxTranslator.js:23
+msgid "Favorites"
+msgstr ""
+
+#: src/components/MailboxThread.vue:47
+#: src/components/MailboxThread.vue:92
+msgid "Favorites info"
+msgstr ""
+
+#: src/components/MailboxThread.vue:106
+#: src/components/MailboxThread.vue:61
+msgid "Load more favorites"
+msgstr ""
+
+#: src/components/MailboxThread.vue:120
+#: src/components/ThreadEnvelope.vue:687
+#: src/util/tag.js:17
+msgid "Follow up"
+msgstr ""
+
+#: src/components/MailboxThread.vue:125
+msgid "Follow up info"
+msgstr ""
+
+#: src/components/MailboxThread.vue:139
+msgid "Load more follow ups"
+msgstr ""
+
+#: src/components/MailboxThread.vue:151
+msgid "ImportantLabel"
+msgstr ""
+
+#: src/components/MailboxThread.vue:156
+msgid "Important info"
+msgstr ""
+
+#: src/components/MailboxThread.vue:171
+msgid "Load more important messages"
+msgstr ""
+
+#: src/components/MailboxThread.vue:183
+msgid "Other"
+msgstr ""
+
+#: src/components/MailboxThread.vue:186
+msgid "Load more other messages"
+msgstr ""
+
+#: src/components/MailboxThread.vue:268
+msgid "Messages will automatically be marked as important based on which messages you interacted with or marked as important. In the beginning you might have to manually change the importance to teach the system, but it will improve over time."
+msgstr ""
+
+#: src/components/MailboxThread.vue:269
+msgid "Messages that you marked as favorite will be shown at the top of folders. You can disable this behavior in the app settings"
+msgstr ""
+
+#: src/components/MailboxThread.vue:270
+msgid "Messages sent by you that require a reply but did not receive one after a couple of days will be shown here."
+msgstr ""
+
+#: src/components/MdnRequest.vue:8
+msgid "The sender of this message has asked to be notified when you read this message."
+msgstr ""
+
+#: src/components/MdnRequest.vue:12
+msgid "Notify the sender"
+msgstr ""
+
+#: src/components/MdnRequest.vue:18
+msgid "You sent a read confirmation to the sender of this message."
+msgstr ""
+
+#: src/components/MdnRequest.vue:68
+msgid "Could not send mdn"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:27
+#: src/components/MenuEnvelope.vue:30
+#: src/components/NewMessageModal.vue:214
+msgid "Forward"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:62
+#: src/components/MenuEnvelope.vue:65
+#: src/components/MoveModal.vue:10
+msgid "Move message"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:95
+#: src/components/MenuEnvelope.vue:98
+#: src/components/NeedsTranslationInfo.vue:14
+#: src/components/TranslationModal.vue:46
+msgid "Translate"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:127
+#: src/components/MenuEnvelope.vue:130
+msgid "Forward message as attachment"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:168
+#: src/components/MenuEnvelope.vue:171
+msgid "View source"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:179
+msgid "Print message"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:195
+#: src/components/MenuEnvelope.vue:198
+#: src/components/mailFilter/CreateModal.vue:34
+msgid "Create mail filter"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:207
+#: src/components/MenuEnvelope.vue:210
+msgid "Download thread data for debugging"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:531
+msgid "Message was snoozed"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:534
+msgid "Could not snooze message"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:550
+msgid "Message was unsnoozed"
+msgstr ""
+
+#: src/components/MenuEnvelope.vue:553
+msgid "Could not unsnooze message"
+msgstr ""
+
+#: src/components/Message.vue:10
+msgid "Message body"
+msgstr ""
+
+#: src/components/Message.vue:20
+msgid "Warning: The S/MIME signature of this message is  unverified. The sender might be impersonating someone!"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:24
+msgid "Choose a folder to store the attachment in"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:41
+msgid "Import into calendar"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:49
+msgid "Download attachment"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:59
+msgid "Save to Files"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:121
+msgid "Unnamed"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:186
+#: src/components/MessageAttachment.vue:193
+msgid "Embedded message"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:231
+msgid "Attachment saved to Files"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:234
+msgid "Attachment could not be saved"
+msgstr ""
+
+#: src/components/MessageAttachment.vue:262
+msgid "calendar imported"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:34
+#, python-brace-format
+msgid "View {count} more attachment"
+msgid_plural "View {count} more attachments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/MessageAttachments.vue:37
+msgid "View fewer attachments"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:43
+msgid "Choose a folder to store the attachments in"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:55
+msgid "Save all to Files"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:61
+msgid "Download Zip"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:171
+msgid "Attachments saved to Files"
+msgstr ""
+
+#: src/components/MessageAttachments.vue:174
+msgid "Error while saving attachments"
+msgstr ""
+
+#: src/components/MessageEncryptedBody.vue:10
+msgid "This message is encrypted with PGP. Install Mailvelope to decrypt it."
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:13
+msgid "The images have been blocked to protect your privacy."
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:14
+msgid "Show images"
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:19
+msgid "Show images temporarily"
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:27
+#, python-brace-format
+msgid "Always show images from {sender}"
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:35
+#, python-brace-format
+msgid "Always show images from {domain}"
+msgstr ""
+
+#: src/components/MessageHTMLBody.vue:43
+msgid "Message frame"
+msgstr ""
+
+#: src/components/MessagePlainTextBody.vue:58
+msgid "Quoted text"
+msgstr ""
+
+#: src/components/MoveMailboxModal.vue:12
+msgid "Move"
+msgstr ""
+
+#: src/components/MoveMailboxModal.vue:13
+msgid "Moving"
+msgstr ""
+
+#: src/components/MoveModal.vue:11
+msgid "Moving message"
+msgstr ""
+
+#: src/components/MoveModal.vue:11
+msgid "Moving thread"
+msgstr ""
+
+#: src/components/Navigation.vue:34
+msgid "This account cannot connect"
+msgstr ""
+
+#: src/components/Navigation.vue:36
+msgid "Connection failed. Please verify your information and try again"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:17
+msgid "Provisioned account is disabled"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:21
+msgid "Please login using a password to enable this account. The current session is using passwordless authentication, e.g. SSO or WebAuthn."
+msgstr ""
+
+#: src/components/NavigationAccount.vue:43
+msgid "Show only subscribed folders"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:49
+msgid "Add folder"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:58
+msgid "Folder name"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:64
+#: src/components/NavigationMailbox.vue:152
+msgid "Saving"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:70
+msgid "Move up"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:76
+msgid "Move down"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:236
+#: src/components/NavigationAccount.vue:82
+msgid "Remove account"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:188
+#, python-brace-format
+msgid "Used quota: {quota}% ({limit})"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:194
+#, python-brace-format
+msgid "Used quota: {quota}%"
+msgstr ""
+
+#: src/components/NavigationAccount.vue:214
+msgid "Unable to create mailbox. The name likely contains invalid characters. Please try another name."
+msgstr ""
+
+#: src/components/NavigationAccount.vue:237
+#, python-brace-format
+msgid "The account for {email} and cached email data will be removed from Nextcloud, but not from your email provider."
+msgstr ""
+
+#: src/components/NavigationAccount.vue:243
+#, python-brace-format
+msgid "Remove {email}"
+msgstr ""
+
+#: src/components/NavigationAccountExpandCollapse.vue:37
+msgid "Show all subscribed folders"
+msgstr ""
+
+#: src/components/NavigationAccountExpandCollapse.vue:39
+msgid "Show all folders"
+msgstr ""
+
+#: src/components/NavigationAccountExpandCollapse.vue:41
+msgid "Collapse folders"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:107
+msgid "Mark all as read"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:120
+msgid "Add subfolder"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:136
+#: src/components/NavigationMailbox.vue:144
+msgid "Rename"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:162
+msgid "Move folder"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:171
+msgid "Repair folder"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:175
+msgid "Clear cache"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:181
+msgid "Clear locally cached data, in case there are issues with synchronization."
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:189
+msgid "Subscribed"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:197
+msgid "Sync in background"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:207
+msgid "Delete all messages"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:216
+#: src/components/NavigationMailbox.vue:686
+msgid "Delete folder"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:423
+#, python-brace-format
+msgid "{total} message"
+msgid_plural "{total} messages"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/NavigationMailbox.vue:427
+#, python-brace-format
+msgid "{unread} unread of {total}"
+msgid_plural "{unread} unread of {total}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/NavigationMailbox.vue:439
+msgid "Loading …"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:661
+msgid "All messages in mailbox will be deleted."
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:662
+#, python-brace-format
+msgid "Clear mailbox {name}"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:665
+msgid "Clear folder"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:685
+msgid "The folder and all messages in it will be deleted."
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:689
+#, python-brace-format
+msgid "Delete folder {name}"
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:730
+msgid "An error occurred, unable to rename the mailbox."
+msgstr ""
+
+#: src/components/NavigationMailbox.vue:814
+msgid "Please wait 10 minutes before repairing again"
+msgstr ""
+
+#: src/components/NavigationOutbox.vue:10
+msgid "Outbox"
+msgstr ""
+
+#: src/components/NeedsTranslationInfo.vue:10
+#, python-brace-format
+msgid "Translate this message to {language}"
+msgstr ""
+
+#: src/components/NewMessageButtonHeader.vue:16
+#: src/components/NewMessageButtonHeader.vue:8
+#: src/components/NewMessageModal.vue:216
+msgid "New message"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:17
+msgid "Maximize composer"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:18
+msgid "Hide recipient details"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:18
+msgid "Show recipient details"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:28
+#: src/components/NewMessageModal.vue:29
+msgid "Minimize composer"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:39
+msgid "Error sending your message"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:47
+#: src/components/NewMessageModal.vue:48
+msgid "Retry"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:54
+msgid "Warning sending your message"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:64
+#: src/components/NewMessageModal.vue:65
+msgid "Send anyway"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:205
+msgid "Edit message"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:208
+#: src/components/mailFilter/ActionAddSystemFlag.vue:75
+msgid "Draft"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:211
+#: src/components/RecipientBubble.vue:33
+#: src/components/RecipientBubble.vue:39
+#: src/components/ThreadEnvelope.vue:139
+#: src/components/ThreadEnvelope.vue:142
+#: src/components/ThreadEnvelope.vue:694
+msgid "Reply"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:357
+msgid "Message saved"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:373
+msgid "Failed to save message"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:375
+msgid "Failed to save draft"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:450
+msgid "attachment"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:451
+msgid "attached"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:502
+msgid "No \"sent\" folder configured. Please pick one in the account settings."
+msgstr ""
+
+#: src/components/NewMessageModal.vue:506
+msgid "You are trying to send to many recipients in To and/or Cc. Consider using Bcc to hide recipient addresses."
+msgstr ""
+
+#: src/components/NewMessageModal.vue:515
+msgid "Your message has no subject. Do you want to send it anyway?"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:519
+msgid "You mentioned an attachment. Did you forget to add it?"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:579
+msgid "Message discarded"
+msgstr ""
+
+#: src/components/NewMessageModal.vue:582
+msgid "Could not discard message"
+msgstr ""
+
+#: src/components/NoMessageSelected.vue:11
+#, python-brace-format
+msgid "Welcome to {productName} Mail"
+msgstr ""
+
+#: src/components/NoMessageSelected.vue:14
+msgid "Start writing a message by clicking below or select an existing message to display its contents"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:17
+msgid "Autoresponder off"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:28
+msgid "Autoresponder on"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:39
+msgid "Autoresponder follows system settings"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:44
+msgid "The autoresponder follows your personal absence period settings."
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:49
+msgid "Edit absence settings"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:55
+msgid "First day"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:70
+msgid "Last day (optional)"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:88
+#, python-brace-format
+msgid "${subject} will be replaced with the subject of the message you are responding to"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:93
+msgid "Message"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:104
+#: src/components/SieveFilterForm.vue:14
+msgid "Oh Snap!"
+msgstr ""
+
+#: src/components/OutOfOfficeForm.vue:111
+#: src/components/OutOfOfficeForm.vue:116
+msgid "Save autoresponder"
+msgstr ""
+
+#: src/components/Outbox.vue:17
+msgid "Could not open outbox"
+msgstr ""
+
+#: src/components/OutboxMessageContent.vue:6
+msgid "Pending or not sent messages will show up here"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:28
+msgid "Copy to \"Sent\" Folder"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:31
+msgid "Copy to Sent Folder"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:119
+msgid "Could not copy to \"Sent\" folder"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:121
+msgid "Mail server error"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:123
+msgid "Message could not be sent"
+msgstr ""
+
+#: src/components/OutboxMessageListItem.vue:161
+msgid "Message deleted"
+msgstr ""
+
+#: src/components/PhishingWarning.vue:8
+msgid "Phishing email"
+msgstr ""
+
+#: src/components/PhishingWarning.vue:9
+msgid "This email might be a phishing attempt"
+msgstr ""
+
+#: src/components/PhishingWarning.vue:18
+msgid "Hide suspicious links"
+msgstr ""
+
+#: src/components/PhishingWarning.vue:18
+msgid "Show suspicious links"
+msgstr ""
+
+#: src/components/PhishingWarning.vue:23
+msgid "link text"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:24
+#: src/components/RecipientBubble.vue:29
+msgid "Contacts with this address"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:43
+#: src/components/RecipientBubble.vue:48
+msgid "Add to Contact"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:52
+#: src/components/RecipientBubble.vue:57
+msgid "New Contact"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:61
+#: src/components/RecipientBubble.vue:66
+msgid "Copy to clipboard"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:79
+msgid "Contact name …"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:102
+#: src/components/RecipientBubble.vue:107
+msgid "Add"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:224
+msgid "Copied email address to clipboard"
+msgstr ""
+
+#: src/components/RecipientBubble.vue:226
+msgid "Could not copy email address to clipboard"
+msgstr ""
+
+#: src/components/RecipientInfo.vue:45
+msgid "Show less"
+msgstr ""
+
+#: src/components/RecipientInfo.vue:50
+msgid "Show more"
+msgstr ""
+
+#: src/components/SearchMessages.vue:12
+#: src/components/SearchMessages.vue:13
+msgid "Search in folder"
+msgstr ""
+
+#: src/components/SearchMessages.vue:18
+msgid "Open search modal"
+msgstr ""
+
+#: src/components/SearchMessages.vue:27
+msgid "Close"
+msgstr ""
+
+#: src/components/SearchMessages.vue:41
+msgid "Search parameters"
+msgstr ""
+
+#: src/components/SearchMessages.vue:57
+msgid "Search subject"
+msgstr ""
+
+#: src/components/SearchMessages.vue:62
+msgid "Body"
+msgstr ""
+
+#: src/components/SearchMessages.vue:70
+msgid "Search body"
+msgstr ""
+
+#: src/components/SearchMessages.vue:75
+#: src/components/Thread.vue:473
+msgid "Date"
+msgstr ""
+
+#: src/components/SearchMessages.vue:82
+msgid "Pick a start date"
+msgstr ""
+
+#: src/components/SearchMessages.vue:90
+msgid "Pick an end date"
+msgstr ""
+
+#: src/components/SearchMessages.vue:107
+#: src/components/SearchMessages.vue:108
+msgid "Select senders"
+msgstr ""
+
+#: src/components/SearchMessages.vue:132
+#: src/components/SearchMessages.vue:133
+msgid "Select recipients"
+msgstr ""
+
+#: src/components/SearchMessages.vue:156
+#: src/components/SearchMessages.vue:157
+msgid "Select CC recipients"
+msgstr ""
+
+#: src/components/SearchMessages.vue:180
+#: src/components/SearchMessages.vue:181
+msgid "Select BCC recipients"
+msgstr ""
+
+#: src/components/SearchMessages.vue:194
+msgid "Tags"
+msgstr ""
+
+#: src/components/SearchMessages.vue:205
+#: src/components/SearchMessages.vue:206
+msgid "Select tags"
+msgstr ""
+
+#: src/components/SearchMessages.vue:235
+msgid "Marked as"
+msgstr ""
+
+#: src/components/SearchMessages.vue:262
+msgid "Has attachments"
+msgstr ""
+
+#: src/components/SearchMessages.vue:267
+msgid "Mentions me"
+msgstr ""
+
+#: src/components/SearchMessages.vue:280
+#: src/components/SearchMessages.vue:281
+#: src/components/SearchMessages.vue:284
+msgid "Has attachment"
+msgstr ""
+
+#: src/components/SearchMessages.vue:299
+#: src/components/SearchMessages.vue:300
+#: src/components/SearchMessages.vue:302
+msgid "To me"
+msgstr ""
+
+#: src/components/SearchMessages.vue:377
+msgid "Clear"
+msgstr ""
+
+#: src/components/SearchSettings.vue:13
+msgid "Enable mail body search"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:8
+msgid "Sieve is a powerful language for writing filters for your mailbox. You can manage the sieve scripts in Mail if your email service supports it. Sieve is also required to use Autoresponder and Filters."
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:12
+msgid "Enable sieve filter"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:16
+msgid "Sieve host"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:17
+msgid "Sieve security"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:35
+msgid "Sieve Port"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:36
+msgid "Sieve credentials"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:41
+msgid "IMAP credentials"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:46
+msgid "Custom"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:50
+msgid "Sieve User"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:51
+msgid "Sieve Password"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:56
+msgid "Oh snap!"
+msgstr ""
+
+#: src/components/SieveAccountForm.vue:62
+#: src/components/SieveAccountForm.vue:64
+msgid "Save sieve settings"
+msgstr ""
+
+#: src/components/SieveFilterForm.vue:20
+#: src/components/SieveFilterForm.vue:26
+msgid "Save sieve script"
+msgstr ""
+
+#: src/components/SieveFilterForm.vue:96
+msgid "The syntax seems to be incorrect:"
+msgstr ""
+
+#: src/components/SignatureSettings.vue:15
+msgid "Place signature above quoted text"
+msgstr ""
+
+#: src/components/SignatureSettings.vue:33
+msgid "Signature …"
+msgstr ""
+
+#: src/components/SignatureSettings.vue:39
+msgid "Your signature is larger than 2 MB. This may affect the performance of your editor."
+msgstr ""
+
+#: src/components/SignatureSettings.vue:44
+#: src/components/SignatureSettings.vue:50
+msgid "Save signature"
+msgstr ""
+
+#: src/components/SourceModal.vue:8
+msgid "Message source"
+msgstr ""
+
+#: src/components/TagItem.vue:22
+msgid "Edit name or color"
+msgstr ""
+
+#: src/components/TagItem.vue:39
+msgid "Saving new tag name …"
+msgstr ""
+
+#: src/components/TagItem.vue:47
+msgid "Delete tag"
+msgstr ""
+
+#: src/components/TagItem.vue:54
+msgid "Set tag"
+msgstr ""
+
+#: src/components/TagItem.vue:60
+msgid "Unset tag"
+msgstr ""
+
+#: src/components/TagItem.vue:133
+#: src/components/TagItem.vue:161
+#: src/components/TagModal.vue:225
+msgid "An error occurred, unable to rename the tag."
+msgstr ""
+
+#: src/components/TagModal.vue:16
+msgid "Add default tags"
+msgstr ""
+
+#: src/components/TagModal.vue:26
+#: src/components/TagModal.vue:36
+msgid "Add tag"
+msgstr ""
+
+#: src/components/TagModal.vue:47
+msgid "Saving tag …"
+msgstr ""
+
+#: src/components/TagModal.vue:165
+msgid "Tag name is a hidden system tag"
+msgstr ""
+
+#: src/components/TagModal.vue:169
+msgid "Tag already exists"
+msgstr ""
+
+#: src/components/TagModal.vue:173
+msgid "Tag name cannot be empty"
+msgstr ""
+
+#: src/components/TagModal.vue:183
+msgid "An error occurred, unable to create the tag."
+msgstr ""
+
+#: src/components/TaskModal.vue:65
+msgid "No calendars with task list support"
+msgstr ""
+
+#: src/components/TaskModal.vue:233
+msgid "Task created"
+msgstr ""
+
+#: src/components/TaskModal.vue:237
+msgid "Could not create task"
+msgstr ""
+
+#: src/components/Thread.vue:8
+msgid "Loading thread"
+msgstr ""
+
+#: src/components/Thread.vue:11
+#: src/components/ThreadEnvelope.vue:288
+msgid "Not found"
+msgstr ""
+
+#: src/components/Thread.vue:244
+msgid "Summarizing thread failed."
+msgstr ""
+
+#: src/components/Thread.vue:358
+#: src/components/Thread.vue:365
+msgid "Could not load your message thread"
+msgstr ""
+
+#: src/components/Thread.vue:359
+msgid "The thread doesn't exist or has been deleted"
+msgstr ""
+
+#: src/components/Thread.vue:362
+msgid "Email was not able to be opened"
+msgstr ""
+
+#: src/components/Thread.vue:392
+msgid "Print"
+msgstr ""
+
+#: src/components/Thread.vue:580
+msgid "Could not print message"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:15
+#, python-brace-format
+msgid "You've sent this message on {date}"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:19
+msgid "Disable reminder"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:101
+#: src/components/ThreadEnvelope.vue:295
+#: src/components/ThreadEnvelope.vue:303
+msgid "Unsubscribe"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:135
+#: src/components/ThreadEnvelope.vue:691
+msgid "Reply all"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:150
+#: src/components/ThreadEnvelope.vue:153
+msgid "Reply to sender only"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:159
+#: src/components/ThreadEnvelope.vue:169
+#: src/components/ThreadEnvelope.vue:172
+#: src/components/quickActions/Action.vue:110
+#: src/components/quickActions/Settings.vue:100
+msgid "Mark as favorite"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:159
+#: src/components/ThreadEnvelope.vue:165
+#: src/components/ThreadEnvelope.vue:172
+msgid "Mark as unfavorite"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:296
+#: src/components/ThreadEnvelope.vue:305
+msgid "Unsubscribe via link"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:299
+#: src/components/ThreadEnvelope.vue:308
+#: src/components/ThreadEnvelope.vue:317
+#, python-brace-format
+msgid "Unsubscribing will stop all messages from the mailing list {sender}"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:312
+msgid "Send unsubscribe email"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:313
+msgid "Unsubscribe via email"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:641
+msgid "Encrypted & verified "
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:645
+msgid "Signature verified"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:648
+msgid "Signature unverified "
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:653
+msgid "This message was encrypted by the sender before it was sent."
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:657
+msgid "This message contains a verified digital S/MIME signature. The message wasn't changed since it was sent."
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:660
+msgid "This message contains an unverified digital S/MIME signature. The message might have been changed since it was sent or the certificate of the signer is untrusted."
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:1037
+#: src/components/ThreadEnvelope.vue:989
+msgid "Unsubscribe request sent"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:1040
+#: src/components/ThreadEnvelope.vue:992
+msgid "Could not unsubscribe from mailing list"
+msgstr ""
+
+#: src/components/ThreadEnvelope.vue:1094
+msgid "Please wait for the message to load"
+msgstr ""
+
+#: src/components/ThreadSummary.vue:14
+msgid "Thread summary"
+msgstr ""
+
+#: src/components/ThreadSummary.vue:23
+msgid "Go to latest message"
+msgstr ""
+
+#: src/components/ThreadSummary.vue:26
+msgid "Newest message"
+msgstr ""
+
+#: src/components/ThreadSummary.vue:40
+msgid "This summary is AI generated and may contain mistakes."
+msgstr ""
+
+#: src/components/ThreadSummary.vue:78
+#: src/components/ThreadSummary.vue:80
+#, python-brace-format
+msgid "{name} Assistant"
+msgstr ""
+
+#: src/components/TranslationModal.vue:10
+msgid "Translate message"
+msgstr ""
+
+#: src/components/TranslationModal.vue:21
+msgid "Source language to translate from"
+msgstr ""
+
+#: src/components/TranslationModal.vue:22
+msgid "Translate from"
+msgstr ""
+
+#: src/components/TranslationModal.vue:33
+msgid "Target language to translate into"
+msgstr ""
+
+#: src/components/TranslationModal.vue:34
+msgid "Translate to"
+msgstr ""
+
+#: src/components/TranslationModal.vue:46
+msgid "Translating"
+msgstr ""
+
+#: src/components/TranslationModal.vue:71
+msgid "Copy translated text"
+msgstr ""
+
+#: src/components/TranslationModal.vue:157
+msgid "Please select languages to translate to and from"
+msgstr ""
+
+#: src/components/TranslationModal.vue:171
+msgid "The message could not be translated"
+msgstr ""
+
+#: src/components/TranslationModal.vue:180
+msgid "Translation copied to clipboard"
+msgstr ""
+
+#: src/components/TranslationModal.vue:182
+msgid "Translation could not be copied"
+msgstr ""
+
+#: src/components/TrashRetentionSettings.vue:13
+msgid "Disable trash retention by leaving the field empty or setting it to 0. Only mails deleted after enabling trash retention will be processed."
+msgstr ""
+
+#: src/components/TrustedSenders.vue:29
+msgid "No senders are trusted at the moment."
+msgstr ""
+
+#: src/components/TrustedSenders.vue:87
+#, python-brace-format
+msgid "Could not remove trusted sender {sender}"
+msgstr ""
+
+#: src/components/imip/EventData.vue:39
+msgid "(organizer)"
+msgstr ""
+
+#: src/components/imip/EventData.vue:105
+msgid "Untitled event"
+msgstr ""
+
+#: src/components/itinerary/CalendarImport.vue:19
+#, python-brace-format
+msgid "Import into {calendar}"
+msgstr ""
+
+#: src/components/itinerary/EventReservation.vue:129
+#: src/components/itinerary/FlightReservation.vue:158
+#: src/components/itinerary/TrainReservation.vue:161
+#, python-brace-format
+msgid "Event imported into {calendar}"
+msgstr ""
+
+#: src/components/itinerary/FlightReservation.vue:22
+msgid "Airplane"
+msgstr ""
+
+#: src/components/itinerary/FlightReservation.vue:25
+#, python-brace-format
+msgid "Reservation {id}"
+msgstr ""
+
+#: src/components/itinerary/FlightReservation.vue:135
+#, python-brace-format
+msgid "Flight {flightNr} from {depAirport} to {arrAirport}"
+msgstr ""
+
+#: src/components/itinerary/TrainReservation.vue:19
+msgid "Train"
+msgstr ""
+
+#: src/components/itinerary/TrainReservation.vue:124
+#, python-brace-format
+msgid "{trainNr} from {depStation} to {arrStation}"
+msgstr ""
+
+#: src/components/itinerary/TrainReservation.vue:133
+#, python-brace-format
+msgid "Train from {depStation} to {arrStation}"
+msgstr ""
+
+#: src/components/mailFilter/Action.vue:25
+msgid "Delete action"
+msgstr ""
+
+#: src/components/mailFilter/Action.vue:74
+msgid "Mark message as"
+msgstr ""
+
+#: src/components/mailFilter/Action.vue:78
+msgid "Add flag"
+msgstr ""
+
+#: src/components/mailFilter/Action.vue:82
+msgid "Move into folder"
+msgstr ""
+
+#: src/components/mailFilter/Action.vue:86
+msgid "Stop"
+msgstr ""
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:71
+msgid "Answered"
+msgstr ""
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:73
+msgid "Deleted"
+msgstr ""
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:77
+msgid "Flagged"
+msgstr ""
+
+#: src/components/mailFilter/ActionAddSystemFlag.vue:79
+msgid "Seen"
+msgstr ""
+
+#: src/components/mailFilter/ActionAddflag.vue:10
+msgid "Enter flag"
+msgstr ""
+
+#: src/components/mailFilter/ActionStop.vue:7
+msgid "Stop ends all processing"
+msgstr ""
+
+#: src/components/mailFilter/CreateModal.vue:11
+msgid "Create a new mail filter"
+msgstr ""
+
+#: src/components/mailFilter/CreateModal.vue:14
+msgid "Choose the headers you want to use to create your filter. In the next step, you will be able to refine the filter conditions and specify the actions to be taken on messages that match your criteria."
+msgstr ""
+
+#: src/components/mailFilter/CreateModal.vue:112
+#: src/components/mailFilter/Test.vue:139
+msgid "Sender"
+msgstr ""
+
+#: src/components/mailFilter/CreateModal.vue:122
+#: src/components/mailFilter/Test.vue:141
+msgid "Recipient"
+msgstr ""
+
+#: src/components/mailFilter/DeleteModal.vue:7
+#, python-brace-format
+msgid "Delete mail filter {filterName}?"
+msgstr ""
+
+#: src/components/mailFilter/DeleteModal.vue:9
+msgid "Are you sure to delete the mail filter?"
+msgstr ""
+
+#: src/components/mailFilter/DeleteModal.vue:47
+#: src/components/mailFilter/MailFilters.vue:29
+msgid "Delete filter"
+msgstr ""
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:121
+#: src/components/mailFilter/MailFilters.vue:141
+#: src/components/mailFilter/MailFilters.vue:37
+#: src/components/mailFilter/MailFilters.vue:39
+#: src/components/mailFilter/UpdateModal.vue:12
+#: src/components/mailFilter/UpdateModal.vue:9
+msgid "New filter"
+msgstr ""
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:154
+#: src/components/mailFilter/MailFilters.vue:179
+msgid "Filter saved"
+msgstr ""
+
+#: src/components/mailFilter/MailFilterFromEnvelope.vue:159
+#: src/components/mailFilter/MailFilters.vue:184
+msgid "Could not save filter"
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:7
+msgid "Take control of your email chaos. Filters help you to prioritize what matters and eliminate clutter."
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:10
+msgid "Hang tight while the filters load"
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:21
+msgid "Filter is active"
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:22
+msgid "Filter is not active"
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:197
+msgid "Filter deleted"
+msgstr ""
+
+#: src/components/mailFilter/MailFilters.vue:201
+msgid "Could not delete filter"
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:18
+msgid "Help"
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:27
+msgid "A substring match. The field matches if the provided value is contained within it. For example, \"report\" would match \"port\"."
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:27
+#: src/components/mailFilter/Test.vue:151
+msgid "contains"
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:30
+msgid "A pattern match using wildcards. The \"*\" symbol represents any number of characters (including none), while \"?\" represents exactly one character. For example, \"*report*\" would match \"Business report 2024\"."
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:30
+#: src/components/mailFilter/Test.vue:153
+msgid "matches"
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:62
+msgid "If all the conditions are met, the actions will be performed"
+msgstr ""
+
+#: src/components/mailFilter/Operator.vue:63
+msgid "If any of the conditions are met, the actions will be performed"
+msgstr ""
+
+#: src/components/mailFilter/Test.vue:111
+msgid "Enter subject"
+msgstr ""
+
+#: src/components/mailFilter/Test.vue:113
+msgid "Enter sender"
+msgstr ""
+
+#: src/components/mailFilter/Test.vue:115
+msgid "Enter recipient"
+msgstr ""
+
+#: src/components/mailFilter/Test.vue:149
+msgid "is exactly"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:22
+msgid "Conditions"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:36
+#: src/components/mailFilter/UpdateModal.vue:38
+msgid "Add condition"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:43
+msgid "Actions"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:56
+#: src/components/mailFilter/UpdateModal.vue:58
+msgid "Add action"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:66
+msgid "Priority"
+msgstr ""
+
+#: src/components/mailFilter/UpdateModal.vue:70
+msgid "Enable filter"
+msgstr ""
+
+#: src/components/quickActions/Action.vue:21
+msgid "delete"
+msgstr ""
+
+#: src/components/quickActions/Action.vue:98
+#: src/components/quickActions/Settings.vue:64
+msgid "Tag"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:8
+msgid "No quick actions yet."
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:19
+msgid "Edit"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:192
+#: src/components/quickActions/Settings.vue:30
+msgid "Add quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:35
+msgid "Quick action name"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:36
+msgid "Do the following actions"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:50
+msgid "Add another action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:192
+msgid "Edit quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:216
+msgid "Quick action deleted"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:221
+msgid "Failed to delete quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:258
+msgid "Failed to update quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:269
+msgid "Failed to update step in quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:279
+msgid "Quick action updated"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:289
+msgid "Failed to create quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:304
+msgid "Failed to add steps to quick action"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:308
+msgid "Quick action created"
+msgstr ""
+
+#: src/components/quickActions/Settings.vue:361
+msgid "Failed to delete action step"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:8
+msgid "Mail app"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:9
+msgid "The mail app allows users to read mails on their IMAP accounts."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:12
+msgid "Here you can find instance-wide settings. User specific settings are found in the app itself (bottom-left corner)."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:21
+msgid "Account provisioning"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:30
+msgid "A provisioning configuration will provision all accounts with a matching email address."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:36
+msgid "Using the wildcard (*) in the provisioning domain field will create a configuration that applies to all users, provided they do not match another configuration."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:43
+msgid "The provisioning mechanism will prioritise specific domain configurations over the wildcard domain configuration."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:49
+msgid "Should a new matching configuration be found after the user was already provisioned with another configuration, the new configuration will take precedence and the user will be reprovisioned with the configuration."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:56
+msgid "There can only be one configuration per domain and only one wildcard domain configuration."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:63
+msgid "These settings can be used in conjunction with each other."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:70
+msgid "If you only want to provision one domain for all users, use the wildcard (*)."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:77
+msgid "This setting only makes most sense if you use the same user back-end for your Nextcloud and mail server of your organization."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:87
+msgid "Provisioning Configurations"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:101
+#: src/components/settings/AdminSettings.vue:96
+msgid "Add new config"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:105
+#: src/components/settings/AdminSettings.vue:110
+msgid "Provision all accounts"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:127
+msgid "Allow additional mail accounts"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:134
+msgid "Allow additional Mail accounts from User Settings"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:142
+msgid "Enable text processing through LLMs"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:145
+msgid "The Mail app can process user data with the help of the configured large language model and provide assistance features like thread summaries, smart replies and event agendas."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:152
+msgid "Enable LLM processing"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:158
+msgid "Enable classification by importance by default"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:161
+msgid "The Mail app can use AI and machine learning to classify, summarize, and analyze emails. When disabled, no AI/ML processing will run for any user. When enabled, individual users can toggle importance classification for their accounts."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:168
+msgid "Enable classification of important mails by default"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:176
+msgid "Anti Spam Service"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:185
+msgid "You can set up an anti spam service email address here."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:192
+msgid "Any email that is marked as spam will be sent to the anti spam service."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:204
+msgid "Gmail integration"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:213
+msgid "Gmail allows users to access their email via IMAP. For security reasons this access is only possible with an OAuth 2.0 connection or Google accounts that use two-factor authentication and app passwords."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:221
+#, python-brace-format
+msgid "You have to register a new Client ID for a \"Web application\" in the Google Cloud console. Add the URL {url} as authorized redirect URI."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:235
+msgid "Microsoft integration"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:239
+msgid "Microsoft requires you to access your emails via IMAP using OAuth 2.0 authentication. To do this, you need to register an app with Microsoft Entra ID, formerly known as Microsoft Azure Active Directory."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:242
+msgid "Redirect URI"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:244
+msgid "For more details, please click here to open our documentation."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:249
+msgid "User Interface Preference Defaults"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:252
+msgid "These settings are used to pre-configure the user interface preferences they can be overridden by the user in the mail settings"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:258
+msgid "Message View Mode"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:275
+msgid "Show only the selected message"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:383
+#, python-brace-format
+msgid "Successfully updated config for \"{domain}\""
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:385
+msgid "Error saving config"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:397
+#, python-brace-format
+msgid "Saved config for \"{domain}\""
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:399
+msgid "Could not save provisioning setting"
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:411
+#, python-brace-format
+msgid "Successfully provisioned {count} account."
+msgid_plural "Successfully provisioned {count} accounts."
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/settings/AdminSettings.vue:413
+msgid "There was an error when provisioning accounts."
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:424
+#, python-brace-format
+msgid "Successfully deleted and deprovisioned accounts for \"{domain}\""
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:426
+#, python-brace-format
+msgid "Error when deleting and deprovisioning accounts for \"{domain}\""
+msgstr ""
+
+#: src/components/settings/AdminSettings.vue:452
+msgid "Could not save default classification setting"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:8
+msgid "Anti Spam"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:10
+msgid "Add the email address of your anti spam report service here."
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:13
+msgid "When using this setting, a report email will be sent to the SPAM report server when a user clicks \"Mark as spam\"."
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:14
+msgid "The original message will be attached as a \"message/rfc822\" attachment."
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:20
+msgid "\"Mark as Spam\" Email Address"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:29
+msgid "\"Mark Not Junk\" Email Address"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:51
+#: src/components/settings/AntiSpamSettings.vue:58
+msgid "Reset"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:100
+msgid "Successfully set up anti spam email addresses"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:103
+msgid "Error saving anti spam email addresses"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:114
+msgid "Successfully deleted anti spam reporting email"
+msgstr ""
+
+#: src/components/settings/AntiSpamSettings.vue:117
+msgid "Error deleting anti spam reporting email"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:8
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:14
+msgid "Client ID"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:15
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:21
+msgid "Client secret"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:26
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:32
+msgid "Unlink"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:61
+msgid "Google integration configured"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:64
+msgid "Could not configure Google integration"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:76
+msgid "Google integration unlinked"
+msgstr ""
+
+#: src/components/settings/GmailAdminOauthSettings.vue:79
+msgid "Could not unlink Google integration"
+msgstr ""
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:8
+msgid "Tenant ID (optional)"
+msgstr ""
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:74
+msgid "Microsoft integration configured"
+msgstr ""
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:77
+msgid "Could not configure Microsoft integration"
+msgstr ""
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:89
+msgid "Microsoft integration unlinked"
+msgstr ""
+
+#: src/components/settings/MicrosoftAdminOauthSettings.vue:92
+msgid "Could not unlink Microsoft integration"
+msgstr ""
+
+#: src/components/settings/ProvisionPreview.vue:13
+#, python-brace-format
+msgid "Domain Match: {provisioningDomain}"
+msgstr ""
+
+#: src/components/settings/ProvisionPreview.vue:15
+#, python-brace-format
+msgid "Email: {email}"
+msgstr ""
+
+#: src/components/settings/ProvisionPreview.vue:17
+#, python-brace-format
+msgid "IMAP: {user} on {host}:{port} ({ssl} encryption)"
+msgstr ""
+
+#: src/components/settings/ProvisionPreview.vue:25
+#, python-brace-format
+msgid "SMTP: {user} on {host}:{port} ({ssl} encryption)"
+msgstr ""
+
+#: src/components/settings/ProvisionPreview.vue:34
+#, python-brace-format
+msgid "Sieve: {user} on {host}:{port} ({ssl} encryption)"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:8
+#, python-brace-format
+msgid "Configuration for \"{provisioningDomain}\""
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:17
+msgid "Provisioning domain"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:26
+msgid "Email address template"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:38
+msgid "IMAP"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:116
+#: src/components/settings/ProvisioningSettings.vue:226
+#: src/components/settings/ProvisioningSettings.vue:42
+msgid "User"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:127
+#: src/components/settings/ProvisioningSettings.vue:237
+#: src/components/settings/ProvisioningSettings.vue:53
+msgid "Host"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:137
+#: src/components/settings/ProvisioningSettings.vue:247
+#: src/components/settings/ProvisioningSettings.vue:63
+msgid "Port"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:112
+msgid "SMTP"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:186
+#: src/components/settings/ProvisioningSettings.vue:206
+msgid "Master password"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:196
+msgid "Use master password"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:212
+msgid "Sieve"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:222
+msgid "Enable sieve integration"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:296
+msgid "LDAP aliases integration"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:306
+msgid "Enable LDAP aliases integration"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:308
+msgid "The LDAP aliases integration reads an attribute from the configured LDAP directory to provision email aliases."
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:312
+msgid "LDAP attribute for aliases"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:321
+msgid "A multi value attribute to provision email aliases. For each value an alias is created. Aliases existing in Nextcloud which are not in the LDAP directory are deleted."
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:330
+#: src/components/settings/ProvisioningSettings.vue:337
+msgid "Save Config"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:343
+#: src/components/settings/ProvisioningSettings.vue:349
+msgid "Unprovision & Delete Config"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:353
+msgid "* %USERID% and %EMAIL% will be replaced with the user's UID and email"
+msgstr ""
+
+#: src/components/settings/ProvisioningSettings.vue:362
+msgid "With the settings above, the app will create account settings in the following way:"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:10
+msgid "S/MIME certificates"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:15
+msgid "Certificate name"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:16
+msgid "E-mail address"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:17
+msgid "Valid until"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:35
+#: src/components/smime/SmimeCertificateModal.vue:39
+msgid "Delete certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:50
+msgid "No certificate imported yet"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:54
+#: src/components/smime/SmimeCertificateModal.vue:56
+msgid "Import certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:64
+msgid "Import S/MIME certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:75
+msgid "PKCS #12 Certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:87
+msgid "PEM Certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:93
+msgid "Certificate"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:104
+msgid "Private key (optional)"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:120
+msgid "The private key is only required if you intend to send signed and encrypted emails using this certificate."
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:133
+#: src/components/smime/SmimeCertificateModal.vue:136
+msgid "Submit"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:214
+msgid "The provided PKCS #12 certificate must contain at least one certificate and exactly one private key."
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:217
+msgid "Failed to import the certificate. Please check the password."
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:234
+msgid "Certificate imported successfully"
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:242
+msgid "Failed to import the certificate. Please make sure that the private key matches the certificate and is not protected by a passphrase."
+msgstr ""
+
+#: src/components/smime/SmimeCertificateModal.vue:244
+msgid "Failed to import the certificate"
+msgstr ""
+
+#: src/components/textBlocks/List.vue:13
+msgid "No text blocks available"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:17
+msgid "Shared"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:19
+#, python-brace-format
+msgid "Edit {title}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:27
+#, python-brace-format
+msgid "Delete {title}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:33
+msgid "Edit text block"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:49
+msgid "Shares"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:54
+msgid "Search for users or groups"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:211
+msgid "Text block deleted"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:213
+msgid "Failed to delete text block"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:222
+#, python-brace-format
+msgid "Text block shared with {sharee}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:225
+#, python-brace-format
+msgid "Failed to share text block with {sharee}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:233
+#, python-brace-format
+msgid "Share deleted for {name}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:235
+#, python-brace-format
+msgid "Failed to delete share with {name}"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:322
+msgid "Guest"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:327
+msgid "Group"
+msgstr ""
+
+#: src/components/textBlocks/ListItem.vue:381
+msgid "Failed to save text block"
+msgstr ""
+
+#: src/components/textBlocks/TextBlockModal.vue:7
+msgid "Choose a text block to insert at the cursor"
+msgstr ""
+
+#: src/components/textBlocks/TextBlockModal.vue:27
+msgid "Insert"
+msgstr ""
+
+#: src/components/textBlocks/TextBlockModal.vue:29
+msgid "Insert text block"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:11
+msgid "All"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:19
+msgid "Drafts"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:28
+msgid "Priority inbox"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:31
+msgid "All inboxes"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:34
+msgid "Inbox"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:39
+msgid "Junk"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:43
+msgid "Sent"
+msgstr ""
+
+#: src/i18n/MailboxTranslator.js:47
+msgid "Trash"
+msgstr ""
+
+#: src/integration/oauth.js:14
+msgid "Connect OAUTH2 account"
+msgstr ""
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "recipientpersonmodalTitle"
+msgstr ""
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "recipientreferencemodalTitle"
+msgstr ""
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "senderpersonmodalTitle"
+msgstr ""
+
+#: src/itsl/components/modals/PersonReferenceIDModalItsl.vue:79
+msgid "senderreferencemodalTitle"
+msgstr ""
+
+#: src/service/FileSharingService.js:41
+msgid "Error while sharing file"
+msgstr ""
+
+#: src/service/NotificationService.js:63
+#, python-brace-format
+msgid ""
+"{from}\n"
+"{subject}"
+msgstr ""
+
+#: src/service/NotificationService.js:71
+#, python-brace-format
+msgid ""
+"%n new message \n"
+"from {from}"
+msgid_plural ""
+"%n new messages \n"
+"from {from}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/service/NotificationService.js:79
+msgid "Nextcloud Mail"
+msgstr ""
+
+#: src/service/NotificationService.js:80
+msgid "You have a new secure message in ITSL Hubs"
+msgstr ""
+
+#: src/store/mainStore/actions.js:459
+msgid "There is already a message in progress. All unsaved changes will be lost if you continue!"
+msgstr ""
+
+#: src/store/mainStore/actions.js:460
+msgid "Discard changes"
+msgstr ""
+
+#: src/store/mainStore/actions.js:463
+msgid "Discard unsaved changes"
+msgstr ""
+
+#: src/store/mainStore/actions.js:465
+msgid "Keep editing message"
+msgstr ""
+
+#: src/store/mainStore/actions.js:592
+msgid "Attachments were not copied. Please add them manually."
+msgstr ""
+
+#: src/store/mainStore/actions.js:1714
+msgid "Could not create snooze mailbox"
+msgstr ""
+
+#: src/store/mainStore/actions.js:2490
+msgid "Sorry, the message could not be loaded. The draft may no longer exist. Please refresh the page and try again."
+msgstr ""
+
+#: src/store/outboxStore.js:188
+msgid "Sending message…"
+msgstr ""
+
+#: src/store/outboxStore.js:211
+msgid "Message sent"
+msgstr ""
+
+#: src/store/outboxStore.js:215
+msgid "Could not send message"
+msgstr ""
+
+#: src/store/outboxStore.js:236
+msgid "Message copied to \"Sent\" folder"
+msgstr ""
+
+#: src/store/outboxStore.js:238
+msgid "Could not copy message to \"Sent\" folder"
+msgstr ""
+
+#: src/util/ErrorMessageFactory.js:20
+#: src/util/ErrorMessageFactory.js:23
+#, python-brace-format
+msgid "Could not load {tag}{name}{endtag}"
+msgstr ""
+
+#: src/util/ErrorMessageFactory.js:26
+#, python-brace-format
+msgid "There was a problem loading {tag}{name}{endtag}"
+msgstr ""
+
+#: src/util/ErrorMessageFactory.js:40
+msgid "Could not load your message"
+msgstr ""
+
+#: src/util/ErrorMessageFactory.js:41
+msgid "Could not load the desired message"
+msgstr ""
+
+#: src/util/ErrorMessageFactory.js:42
+msgid "Could not load the message"
+msgstr ""
+
+#: src/views/OauthDone.vue:8
+msgid "Account connected"
+msgstr ""
+
+#: src/views/OauthDone.vue:9
+msgid "You can close this window"
+msgstr ""
+
+#: src/views/Setup.vue:16
+msgid "Connect your mail account"
+msgstr ""
+
+#: src/views/Setup.vue:29
+msgid "To add a mail account, please contact your administrator."
+msgstr ""
+
+#: templates/error.php:10
+msgid "Error loading message"
+msgstr ""
+
+#: templates/redirect.php:18
+#, php-format
+msgid "Forwarding to %s"
+msgstr ""
+
+#: templates/redirect.php:19
+msgid "Click here if you are not automatically redirected within the next few seconds."
+msgstr ""
+
+#: templates/redirect.php:25
+msgid "Redirect"
+msgstr ""
+
+#: templates/redirect.php:26
+#, php-format
+msgid "The link leads to %s"
+msgstr ""
+
+#: templates/redirect.php:27
+#, php-format
+msgid "If you do not want to visit that page, you can return to <a href=\"%s\">Mail</a>."
+msgstr ""
+
+#: templates/redirect.php:32
+#, php-format
+msgid "Continue to %s"
+msgstr ""

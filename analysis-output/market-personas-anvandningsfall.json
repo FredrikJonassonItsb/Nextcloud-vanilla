@@ -1,0 +1,119 @@
+{
+    "key":  "personas-anvandningsfall",
+    "topic":  "Användningsfall och personas för säker digital kommunikation i svensk offentlig sektor (socialtjänst, HR, kommunal HSL, överförmyndare, elevhälsa, hemtjänst) — underlag för Hubs dashboard",
+    "key_findings":  [
+                         "VOLYM ORONSANMÄLNINGAR: 2024 inkom ca 514 000 orosanmälningar om barn till socialtjänsten (+22 % sedan 2021, +55 % sedan 2018); 233 000 barn — mer än vart tionde — anmäldes, i snitt 2,2 anmälningar per barn (Socialstyrelsen). Detta är ett av de största enskilda flödena av känslig information i kommunsektorn.",
+                         "HUR ORONSANMÄLAN GÖRS IDAG: Kommunerna erbjuder en blandning av e-tjänst, telefon, brev, personligt besök och fax — Svedala anger uttryckligen att fax bara kontrolleras under kontorstid. E-tjänster för orosanmälan (t.ex. Haninge, Eskilstuna, Stockholm, Örebro) införs kommun för kommun utan nationell standard, vilket innebär att professionella anmälare (skola, vård, polis) möter olika gränssnitt i varje kommun.",
+                         "FAXEN LEVER: I Västra Götalandsregionen och kommunerna används fax fortfarande rutinmässigt för vårdplaner, beslut, registerutdrag och arbetsförmågebedömningar; felskickade fax pekas ut som konkret säkerhetsrisk och personal måste ringa och verifiera mottagare före sändning (VGRfokus 2023). SDK beskrivs som \u0027faxdödaren\u0027 (Atea, Digg).",
+                         "SDK-NYTTAN ÄR KVANTIFIERAD: Diggs kalkyl visar att offentlig sektor kan spara ca 1 620 miljoner kr/år eller ca 3 500 årsarbetskrafter när SDK ersätter fax, rekommenderade brev, bud och telefon; verksamhetsnära uppskattningar anger ca 30 minuter sparad tid per hanterat ärende (Digg debattartikel 2023). Ineras nyttokalkyl med Sigtuna kommun visar att nyttan överstiger kostnaden från år 3, främst frigjord personaltid och ökad trygghet.",
+                         "TIMING: SKR:s delrapport \u0027Från pappershantering till digital hantering\u0027 och Adda pekar ut 2026 som året då tillräckligt många kommuner/regioner/myndigheter är anslutna till SDK för att det ska bli del av standardrutiner; anslutningstakten ökade markant under 2025. Digg tog över SDK-infrastrukturen från Inera 27 mars 2024, och SKR:s nya rekommendation 2025 handlar om hur kommuner sätter upp FUNKTIONSADRESSER (delade brevlådor per verksamhet).",
+                         "SOCIALSEKRETERARENS ADMINISTRATIVA BÖRDA: Studier (bl.a. Umeå universitet, Örebro universitet) visar att dokumentation/administration tar nästan lika mycket tid som klientkontakten och att dokumentationsbördan \u0027riskerar att tränga undan kärnverksamheten\u0027; vid tidsbrist släpar journalföring flera dagar. Statskontoret (2022:9) har analyserat hur statlig styrning driver administrativa kostnader i kommunsektorn. Akademikerförbundet SSR och Vision gör återkommande medlemsundersökningar om socialsekreterares villkor.",
+                         "SIP-MÖTEN: SIP (samordnad individuell plan) kräver att kommun, region, skola och ofta anhöriga samlas; mötena hålls oftast fysiskt men genomförs digitalt vid långa avstånd och tidsbrist (Uppdrag Psykisk Hälsa). Region Uppsalas SIP-projekt (2022) bedömde Skype som \u0027säkraste plattformen\u0027 för digitala SIP-möten — vilket illustrerar att verksamheterna saknar ett ändamålsenligt säkert videoverktyg. Verktyget SIPkollen används för att mäta deltagarupplevelse.",
+                         "HR/PERSONALÄRENDEN: Endast 34 % av cheferna uppger att de har verktyg/system för säker hantering av läkarintyg, rehabiliteringsmöten, hälsosamtal och Försäkringskassan-kontakter (MedHelp). Vårdgivare och Försäkringskassan får av sekretesskäl inte e-posta om rehabärenden — telefon är standard, och samtycken måste skickas per post innan arbetsgivaren får kontakta vårdgivare (KI/Lunds universitet rutiner). Personuppgifter om medarbetare får aldrig skickas i extern e-post.",
+                         "KOMMUNAL HÄLSO- OCH SJUKVÅRD/UTSKRIVNING: Informationsöverföring vid utskrivning från slutenvård (samordnad planering, SIP i öppenvård) sker i regionala system som Lifecare SP (Tietoevry) som kommunens hemsjukvård och hemtjänst måste bevaka parallellt med egna verksamhetssystem; brister i samverkan hanteras via avvikelserapporter (Region Gotland, Norrbotten, Västernorrland). Det som inte ryms i Lifecare går fortfarande via fax/telefon — det är här SDK-remisser/meddelanden kommun↔region kommer in.",
+                         "RÄTTSLIGA KRAV: HSLF-FS 2016:40 kräver att elektroniska meddelanden med personuppgifter krypteras så att endast avsedd mottagare kan läsa dem, samt flerfaktorsautentisering vid elektronisk åtkomst. För socialtjänsten saknas detaljföreskrifter, men huvudprincipen är att e-post/sms inte får användas om tillfredsställande säkerhetsnivå inte kan upprätthållas — och kraven kan INTE avtalas bort med den enskildes samtycke (Socialstyrelsen).",
+                         "ELEVHÄLSA/SKOLA: Orosanmälan är en sekretesskänslig handling som inte ska ligga i elevakten; original går till socialnämnden och bara en kort notering bör finnas kvar. Varje skola och varje socialtjänst har egna rutiner för vem som anmäler och hur, och Skolvärlden rapporterar att brister i skolledningens hantering av orosanmälningar är vanliga. Skolor skickar dessutom känsliga elevhandlingar mellan varandra vid skolbyte — ett av ITSL:s egna utpekade SDK-användningsfall.",
+                         "ÖVERFÖRMYNDARE: Årsräkningar från gode män/förvaltare ska in före 1 mars varje år — historiskt ett massivt pappersflöde med krav på originalunderskrift och bilagda verifikat. E-tjänster som Provisum (Sambruk) och Aider digitaliserar granskning och kommunikation ställföreträdare↔handläggare, men ställföreträdaren avgör själv om hen redovisar på papper, så dubbla kanaler består (Stockholms stad, Södertälje, Mölndal).",
+                         "HEMTJÄNST/DIGITAL ARBETSMILJÖ: Arbetsmiljöverkets inspektion av ca 1 500 arbetsplatser visade att över hälften fick krav på åtgärder kring digital arbetsmiljö; hemtjänstpersonal anmäler arbetsskador dubbelt så ofta som branschsnittet. Forskning (Suntarbetsliv, CAMM) visar att många parallella, krånglande system ger kognitiv belastning, stress och rädsla att göra fel — ett starkt argument mot att addera \u0027ännu ett system\u0027 och för en samlad ingång.",
+                         "ITSL:S EGNA UTPEKADE FLÖDEN (itsl.se): socialsekreterare som får inkomstuppgifter/orosanmälningar via SDK i stället för brevpost; skolor som delar elevhandlingar vid skolbyte; hemtjänst/sjukvård som delar samordnad vårdplan \u0027på sekunden\u0027 i stället för journalkopior per brev."
+                     ],
+    "actors":  [
+                   {
+                       "name":  "Digg (Myndigheten för digital förvaltning)",
+                       "role":  "Infrastrukturägare SDK sedan mars 2024",
+                       "notes":  "Ansvarar för drift och vidareutveckling av SDK; står bakom nyttokalkylen 1 620 mnkr/år. Hubs SDK-klient måste följa Diggs specifikationer och adressbok."
+                   },
+                   {
+                       "name":  "Inera",
+                       "role":  "Tidigare projektägare SDK, nyttokalkyler",
+                       "notes":  "Utvecklade SDK-standarden på SKR:s uppdrag; nyttokalkyl med Sigtuna kommun (break-even år 3)."
+                   },
+                   {
+                       "name":  "SKR (Sveriges Kommuner och Regioner)",
+                       "role":  "Påverkans- och stödorganisation, standardsättare",
+                       "notes":  "Rapportserien \u0027Från pappershantering till digital hantering\u0027, digitala bastjänster för socialtjänsten, rekommendation om funktionsadresser 2025. Viktig kanal för att nå kommunerna."
+                   },
+                   {
+                       "name":  "Adda (SKR-bolag)",
+                       "role":  "Upphandling/ramavtal",
+                       "notes":  "Ramavtalet \u0027Säker digital kommunikation DIS\u0027 — sannolik upphandlingsväg för Hubs mot kommuner; driver Kompetensforum för välfärdens digitalisering."
+                   },
+                   {
+                       "name":  "Socialstyrelsen",
+                       "role":  "Föreskrivande myndighet, statistik",
+                       "notes":  "HSLF-FS 2016:40 (kryptering + MFA), juridiskt stöd om kommunikation över öppna nät, statistik om orosanmälningar (514 000 år 2024)."
+                   },
+                   {
+                       "name":  "Tietoevry (Lifecare SP/SVPL)",
+                       "role":  "Konkurrent/angränsande system",
+                       "notes":  "Dominerar samordnad planering vid utskrivning kommun↔region. Hubs konkurrerar inte med själva planeringssystemet men med flödena runt omkring (fax, brev, telefon)."
+                   },
+                   {
+                       "name":  "CGI, Atea m.fl.",
+                       "role":  "Konkurrerande SDK-leverantörer/integratörer",
+                       "notes":  "CGI och Atea marknadsför egna SDK-anslutningar och meddelandeklienter mot offentlig sektor."
+                   },
+                   {
+                       "name":  "Provisum (Sambruk) och Aider",
+                       "role":  "Nischade e-tjänster för överförmyndare",
+                       "notes":  "Digitaliserar årsräkningar och kommunikation med ställföreträdare — visar att nischade vertikallösningar redan tar delflöden."
+                   },
+                   {
+                       "name":  "Vision och Akademikerförbundet SSR",
+                       "role":  "Fackförbund, opinionsbildare",
+                       "notes":  "Återkommande undersökningar om socialsekreterares administrativa börda och arbetsmiljö — användbara som behovsbevis i säljmaterial."
+                   },
+                   {
+                       "name":  "Arbetsmiljöverket",
+                       "role":  "Tillsynsmyndighet",
+                       "notes":  "Tillsyn av digital arbetsmiljö (\u003e50 % av 1 500 inspekterade arbetsplatser fick krav) — stöd för argumentet \u0027färre system, en ingång\u0027."
+                   },
+                   {
+                       "name":  "Uppdrag Psykisk Hälsa (SKR) och 1177",
+                       "role":  "Kunskapsstöd SIP",
+                       "notes":  "Definierar SIP-processen (kallelse, mötesledning, uppföljning) som Hubs Talk + kalender + dokument kan digitalisera."
+                   }
+               ],
+    "implications_for_hubs":  [
+                                  "Bygg dashboarden ROLLBASERAD per persona: socialsekreteraren behöver inkorg för orosanmälningar/SDK-meddelanden med triage och kvittens; kommunsjuksköterskan behöver bevakning av inkommande meddelanden från regionen; HR behöver en avskild yta för rehab-/personalärenden; överförmyndarhandläggaren behöver deadline-driven ärendelista (årsräkningar före 1 mars).",
+                                  "Stöd FUNKTIONSADRESSER som förstaklassbegrepp. SKR:s rekommendation 2025 handlar om delade funktionsbrevlådor (t.ex. \u0027orosanmälan@kommunen\u0027 via SDK). Dashboardens kärnvy bör vara en delad inkorg med fördelning/ansvarstagande (\u0027vem tar detta ärende?\u0027), oläst-status och eskalering — inte en personlig mejlinkorg.",
+                                  "Visa LEVERANSSTATUS OCH KVITTENS tydligt. Den största rädslan med fax är felskickade meddelanden och ovisshet om mottagning (VGRfokus). Varje skickat meddelande i dashboarden bör ha synlig status: levererat, öppnat, besvarat — det är den direkta känslomässiga ersättningen för \u0027ringa och kolla att faxen kom fram\u0027.",
+                                  "Kvantifiera nyttan I produkten: räkna och visa antal ersatta fax/rek-brev och uppskattad sparad tid (Diggs schablon ~30 min/ärende, 1 620 mnkr/år sektorsvis). En \u0027nytta hittills\u0027-widget ger förvaltningschefen ROI-underlag och stödjer merförsäljning.",
+                                  "SIP-mötesflödet är en paketeringsmöjlighet: kallelse (SDK/säker e-post) + säkert videomöte (Talk) + delade dokument (planen) + uppföljning i ett flöde från dashboarden. Att Region Uppsala 2022 bedömde Skype som \u0027säkraste plattformen\u0027 visar att marknaden saknar ett bra alternativ — särskilt för möten där medborgare/anhöriga deltar utan myndighetskonto.",
+                                  "HR är ett underskattat segment: 66 % av chefer saknar verktyg för säker hantering av läkarintyg och rehabärenden, och dagens praxis är telefon + postade samtycken. En \u0027känsliga personalärenden\u0027-vy (säker e-post till medarbetare/FK/företagshälsovård + dokumentlagring) adresserar ett dokumenterat gap utan stark konkurrent.",
+                                  "Compliance by design som synligt värde: dashboarden bör visa att HSLF-FS 2016:40-kraven uppfylls (kryptering, MFA/stark autentisering vid inloggning) och att data ligger på kundens egna servrar — det är skälet att inte använda Teams/Outlook för dessa flöden, och bör kommuniceras i gränssnittet (t.ex. \u0027säker kanal\u0027-markering).",
+                                  "Minimera kognitiv belastning — dashboarden ska AGGREGERA, inte addera. Arbetsmiljöverkets och Suntarbetslivs fynd om digital arbetsmiljö ger ett starkt narrativ: en ingång som samlar SDK, säker e-post, fax-in, video och filer minskar systemträngseln i stället för att bli system nummer åtta. Notifiering/bevakning över alla kanaler i en vy är kärnvärdet.",
+                                  "Tidsfönstret är NU: 2026 pekas ut som året då SDK blir standardrutin och anslutningstakten ökade kraftigt 2025. Dashboard som första gränssnitt positionerar Hubs som \u0027kommunens dagliga arbetsyta för säkra flöden\u0027 precis när kommunerna inför arbetssätt och rutiner — den som äger startsidan äger vanan.",
+                                  "Behåll bryggor till analoga kanaler: digital fax-in/ut och utskriftsflöden behövs under lång övergångstid (ställföreträdare har lagstadgad rätt att lämna papper; små vårdgivare saknar SDK). Dashboarden bör visa alla inkommande kanaler — SDK, säker e-post, digital fax — i samma triagevy."
+                              ],
+    "sources":  [
+                    "https://www.socialstyrelsen.se/om-socialstyrelsen/pressrum/press/fler-barn-orosanmals--men-ofta-nar-det-har-gatt-for-langt/",
+                    "https://www.digg.se/om-oss/nyheter/sdk---saker-digital-kommunikation/nyheter/2023-10-05-debatt-visst-ar-det-dags-att-skrota-faxen",
+                    "https://inera.atlassian.net/wiki/spaces/OINK/pages/2796388895/S+ker+digital+kommunikation+SDK",
+                    "https://skr.se/digitaliseringivalfarden/digitalinfrastruktur/sakerdigitalkommunikationsdk.9116.html",
+                    "https://skr.se/download/18.51441ade19980413abc31d53/1758870424504/Delrapport-2-Fran-pappershantering-till-digital-hantering-Socialtjanst.pdf",
+                    "https://skr.se/digitaliseringivalfarden/digitaliseringsocialtjansten/digitalabastjansterforsocialtjansten.9033.html",
+                    "https://vgrfokus.se/2023/08/faxens-tid-kan-snart-vara-over-kanske-ny-digital-infrastruktur-pa-ingang/",
+                    "https://www.adda.se/upphandling-och-ramavtal/ramavtal-och-avtalskategorier/it-produkter-och-tjanster/saker-digital-kommunikation-dis/",
+                    "https://www.socialstyrelsen.se/kunskapsstod-och-regler/regler-och-riktlinjer/juridiskt-stod-for-dokumentation/kommunicera-over-internet-eller-andra-oppna-nat/",
+                    "https://regionuppsala.se/globalassets/samverkanswebben/utbildning-och-tjanstgoring/fou-socialtjanst/rapporter/slutrapport_sip-projekt_20220906.pdf",
+                    "https://www.uppdragpsykiskhalsa.se/sip/sip-mote/",
+                    "https://skr.se/halsaochsjukvard/patientinflytande/samordnadindividuellplansip.10664.html",
+                    "https://umu.diva-portal.org/smash/get/diva2:2023804/FULLTEXT01.pdf",
+                    "https://www.statskontoret.se/globalassets/rapporter-pdf/2022/2022_9---utskriftsversion.pdf",
+                    "https://akademssr.se/om-oss/vad-tycker-akademikerforbundet-ssr/undersokningar",
+                    "https://www.medhelp.se/rehabilitering-arbetsgivare/",
+                    "https://medarbetare.ki.se/din-anstallning/arbetsmiljo-och-halsa/arbetsanpassning-och-rehabilitering/checklista-rehabilitering-for-chef-och-hr",
+                    "https://samarbetswebb.gotland.se/rg/samarbetswebb/for-utforare-inom-socialtjanst-och-omsorg/lifecare-samordnad-planering---plattform-for-kommunikation",
+                    "https://www.tietoevry.com/se/care/halsa-och-sjukvard/primarvard-och-specialistvard/samordnad-planering/",
+                    "https://www.av.se/press/arbetsgivare-brister-i-det-digitala-arbetsmiljoarbetet/",
+                    "https://www.elevhalsan.se/expertsvar/hur-forvara-en-gjord-orosanmalan/",
+                    "https://skolvarlden.se/artiklar/brister-i-skolledningen-vanligt-problem-vid-orosanmalningar",
+                    "https://sambruk.se/overformyndare-provisum/",
+                    "https://godman.stockholm/du-som-ar-god-man/redovisa-uppdrag/anvisningar/",
+                    "https://www.haninge.se/aktuellt/2023/ny-e-tjanst-for-orosanmalan-i-haninge-kommun/",
+                    "https://svedala.se/bo/omsorg-och-hjalp/familj-barn-och-ungdom/anmalan-till-socialtjansten",
+                    "https://www.atea.se/kunskap/strategi-och-utveckling/saker-digital-kommunikation/",
+                    "https://itsl.se/sdk-for-snabb-och-trygg-kontakt-med-kommun-och-myndighet/"
+                ]
+}

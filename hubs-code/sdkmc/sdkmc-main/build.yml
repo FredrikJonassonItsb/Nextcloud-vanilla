@@ -1,0 +1,600 @@
+---
+- name: Build SDKMC App for Nextcloud
+  hosts: localhost
+  become: true
+  vars:
+    # GitLab Configuration
+    gitlab_url: 'https://gitlab.itsl.se'
+    namespace: 'itsl'
+    project: 'sdkmc'
+    ref: 'main'
+    project_path: '{{ namespace }}/{{ project }}'
+    gitlab_access_token: "{{ vault_gitlab_access_token if not cicd else 'placeholder' }}"  # Replace your GitLab access token in vault.yml
+    cicd: true  # Set to true if using GitLab CI/CD
+    use_url: false  # Set to true to download from URL
+
+    # Build Settings
+    build_number: "{{ lookup('pipe', 'date +%Y%m%d%H%M') }}"
+    sdkmc_version: '0.9.{{ build_number }}'
+    final_archive: 'sdkmc_v{{ sdkmc_version }}.tar.gz'
+
+    # Paths and Directories
+    pname: 'sdkmc_build'
+    dst_path: '/opt/sdkmc'
+    sdkmc_dir: '{{ dst_path }}/{{ pname }}'
+    sdkmc_archive: ''  # Set empty to skip manual mode - sdkmc-main.tar.gz
+    sdkmc_archive_path: '{{ dst_path }}/{{ sdkmc_archive }}'
+    sdkmc_output_archive: 'sdkmc.tar.gz'
+    sdkmc_output_archive_path: "{{ './build/artifacts/sdkmc.tar.gz' if cicd else '/opt/sdkmc/sdkmc_build/build/artifacts/sdkmc.tar.gz' }}"
+    docker_compose_file: '{{ sdkmc_dir }}/docker-compose.yml'
+    app_dir: '/var/www/html/apps-extra/sdkmc'
+
+    # Node.js and NPM Settings
+    nvm_sh_path: '/home/developer/.nvm/nvm.sh'
+    node_version_checks: true
+    downgrade_node_npm: false
+
+    # Docker Settings
+    container_name: "{{ 'sdkmc-nextcloud-1' if cicd else '{{ pname }}-nextcloud-1' }}"
+    docker_prune: false
+    docker_volumes_clean: true
+
+    # User and Permissions
+    user_uid: "{{ '1000' if cicd else '1000' }}"
+    group_uid: "{{ '1000' if cicd else '1000' }}"
+
+    # Cleanup Settings
+    clean_dir: true
+
+  # vars_files:
+  #   - vault.yml
+
+  tasks:
+    - name: Variables check
+      block:
+        - name: Determine if sdkmc_archive is active (defined and not empty)
+          ansible.builtin.set_fact:
+            is_sdkmc_archive_active: "{{ (sdkmc_archive is defined and sdkmc_archive | length > 0) | bool }}"
+
+        - name: Determine if cicd is active (boolean true)
+          ansible.builtin.set_fact:
+            is_cicd_active: "{{ cicd | bool }}"
+
+        - name: Determine if use_url is active (boolean true)
+          ansible.builtin.set_fact:
+            is_use_url_active: "{{ use_url | bool }}"
+
+        - name: Validate variable settings when sdkmc_archive is active
+          ansible.builtin.fail:
+            msg: >
+              sdkmc_archive is defined ('{{ sdkmc_archive }}'), so 'cicd' and 'use_url' must be false.
+              Current settings:
+              - cicd: '{{ cicd }}'
+              - use_url: '{{ use_url }}'
+              - sdkmc_archive: '{{ sdkmc_archive }}'
+          when:
+            - is_sdkmc_archive_active
+            - is_cicd_active or is_use_url_active
+
+        - name: Validate variable settings when sdkmc_archive is not active
+          ansible.builtin.fail:
+            msg: >
+              sdkmc_archive is not defined or empty, so either 'cicd' or 'use_url' must be true, but not both.
+              Current settings:
+              - cicd: '{{ cicd }}'
+              - use_url: '{{ use_url }}'
+              - sdkmc_archive: '{{ sdkmc_archive }}'
+          when:
+            - not is_sdkmc_archive_active
+            - (is_cicd_active | int + is_use_url_active | int) != 1
+
+    - name: Prereqs
+      block:
+        - name: Ensure jq is installed on the host
+          ansible.builtin.package:
+            name: jq
+            state: present
+          become: true
+
+        - name: Check the location of bash
+          ansible.builtin.command: which bash
+          register: bash_location
+          changed_when: bash_location.rc != 0
+
+        - name: Set bash executable path
+          ansible.builtin.set_fact:
+            bash_executable: '{{ bash_location.stdout_lines }}'
+
+        - name: Find directories named exactly 'sdkmc' under '/home/ubuntu'
+          ansible.builtin.find:
+            paths: '/home/ubuntu'
+            file_type: 'directory'
+            recurse: true
+            patterns: 'sdkmc'  # Corrected pattern
+          register: found_dirs
+          when: cicd
+
+        - name: Debug - Found directories named 'sdkmc'
+          ansible.builtin.debug:
+            var: found_dirs
+          when: cicd
+
+        - name: Filter directories ending with '/itsl/sdkmc' and excluding '/cache/'
+          ansible.builtin.set_fact:
+            matched_dirs: "{{ found_dirs.files
+                              | selectattr('path', 'search', '/itsl/sdkmc$')
+                              | rejectattr('path', 'search', '/cache/')
+                              | list }}"
+          when:
+            - cicd
+            - found_dirs.matched > 0
+
+        - name: Debug - Matched directories after excluding cache dirs
+          ansible.builtin.debug:
+            var: matched_dirs
+          when:
+            - cicd
+            - found_dirs.matched > 0
+
+        - name: Check number of matched directories
+          ansible.builtin.debug:
+            msg: "Number of matched directories: {{ matched_dirs | length }}"
+          when:
+            - cicd
+            - found_dirs.matched > 0
+
+        - name: Fail if no 'itsl/sdkmc' directory was found
+          ansible.builtin.fail:
+            msg: "No 'itsl/sdkmc' directory found under '/home/ubuntu' excluding cache dirs."
+          when:
+            - cicd
+            - (matched_dirs is not defined or matched_dirs | length == 0)
+
+        - name: Fail if multiple 'itsl/sdkmc' directories were found
+          ansible.builtin.fail:
+            msg: "Multiple 'itsl/sdkmc' directories found under '/home/ubuntu' excluding cache dirs. Expected only one."
+          when:
+            - cicd
+            - matched_dirs | length > 1
+
+        - name: Set dst_path to the found 'itsl/sdkmc' directory
+          ansible.builtin.set_fact:
+            dst_path: '{{ matched_dirs[0].path }}'
+          when:
+            - cicd
+            - matched_dirs | length == 1
+
+        - name: Debug - Set dst_path
+          ansible.builtin.debug:
+            msg: 'Destination path is set to {{ dst_path }}'
+          when:
+            - cicd
+            - dst_path is defined
+
+        - name: List contents of dst_path
+          ansible.builtin.command: ls -la '{{ dst_path }}'
+          register: ls_output
+          changed_when: false
+          when:
+            - cicd
+            - dst_path is defined
+
+    - name: Debug - Contents of dst_path
+      ansible.builtin.debug:
+        var: ls_output.stdout_lines
+      when:
+        - cicd
+        - dst_path is defined
+
+    - name: Docker & cleanup
+      block:
+        - name: Stop Docker Compose services # noqa ignore-errors
+          ansible.builtin.command: >
+            docker compose down --timeout 0
+          args:
+            chdir: '{{ dst_path }}'
+          ignore_errors: true
+          changed_when: false
+          failed_when: false
+
+        - name: Remove Docker volumes matching 'sdkmc' # noqa ignore-errors
+          ansible.builtin.command: >
+            sudo docker volume ls -q | grep -E 'sdkmc' | xargs -r sudo docker volume rm
+          when: docker_volumes_clean
+          changed_when: false
+          ignore_errors: true
+
+        - name: Docker system prune -af
+          ansible.builtin.command: docker system prune -af
+          changed_when: false
+          when: docker_prune
+
+        - name: Ensure sdkmc_dir exists
+          ansible.builtin.file:
+            path: '{{ sdkmc_dir }}'
+            state: directory
+            owner: '{{ user_uid }}'
+            group: '{{ group_uid }}'
+            mode: '0755'
+
+    - name: Download the SDKMC archive from '{{ sdkmc_archive_url }}'
+      when: use_url
+      block:
+        - name: Encode the project path
+          ansible.builtin.set_fact:
+            encoded_project_path: "{{ project_path | replace('/', '%2F') }}"
+
+        - name: Show encoded project path
+          ansible.builtin.debug:
+            msg: 'Encoded project path is {{ encoded_project_path }}'
+
+        - name: Fetch the project ID
+          ansible.builtin.uri:
+            url: '{{ gitlab_url }}/api/v4/projects/{{ encoded_project_path }}'
+            method: GET
+            headers:
+              PRIVATE-TOKEN: '{{ gitlab_access_token }}'
+            return_content: true
+            status_code: [200]
+          register: project_info
+
+        - name: Set project ID fact
+          ansible.builtin.set_fact:
+            project_id: '{{ project_info.json.id }}'
+
+        - name: Construct the archive URL
+          ansible.builtin.set_fact:
+            archive_url: '{{ gitlab_url }}/api/v4/projects/{{ project_id }}/repository/archive.tar.gz?sha={{ ref }}'
+
+        - name: Download the repository archive
+          ansible.builtin.get_url:
+            url: '{{ archive_url }}'
+            headers:
+              PRIVATE-TOKEN: '{{ gitlab_access_token }}'
+            dest: '{{ sdkmc_archive_path }}'
+            mode: '0644'
+
+        - name: Verify the downloaded file is a gzip archive # noqa command-instead-of-shell
+          ansible.builtin.shell: "file '{{ sdkmc_archive_path }}'"
+          register: file_type
+          failed_when: "'gzip compressed data' not in file_type.stdout"
+          changed_when: false
+
+    - name: Manual mode for archive
+      when: not use_url and sdkmc_archive is defined and not cicd
+      block:
+        - name: Check if present in playbook directory '{{ sdkmc_archive }}'
+          when: not use_url and sdkmc_archive is defined
+          ansible.builtin.stat:
+            path: '{{ playbook_dir }}/{{ sdkmc_archive }}'
+          register: sdkmc_archive_status
+
+        - name: Fail if missing '{{ sdkmc_archive }}'
+          when: not use_url and sdkmc_archive is defined and not sdkmc_archive_status.stat.exists
+          ansible.builtin.fail:
+            msg: 'The {{ sdkmc_archive }} file is missing in the playbook directory.'
+
+        - name: Extract the content of the first directory to '{{ sdkmc_dir }}'
+          ansible.builtin.unarchive:
+            src: "{{ sdkmc_archive_path if use_url else playbook_dir + '/' + sdkmc_archive }}"
+            dest: '{{ sdkmc_dir }}'
+            remote_src: true
+            extra_opts: [--strip-components=1]
+          when: not use_url and sdkmc_archive is defined
+
+        - name: Set ownership recursively for '{{ dst_path }}'
+          ansible.builtin.file:
+            path: '{{ dst_path }}'
+            owner: '{{ user_uid }}'
+            group: '{{ group_uid }}'
+            recurse: true
+
+    - name: Start Docker Compose services
+      ansible.builtin.command: >
+        docker compose up --build --detach --wait
+      args:
+        chdir: '{{ sdkmc_dir }}'
+      changed_when: false
+
+    - name: Wait for 'Nextcloud available' log entry # noqa risky-shell-pipe
+      ansible.builtin.shell: |
+        until docker logs '{{ container_name }}' 2>&1 | grep -q "Nextcloud available at http://localhost:8080"; do
+          sleep 5
+        done
+      register: wait_for_nextcloud
+      changed_when: false
+
+    - name: Update version in info.xml
+      ansible.builtin.lineinfile:
+        path: "{{ './appinfo/info.xml' if cicd else '{{ sdkmc_dir }}/appinfo/info.xml' }}"
+        regexp: '<version>\d+\.\d+\.\d+</version>'
+        line: '<version>{{ sdkmc_version }}</version>'
+
+    - name: Node.js and NPM version handling
+      when: node_version_checks | bool
+      block:
+        - name: Get list of Node.js versions inside the container
+          ansible.builtin.shell: |
+            docker exec '{{ container_name }}' ls /home/developer/.nvm/versions/node/
+          register: node_versions
+          changed_when: false
+
+        - name: Ensure Node.js versions are available
+          ansible.builtin.fail:
+            msg: 'No Node.js versions found in /home/developer/.nvm/versions/node/ inside the container.'
+          when: node_versions.stdout_lines | length == 0
+
+        - name: Strip 'v' prefix from Node.js versions
+          ansible.builtin.set_fact:
+            node_versions_list: "{{ node_versions.stdout_lines | map('trim') | map('regex_replace', '^v', '') | list }}"
+
+        - name: Set node_version to the highest available version
+          ansible.builtin.set_fact:
+            node_version: '{{ node_versions_list | sort | last }}'
+
+        - name: Use Node.js version '{{ node_version }}'
+          ansible.builtin.debug:
+            msg: 'Using Node.js version {{ node_version }}'
+
+        - name: Downgrade
+          when: downgrade_node_npm
+          block:
+            - name: Install compatible NPM version (v8.x) in the container
+              ansible.builtin.shell: |
+                docker exec '{{ container_name }}' /bin/bash -c '
+                source {{ nvm_sh_path }} &&
+                nvm use {{ node_version }} &&
+                npm install -g npm@8.19.4
+                '
+              changed_when: false
+
+            - name: Verify NPM version after downgrade
+              ansible.builtin.shell: |
+                docker exec '{{ container_name }}' /bin/bash -c '
+                source {{ nvm_sh_path }} &&
+                nvm use {{ node_version }} &&
+                npm --version
+                '
+              register: npm_version_after_install
+              changed_when: false
+
+            - name: Debug NPM version after downgrade
+              ansible.builtin.debug:
+                msg: 'NPM version after downgrade: {{ npm_version_after_install.stdout_lines }}'
+
+            - name: Reinstall Node.js dependencies
+              ansible.builtin.shell: |
+                docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+                source {{ nvm_sh_path }} &&
+                nvm use {{ node_version }} &&
+                rm -rf node_modules package-lock.json &&
+                npm install
+                '
+              register: reinstall_dependencies
+              changed_when: false
+
+        - name: Get Node.js path
+          ansible.builtin.shell: >
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            which node
+            '
+          register: node_path
+          changed_when: false
+
+        - name: Print Node.js path
+          ansible.builtin.debug:
+            msg: >
+              Node.js path:
+              '{{ node_path.stdout }}'
+
+        - name: Get npm path
+          ansible.builtin.shell: >
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            which npm
+            '
+          register: npm_path
+          changed_when: false
+
+        - name: Print npm path
+          ansible.builtin.debug:
+            msg: >
+              npm path:
+              '{{ npm_path.stdout }}'
+
+        - name: Get npm version
+          ansible.builtin.shell: >
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            npm --version
+            '
+          register: npm_version
+          changed_when: false
+
+        - name: Print npm version
+          ansible.builtin.debug:
+            msg: >
+              npm version:
+              '{{ npm_version.stdout }}'
+
+        - name: Get Node.js version
+          ansible.builtin.shell: >
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            node --version
+            '
+          register: node_version_output
+          changed_when: false
+
+        - name: Print Node.js version
+          ansible.builtin.debug:
+            msg: >
+              Node.js version:
+              '{{ node_version_output.stdout }}'
+
+        - name: Remove package-lock.json if it exists
+          ansible.builtin.shell: >
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            if [ -f "package-lock.json" ]; then rm "package-lock.json"; fi
+            '
+          register: remove_lock
+          changed_when: false
+
+        - name: Print package-lock.json removal status
+          ansible.builtin.debug:
+            msg: >
+              package-lock.json removal command executed with return code '{{ remove_lock.rc }}'
+
+        - name: Run npm install
+          ansible.builtin.shell: |
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            npm install
+            '
+          register: npm_install
+          changed_when: npm_install.rc == 0
+
+        - name: Print npm install result
+          ansible.builtin.debug:
+            msg: |
+              npm install completed with return code '{{ npm_install.rc }}'
+
+        - name: Run composer update
+          ansible.builtin.shell: |
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            composer update
+            '
+          register: composer_update
+          changed_when: composer_update.rc == 0
+
+        - name: Print composer update result
+          ansible.builtin.debug:
+            msg: |
+              composer update completed with return code '{{ composer_update.rc }}'
+
+        - name: Run npm audit fix
+          ansible.builtin.shell: |
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            npm audit fix
+            '
+          register: npm_audit_fix
+          changed_when: npm_audit_fix.rc == 0
+          ignore_errors: true
+
+        - name: Print npm audit fix result
+          ansible.builtin.debug:
+            msg: |
+              npm audit fix completed with return code '{{ npm_audit_fix.rc }}'
+              STDOUT:
+              '{{ npm_audit_fix.stdout_lines }}'
+              STDERR:
+              '{{ npm_audit_fix.stderr_lines }}'
+
+        - name: Run npm outdated
+          ansible.builtin.shell: |
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            npm outdated
+            '
+          register: npm_outdated
+          changed_when: false
+          ignore_errors: true
+
+        - name: Print npm outdated result
+          ansible.builtin.debug:
+            msg: |
+              npm outdated output:
+              '{{ npm_outdated.stdout_lines }}'
+
+        - name: Remove possible leftover archive # noqa ignore-errors
+          ansible.builtin.file:
+            path: '{{ sdkmc_output_archive_path }}'
+            state: absent
+          ignore_errors: true
+          failed_when: false
+
+        - name: Run make appstore
+          ansible.builtin.shell: |
+            docker exec -w '{{ app_dir }}' '{{ container_name }}' /bin/bash -c '
+            source {{ nvm_sh_path }} &&
+            nvm use {{ node_version }} &&
+            export PATH=/home/developer/.nvm/versions/node/v{{ node_version }}/bin:$PATH &&
+            make appstore
+            '
+          register: make_appstore
+          changed_when: make_appstore.rc == 0
+
+        - name: Print make appstore result
+          ansible.builtin.debug:
+            msg: |
+              make appstore completed with return code '{{ make_appstore.rc }}'
+
+        - name: Print MC build overall result
+          ansible.builtin.debug:
+            msg: |
+              MC Build Process Summary:
+              - npm install return code: '{{ npm_install.rc }}'
+              - composer update return code: '{{ composer_update.rc }}'
+              - npm audit fix return code: '{{ npm_audit_fix.rc }}'
+              - make appstore return code: '{{ make_appstore.rc }}'
+
+    - name: In order to flag the build as succeeded, wait for the file '{{ sdkmc_output_archive_path }}'
+      ansible.builtin.wait_for:
+        path: '{{ sdkmc_output_archive_path }}'
+        state: present
+        delay: 3
+        timeout: 120
+      register: build_ready_status
+
+    - name: Finalize artifact '{{ sdkmc_output_archive }}'
+      ansible.builtin.copy:
+        src: '{{ sdkmc_output_archive_path }}'
+        dest: '{{ dst_path }}/{{ final_archive }}'
+        remote_src: false
+        owner: '{{ user_uid }}'
+        group: '{{ group_uid }}'
+        mode: '0755'
+      changed_when: false
+
+    - name: Stop Docker Compose services
+      ansible.builtin.command: >
+        docker compose down --timeout 0
+      args:
+        chdir: '{{ sdkmc_dir }}'
+      changed_when: false
+      failed_when: false
+      when: not cicd
+
+    - name: Print success message
+      ansible.builtin.debug:
+        msg: >
+          The '{{ sdkmc_output_archive }}' file has been copied to '{{ dst_path }}/{{ final_archive }}'
+      when: build_ready_status is succeeded
+
+    - name: Print success message
+      ansible.builtin.debug:
+        msg: >
+          Build finished successfully.
+      when: build_ready_status is succeeded

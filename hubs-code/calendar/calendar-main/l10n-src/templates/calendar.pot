@@ -1,0 +1,2681 @@
+# Translations for calendar.
+# Copyright (C) ITSL Solutions AB
+# This file is distributed under the GNU AGPL v3.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: calendar\n"
+"Report-Msgid-Bugs-To: support@itsl.se\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
+
+#: appinfo/info.xml:10
+#: lib/Notification/Notifier.php:38
+#: src/components/AppointmentConfigModal.vue:38
+msgid "Calendar"
+msgstr ""
+
+#: appinfo/info.xml:11
+msgid "A Calendar app for Nextcloud"
+msgstr ""
+
+#: appinfo/info.xml:12
+msgid ""
+"A Calendar app for Nextcloud. Easily sync events from various devices with your Nextcloud and edit them online.\n"
+"\n"
+"* 🚀 **Integration with other Nextcloud apps!** Like Contacts, Talk, Tasks, Deck and Circles\n"
+"* 🌐 **WebCal Support!** Want to see your favorite team's matchdays in your calendar? No problem!\n"
+"* 🙋 **Attendees!** Invite people to your events\n"
+"* ⌚ **Free/Busy!** See when your attendees are available to meet\n"
+"* ⏰ **Reminders!** Get alarms for events inside your browser and via email\n"
+"* 🔍 **Search!** Find your events at ease\n"
+"* ☑️ **Tasks!** See tasks or Deck cards with a due date directly in the calendar\n"
+"* 🔈 **Talk rooms!** Create an associated Talk room when booking a meeting with just one click\n"
+"* 📆 **Appointment booking** Send people a link so they can book an appointment with you [using this app](https://apps.nextcloud.com/apps/appointments)\n"
+"* 📎 **Attachments!** Add, upload and view event attachments\n"
+"* 🙈 **We’re not reinventing the wheel!** Based on the great [c-dav library](https://github.com/nextcloud/cdav-library), [ical.js](https://github.com/mozilla-comm/ical.js) and [fullcalendar](https://github.com/fullcalendar/fullcalendar) libraries."
+msgstr ""
+
+#: lib/Controller/EmailController.php:98
+msgid "Provided email-address is too long"
+msgstr ""
+
+#: lib/Controller/EmailController.php:105
+msgid "User-Session unexpectedly expired"
+msgstr ""
+
+#: lib/Controller/EmailController.php:111
+msgid "Provided email-address is not valid"
+msgstr ""
+
+#: lib/Controller/EmailController.php:117
+#: lib/Controller/EmailController.php:188
+#, php-format
+msgid "%s has published the calendar »%s«"
+msgstr ""
+
+#: lib/Controller/EmailController.php:126
+msgid "Unexpected error sending email. Please contact your administrator."
+msgstr ""
+
+#: lib/Controller/EmailController.php:131
+#, php-format
+msgid "Successfully sent email to %1$s"
+msgstr ""
+
+#: lib/Controller/EmailController.php:189
+msgid "Hello,"
+msgstr ""
+
+#: lib/Controller/EmailController.php:190
+#, php-format
+msgid "We wanted to inform you that %s has published the calendar »%s«."
+msgstr ""
+
+#: lib/Controller/EmailController.php:191
+#, php-format
+msgid "Open »%s«"
+msgstr ""
+
+#. TRANSLATORS term at the end of a mail
+#: lib/Controller/EmailController.php:193
+msgid "Cheers!"
+msgstr ""
+
+#: lib/Dashboard/CalendarWidget.php:73
+msgid "Upcoming events"
+msgstr ""
+
+#: lib/Dashboard/CalendarWidget.php:187
+msgid "No more events today"
+msgstr ""
+
+#: lib/Dashboard/CalendarWidget.php:193
+msgid "No upcoming events"
+msgstr ""
+
+#: lib/Dashboard/CalendarWidget.php:209
+msgid "More events"
+msgstr ""
+
+#. TRANSLATORS Title for the Talk conversation name that will be created for the appointment. First placeholder is the appointment name, second one is the person who booked the appointement's display name
+#: lib/Listener/AppointmentBookedListener.php:72
+#, php-format
+msgid "%1$s with %2$s"
+msgstr ""
+
+#: lib/Notification/Notifier.php:56
+#, python-brace-format
+msgid "New booking {booking}"
+msgstr ""
+
+#: lib/Notification/Notifier.php:66
+#, python-brace-format
+msgid "{display_name} ({email}) booked the appointment \"{config_display_name}\" on {date_time}."
+msgstr ""
+
+#: lib/Profile/AppointmentsAction.php:73
+msgid "Appointments"
+msgstr ""
+
+#: lib/Profile/AppointmentsAction.php:79
+#, php-format
+msgid "Schedule appointment \"%s\""
+msgstr ""
+
+#: lib/Profile/AppointmentsAction.php:84
+msgid "Schedule an appointment"
+msgstr ""
+
+#. TRANSLATORS Title for event appoinment, first the attendee name, then the appointment name
+#: lib/Service/Appointments/BookingCalendarWriter.php:103
+#, php-format
+msgid "%1$s - %2$s"
+msgstr ""
+
+#: lib/Service/Appointments/BookingCalendarWriter.php:181
+#, php-format
+msgid "Prepare for %s"
+msgstr ""
+
+#: lib/Service/Appointments/BookingCalendarWriter.php:212
+#, php-format
+msgid "Follow up for %s"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:102
+#, php-format
+msgid "Your appointment \"%s\" with %s needs confirmation"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:106
+#, php-format
+msgid "Dear %s, please confirm your booking"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:110
+msgid "Confirm"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:112
+#: lib/Service/Appointments/MailService.php:182
+#: lib/Service/Appointments/MailService.php:301
+msgid "Appointment with:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:114
+#: lib/Service/Appointments/MailService.php:184
+#: lib/Service/Appointments/MailService.php:303
+msgid "Description:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:120
+#, php-format
+msgid "This confirmation link expires in %s hours."
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:123
+#: lib/Service/Appointments/MailService.php:190
+msgid "If you wish to cancel the appointment after all, please contact your organizer by replying to this email or by visiting their profile page."
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:175
+#, php-format
+msgid "Your appointment \"%s\" with %s has been accepted"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:179
+#, php-format
+msgid "Dear %s, your booking has been accepted."
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:220
+msgid "Appointment for:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:239
+msgid "Date:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:242
+#: lib/Service/Appointments/MailService.php:244
+#: lib/Service/Appointments/MailService.php:248
+#: lib/Service/Appointments/MailService.php:253
+msgid "Where:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:242
+msgid "You will receive a link with the confirmation email"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:257
+msgid "Comment:"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:294
+#, php-format
+msgid "You have a new appointment booking \"%s\" from %s"
+msgstr ""
+
+#: lib/Service/Appointments/MailService.php:298
+#, php-format
+msgid "Dear %s, %s (%s) booked an appointment with you."
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:113
+msgid "Previous day"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:116
+msgid "Previous week"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:119
+msgid "Previous year"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:123
+msgid "Previous month"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:135
+msgid "Next day"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:138
+msgid "Next week"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:141
+msgid "Next year"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderDatePicker.vue:145
+msgid "Next month"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderNewEvent.vue:16
+msgid "Event"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderNewEvent.vue:32
+msgid "Create new event"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderTodayButton.vue:11
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderTodayButton.vue:12
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:65
+#: src/components/Editor/FreeBusy/FreeBusy.vue:107
+#: src/components/Editor/FreeBusy/FreeBusy.vue:109
+#: src/components/Editor/FreeBusy/FreeBusy.vue:55
+#: src/components/Editor/FreeBusy/FreeBusy.vue:57
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:18
+msgid "Today"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderViewMenu.vue:55
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderViewButtons.vue:11
+#: src/components/Editor/FreeBusy/FreeBusy.vue:164
+msgid "Day"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderViewMenu.vue:59
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderViewButtons.vue:16
+#: src/components/Editor/FreeBusy/FreeBusy.vue:159
+msgid "Week"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderViewMenu.vue:63
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderViewButtons.vue:21
+msgid "Month"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderViewMenu.vue:67
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderViewButtons.vue:26
+msgid "Year"
+msgstr ""
+
+#: src/components/AppNavigation/AppNavigationHeader/AppNavigationHeaderViewMenu.vue:71
+#: src/components/AppNavigation/EmbedHeader/EmbedHeaderViewButtons.vue:31
+msgid "List"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList.vue:14
+msgid "Appointment schedules"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList.vue:22
+msgid "Create new"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:19
+#: src/components/AppointmentConfigModal/Confirmation.vue:17
+msgid "Preview"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:27
+#: src/components/AppointmentConfigModal/Confirmation.vue:21
+msgid "Copy link"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:34
+#: src/components/Editor/Repeat/Repeat.vue:211
+#: src/views/EditSimple.vue:199
+msgid "Edit"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:41
+#: src/components/AppNavigation/EditCalendarModal.vue:61
+#: src/components/Editor/FreeBusy/FreeBusy.vue:204
+#: src/views/EditFull.vue:68
+#: src/views/EditSimple.vue:87
+msgid "Delete"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:105
+msgid "Appointment link was copied to clipboard"
+msgstr ""
+
+#: src/components/AppNavigation/AppointmentConfigList/AppointmentConfigListItem.vue:108
+msgid "Appointment link could not be copied to clipboard"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList.vue:27
+msgid "Shared calendars"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList.vue:46
+msgid "Deck"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList.vue:67
+msgid "Hidden"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList.vue:232
+msgid "Could not update calendar order."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:9
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:8
+#: src/components/AppNavigation/EmbedTopNavigation.vue:27
+#: src/components/AppNavigation/EmbedTopNavigation.vue:40
+msgid "Untitled calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:34
+msgid "Shared with you by"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:49
+msgid "Edit and share calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:52
+#: src/components/AppNavigation/EditCalendarModal.vue:10
+msgid "Edit calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:62
+#, python-brace-format
+msgid "Unsharing the calendar in {countdown} second"
+msgid_plural "Unsharing the calendar in {countdown} seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:69
+#, python-brace-format
+msgid "Deleting the calendar in {countdown} second"
+msgid_plural "Deleting the calendar in {countdown} seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:184
+#, python-brace-format
+msgid "Disable calendar \"{calendar}\""
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:186
+msgid "Disable untitled calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:188
+#, python-brace-format
+msgid "Enable calendar \"{calendar}\""
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:190
+msgid "Enable untitled calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListItem.vue:226
+msgid "An error occurred, unable to change visibility of the calendar."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:10
+msgid "Calendars"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:14
+msgid "Add new"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:22
+#: src/components/AppNavigation/Settings/ImportScreenRow.vue:49
+#: src/components/AppNavigation/Settings/ImportScreenRow.vue:51
+#: src/components/AppNavigation/Settings/ImportScreenRow.vue:69
+#: src/components/AppNavigation/Settings/ImportScreenRow.vue:71
+msgid "New calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:25
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:45
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:66
+msgid "Name for new calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:34
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:54
+msgid "Creating calendar …"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:42
+msgid "New calendar with task list"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:63
+msgid "New subscription from link (read-only)"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:75
+msgid "Creating subscription …"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:80
+msgid "Add public holiday calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:88
+msgid "Add custom public calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:244
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:271
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:308
+msgid "An error occurred, unable to create the calendar."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/CalendarListNew.vue:296
+msgid "Please enter a valid link (starting with http://, https://, webcal://, or webcals://)"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:27
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:52
+msgid "Copy subscription link"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:32
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:57
+msgid "Copying link …"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:38
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:63
+msgid "Copied link"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:44
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:69
+msgid "Could not copy link"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:52
+#: src/components/AppNavigation/EditCalendarModal.vue:67
+#: src/views/EditFull.vue:56
+#: src/views/EditSimple.vue:75
+msgid "Export"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:158
+#: src/components/AppNavigation/EditCalendarModal/InternalLink.vue:62
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:258
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:286
+#: src/components/AppNavigation/EmbedTopNavigation.vue:100
+msgid "Calendar link copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/PublicCalendarListItem.vue:167
+#: src/components/AppNavigation/EditCalendarModal/InternalLink.vue:65
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:261
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:295
+#: src/components/AppNavigation/EmbedTopNavigation.vue:103
+msgid "Calendar link could not be copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:18
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:7
+msgid "Trash bin"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:22
+msgid "Loading deleted items."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:25
+msgid "You do not have any deleted items."
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:34
+msgid "Name"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:37
+msgid "Deleted"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:65
+msgid "Restore"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:73
+msgid "Delete permanently"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:82
+#, python-brace-format
+msgid "Items in the trash bin are deleted after {numDays} day"
+msgid_plural "Items in the trash bin are deleted after {numDays} days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:256
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:85
+msgid "Empty trash bin"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:155
+msgid "Untitled item"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:161
+msgid "Unknown calendar"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:214
+msgid "Could not load deleted calendars and objects"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:232
+msgid "Could not delete calendar or event"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:250
+msgid "Could not restore calendar or event"
+msgstr ""
+
+#: src/components/AppNavigation/CalendarList/Trashbin.vue:255
+msgid "Do you really want to empty the trash bin?"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:26
+msgid "Calendar name …"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:31
+msgid "Never show me as busy (set this calendar to transparent)"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:36
+msgid "Share calendar"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:55
+msgid "Unshare from me"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:73
+#: src/components/AppointmentConfigModal.vue:212
+#: src/components/Editor/Repeat/Repeat.vue:209
+#: src/components/Editor/SaveButtons.vue:21
+msgid "Save"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal.vue:255
+msgid "Failed to save calendar name and color"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/InternalLink.vue:13
+msgid "Internal link"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/InternalLink.vue:15
+msgid "A private link that can be used with external clients"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/InternalLink.vue:24
+msgid "Copy internal link"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:112
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:13
+msgid "Share link"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:22
+msgid "Copy public link"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:32
+msgid "Send link to calendar via email"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:39
+msgid "Enter one address"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:44
+msgid "Sending email …"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:77
+msgid "Copy embedding code"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:82
+msgid "Copying code …"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:88
+msgid "Copied code"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:94
+msgid "Could not copy code"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:102
+msgid "Delete share link"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:107
+msgid "Deleting share link …"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:212
+msgid "An error occurred, unable to publish calendar."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:240
+msgid "An error occurred, unable to send email."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:327
+msgid "Embed code copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:336
+msgid "Embed code could not be copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/PublishCalendar.vue:356
+msgid "Unpublishing calendar failed"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/ShareItem.vue:25
+msgid "can edit"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/ShareItem.vue:33
+#, python-brace-format
+msgid "Unshare with {displayName}"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/ShareItem.vue:89
+#, python-brace-format
+msgid "{teamDisplayName} (Team)"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/ShareItem.vue:116
+msgid "An error occurred while unsharing the calendar."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/ShareItem.vue:136
+msgid "An error occurred, unable to change the permission of the share."
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/SharingSearch.vue:12
+msgid "Share with users or groups"
+msgstr ""
+
+#: src/components/AppNavigation/EditCalendarModal/SharingSearch.vue:24
+msgid "No users or groups"
+msgstr ""
+
+#: src/components/AppNavigation/EmbedTopNavigation.vue:27
+#, python-brace-format
+msgid "Export {name}"
+msgstr ""
+
+#: src/components/AppNavigation/EmbedTopNavigation.vue:40
+#, python-brace-format
+msgid "Subscribe to {name}"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:15
+msgid "Enable birthday calendar"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:21
+msgid "Show tasks in calendar"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:27
+msgid "Enable simplified editor"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:33
+msgid "Limit the number of events displayed in the monthly view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:39
+msgid "Show weekends"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:45
+msgid "Show week numbers"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:53
+msgid "Time increments"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:64
+msgid "Default calendar for incoming invitations"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:73
+msgid "Default reminder"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:84
+msgid "Copy primary CalDAV address"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:90
+msgid "Copy iOS/macOS CalDAV address"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:96
+msgid "Personal availability settings"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:104
+msgid "Show keyboard shortcuts"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:230
+msgid "Calendar settings"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:258
+msgid "At event start"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:266
+msgid "No reminder"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:313
+#: src/components/AppNavigation/Settings.vue:325
+#: src/components/AppNavigation/Settings.vue:337
+#: src/components/AppNavigation/Settings.vue:349
+#: src/components/AppNavigation/Settings.vue:361
+#: src/components/AppNavigation/Settings.vue:376
+#: src/components/AppNavigation/Settings.vue:398
+#: src/components/AppNavigation/Settings.vue:422
+#: src/components/AppNavigation/Settings/SettingsTimezoneSelect.vue:64
+msgid "New setting was not saved successfully."
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:449
+msgid "Failed to save default calendar"
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:460
+#: src/components/AppNavigation/Settings.vue:477
+msgid "CalDAV link copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/Settings.vue:463
+#: src/components/AppNavigation/Settings.vue:480
+msgid "CalDAV link could not be copied to clipboard."
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:9
+msgid "Import calendars"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:13
+msgid "Please select a calendar to import into …"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:19
+msgid "Filename"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:22
+msgid "Calendar to import into"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:30
+#: src/components/Editor/Attachments/AttachmentsList.vue:274
+#: src/views/EditFull.vue:260
+msgid "Cancel"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ImportScreen.vue:33
+#: src/components/AppNavigation/Settings/SettingsImportSection.vue:19
+msgid "Import calendar"
+msgid_plural "Import calendars"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:9
+msgid "Default attachments location"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:50
+msgid "Select the default location for attachments"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:53
+#: src/components/Editor/Attachments/AttachmentsList.vue:161
+msgid "Pick"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:68
+msgid "Invalid location selected"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:78
+msgid "Attachments folder successfully saved."
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsAttachmentsFolder.vue:82
+msgid "Error on saving attachments folder."
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsImportSection.vue:195
+#, python-brace-format
+msgid "{filename} could not be parsed"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsImportSection.vue:213
+msgid "No valid files found, aborting import"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsImportSection.vue:229
+msgid "Successfully imported %n event"
+msgid_plural "Successfully imported %n events"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppNavigation/Settings/SettingsImportSection.vue:231
+#, python-brace-format
+msgid "Import partially failed. Imported {accepted} out of {total}."
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsTimezoneSelect.vue:46
+msgid "Automatic"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/SettingsTimezoneSelect.vue:48
+#, python-brace-format
+msgid "Automatic ({detected})"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:7
+msgid "Shortcut overview"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:33
+msgid "or"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:56
+msgid "Navigation"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:59
+msgid "Previous period"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:62
+msgid "Next period"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:69
+msgid "Views"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:72
+msgid "Day view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:75
+msgid "Week view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:78
+msgid "Month view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:81
+msgid "Year view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:84
+msgid "List view"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:88
+msgid "Actions"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:91
+msgid "Create event"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:94
+msgid "Show shortcuts"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:98
+msgid "Editor"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:101
+msgid "Close editor"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:104
+msgid "Save edited event"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:107
+msgid "Delete edited event"
+msgstr ""
+
+#: src/components/AppNavigation/Settings/ShortcutOverview.vue:110
+msgid "Duplicate event"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:20
+msgid "Appointment name"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:23
+#: src/models/rfcProps.js:34
+msgid "Location"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:28
+msgid "Create a Talk room"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:30
+msgid "A unique link will be generated for every booked appointment and sent via the confirmation email"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:33
+#: src/models/rfcProps.js:42
+msgid "Description"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:45
+msgid "Visibility"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:50
+msgid "Duration"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:52
+msgid "Increments"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:57
+msgid "Additional calendars to check for conflicts"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:68
+msgid "Pick time ranges where appointments are allowed"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:71
+msgid "to"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:72
+msgid "Delete slot"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:73
+msgid "No times set"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:74
+msgid "Add"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:75
+#: src/components/Editor/Repeat/RepeatOnTheSelect.vue:11
+msgid "Monday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:76
+msgid "Tuesday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:77
+msgid "Wednesday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:78
+msgid "Thursday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:79
+msgid "Friday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:80
+msgid "Saturday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:81
+msgid "Sunday"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:82
+msgid "Weekdays"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:87
+msgid "Add time before and after the event"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:90
+msgid "Before the event"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:93
+msgid "After the event"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:100
+msgid "Planning restrictions"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:103
+msgid "Minimum time before next available slot"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:106
+msgid "Max slots per day"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:112
+msgid "Limit how far in the future appointments can be booked"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:123
+#: src/components/Appointments/AppointmentDetails.vue:75
+msgid "It seems a rate limit has been reached. Please try again later."
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:202
+msgid "Appointment schedule saved"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:205
+msgid "Create appointment schedule"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:208
+msgid "Edit appointment schedule"
+msgstr ""
+
+#: src/components/AppointmentConfigModal.vue:215
+#: src/components/Editor/SaveButtons.vue:30
+msgid "Update"
+msgstr ""
+
+#: src/components/AppointmentConfigModal/Confirmation.vue:52
+msgid "Appointment schedule successfully created"
+msgstr ""
+
+#: src/components/AppointmentConfigModal/Confirmation.vue:55
+msgid "Appointment schedule successfully updated"
+msgstr ""
+
+#: src/components/AppointmentConfigModal/DurationInput.vue:47
+#: src/components/AppointmentConfigModal/DurationSelect.vue:59
+#, python-brace-format
+msgid "{duration} minute"
+msgid_plural "{duration} minutes"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:53
+msgid "0 minutes"
+msgstr ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:67
+#, python-brace-format
+msgid "{duration} hour"
+msgid_plural "{duration} hours"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:75
+#, python-brace-format
+msgid "{duration} day"
+msgid_plural "{duration} days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:83
+#, python-brace-format
+msgid "{duration} week"
+msgid_plural "{duration} weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:91
+#, python-brace-format
+msgid "{duration} month"
+msgid_plural "{duration} months"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/DurationSelect.vue:99
+#, python-brace-format
+msgid "{duration} year"
+msgid_plural "{duration} years"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/AppointmentConfigModal/NoEmailAddressWarning.vue:28
+msgid "To configure appointments, add your email address in personal settings."
+msgstr ""
+
+#: src/components/AppointmentConfigModal/VisibilitySelect.vue:41
+msgid "Public – shown on the profile page"
+msgstr ""
+
+#: src/components/AppointmentConfigModal/VisibilitySelect.vue:45
+msgid "Private – only accessible via secret link"
+msgstr ""
+
+#: src/components/Appointments/AppointmentBookingConfirmation.vue:8
+msgid "Please confirm your reservation"
+msgstr ""
+
+#: src/components/Appointments/AppointmentBookingConfirmation.vue:8
+msgid "We sent you an email with details. Please confirm your appointment using the link in the email. You can close this page now."
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:39
+msgid "Your name"
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:50
+msgid "Your email address"
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:62
+msgid "Please share anything that will help prepare for our meeting"
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:79
+msgid "Could not book the appointment. Please try again later or contact the organizer."
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:87
+msgid "Back"
+msgstr ""
+
+#: src/components/Appointments/AppointmentDetails.vue:94
+msgid "Book appointment"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:9
+msgid "Select a Talk Room"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:12
+#: src/views/EditFull.vue:192
+msgid "Add Talk conversation"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:17
+msgid "Fetching Talk rooms…"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:19
+msgid "No Talk room available"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:41
+msgid "Create a new public conversation"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:47
+msgid "Select conversation"
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:144
+msgid "Error fetching Talk conversations."
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:158
+msgid "Conversation does not have a valid URL."
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:167
+#: src/components/Editor/AddTalkModal.vue:205
+msgid "Successfully added Talk conversation link to location."
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:178
+#: src/components/Editor/AddTalkModal.vue:212
+msgid "Successfully added Talk conversation link to description."
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:184
+msgid "Failed to apply Talk room."
+msgstr ""
+
+#: src/components/Editor/AddTalkModal.vue:217
+msgid "Error creating Talk conversation"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:45
+msgid "before at"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:69
+msgid "Notification"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:76
+msgid "Email"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:83
+msgid "Audio notification"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:90
+msgid "Other notification"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:100
+msgid "Relative to event"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:107
+msgid "On date"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:117
+msgid "Edit time"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:124
+msgid "Save time"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:131
+msgid "Remove reminder"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:297
+#: src/components/Editor/Repeat/RepeatFreqWeeklyOptions.vue:9
+msgid "on"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListItem.vue:301
+msgid "at"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmListNew.vue:63
+#: src/components/Editor/Alarm/AlarmListNew.vue:64
+msgid "Add reminder"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmTimeUnitSelect.vue:57
+msgid "seconds"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmTimeUnitSelect.vue:64
+msgid "minutes"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmTimeUnitSelect.vue:68
+msgid "hours"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmTimeUnitSelect.vue:74
+msgid "days"
+msgstr ""
+
+#: src/components/Editor/Alarm/AlarmTimeUnitSelect.vue:78
+msgid "weeks"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:16
+#, python-brace-format
+msgid "{count} attachment"
+msgid_plural "{count} attachments"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:19
+msgid "No attachments"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:31
+msgid "Add from Files"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:37
+msgid "Upload from device"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:58
+msgid "Delete file"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:67
+msgid "Confirmation"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:157
+msgid "Choose a file to add as attachment"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:167
+msgid "Choose a file to share as a link"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:186
+#, python-brace-format
+msgid "Attachment {name} already exist!"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:213
+msgid "Could not upload attachment(s)"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:244
+msgid "You are about to download a file. Please check the file name before opening it. Are you sure to proceed?"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:257
+#, python-brace-format
+msgid "You are about to navigate to {host}. Are you sure to proceed? Link: {link}"
+msgstr ""
+
+#: src/components/Editor/Attachments/AttachmentsList.vue:280
+msgid "Proceed"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:107
+msgid "Suggested"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:117
+#: src/components/Editor/Resources/ResourceListSearch.vue:55
+msgid "Available"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:124
+msgid "Invitation accepted"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:130
+#, python-brace-format
+msgid "Accepted {organizerName}'s invitation"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:137
+msgid "Participation marked as tentative"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:142
+msgid "Invitation is delegated"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:148
+msgid "Not available"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:155
+msgid "Invitation declined"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:161
+#, python-brace-format
+msgid "Declined {organizerName}'s invitation"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:175
+msgid "Availability will be checked"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:181
+msgid "Invitation will be sent"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:191
+msgid "Failed to check availability"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:197
+msgid "Failed to deliver invitation"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:203
+msgid "Awaiting response"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:210
+msgid "Checking availability"
+msgstr ""
+
+#: src/components/Editor/AvatarParticipationStatus.vue:216
+#, python-brace-format
+msgid "Has not responded to {organizerName}'s invitation yet"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:8
+msgid "Availability of attendees, resources and rooms"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:183
+#: src/components/Editor/FreeBusy/FreeBusy.vue:27
+msgid "Suggestion accepted"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:112
+#: src/components/Editor/FreeBusy/FreeBusy.vue:123
+#: src/components/Editor/FreeBusy/FreeBusy.vue:60
+#: src/components/Editor/FreeBusy/FreeBusy.vue:71
+msgid "Next date"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:112
+#: src/components/Editor/FreeBusy/FreeBusy.vue:123
+#: src/components/Editor/FreeBusy/FreeBusy.vue:60
+#: src/components/Editor/FreeBusy/FreeBusy.vue:71
+msgid "Previous date"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:81
+msgid "Legend"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:146
+#: src/components/Editor/FreeBusy/FreeBusy.vue:95
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:220
+msgid "Out of office"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:188
+msgid "Attendees:"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:226
+msgid "Done"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:382
+msgid "Suggested times"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:429
+msgid "chairperson"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:430
+msgid "required participant"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:431
+msgid "non-participant"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:432
+msgid "optional participant"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:437
+#, python-brace-format
+msgid "{organizer} (organizer)"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/FreeBusy.vue:441
+#, python-brace-format
+msgid "{attendee} ({role})"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityList.vue:7
+msgid "Search room"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityList.vue:14
+msgid "Room name"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityList.vue:33
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:8
+msgid "Check room availability"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:12
+#: src/components/Editor/Invitees/InviteesList.vue:20
+msgid "Find a time"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:211
+#: src/models/rfcProps.js:75
+msgid "Free"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:214
+msgid "Busy (tentative)"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:217
+#: src/models/rfcProps.js:76
+msgid "Busy"
+msgstr ""
+
+#: src/components/Editor/FreeBusy/RoomAvailabilityModal.vue:223
+msgid "Unknown"
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:14
+msgid "Accept"
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:21
+msgid "Decline"
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:28
+#: src/components/Editor/InvitationResponseButtons.vue:36
+#: src/models/rfcProps.js:59
+msgid "Tentative"
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:102
+msgid "The invitation has been accepted successfully."
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:105
+msgid "Failed to accept the invitation."
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:111
+msgid "The invitation has been declined successfully."
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:114
+msgid "Failed to decline the invitation."
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:120
+msgid "Your participation has been marked as tentative."
+msgstr ""
+
+#: src/components/Editor/InvitationResponseButtons.vue:123
+msgid "Failed to set the participation status to tentative."
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:11
+msgid "Attendees"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:59
+msgid "%n more guest"
+msgid_plural "%n more guests"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:142
+msgid "No attendees yet"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:292
+#, python-brace-format
+msgid "{invitedCount} invited, {confirmedCount} confirmed"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:408
+msgid "Please add at least one attendee to use the \"Find a time\" feature."
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:431
+msgid "Successfully appended link to talk room to location."
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:444
+msgid "Successfully appended link to talk room to description."
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesList.vue:447
+msgid "Error creating Talk room"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:22
+#: src/components/Editor/Invitees/InviteesListSearch.vue:250
+#: src/components/Editor/Invitees/InviteesListSearch.vue:337
+msgid "%n member"
+msgid_plural "%n members"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:42
+msgid "Request reply"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:49
+msgid "Chairperson"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:55
+msgid "Required participant"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:61
+msgid "Optional participant"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:67
+msgid "Non-participant"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:163
+msgid "Remove group"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListItem.vue:165
+msgid "Remove attendee"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListSearch.vue:98
+msgid "Search for emails, users, contacts, contact groups or teams"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListSearch.vue:101
+#: src/components/Editor/Resources/ResourceListSearch.vue:133
+msgid "No match found"
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListSearch.vue:162
+msgid "Note that members of circles get invited but are not synced yet."
+msgstr ""
+
+#: src/components/Editor/Invitees/InviteesListSearch.vue:166
+msgid "Note that members of contact groups get invited but are not synced yet."
+msgstr ""
+
+#: src/components/Editor/Invitees/OrganizerListItem.vue:20
+msgid "(organizer)"
+msgstr ""
+
+#: src/components/Editor/Invitees/OrganizerListItem.vue:32
+#, python-brace-format
+msgid "Make {label} the organizer"
+msgstr ""
+
+#: src/components/Editor/Invitees/OrganizerListItem.vue:41
+#, python-brace-format
+msgid "Make {label} the organizer and attend"
+msgstr ""
+
+#: src/components/Editor/OrganizerNoEmailError.vue:36
+msgid "To send out invitations and handle responses, [linkopen]add your email address in personal settings[linkclose]."
+msgstr ""
+
+#: src/components/Editor/Properties/PropertyColor.vue:35
+msgid "Remove color"
+msgstr ""
+
+#: src/components/Editor/Properties/PropertyTitle.vue:14
+msgid "Event title"
+msgstr ""
+
+#: src/components/Editor/Properties/PropertyTitleTimePicker.vue:30
+msgid "From"
+msgstr ""
+
+#: src/components/Editor/Properties/PropertyTitleTimePicker.vue:63
+msgid "To"
+msgstr ""
+
+#: src/components/Editor/Properties/PropertyTitleTimePicker.vue:225
+msgid "Cannot modify all-day setting for events that are part of a recurrence-set."
+msgstr ""
+
+#: src/components/Editor/Repeat/Repeat.vue:10
+#: src/components/Editor/Repeat/RepeatFreqInterval.vue:47
+msgid "Repeat"
+msgstr ""
+
+#: src/components/Editor/Repeat/Repeat.vue:28
+msgid "Repeat event"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:8
+msgid "End repeat"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:12
+msgid "Select to end repeat"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:108
+msgid "time"
+msgid_plural "times"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:117
+#: src/components/Editor/Repeat/RepeatFreqSelect.vue:37
+msgid "never"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:120
+msgid "on date"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatEndRepeat.vue:123
+msgid "after"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatExceptionWarning.vue:9
+msgid "This event is the recurrence-exception of a recurrence-set. You cannot add a recurrence-rule to it."
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatFirstLastSelect.vue:11
+#: src/filters/recurrenceRuleFormat.js:194
+msgid "first"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatForkWarning.vue:10
+msgid "Changes to the recurrence-rule will only apply to this and all future occurrences."
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatFreqInterval.vue:50
+msgid "Repeat every"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatFreqMonthlyOptions.vue:15
+msgid "By day of the month"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatFreqMonthlyOptions.vue:35
+#: src/components/Editor/Repeat/RepeatFreqYearlyOptions.vue:44
+msgid "On the"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatFreqSelect.vue:40
+#: src/components/Editor/Repeat/RepeatOnTheSelect.vue:66
+msgid "day"
+msgid_plural "days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Repeat/RepeatFreqSelect.vue:43
+msgid "week"
+msgid_plural "weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Repeat/RepeatFreqSelect.vue:46
+msgid "month"
+msgid_plural "months"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Repeat/RepeatFreqSelect.vue:49
+msgid "year"
+msgid_plural "years"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Repeat/RepeatFreqYearlyOptions.vue:25
+msgid "On specific day"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatOnTheSelect.vue:69
+msgid "weekday"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatOnTheSelect.vue:72
+msgid "weekend day"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatSummary.vue:11
+#: src/filters/recurrenceRuleFormat.js:17
+msgid "Does not repeat"
+msgstr ""
+
+#: src/components/Editor/Repeat/RepeatUnsupportedWarning.vue:9
+msgid "The recurrence definition of this event is not fully supported by Nextcloud. If you edit the recurrence-options, certain recurrences may be lost."
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceList.vue:8
+msgid "Resources"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceList.vue:83
+msgid "No rooms or resources yet"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:26
+msgid "Add resource"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:35
+msgid "Has a projector"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:37
+msgid "Has a whiteboard"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:39
+#: src/components/Editor/Resources/ResourceListSearch.vue:64
+msgid "Wheelchair accessible"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:45
+msgid "Remove resource"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListItem.vue:133
+#: src/components/Editor/Resources/ResourceListSearch.vue:205
+#, python-brace-format
+msgid "{seatingCapacity} seat"
+msgid_plural "{seatingCapacity} seats"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:9
+msgid "Show all rooms"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:58
+msgid "Projector"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:61
+msgid "Whiteboard"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:130
+msgid "Search for resources or rooms"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:248
+msgid "available"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceListSearch.vue:252
+msgid "unavailable"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceRoomType.vue:42
+msgid "Room type"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceRoomType.vue:46
+msgid "Any"
+msgstr ""
+
+#: src/components/Editor/Resources/ResourceSeatingCapacity.vue:32
+msgid "Minimum seating capacity"
+msgstr ""
+
+#: src/components/Editor/SaveButtons.vue:12
+msgid "More details"
+msgstr ""
+
+#: src/components/Editor/SaveButtons.vue:36
+msgid "Update this and all future"
+msgstr ""
+
+#: src/components/Editor/SaveButtons.vue:42
+msgid "Update this occurrence"
+msgstr ""
+
+#: src/components/EmptyCalendar.vue:7
+msgid "Public calendar does not exist"
+msgstr ""
+
+#: src/components/EmptyCalendar.vue:8
+msgid "Maybe the share was deleted or has expired?"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:33
+msgid "Select a time zone"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:45
+msgid "Please select a time zone:"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:59
+msgid "Pick a time"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:64
+msgid "Pick a date"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:274
+#: src/components/Shared/DatePickerOld.vue:313
+#, python-brace-format
+msgid "from {formattedDate}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:277
+#: src/components/Shared/DatePickerOld.vue:317
+#, python-brace-format
+msgid "to {formattedDate}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:280
+#: src/components/Shared/DatePickerOld.vue:321
+#, python-brace-format
+msgid "on {formattedDate}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:288
+#: src/components/Shared/DatePickerOld.vue:350
+#, python-brace-format
+msgid "from {formattedDate} at {formattedTime}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:291
+#: src/components/Shared/DatePickerOld.vue:354
+#, python-brace-format
+msgid "to {formattedDate} at {formattedTime}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:294
+#: src/components/Shared/DatePickerOld.vue:358
+#, python-brace-format
+msgid "on {formattedDate} at {formattedTime}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:297
+#: src/components/Shared/DatePickerOld.vue:362
+#, python-brace-format
+msgid "{formattedDate} at {formattedTime}"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:339
+msgid "Please enter a valid date"
+msgstr ""
+
+#: src/components/Shared/DatePickerOld.vue:383
+msgid "Please enter a valid date and time"
+msgstr ""
+
+#: src/components/Shared/TimezoneSelect.vue:44
+msgid "Type to search time zone"
+msgstr ""
+
+#: src/components/Shared/TimezoneSelect.vue:66
+msgid "Global"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:10
+msgid "Public holiday calendars"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:13
+msgid "Public calendars"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:16
+msgid "No valid public calendars configured"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:17
+msgid "Speak to the server administrator to resolve this issue."
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:23
+#, python-brace-format
+msgid "Public holiday calendars are provided by Thunderbird. Calendar data will be downloaded from {website}"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:28
+msgid "These public calendars are suggested by the server administrator. Calendar data will be downloaded from the respective website."
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:37
+#, python-brace-format
+msgid "By {authors}"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:43
+msgid "Subscribe"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:43
+msgid "Subscribed"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:90
+#, python-brace-format
+msgid "Holidays in {region}"
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:113
+msgid "An error occurred, unable to read public calendars."
+msgstr ""
+
+#: src/components/Subscription/PublicCalendarSubscriptionPicker.vue:151
+msgid "An error occurred, unable to subscribe to calendar."
+msgstr ""
+
+#: src/contactsMenu.js:32
+msgid "Show availability"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:13
+msgid "Anniversary"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:14
+msgid "Appointment"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:15
+msgid "Business"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:16
+msgid "Education"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:17
+msgid "Holiday"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:18
+msgid "Meeting"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:19
+msgid "Miscellaneous"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:20
+msgid "Non-working hours"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:21
+msgid "Not in office"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:22
+#: src/views/Calendar.vue:325
+#: src/views/Calendar.vue:326
+msgid "Personal"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:23
+msgid "Phone call"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:24
+msgid "Sick day"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:25
+msgid "Special occasion"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:26
+msgid "Travel"
+msgstr ""
+
+#: src/defaults/defaultCategories.js:27
+msgid "Vacation"
+msgstr ""
+
+#: src/filters/alarmFormat.js:23
+msgid "Midnight on the day the event starts"
+msgstr ""
+
+#: src/filters/alarmFormat.js:35
+#, python-brace-format
+msgid "%n day before the event at {formattedHourMinute}"
+msgid_plural "%n days before the event at {formattedHourMinute}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/alarmFormat.js:42
+#, python-brace-format
+msgid "%n week before the event at {formattedHourMinute}"
+msgid_plural "%n weeks before the event at {formattedHourMinute}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/alarmFormat.js:50
+#, python-brace-format
+msgid "on the day of the event at {formattedHourMinute}"
+msgstr ""
+
+#: src/filters/alarmFormat.js:57
+msgid "at the event's start"
+msgstr ""
+
+#: src/filters/alarmFormat.js:59
+msgid "at the event's end"
+msgstr ""
+
+#: src/filters/alarmFormat.js:67
+#, python-brace-format
+msgid "{time} before the event starts"
+msgstr ""
+
+#: src/filters/alarmFormat.js:69
+#, python-brace-format
+msgid "{time} before the event ends"
+msgstr ""
+
+#: src/filters/alarmFormat.js:74
+#, python-brace-format
+msgid "{time} after the event starts"
+msgstr ""
+
+#: src/filters/alarmFormat.js:76
+#, python-brace-format
+msgid "{time} after the event ends"
+msgstr ""
+
+#: src/filters/alarmFormat.js:82
+#, python-brace-format
+msgid "on {time}"
+msgstr ""
+
+#: src/filters/alarmFormat.js:86
+#, python-brace-format
+msgid "on {time} ({timezoneId})"
+msgstr ""
+
+#: src/filters/dateRangeFormat.js:22
+#, python-brace-format
+msgid "Week {number} of {year}"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:24
+msgid "Daily"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:28
+msgid "Weekly"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:32
+msgid "Monthly"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:36
+msgid "Yearly"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:42
+msgid "Every %n day"
+msgid_plural "Every %n days"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:46
+msgid "Every %n week"
+msgid_plural "Every %n weeks"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:50
+msgid "Every %n month"
+msgid_plural "Every %n months"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:54
+msgid "Every %n year"
+msgid_plural "Every %n years"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:63
+#, python-brace-format
+msgid "on {weekday}"
+msgid_plural "on {weekdays}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:71
+#, python-brace-format
+msgid "on day {dayOfMonthList}"
+msgid_plural "on days {dayOfMonthList}"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:78
+#, python-brace-format
+msgid "on the {ordinalNumber} {byDaySet}"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:89
+#, python-brace-format
+msgid "in {monthNames} on the {dayOfMonthList}"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:97
+#, python-brace-format
+msgid "in {monthNames} on the {ordinalNumber} {byDaySet}"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:109
+#, python-brace-format
+msgid "until {untilDate}"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:113
+msgid "%n time"
+msgid_plural "%n times"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/filters/recurrenceRuleFormat.js:198
+msgid "second"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:201
+msgid "third"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:204
+msgid "fourth"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:207
+msgid "fifth"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:210
+msgid "second to last"
+msgstr ""
+
+#: src/filters/recurrenceRuleFormat.js:213
+msgid "last"
+msgstr ""
+
+#: src/fullcalendar/eventSources/eventSourceFunction.js:123
+#: src/utils/alarms.js:222
+#: src/views/EditSimple.vue:325
+msgid "Untitled event"
+msgstr ""
+
+#: src/fullcalendar/eventSources/eventSourceFunction.js:129
+msgid "Untitled task"
+msgstr ""
+
+#: src/fullcalendar/interaction/eventClick.js:109
+msgid "Please ask your administrator to enable the Tasks App."
+msgstr ""
+
+#: src/fullcalendar/interaction/eventDrop.js:65
+msgid "You are not allowed to edit this event as an attendee."
+msgstr ""
+
+#: src/fullcalendar/localization/localeProvider.js:18
+msgid "W"
+msgstr ""
+
+#: src/fullcalendar/localization/localeProvider.js:19
+#: src/views/EditFull.vue:110
+#: src/views/EditSimple.vue:144
+msgid "All day"
+msgstr ""
+
+#: src/fullcalendar/localization/localeProvider.js:20
+msgid "%n more"
+msgstr ""
+
+#: src/fullcalendar/localization/localeProvider.js:21
+msgid "No events to display"
+msgstr ""
+
+#: src/fullcalendar/rendering/eventDidMount.js:118
+msgid "All participants declined"
+msgstr ""
+
+#: src/fullcalendar/rendering/eventDidMount.js:121
+msgid "Please confirm your participation"
+msgstr ""
+
+#: src/fullcalendar/rendering/eventDidMount.js:125
+msgid "You declined this event"
+msgstr ""
+
+#: src/fullcalendar/rendering/eventDidMount.js:162
+msgid "Your participation is tentative"
+msgstr ""
+
+#: src/fullcalendar/rendering/eventLimitText.js:16
+msgid "+%n more"
+msgid_plural "+%n more"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/fullcalendar/rendering/noEventsDidMount.js:20
+msgid "No events"
+msgstr ""
+
+#: src/fullcalendar/rendering/noEventsDidMount.js:21
+msgid "Create a new event or change the visible time-range"
+msgstr ""
+
+#: src/mixins/EditorMixin.js:502
+msgid "Failed to save event"
+msgstr ""
+
+#: src/mixins/EditorMixin.js:759
+#: src/mixins/EditorMixin.js:784
+#: src/mixins/EditorMixin.js:800
+msgid "It might have been deleted, or there was a typo in a link"
+msgstr ""
+
+#: src/mixins/EditorMixin.js:879
+msgid "It might have been deleted, or there was a typo in the link"
+msgstr ""
+
+#: src/models/resourceProps.js:15
+msgid "Meeting room"
+msgstr ""
+
+#: src/models/resourceProps.js:16
+msgid "Lecture hall"
+msgstr ""
+
+#: src/models/resourceProps.js:17
+msgid "Seminar room"
+msgstr ""
+
+#: src/models/resourceProps.js:18
+msgid "Other"
+msgstr ""
+
+#: src/models/rfcProps.js:19
+msgid "When shared show"
+msgstr ""
+
+#: src/models/rfcProps.js:22
+msgid "When shared show full event"
+msgstr ""
+
+#: src/models/rfcProps.js:23
+msgid "When shared show only busy"
+msgstr ""
+
+#: src/models/rfcProps.js:24
+msgid "When shared hide this event"
+msgstr ""
+
+#: src/models/rfcProps.js:27
+msgid "The visibility of this event in shared calendars."
+msgstr ""
+
+#: src/models/rfcProps.js:35
+msgid "Add a location"
+msgstr ""
+
+#: src/models/rfcProps.js:43
+msgid "Add a description\n"
+msgstr ""
+
+#: src/models/rfcProps.js:55
+msgid "Status"
+msgstr ""
+
+#: src/models/rfcProps.js:58
+msgid "Confirmed"
+msgstr ""
+
+#: src/models/rfcProps.js:60
+msgid "Canceled"
+msgstr ""
+
+#: src/models/rfcProps.js:63
+msgid "Confirmation about the overall status of the event."
+msgstr ""
+
+#: src/models/rfcProps.js:70
+msgid "Show as"
+msgstr ""
+
+#: src/models/rfcProps.js:73
+msgid "Take this event into account when calculating free-busy information."
+msgstr ""
+
+#: src/models/rfcProps.js:84
+msgid "Categories"
+msgstr ""
+
+#: src/models/rfcProps.js:87
+msgid "Categories help you to structure and organize your events."
+msgstr ""
+
+#: src/models/rfcProps.js:88
+msgid "Search or add categories"
+msgstr ""
+
+#: src/models/rfcProps.js:89
+msgid "Add this as a new category"
+msgstr ""
+
+#: src/models/rfcProps.js:96
+msgid "Custom color"
+msgstr ""
+
+#: src/models/rfcProps.js:99
+msgid "Special color of this event. Overrides the calendar-color."
+msgstr ""
+
+#: src/services/attachmentService.js:33
+msgid "Error while sharing file"
+msgstr ""
+
+#: src/services/attachmentService.js:65
+msgid "Error while sharing file with user"
+msgstr ""
+
+#: src/services/attachmentService.js:80
+#, python-brace-format
+msgid "Error creating a folder {folder}"
+msgstr ""
+
+#: src/services/attachmentService.js:121
+#, python-brace-format
+msgid "Attachment {fileName} already exists!"
+msgstr ""
+
+#: src/services/attachmentService.js:135
+#, python-brace-format
+msgid "Attachment {fileName} added!"
+msgstr ""
+
+#: src/services/attachmentService.js:146
+#, python-brace-format
+msgid "An error occurred during uploading file {fileName}"
+msgstr ""
+
+#: src/services/attachmentService.js:182
+msgid "An error occurred during getting file information"
+msgstr ""
+
+#: src/services/talkService.js:32
+msgid "Talk conversation for event"
+msgstr ""
+
+#: src/store/calendars.js:447
+msgid "An error occurred, unable to delete the calendar."
+msgstr ""
+
+#: src/store/calendars.js:800
+#, python-brace-format
+msgid "Imported {filename}"
+msgstr ""
+
+#: src/utils/alarms.js:227
+msgid "This is an event reminder."
+msgstr ""
+
+#: src/utils/propfindErrorParse.js:22
+msgid "Error while parsing a PROPFIND error"
+msgstr ""
+
+#: src/views/Appointments/Booking.vue:26
+#: src/views/Appointments/Booking.vue:37
+msgid "Select a date"
+msgstr ""
+
+#: src/views/Appointments/Booking.vue:42
+msgid "Select slot"
+msgstr ""
+
+#: src/views/Appointments/Booking.vue:46
+#: src/views/Appointments/Booking.vue:47
+msgid "No slots available"
+msgstr ""
+
+#: src/views/Appointments/Booking.vue:209
+msgid "Could not fetch slots"
+msgstr ""
+
+#: src/views/Appointments/Confirmation.vue:7
+msgid "The slot for your appointment has been confirmed"
+msgstr ""
+
+#: src/views/Appointments/Confirmation.vue:10
+msgid "Appointment Details:"
+msgstr ""
+
+#: src/views/Appointments/Confirmation.vue:12
+msgid "Time:"
+msgstr ""
+
+#: src/views/Appointments/Confirmation.vue:14
+msgid "Booked for:"
+msgstr ""
+
+#: src/views/Appointments/Conflict.vue:10
+#, python-brace-format
+msgid "Thank you. Your booking from {startDate} to {endDate} has been confirmed."
+msgstr ""
+
+#: src/views/Appointments/Conflict.vue:12
+msgid "Book another appointment:"
+msgstr ""
+
+#: src/views/Appointments/Conflict.vue:14
+#: src/views/Appointments/Conflict.vue:22
+msgid "See all available slots"
+msgstr ""
+
+#: src/views/Appointments/Conflict.vue:17
+#, python-brace-format
+msgid "The slot for your appointment from {startDate} to {endDate} is not available any more."
+msgstr ""
+
+#: src/views/Appointments/Conflict.vue:20
+msgid "Please book a different slot:"
+msgstr ""
+
+#: src/views/Appointments/Overview.vue:15
+#, python-brace-format
+msgid "Book an appointment with {name}"
+msgstr ""
+
+#: src/views/Appointments/Overview.vue:37
+#, python-brace-format
+msgid "No public appointments found for {name}"
+msgstr ""
+
+#: src/views/Calendar.vue:337
+msgid ""
+"The automatic time zone detection determined your time zone to be UTC.\n"
+"This is most likely the result of security measures of your web browser.\n"
+"Please set your time zone manually in the calendar settings."
+msgstr ""
+
+#: src/views/Calendar.vue:343
+#, python-brace-format
+msgid ""
+"Your configured time zone ({timezoneId}) was not found. Falling back to UTC.\n"
+"Please change your time zone in the settings and report this issue."
+msgstr ""
+
+#: src/views/ContactsMenuAvailability.vue:67
+#, python-brace-format
+msgid "Availability of {displayName}"
+msgstr ""
+
+#: src/views/EditFull.vue:12
+msgid "Edit event"
+msgstr ""
+
+#: src/views/EditFull.vue:22
+#: src/views/EditSimple.vue:46
+msgid "Event does not exist"
+msgstr ""
+
+#: src/views/EditFull.vue:62
+#: src/views/EditSimple.vue:81
+msgid "Duplicate"
+msgstr ""
+
+#: src/views/EditFull.vue:74
+#: src/views/EditSimple.vue:93
+msgid "Delete this occurrence"
+msgstr ""
+
+#: src/views/EditFull.vue:80
+#: src/views/EditSimple.vue:99
+msgid "Delete this and all future"
+msgstr ""
+
+#: src/views/EditFull.vue:139
+msgid "Modifications wont get propagated to the organizer and other attendees"
+msgstr ""
+
+#: src/views/EditFull.vue:224
+msgid "Managing shared access"
+msgstr ""
+
+#: src/views/EditFull.vue:231
+msgid "User requires access to your file"
+msgid_plural "Users require access to your file"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/views/EditFull.vue:242
+msgid "Attachment requires shared access"
+msgid_plural "Attachments requiring shared access"
+msgstr[0] ""
+msgstr[1] ""
+
+#: src/views/EditFull.vue:255
+msgid "Deny access"
+msgstr ""
+
+#: src/views/EditFull.vue:265
+msgid "Invite"
+msgstr ""
+
+#: src/views/EditSimple.vue:107
+#: src/views/EditSimple.vue:41
+msgid "Close"
+msgstr ""
+
+#: src/views/EditSimple.vue:65
+msgid "Modifications will not get propagated to the organizer and other attendees"
+msgstr ""
+
+#: templates/appointments/404-booking.php:15
+msgid "Appointment not found"
+msgstr ""
+
+#: templates/appointments/404-index.php:15
+msgid "User not found"
+msgstr ""

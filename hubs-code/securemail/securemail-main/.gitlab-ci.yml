@@ -1,0 +1,174 @@
+---
+# GitLab CI/CD Pipeline for SecureMail Docker Container Builds
+# This pipeline provides linting, building, and pushing of Docker containers
+# to the ITSL container registry at cr.itsl.se
+
+stages:
+  - lint     # Code quality checks (ansible, bash, js, yaml)
+  - build    # Docker container builds and registry pushes
+  - deploy   # Future: Ansible deployment triggers
+
+  # Global variables used across all jobs
+variables:
+
+  # Docker configuration - using GitLab runner's host Docker daemon
+  FF_NETWORK_PER_BUILD: "true"        # Use dedicated network per build for isolation
+
+  # Container registry configuration
+  REGISTRY_URL: "cr.itsl.se"           # ITSL container registry URL
+  PROJECT_PATH: "itsl/securemail"      # Registry namespace/project path
+
+  # Timeout configuration
+  DOCKER_BUILD_TIMEOUT: "1800"        # 30 minutes for Docker builds
+  REGISTRY_TIMEOUT: "600"             # 10 minutes for registry operations
+
+  # Docker Tagging Strategy:
+  # - main branch → 'main' tag only (development builds)
+  # - version tags (v1.0.0) → specific version + 'latest' only if semantically newer
+  # - test branch → 'test' tag only (CI testing)
+  # This ensures 'latest' always points to the highest semantic version release
+  # and prevents older patch releases from overwriting newer major/minor releases
+
+  # Backend build arguments - passed to Docker build context
+  # These configure the Node.js backend application environment
+  BACKEND_BUILD_ARGS: >-
+    --build-arg PORT=3000
+
+  # Frontend build arguments - passed to Docker build context
+  # These configure the Vue.js frontend and Nginx server environment
+  FRONTEND_BUILD_ARGS: >-
+    --build-arg USER_GID=1200
+    --build-arg USER_UID=1200
+    --build-arg USER_NAME=user
+    --build-arg DEBIAN_FRONTEND=noninteractive
+    --build-arg SECUREMAIL_FRONTEND_DEFAULTS_DIR=/opt/frontend-defaults
+    --build-arg SECUREMAIL_FRONTEND_HTTP_PORT=8080
+    --build-arg SECUREMAIL_FRONTEND_HTML_DIR=/usr/share/nginx/html
+    --build-arg NGINX_DEFAULTS=/etc/nginx_defaults
+    --build-arg NGINX_CONF=/etc/nginx
+
+# Lint Ansible playbooks and roles
+lint-ansible-job:
+  stage: lint
+  image:
+    name: alpine:latest                 # Lightweight base image
+    pull_policy: if-not-present     # Only pull if image not cached locally
+  tags:
+    - docker                          # Run on runners with Docker capability
+  script:
+    - source ./lint-functions.sh
+    - lint_ansible
+  artifacts:
+    paths:
+      - ansible_lint_report.txt        # Save lint results for review
+    expire_in: 1 week                  # Keep artifacts for 1 week
+    when: always                       # Save artifacts even if job fails
+
+# Lint Bash/Shell scripts
+lint-bash-job:
+  stage: lint
+  image:
+    name: alpine:latest
+    pull_policy: if-not-present     # Only pull if image not cached locally
+  tags:
+    - docker
+  script:
+    - source ./lint-functions.sh
+    - lint_bash
+  artifacts:
+    paths:
+      - bash_lint_report.txt
+    expire_in: 1 week
+    when: always
+
+# Lint JavaScript files
+# Provides ESLint checking or basic syntax validation for JS files
+lint-javascript-job:
+  stage: lint
+  image:
+    name: node:20-alpine               # Use Node.js image for JavaScript tooling
+    pull_policy: if-not-present    # Only pull if image not cached locally
+  tags:
+    - docker
+  script:
+    - source ./lint-functions.sh
+    - lint_javascript
+  artifacts:
+    paths:
+      - js_lint_report.txt
+    expire_in: 1 week
+    when: always
+
+# Lint YAML files
+lint-yaml-job:
+  stage: lint
+  image:
+    name: alpine:latest
+    pull_policy: if-not-present    # Only pull if image not cached locally
+  tags:
+    - docker
+  script:
+    - source ./lint-functions.sh
+    - lint_yaml
+  artifacts:
+    paths:
+      - yaml_lint_report.txt
+    expire_in: 1 week
+    when: always
+
+# Build and push SecureMail backend container
+# Handles conditional building based on branch/tag with appropriate tagging
+build-securemail-backend:
+  stage: build
+  image:
+    name: docker:24.0.5-cli
+    pull_policy: if-not-present
+  tags:
+    - docker
+  timeout: 45 minutes                   # Increased timeout for Docker builds
+  # Using GitLab runner's host Docker daemon - eliminates 30s DinD health check timeout
+  dependencies: []                      # Don't download lint artifacts (not needed for building)
+  script:
+    - source ./build-functions.sh
+    - setup_build_environment "Backend"
+    - build_main_branch "backend" "$BACKEND_BUILD_ARGS"
+    - build_develop_branch "backend" "$BACKEND_BUILD_ARGS"
+    - build_version_tag "backend" "$BACKEND_BUILD_ARGS"
+    - build_test_branch "backend" "$BACKEND_BUILD_ARGS"
+    - build_feature_branch "backend" "$BACKEND_BUILD_ARGS"
+
+# Build and push SecureMail frontend container
+# Same logic as backend but for the Vue.js/Nginx frontend
+build-securemail-frontend:
+  stage: build
+  image:
+    name: docker:24.0.5-cli
+    pull_policy: if-not-present
+  tags:
+    - docker
+  timeout: 45 minutes                   # Increased timeout for Docker builds
+  # Using GitLab runner's host Docker daemon - eliminates 30s DinD health check timeout
+  dependencies: []                      # Don't download lint artifacts (not needed for building)
+  script:
+    - source ./build-functions.sh
+    - setup_build_environment "Frontend"
+    - build_main_branch "frontend" "$FRONTEND_BUILD_ARGS"
+    - build_develop_branch "frontend" "$FRONTEND_BUILD_ARGS"
+    - build_version_tag "frontend" "$FRONTEND_BUILD_ARGS"
+    - build_test_branch "frontend" "$FRONTEND_BUILD_ARGS"
+    - build_feature_branch "frontend" "$FRONTEND_BUILD_ARGS"
+
+# Future deployment stage (currently commented out)
+# This would trigger Ansible playbooks or other deployment mechanisms
+# after successful container builds
+#
+# trigger-deployment:
+#   stage: deploy
+#   image: alpine:latest
+#   tags: [docker]
+#   script:
+#     - echo "New containers built and pushed"
+#     - echo "Backend: $REGISTRY_URL/$PROJECT_PATH/securemail-backend:latest"
+#     - echo "Frontend: $REGISTRY_URL/$PROJECT_PATH/securemail-frontend:latest"
+#     # Future: Trigger Ansible playbook or other deployment mechanism
+#     # Could use GitLab API, webhook, or direct SSH to deployment server

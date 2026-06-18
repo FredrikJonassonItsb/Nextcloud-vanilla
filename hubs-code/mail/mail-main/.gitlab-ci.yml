@@ -1,0 +1,14 @@
+include:
+  - project: 'itsl/hubs-apps'
+    ref: 'v1.0.0'
+    file:
+      - 'ci/base.yml'
+      - 'ci/validate.yml'
+      - 'ci/build.yml'
+      - 'ci/lint.yml'
+      - 'ci/security.yml'
+      - 'ci/upload.yml'
+      - 'ci/notify.yml'
+
+variables:
+  PLATFORM_REF: 'v1.0.0'

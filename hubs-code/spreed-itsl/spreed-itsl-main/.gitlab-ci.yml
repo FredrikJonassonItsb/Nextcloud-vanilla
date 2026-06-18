@@ -1,0 +1,172 @@
+default:
+  image: node:20-alpine
+  tags:
+    - docker
+
+variables:
+  VERSION: $CI_COMMIT_REF_NAME
+  CYPRESS_INSTALL_BINARY: "0"
+  PUPPETEER_SKIP_DOWNLOAD: "true"
+  NODE_OPTIONS: "--max-old-space-size=4096"
+
+stages:
+  - build
+  - upload
+  - release
+
+cache:
+  key:
+    files:
+      - package-lock.json
+  paths:
+    - .npm/
+
+build:
+  stage: build
+  image: php:8.1-cli-alpine
+  before_script:
+    # Install Node.js 20 and dependencies
+    - apk add --no-cache nodejs npm git curl unzip zip libzip-dev
+
+    # Install Composer
+    - curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  script:
+    # Stamp version in info.xml
+    # For vX.Y.Z tags: use X.Y.Z as version
+    # For everything else (branches, non-semver tags): keep X.Y from info.xml, set Z to pipeline IID
+    - |
+      TAG_VERSION=$(echo "${CI_COMMIT_TAG:-}" | sed -n 's|.*v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$|\1|p')
+      if [ -n "$TAG_VERSION" ]; then
+        APP_VERSION="$TAG_VERSION"
+      else
+        XY=$(sed -n 's|.*<version>\([0-9]*\.[0-9]*\)\.[0-9]*</version>.*|\1|p' appinfo/info.xml)
+        APP_VERSION="${XY}.${CI_PIPELINE_IID}"
+      fi
+      echo "Stamping version: ${APP_VERSION}"
+      sed -i "s|<version>[^<]*</version>|<version>${APP_VERSION}</version>|" appinfo/info.xml
+      grep '<version>' appinfo/info.xml
+
+    # Clean previous build artifacts
+    - rm -rf js/* node_modules vendor 2>/dev/null || true
+
+    # Install Node dependencies and build
+    - npm ci --cache .npm --prefer-offline
+    - npm run build
+
+    # Install Composer dependencies (Mozart runs automatically via post-install hooks)
+    - composer install
+
+    # Verify Mozart completed successfully
+    - |
+      if [ ! -f "vendor/bin/mozart" ]; then
+        echo "ERROR: Mozart not available after install"
+        exit 1
+      fi
+      if [ ! -d "lib/Vendor" ]; then
+        echo "ERROR: Mozart vendoring failed"
+        exit 1
+      fi
+
+    # Remove dev dependencies for production
+    - composer install --no-dev --optimize-autoloader
+
+    # Regenerate optimized autoloader
+    - composer dump-autoload --optimize --no-dev
+
+    # Create release package
+    - |
+      tar --exclude='.git*' \
+          --exclude='node_modules' \
+          --exclude='src' \
+          --exclude='tests' \
+          --exclude='vendor/bin' \
+          --exclude='vendor/bamarni' \
+          --exclude='vendor/cweagans' \
+          --exclude='vendor-bin' \
+          --exclude='docs' \
+          --exclude='recording' \
+          --exclude='site' \
+          --exclude='.patches' \
+          --exclude='*.config.js' \
+          --exclude='*.config.mjs' \
+          --exclude='babel.config.js' \
+          --exclude='jest.*' \
+          --exclude='tsconfig.json' \
+          --exclude='psalm.xml' \
+          --exclude='rector.php' \
+          --exclude='Makefile' \
+          --exclude='*.md' \
+          --exclude='*.map' \
+          --exclude='package.json' \
+          --exclude='package-lock.json' \
+          --exclude='composer.patches.json' \
+          --exclude='.php*' \
+          --exclude='.eslint*' \
+          --exclude='.stylelint*' \
+          --exclude='.editorconfig' \
+          --exclude='.l10nignore' \
+          --exclude='.tx' \
+          --exclude='.readthedocs.yaml' \
+          --exclude='mkdocs.yml' \
+          --exclude='redocly.yaml' \
+          --exclude='.drone.*' \
+          --exclude='openapi*.json' \
+          -czf spreed.tar.gz \
+          --transform='s,^,spreed/,' \
+          appinfo/ css/ img/ js/ l10n/ lib/ templates/ \
+          composer.json composer.lock \
+          CHANGELOG.md AUTHORS.md COPYING LICENSES/ REUSE.toml
+  artifacts:
+    paths:
+      - spreed.tar.gz
+
+upload:
+  stage: upload
+  image: curlimages/curl:latest
+  needs:
+    - build
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "develop"
+    - if: $CI_COMMIT_BRANCH =~ /^stable\d+$/
+    - if: $CI_COMMIT_BRANCH == "itsl/main"
+    - if: $CI_COMMIT_BRANCH =~ /^itsl\/stable\d+$/
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      if [ -z "$CI_COMMIT_TAG" ]; then
+        echo "Branch build: cleaning up previous ${VERSION_SLUG} package..."
+        PACKAGE_ID=$(curl -s --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+          "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages?package_name=spreed&package_version=${VERSION_SLUG}" \
+          | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2 || true)
+        if [ -n "$PACKAGE_ID" ]; then
+          echo "Deleting package ID: $PACKAGE_ID"
+          curl -s --request DELETE --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+            "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/${PACKAGE_ID}" || true
+          echo "Previous package deleted"
+        else
+          echo "No previous package found"
+        fi
+      fi
+    - |
+      curl --location --header "JOB-TOKEN: ${CI_JOB_TOKEN}" \
+           --upload-file spreed.tar.gz \
+           "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/spreed/${VERSION_SLUG}/spreed.tar.gz"
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs:
+    - build
+    - upload
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - VERSION_SLUG=$(echo "$VERSION" | sed 's|/|-|g')
+    - |
+      release-cli create \
+        --name "Spreed/Talk release ${VERSION}" \
+        --tag-name "${VERSION}" \
+        --description "Spreed/Talk release ${VERSION}" \
+        --assets-link "{\"name\":\"spreed.tar.gz\",\"url\":\"${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/spreed/${VERSION_SLUG}/spreed.tar.gz\",\"filepath\":\"/spreed.tar.gz\"}"

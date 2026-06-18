@@ -1,0 +1,378 @@
+--- a/lib/Controller/DraftsController.php
++++ b/lib/Controller/DraftsController.php
+@@ -22,6 +22,9 @@
+ use OCP\AppFramework\Http\Attribute\OpenAPI;
+ use OCP\AppFramework\Utility\ITimeFactory;
+ use OCP\IRequest;
++use OCP\EventDispatcher\IEventDispatcher;
++use OCA\SdkMc\Event\SaveOrUpdateDraftEvent;
++use OCA\SdkMc\Event\DeleteDraftEvent;
+ 
+ #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+ class DraftsController extends Controller {
+@@ -30,7 +33,7 @@
+ 	private AccountService $accountService;
+ 	private ITimeFactory $timeFactory;
+ 	private SmimeService $smimeService;
+-
++	private IEventDispatcher $eventDispatcher;
+ 
+ 	public function __construct(string $appName,
+ 		$UserId,
+@@ -38,6 +41,7 @@
+ 		DraftsService $service,
+ 		AccountService $accountService,
+ 		ITimeFactory $timeFactory,
++		IEventDispatcher $eventDispatcher,
+ 		SmimeService $smimeService) {
+ 		parent::__construct($appName, $request);
+ 		$this->userId = $UserId;
+@@ -45,6 +49,7 @@
+ 		$this->accountService = $accountService;
+ 		$this->timeFactory = $timeFactory;
+ 		$this->smimeService = $smimeService;
++		$this->eventDispatcher = $eventDispatcher;
+ 	}
+ 
+ 	/**
+@@ -206,6 +211,7 @@
+ 		$this->accountService->find($this->userId, $message->getAccountId());
+ 
+ 		$this->service->deleteMessage($this->userId, $message);
++		$this->eventDispatcher->dispatchTyped(new DeleteDraftEvent($message));
+ 		return JsonResponse::success('Message deleted', Http::STATUS_ACCEPTED);
+ 	}
+ 
+--- a/lib/Controller/MessagesController.php
++++ b/lib/Controller/MessagesController.php
+@@ -52,6 +52,9 @@
+ use OCP\IURLGenerator;
+ use OCP\Lock\LockedException;
+ use Psr\Log\LoggerInterface;
++use OCP\EventDispatcher\IEventDispatcher;
++use OCA\SdkMc\Event\FetchEmailEvent;
++use OCA\SdkMc\Event\FetchThreadEvent;
+ use function array_map;
+ 
+ #[OpenAPI(scope: OpenAPI::SCOPE_IGNORE)]
+@@ -75,6 +78,7 @@
+ 	private IUserPreferences $preferences;
+ 	private SnoozeService $snoozeService;
+ 	private AiIntegrationsService $aiIntegrationService;
++	private IEventDispatcher $eventDispatcher;
+ 
+ 	public function __construct(
+ 		string $appName,
+@@ -97,6 +101,7 @@
+ 		IDkimService $dkimService,
+ 		IUserPreferences $preferences,
+ 		SnoozeService $snoozeService,
++		IEventDispatcher $eventDispatcher,
+ 		AiIntegrationsService $aiIntegrationService,
+ 		private ICacheFactory $cacheFactory,
+ 	) {
+@@ -120,6 +125,7 @@
+ 		$this->preferences = $preferences;
+ 		$this->snoozeService = $snoozeService;
+ 		$this->aiIntegrationService = $aiIntegrationService;
++		$this->eventDispatcher = $eventDispatcher;
+ 	}
+ 
+ 	/**
+@@ -242,6 +248,7 @@
+ 			}
+ 
+ 			$json = $imapMessage->getFullMessage($id);
++			$this->eventDispatcher->dispatchTyped(new FetchEmailEvent($this, $id, $json));
+ 		} finally {
+ 			$client->logout();
+ 		}
+@@ -362,7 +369,9 @@
+ 			return new JSONResponse([], Http::STATUS_NOT_FOUND);
+ 		}
+ 
+-		return new JSONResponse($this->mailManager->getThread($account, $message->getThreadRootId()));
++		$thread = $this->mailManager->getThread($account, $message->getThreadRootId());
++		$this->eventDispatcher->dispatchTyped(new FetchThreadEvent($this, $thread));
++		return new JSONResponse($thread);
+ 	}
+ 
+ 	/**
+--- a/lib/Db/LocalMessage.php
++++ b/lib/Db/LocalMessage.php
+@@ -11,6 +11,9 @@
+ 
+ use JsonSerializable;
+ use OCP\AppFramework\Db\Entity;
++use OCP\EventDispatcher\IEventDispatcher;
++use OCA\SdkMc\Event\SerializeLocalMessageEvent;
++use OCP\Server;
+ use ReturnTypeWillChange;
+ use function array_filter;
+ 
+@@ -161,7 +164,7 @@
+ 	#[\Override]
+ 	#[ReturnTypeWillChange]
+ 	public function jsonSerialize() {
+-		return [
++		$json = [
+ 			'id' => $this->getId(),
+ 			'type' => $this->getType(),
+ 			'accountId' => $this->getAccountId(),
+@@ -196,6 +199,8 @@
+ 			'raw' => $this->getRaw(),
+ 			'requestMdn' => $this->getRequestMdn(),
+ 		];
++		Server::get(IEventDispatcher::class)->dispatchTyped(new SerializeLocalMessageEvent($this, $json));
++		return $json;
+ 	}
+ 
+ 	/**
+--- a/lib/Service/MailTransmission.php
++++ b/lib/Service/MailTransmission.php
+@@ -50,6 +50,7 @@
+ use OCP\AppFramework\Db\DoesNotExistException;
+ use OCP\EventDispatcher\IEventDispatcher;
+ use Psr\Log\LoggerInterface;
++use OCA\SdkMc\Event\SendEmailEvent;
+ 
+ class MailTransmission implements IMailTransmission {
+ 	private const RETRIABLE_CODES = [
+@@ -114,6 +115,7 @@
+ 			'Bcc' => $bcc->toHorde(),
+ 			'Subject' => $localMessage->getSubject(),
+ 		];
++		$this->eventDispatcher->dispatchTyped(new SendEmailEvent($headers, $localMessage));
+ 
+ 		// The table (oc_local_messages) currently only allows for a single reply to message id
+ 		// but we already set the 'references' header for an email so we could support multiple references
+@@ -225,6 +227,7 @@
+ 			'Subject' => $imapMessage->getSubject(),
+ 			'Date' => Horde_Mime_Headers_Date::create(),
+ 		];
++		$this->eventDispatcher->dispatchTyped(new SendEmailEvent($headers, $message));
+ 
+ 		$mail = new Horde_Mime_Mail();
+ 		$mail->addHeaders($headers);
+--- a/src/components/MessageAttachment.vue
++++ b/src/components/MessageAttachment.vue
+@@ -93,6 +93,8 @@
+ import { downloadAttachment, saveAttachmentToFiles } from '../service/AttachmentService.js'
+ import { getUserCalendars, importCalendarEvent } from '../service/DAVService.js'
+ 
++import Axios from '@nextcloud/axios'
++import { generateUrl } from '@nextcloud/router'
+ 
+ export default {
+ 	name: 'MessageAttachment',
+--- a/src/components/MessageAttachments.vue
++++ b/src/components/MessageAttachments.vue
+@@ -120,6 +120,7 @@
+ 			],
+ 
+ 			isFilePickerOpen: false,
++			isSDKMessage: this.envelope?.itsl.messageType === this.$MESSAGE_TYPES.SDK.id ?? false,
+ 		}
+ 	},
+ 
+--- a/src/components/Navigation.vue
++++ b/src/components/Navigation.vue
+@@ -2,7 +2,6 @@
+   - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+   - SPDX-License-Identifier: AGPL-3.0-or-later
+ -->
+-
+ <template>
+ 	<AppNavigation class="mail-navigation">
+ 		<template #search>
+--- a/src/components/NewMessageButtonHeader.vue
++++ b/src/components/NewMessageButtonHeader.vue
+@@ -95,11 +95,8 @@
+ 				this.refreshing = false
+ 			}
+ 		},
+-
+-		async onNewMessage() {
+-			await this.mainStore.startComposerSession({
+-				isBlankMessage: true,
+-			})
++		onNewMessage() {
++			this.mainStore.startComposerSession()
+ 		},
+ 	},
+ }
+--- a/src/components/NoMessageSelected.vue
++++ b/src/components/NoMessageSelected.vue
+@@ -2,7 +2,6 @@
+   - SPDX-FileCopyrightText: 2019 Nextcloud GmbH and Nextcloud contributors
+   - SPDX-License-Identifier: AGPL-3.0-or-later
+ -->
+-
+ <template>
+ 	<AppContentDetails
+ 		class="app-content no-message-selected"
+--- a/src/components/Thread.vue
++++ b/src/components/Thread.vue
+@@ -83,6 +83,7 @@
+ import Loading from './Loading.vue'
+ import RecipientBubble from './RecipientBubble.vue'
+ import ThreadEnvelope from './ThreadEnvelope.vue'
++import ThreadInfoSidebar from '@itsl/components/ThreadInfoSidebar.vue'
+ import ThreadSummary from './ThreadSummary.vue'
+ import logger from '../logger.js'
+ import { summarizeThread } from '../service/AiIntergrationsService.js'
+@@ -98,6 +99,7 @@
+ 		Error,
+ 		Loading,
+ 		ThreadEnvelope,
++		ThreadInfoSidebar,
+ 		NcPopover,
+ 	},
+ 
+--- a/src/main.js
++++ b/src/main.js
+@@ -13,6 +13,7 @@
+ import App from './App.vue'
+ import Nextcloud from './mixins/Nextcloud.js'
+ import router from './router.js'
++import { initITSL } from '@itsl/utils/initITSL.js'
+ 
+ import '@nextcloud/dialogs/style.css'
+ import './directives/drag-and-drop/styles/drag-and-drop.scss'
+@@ -36,5 +37,7 @@
+ 	name: 'Mail',
+ 	router,
+ 	pinia,
++	created() {
++	},
+ 	render: (h) => h(App),
+ })
+--- a/src/store/mainStore.js
++++ b/src/store/mainStore.js
+@@ -83,6 +83,7 @@
+ 			messages: {},
+ 			newMessage: undefined,
+ 			showMessageComposer: false,
++			selectedMessageType: undefined,
+ 			composerMessageIsSaved: false,
+ 			composerSessionId: undefined,
+ 			nextComposerSessionId: 1,
+--- a/src/store/mainStore/actions.js
++++ b/src/store/mainStore/actions.js
+@@ -34,6 +34,7 @@
+ import SyncIncompleteError from '../../errors/SyncIncompleteError.js'
+ import { handleHttpAuthErrors } from '../../http/sessionExpiryHandler.js'
+ import { sortMailboxes } from '../../imap/MailboxSorter.js'
++import { MESSAGE_DIRECTION } from '@itsl/store/constants.js'
+ import logger from '../../logger.js'
+ import {
+ 	buildForwardSubject,
+@@ -509,6 +510,7 @@
+ 								bodyPlain: data.bodyPlain,
+ 								replyTo: reply.data,
+ 								smartReply: reply.smartReply,
++								itsl: original.itsl,
+ 							},
+ 						})
+ 						return
+@@ -529,6 +531,7 @@
+ 								bodyHtml: data.bodyHtml,
+ 								bodyPlain: data.bodyPlain,
+ 								replyTo: reply.data,
++								itsl: original.itsl,
+ 							},
+ 						})
+ 						return
+@@ -563,6 +566,8 @@
+ 						message,
+ 					}
+ 
++					data.itsl = message.itsl
++
+ 					// Fetch and transform the body into a rich text object
+ 					if (message.hasHtmlBody) {
+ 						data.isHtml = true
+--- a/src/tests/unit/components/Thread.vue.spec.js
++++ b/src/tests/unit/components/Thread.vue.spec.js
+@@ -63,6 +63,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 100,
+@@ -72,6 +73,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 100,
+@@ -81,6 +83,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 				]
+ 			}
+@@ -94,6 +97,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 200,
+@@ -103,6 +107,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 200,
+@@ -112,6 +117,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 200,
+@@ -121,6 +127,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 					{
+ 						accountId: 200,
+@@ -130,6 +137,7 @@
+ 						from: [],
+ 						to: [],
+ 						cc: [],
++						itsl: { messageType: '' },
+ 					},
+ 				]
+ 			}
+--- a/src/views/Home.vue
++++ b/src/views/Home.vue
+@@ -2,6 +2,7 @@
+   - SPDX-FileCopyrightText: 2018 Nextcloud GmbH and Nextcloud contributors
+   - SPDX-License-Identifier: AGPL-3.0-or-later
+ -->
++
+ <template>
+ 	<NcContent app-name="mail" class="mail-content">
+ 		<Navigation />
+@@ -28,7 +29,6 @@
+ import logger from '../logger.js'
+ import { testAccountConnection } from '../service/AccountService.js'
+ import useMainStore from '../store/mainStore.js'
+-
+ import '../../css/mail.scss'
+ 
+ export default {
