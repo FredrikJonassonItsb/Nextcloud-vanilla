@@ -17,10 +17,28 @@
 
 import { loadState } from '@nextcloud/initial-state'
 
-/** True when the page was rendered in demo mode (PageController injects the flag
- *  inside the 'boot' initial state). */
+/**
+ * True when the UI should render from demo fixtures instead of live backends.
+ *
+ * Resolution order:
+ *   1. URL override `?demo=1` / `?demo=0` — persisted in sessionStorage so it
+ *      survives in-app navigation. Lets anyone PREVIEW the rich demo UI on a live
+ *      instance (or force it off) without touching the server config. The
+ *      "Visa i demoläge" link in the dashboard footer uses `?demo=1`.
+ *   2. The server-injected boot.demoMode (PageController.isDemoMode()).
+ * Default is therefore OFF on a live instance (dev15: demo_mode=0).
+ */
 export function isDemo() {
 	try {
+		const params = new URLSearchParams(window.location.search)
+		const q = params.get('demo')
+		if (q === '1' || q === '0') {
+			try { window.sessionStorage.setItem('hubs_demo', q) } catch (e) { /* sessionStorage unavailable */ }
+		}
+		let override = null
+		try { override = window.sessionStorage.getItem('hubs_demo') } catch (e) { /* sessionStorage unavailable */ }
+		if (override === '1') return true
+		if (override === '0') return false
 		const boot = loadState('hubs_start', 'boot', {})
 		return boot && boot.demoMode === true
 	} catch (e) {

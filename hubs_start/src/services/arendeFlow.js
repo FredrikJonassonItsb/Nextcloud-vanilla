@@ -12,7 +12,10 @@ export const NASTA_ATGARD = {
 		forhandsbedomning: { label: 'Fatta beslut: inleda / inte inleda utredning', action: 'beslut-inleda', flik: 'beslut' },
 		utredning: { label: 'Färdigställ utredning & för till Treserva', action: 'commit-utredning', flik: 'dokument' },
 		beslut: { label: 'Skicka beslut för underskrift', action: 'signera', flik: 'beslut' },
-		uppfoljning: { label: 'Sätt uppföljningsbevakning', action: 'bevakning', flik: 'bevakningar' },
+		// Terminal-steget: avsluta ärendet (steg → 'avslutat'). Uppföljnings-bevakning
+		// sätts via 🔔-snabbåtgärden; nästa-åtgärd här DRIVER mot avslut så hela resan
+		// går att slutföra (förut 'bevakning' → Deck, som aldrig nådde 'avslutat').
+		uppfoljning: { label: 'Avsluta ärende', action: 'avsluta', flik: 'oversikt' },
 		avslutat: { label: 'Visa avslutat ärende', action: 'open-rum', flik: 'oversikt' },
 	},
 	overrides: {

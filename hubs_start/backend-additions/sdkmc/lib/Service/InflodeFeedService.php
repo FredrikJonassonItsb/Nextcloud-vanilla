@@ -413,11 +413,19 @@ class InflodeFeedService {
             // the trust of the TRANSPORT-kanal the message arrived on, so the
             // badge reflects the channel, in Hubs/Swedish terms only.
             'identitet' => $this->identitetForChannel($channelInfo),
-            // #1 EXCERPT: a scrubbed, PII-safe snippet of the raw preview text so
-            // the band can show a hint of content without leaking citizen PII.
-            'excerpt' => $this->safeExcerpt((string)($row['preview_text'] ?? '')),
+            // #1 EXCERPT: a real snippet of the message preview. The feed is
+            // ACL-scoped to the handläggarens egna behöriga korgar, so this is
+            // authorised content (no scrubbing — see previewExcerpt). Boundary
+            // discipline lives at the ACL, not here.
+            'excerpt' => $this->previewExcerpt((string)($row['preview_text'] ?? '')),
             // <<< HUBS-START-ADD ─────────────────────────────────────────────
-            'titel' => $this->anonymiseTitle($channelInfo, $row),
+            // Real subject — the handläggare is authorised for this korg, so the
+            // triage row shows what the message is actually about (fallback to the
+            // channel label only when the subject is empty). PII-display to the
+            // behörig handläggare is intended; see previewExcerpt.
+            'titel' => trim((string)($row['subject'] ?? '')) !== ''
+                ? (string)$row['subject']
+                : $channelInfo['channelLabel'],
             'inkomDatum' => $inkomDatum,
             'messageId' => $messageId,
             // >>> HUBS-START-ADD (upstream-kandidat) ─ engine idempotency anchor ─
@@ -544,29 +552,19 @@ class InflodeFeedService {
      * then trim and hard-cap at ~120 chars. Empty in → '' out; when in doubt we
      * return '' rather than risk a leak. Never throws.
      */
-    private function safeExcerpt(string $text): string {
-        $text = trim($text);
-        if ($text === '') {
-            return '';
-        }
-
-        // Scrub personnummer FIRST (before the generic digit-run rule would only
-        // partially mask it). YYMMDD / YYYYMMDD + optional -/+ + 4 digits.
-        $text = (string)preg_replace('/\b\d{6,8}[-+]?\d{4}\b/u', '…', $text);
-        // Quoted names — both double and single quotes (citizen/barn names are
-        // routinely quoted in anmälningar). Non-greedy, bounded.
-        $text = (string)preg_replace('/"[^"]{1,80}"/u', '…', $text);
-        $text = (string)preg_replace("/'[^']{1,80}'/u", '…', $text);
-        // Any remaining standalone digit run of 4+ (phone, dnr fragments, …).
-        $text = (string)preg_replace('/\b\d{4,}\b/u', '…', $text);
-
-        // Collapse whitespace the scrubbing may have left ragged, then cap.
+    private function previewExcerpt(string $text): string {
+        // The inflöde feed is ACL-scoped to the handläggarens OWN authorised
+        // funktionsbrevlådor, so showing real message content here is INTENDED:
+        // Hubs exists to let behöriga handläggare arbeta med sekretessbelagd PII;
+        // the invariant is "no leakage across an authorization boundary", NOT
+        // hiding content from the authorised user. We therefore do NOT scrub PII
+        // here — we only normalise whitespace and cap the length for layout.
         $text = trim((string)preg_replace('/\s+/u', ' ', $text));
         if ($text === '') {
             return '';
         }
-        if (mb_strlen($text) > 120) {
-            $text = rtrim(mb_substr($text, 0, 119)) . '…';
+        if (mb_strlen($text) > 160) {
+            $text = rtrim(mb_substr($text, 0, 159)) . '…';
         }
         return $text;
     }

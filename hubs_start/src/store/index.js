@@ -12,6 +12,7 @@
 import Vue from 'vue'
 import { loadState } from '@nextcloud/initial-state'
 import api from '../services/api.js'
+import { isDemo } from '../services/demoData.js'
 import { defaultPersonaId } from '../services/personas.js'
 
 const POLL_INTERVAL_MS = 30000
@@ -89,7 +90,9 @@ const store = {
 	/** Hydrate from server-injected initial state (no XHR). */
 	bootFromInitialState() {
 		const boot = loadState('hubs_start', 'boot', {})
-		state.demoMode = boot.demoMode === true
+		// isDemo() honours the ?demo= URL override (sessionStorage-persisted) on top
+		// of the server boot flag, so "Visa i demoläge" works on a live instance.
+		state.demoMode = isDemo()
 		if (boot.loa) state.loa = boot.loa
 		if (boot.apps) state.apps = { ...state.apps, ...boot.apps }
 		if (boot.profile) state.profile = boot.profile

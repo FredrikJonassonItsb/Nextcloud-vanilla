@@ -240,7 +240,6 @@ export default {
 				{ key: 'boka-mote', icon: 'VideoPlus', short: t('hubs_start', 'Möte'), label: t('hubs_start', 'Boka säkert möte') },
 				{ key: 'signera', icon: 'FileSign', short: t('hubs_start', 'Signera'), label: t('hubs_start', 'Skicka för underskrift') },
 				{ key: 'bevakning', icon: 'BellPlus', short: t('hubs_start', 'Bevakning'), label: t('hubs_start', 'Skapa bevakning') },
-				{ key: 'anteckningar', icon: 'TextBoxOutline', short: t('hubs_start', 'Anteckningar'), label: t('hubs_start', 'Mina anteckningar') },
 			]
 		},
 	},

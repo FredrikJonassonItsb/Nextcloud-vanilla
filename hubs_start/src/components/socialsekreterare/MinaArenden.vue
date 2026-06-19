@@ -112,7 +112,6 @@
 				@signera="onSignera"
 				@commit="onCommit"
 				@bevakning="onBevakning"
-				@anteckningar="onAnteckningar"
 				@godkann="onGodkann"
 				@expand="onExpand" />
 
@@ -131,7 +130,6 @@
 				@signera="onSignera"
 				@commit="onCommit"
 				@bevakning="onBevakning"
-				@anteckningar="onAnteckningar"
 				@godkann="onGodkann"
 				@expand="onExpand" />
 
@@ -155,11 +153,21 @@
 					<span v-else-if="enhetschattOlasta" class="mina-arenden__chatt-olasta">{{ enhetschattOlasta }}</span>
 					<ChevronRightIcon :size="16" />
 				</button>
+				<!-- #3 — Egna anteckningar är PERSONLIGA (per handläggare), hör inte till
+				     något ärende. Därför en egen plats i foten, inte en kort-åtgärd. -->
+				<button type="button" class="mina-arenden__lank hs-target" @click="onAnteckningar()">
+					<TextBoxOutlineIcon :size="18" /> {{ t('hubs_start', 'Egna anteckningar') }}
+				</button>
 				<a class="mina-arenden__lank" :href="link('/apps/collectives/')">
 					<BookOpenIcon :size="18" /> {{ t('hubs_start', 'Kunskapsbank & mallar') }}
 				</a>
 				<a class="mina-arenden__lank" :href="link('/apps/files/?dir=/Ärenderum')">
 					<FolderLockIcon :size="18" /> {{ t('hubs_start', 'Senaste säkra filer') }}
+				</a>
+				<!-- #1 — förhandsvisa hela UI:t i demoläge (fixtures) utan att röra serverns
+				     config. Default är demoläge AV på en skarp instans. -->
+				<a class="mina-arenden__lank mina-arenden__demo" :href="demoLank">
+					<FlaskOutlineIcon :size="18" /> {{ state.demoMode ? t('hubs_start', 'Lämna demoläge') : t('hubs_start', 'Visa i demoläge') }}
 				</a>
 			</footer>
 		</template>
@@ -177,6 +185,13 @@
 			:arende="signeringArende"
 			@nasta-steg="onSigneringNastaSteg"
 			@close="signeringOpen = false" />
+		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång) -->
+		<AvslutaGrind
+			v-if="avslutaOpen"
+			:arende="avslutaArende"
+			:is-running="avslutaRunning"
+			@avsluta="onAvslutaConfirmed"
+			@close="avslutaOpen = false" />
 		<!-- #12 — privata anteckningar (per-användare, aldrig delade) -->
 		<MinaAnteckningar
 			v-if="anteckningarOpen"
@@ -233,6 +248,8 @@ import ForumIcon from 'vue-material-design-icons/Forum.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import AccountSupervisorIcon from 'vue-material-design-icons/AccountSupervisor.vue'
+import TextBoxOutlineIcon from 'vue-material-design-icons/TextBoxOutline.vue'
+import FlaskOutlineIcon from 'vue-material-design-icons/FlaskOutline.vue'
 import { showSuccess, showInfo, showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
@@ -259,6 +276,7 @@ import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
 import CommitGrind from './CommitGrind.vue'
 import SigneringsGrind from './SigneringsGrind.vue'
+import AvslutaGrind from './AvslutaGrind.vue'
 import MinaAnteckningar from './MinaAnteckningar.vue'
 import OnboardingTour from './OnboardingTour.vue'
 import MeetingWizard from '../MeetingWizard.vue'
@@ -269,11 +287,11 @@ export default {
 
 	components: {
 		NcLoadingIcon, NcCounterBubble, CheckAllIcon, BookOpenIcon, FolderLockIcon, ForumIcon, ChevronRightIcon,
-		AccountIcon, AccountSupervisorIcon,
+		AccountIcon, AccountSupervisorIcon, TextBoxOutlineIcon, FlaskOutlineIcon,
 		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, TreservaKvittens, ArendeZon,
-		MotesRemsa, CommitGrind, SigneringsGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
+		MotesRemsa, CommitGrind, SigneringsGrind, AvslutaGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -286,9 +304,12 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
-			// #6 signerings-grind + #12 egna anteckningar (modaler).
+			// #6 signerings-grind + #5 avsluta-grind + #12 egna anteckningar (modaler).
 			signeringOpen: false,
 			signeringArende: null,
+			avslutaOpen: false,
+			avslutaArende: null,
+			avslutaRunning: false,
 			anteckningarOpen: false,
 			anteckningarArende: null,
 			attHanteraGruppering: 'arende',
@@ -373,6 +394,11 @@ export default {
 		enhetschattOlasta() {
 			return (this.A.team || []).reduce((s, tt) => s + (tt.olasta || 0), 0)
 		},
+		/** #1 — länk som slår PÅ/AV demoläge (?demo=1/0); full omladdning så isDemo()
+		 * läser om flaggan. Default på skarp instans = AV. */
+		demoLank() {
+			return this.link('/apps/hubs_start/') + (this.state.demoMode ? '?demo=0' : '?demo=1')
+		},
 	},
 
 	created() {
@@ -451,6 +477,8 @@ export default {
 				return this.onCommit(arende, { typ: target.action, arende })
 			case 'bevakning':
 				return this.onBevakning(arende)
+			case 'avsluta':
+				return this.onAvsluta(arende)
 			case 'open-rum':
 				return this.onOpenRum(arende)
 			default:
@@ -655,10 +683,42 @@ export default {
 			this.signeringOpen = false
 			this.onCommit(arende, { typ: 'signerat-beslut', arende })
 		},
-		/** #12 — öppna privata anteckningar för (kontext-)ärendet. */
+		/** #12 — öppna privata anteckningar (per-användare, ej ärende-bundna). */
 		onAnteckningar(arende) {
-			this.anteckningarArende = arende
+			this.anteckningarArende = arende || null
 			this.anteckningarOpen = true
+		},
+		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse). */
+		onAvsluta(arende) {
+			this.avslutaArende = arende
+			this.avslutaRunning = false
+			this.avslutaOpen = true
+		},
+		/**
+		 * #5 — bekräftat avslut: en REN steg-övergång till 'avslutat' (ingen ny
+		 * Treserva-commit — akten är redan registrerad; avslut ≠ registrering). På ok
+		 * patchar store det lokala steget och kortet faller till terminal-läget.
+		 */
+		async onAvslutaConfirmed(arende) {
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref) {
+				this.avslutaOpen = false
+				return
+			}
+			this.avslutaRunning = true
+			try {
+				const r = await store.transitionSteg(ref, 'avslutat')
+				if (r && r.ok !== false) {
+					showSuccess(this.t('hubs_start', 'Ärendet avslutat — gallringen av Hubs-rummet har startat.'))
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte avsluta ärendet: {orsak}', { orsak: (r && (r.error || r.reason)) || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.t('hubs_start', 'Kunde inte avsluta ärendet. Försök igen.'))
+			} finally {
+				this.avslutaRunning = false
+				this.avslutaOpen = false
+			}
 		},
 		onBevakning(arende) {
 			// #7/11 — öppna ärendets/enhetens bevaknings-board (bevakningBoardId ur

@@ -141,6 +141,21 @@ class Smoke extends Command {
 			return 1;
 		}
 
+		// 8b. HELA RESAN till avslutat (forts. från utredning): utredning→beslut→
+		//     uppfoljning→avslutat. Bevisar att livscykeln går att slutföra HELA
+		//     vägen — frontendens "Avsluta ärende"-åtgärd kör exakt samma
+		//     transitionera($ref, 'avslutat'). Ett avslut är en ren steg-övergång,
+		//     INGEN ny facksystem-registrering (akten är redan registrerad).
+		$stegNu = $eft8->getSteg();
+		foreach (['beslut', 'uppfoljning', 'avslutat'] as $mal) {
+			$stegNu = $this->lifecycleService->transitionera($arende->getHubsCaseId(), $mal)->getSteg();
+			if ($stegNu !== $mal) {
+				$output->writeln('    <error>[8b] livscykeln fastnade vid ' . $mal . ' (steg=' . $stegNu . ')</error>');
+				return 1;
+			}
+		}
+		$output->writeln('<info>[8b] hela resan</info>             = utredning→beslut→uppfoljning→avslutat OK (steg nu "' . $stegNu . '")');
+
 		// 9. GDPR-gallring (art. 5.1.e) — purge av en registrerad+gallras_efter_commit-rad
 		//    vars gallras_datum passerats. Kör med now=+100d så kvittots +90d-deadline är förbi.
 		$res9 = $this->gallringService->gallra(new \DateTime('+100 days'));
