@@ -140,6 +140,47 @@ klassning (InflodeFeedService+InflodeRad); #3/#15/#16 mapToFullCard-berikning (S
 enhetschatt→spreed (kräver talk-token i kort-datan); #5 Treserva dokument-val (CommitGrind); #6 signering
 'kommer vidare'-kryssruta; #12 personliga anteckningar (REK: Spreed Note-to-Self).
 
+### ✅ SESSION 2d (2026-06-19, autonom natt-körning) — HELA VÅG 2/3 + ALLA gui-decisions-REK BYGGDA
+**hubs_start 1.2.12 + hubs_arende 0.7.4 (deployat dev15, smoke grön, OCS-rutter 401-verifierade).**
+Arbetssätt: 8-agents understand-workflow (per-yta-kontrakt + adversariell dev15-data-availability) →
+unified contract (`analysis-output/wave23-contract.md`) → 4-agents backend-implement-workflow (disjunkta
+filer, var självverifierad) → frontend implementerat sekventiellt av lead (kopplade filer) → bygg/deploy/smoke.
+Ingen GUI-login (BankID gated) → verifierat via jest/phpunit/php -l/smoke/route-probe, EJ GUI-klick.
+**BACKEND:**
+- ENGINE (#3/#7/#11/#10): mapToFullCard ger nu `pekare`-block {talkToken,groupfolderId,conversationId,
+  deckBoardId,deckCardId,calendarUri,bevakningBoardId} (saga-original/typ, null≠0, graceful). mapToCard
+  (kollapsat kort + /arende-summary) bär talkToken+bevakningBoardId. bevakningBoardId := deck_card.riktning
+  (ingen separat Bevaknings-board finns). phpunit 68→72.
+- sdkmc InflodeFeedService (#1/#19): dedup på thread_root_id (behåller icke-tom preview) → fixar 4→2
+  dubblett-fan-out (Orosanmälan-korg har 2 mail_accounts m. samma email); PII-skrubbad `excerpt`;
+  kanal-härledd `identitet`-badge; messageType-kedja korg→ämnes-brygga→kanal; `conversationId`-ankare.
+- sdkmc NoteToSelf (#12): NY OCS GET/POST /api/v1/note-to-self (in-process Spreed Note-to-Self, class_exists-
+  gated, graceful-empty). sdkmc ArendeEnrichment (#3/#15/#16): NY GET /api/v1/arende-enrichment?talkToken=
+  (diskussion-summary: olasta/omnamnandeTillMig/2-senaste-avsändare). TeamService (#18): `token`-fält (null
+  på dev15 — inget grupp-rum). Rutterna inlagda i live routes.php (401-verifierade).
+**FRONTEND (hubs_start):**
+- #5 CommitGrind: dokument-urvalslista (alla förvalda, bocka av utkast) → payload.valdaDokument.
+- #6 SigneringsGrind (NY): "Jag har signerat"-kryssruta → CommitGrind (ersätter abrupt libresign-redirect).
+- #10 ArendeDiskussion: "Öppna diskussionen" via full.pekare.talkToken (disabled när token saknas).
+- #12 MinaAnteckningar (NY): privata per-användare-anteckningar (fetchNotes/addNote), quick-action på kortet.
+- #18 onOppnaTradar → spreedRoomLink(team.token) m. ärlig info-fallback. #19/#1 InflodeRad: typ-chip-fallback
+  till kanal-etikett (aldrig blankt/rått id) + absent-säker excerpt/verifierad-källa-badge.
+- **BUGG JAG FÅNGADE+FIXADE (våg 0+1-regression):** `deepLinks.deckLink` saknades i DEFAULT-exporten →
+  #7/11 "Bevakning"-knappen kastade `deepLinks.deckLink is not a function` i runtime. Nu exporterad + regr-test.
+- **CACHE-NYCKEL-FIX (HIGH):** ArendeKort/MinaArenden nycklade full[] på dnr (null för oregistrerade) → nu
+  triageRef (alltid satt) → flik-innehåll + talkToken resolvar för dnr-lösa ärenden.
+**TEST-HÄRDNING (root-cause-luckan):** KOMPONENT-tester aktiverade (vue-jest kunde ej kompilera SFC mot
+@babel/preset-env 7 → la till babel-core@7-bridge + ncvue-stub-mock). Nya specs: inflodeRad, storeEnrich,
+commitGrind, signeringsGrind, minaAnteckningar, arendeDiskussion + utökad deepLinks. **jest 49→83, phpunit
+68→72**, webpack-bygg grönt, live smoke OK.
+**ÅTERSTÅR (GUI-klick-verifiering — kan ej göras utan BankID-login):** klicka igenom #5 dokument-urval,
+#6 signerings-modal, #10/#18 rum-öppning (kräver riktig talk-token i kort-datan), #12 anteckningar-modal mot
+riktigt Note-to-Self-rum (bara uid 197411040293 har ett), #1 inflöde visar 2 ej 4 rader + excerpt/badge.
+**FLAGGAT (produktbeslut/uppföljning, ej byggt):** (a) ENGINE-konsumtion av payload.valdaDokument (registrera
+valda fileids som handlingar) — frontend skickar det, motorn läser det ej än; (b) #18 grupp→rum-mappning saknas
+på dev15 (token=null tills ett enhetschatt-rum provisioneras); (c) #12 anteckningar är PER-ANVÄNDARE (ej
+per-ärende) per beslut #12 — överväg case-scoping; (d) #3-berikning + #18 är graceful-empty på tunn dev15-data.
+
 ### ÅTERSTÅR efter session 2 (prioriterad)
 - **AB-01 (kat2 insats-sub-typ-router)** — BYGGS EJ ensidigt: kräver (a) bekräftelse att `insatsTyp` finns
   på inflöde-raden, och (b) en **migration** (persistera resolverad frendsModul/insatsTyp på case-raden så
