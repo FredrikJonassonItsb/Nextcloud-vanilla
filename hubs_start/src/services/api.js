@@ -488,6 +488,29 @@ export function arendeTypForRad(rad) {
 	return ''
 }
 
+/**
+ * Tagga källmeddelandet/-na för ett ärende i ANVÄNDARENS session (case:{id} +
+ * behandlad), via sdkmc:s per-meddelande-tag-rutt. IDOR-säkert (sdkmc scopar per
+ * inloggad användare; ingen service-konto-tagg → ingen IDOR). Best-effort: ett
+ * taggfel får ALDRIG fälla det redan skapade ärendet. setMessageTag auto-skapar
+ * taggen om den saknas. 'behandlad' gör att raden faller ur "Att ta emot"-feeden.
+ * @param {Array<string|number>} ids meddelande-DB-id (utan 'inf:'-prefix)
+ * @param {string} hubsCaseId
+ * @return {Promise<boolean>} true om alla taggar sattes
+ */
+async function taggaCaseMeddelande(ids, hubsCaseId) {
+	if (DEMO) return true
+	try {
+		for (const id of ids) {
+			await setMessageTag(id, 'case:' + hubsCaseId, true)
+			await setMessageTag(id, 'behandlad', true)
+		}
+		return true
+	} catch (e) {
+		return false
+	}
+}
+
 export async function skapaArende(rad) {
 	if (DEMO) return ssDemo.skapaArende(rad)
 	// 🔌 LIVE: hubs_arende OCS — POST /arende (Arende#createCase).
@@ -515,7 +538,18 @@ export async function skapaArende(rad) {
 	if (rad && rad.enhet) payload.enhet = String(rad.enhet)
 	try {
 		const res = await axios.post(HUBS_ARENDE_OCS('/arende'), { rad: payload })
-		return ocsData(res)
+		const nytt = ocsData(res)
+		// Tagga källmeddelandet i användarens session så det (a) får synlig case:/
+		// behandlad-tagg i meddelandegränssnittet och (b) faller ur "Att ta emot".
+		// Motorn taggar INTE själv (service-konto = IDOR, avstängt). Best-effort —
+		// fäller aldrig det redan skapade ärendet; resultatet bärs i nytt.taggSatt.
+		if (nytt && nytt.hubsCaseId) {
+			const ids = (payload.messageIds || []).filter(Boolean)
+			if (ids.length) {
+				nytt.taggSatt = await taggaCaseMeddelande(ids, nytt.hubsCaseId)
+			}
+		}
+		return nytt
 	} catch (e) {
 		// Surface the engine's OCS error verbatim (400 { error } / 403
 		// { avvisad, reason }) so the caller shows an honest failure instead of a

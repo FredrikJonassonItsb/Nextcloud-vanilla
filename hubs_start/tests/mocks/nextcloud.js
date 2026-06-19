@@ -49,6 +49,10 @@ const loadState = (app, key, fallback) => {
 }
 
 module.exports = {
+	// Mark as an ES module so `import axios from '@nextcloud/axios'` resolves to the
+	// `default` export (the axios-like client) rather than the whole module object.
+	// Named imports (t, generateUrl, loadState, showSuccess, …) are unaffected.
+	__esModule: true,
 	// l10n
 	t,
 	n,

@@ -291,7 +291,9 @@ class InflodeFeedService {
             // SAME logical message into both INBOX copies (4 db rows for 2 real
             // messages on dev15). Collapse here, INSIDE the fetch, so the korgar
             // 'otriagerat' count (count(rows)) collapses together with the band.
-            return $this->dedupRows($rows);
+            // Then drop messages already triaged ("behandlad"/case:-taggade) so en
+            // "Att ta emot"-rad försvinner när handläggaren tagit emot den.
+            return $this->filterHandled($this->dedupRows($rows));
         } catch (\Throwable $e) {
             // mail app absent / schema mismatch / no inflow on dev15 → honestly
             // empty for this korg, never crash, never synthesise.
@@ -299,6 +301,68 @@ class InflodeFeedService {
             return [];
         }
     }
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ triage-filter ─────────────────
+    /**
+     * Drop rows whose message has already been triaged — i.e. carries a
+     * 'behandlad' tag or a 'case:'-tag (set in the handläggarens session when they
+     * pressed "Ta emot" or coupled the message to an ärende). Keyed on
+     * mail_message_tags.imap_message_id == mail_messages.message_id (both the RFC
+     * Message-ID). FAIL-OPEN: any error here returns the rows UNFILTERED — a
+     * tag-join hiccup must never blank the whole "Att ta emot"-band.
+     *
+     * @param list<array<string,mixed>> $rows
+     * @return list<array<string,mixed>>
+     */
+    private function filterHandled(array $rows): array {
+        if ($rows === []) {
+            return $rows;
+        }
+        try {
+            $msgIds = [];
+            foreach ($rows as $row) {
+                $mid = (string)($row['message_id'] ?? '');
+                if ($mid !== '') {
+                    $msgIds[] = $mid;
+                }
+            }
+            if ($msgIds === []) {
+                return $rows;
+            }
+            $qb = $this->db->getQueryBuilder();
+            $qb->selectDistinct('mmt.imap_message_id')
+                ->from('mail_message_tags', 'mmt')
+                ->join('mmt', 'mail_tags', 'mt', $qb->expr()->eq('mmt.tag_id', 'mt.id'))
+                ->where($qb->expr()->in('mmt.imap_message_id', $qb->createNamedParameter($msgIds, IQueryBuilder::PARAM_STR_ARRAY)))
+                ->andWhere($qb->expr()->orX(
+                    $qb->expr()->eq('mt.imap_label', $qb->createNamedParameter('behandlad', IQueryBuilder::PARAM_STR)),
+                    $qb->expr()->like('mt.imap_label', $qb->createNamedParameter('case:%', IQueryBuilder::PARAM_STR)),
+                ));
+            $handled = [];
+            $r = $qb->executeQuery();
+            while (($row = $r->fetch()) !== false) {
+                if (is_array($row) && isset($row['imap_message_id'])) {
+                    $handled[(string)$row['imap_message_id']] = true;
+                }
+            }
+            $r->closeCursor();
+            if ($handled === []) {
+                return $rows;
+            }
+            $kvar = [];
+            foreach ($rows as $row) {
+                if (!isset($handled[(string)($row['message_id'] ?? '')])) {
+                    $kvar[] = $row;
+                }
+            }
+            return $kvar;
+        } catch (\Throwable $e) {
+            // FAIL-OPEN: never hide the whole band on a tag-join error.
+            $this->logger->debug('[hubs-start] inflöde: handled-filter failed: ' . $e->getMessage());
+            return $rows;
+        }
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
 
     // >>> HUBS-START-ADD (upstream-kandidat) ─ #1 dedup ──────────────────────
     /**
