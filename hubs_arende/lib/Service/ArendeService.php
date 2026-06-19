@@ -82,6 +82,24 @@ class ArendeService {
     ];
 
     /**
+     * Honest-empty SAGA-pekarblock — alla 7 koordinations-pekare null. Returneras
+     * när pekareMapper saknas (positionell testharness) eller ingen pekare finns.
+     * Bär ENDAST koordinationspekare (board-/kort-id, opaka tokens, conversation),
+     * aldrig PII/innehåll (NEVER-SoR).
+     *
+     * @var array<string,null>
+     */
+    private const TOM_PEKARE = [
+        'talkToken' => null,
+        'groupfolderId' => null,
+        'conversationId' => null,
+        'deckBoardId' => null,
+        'deckCardId' => null,
+        'calendarUri' => null,
+        'bevakningBoardId' => null,
+    ];
+
+    /**
      * @param PekareMapper|null      $pekareMapper      R3–R9 pointer store (autowired at runtime; null in
      *                                                  the positional unit harness ⇒ those steps NO-OP).
      * @param SdkmcClient|null       $sdkmcClient       R3/R9 case:-tag carrier (graceful, isAvailable()-gated).
@@ -797,9 +815,43 @@ class ArendeService {
             'plikt' => $this->pliktForArende($arende),
             'nastaAtgard' => $this->nastaAtgardForArende($arende),
             'vantar' => null,
+            // SAGA-koordinationspekare som /arende-summary kan bära utan en full
+            // fetch: ärenderummets diskussions-token + bevaknings-board (= deck-board).
+            // THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
+            'talkToken' => $this->pekareTalkToken($arende->getHubsCaseId()),
+            'bevakningBoardId' => $this->pekareBevakningBoardId($arende->getHubsCaseId()),
             // The dashboard can badge this row as real engine state (deliberately thin).
             'kallaMotor' => true,
         ];
+    }
+
+    /**
+     * Diskussions-token (talk_room.objekt_id) för kortet, eller null. GRACEFUL:
+     * ingen pekareMapper / ingen pekare ⇒ null (aldrig ett kast).
+     */
+    private function pekareTalkToken(string $hubsCaseId): ?string {
+        if ($this->pekareMapper === null) {
+            return null;
+        }
+        foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'talk_room') as $p) {
+            return $p->getObjektId() !== '' ? $p->getObjektId() : null;
+        }
+        return null;
+    }
+
+    /**
+     * Bevaknings-board (deck_card.riktning = boardId) för kortet, eller null —
+     * '' / null ⇒ null, aldrig ett falskt 0. GRACEFUL: ingen pekareMapper /
+     * ingen pekare ⇒ null.
+     */
+    private function pekareBevakningBoardId(string $hubsCaseId): ?int {
+        if ($this->pekareMapper === null) {
+            return null;
+        }
+        foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'deck_card') as $p) {
+            return $this->pekareInt($p->getRiktning());
+        }
+        return null;
     }
 
     /**
@@ -818,6 +870,9 @@ class ArendeService {
             'moten' => [],
             'bevakningar' => [],
             'beslut' => null,
+            // SAGA-koordinationspekare for deep-länkning (ärenderum/diskussion/
+            // ärendekort/kalender). THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
+            'pekare' => $this->pekarBlock($arende->getHubsCaseId()),
         ];
     }
 
@@ -1896,6 +1951,60 @@ class ArendeService {
         }
         $forsta = $typ->getForstaAtgard();
         return ($forsta !== null && $forsta !== '') ? $forsta : null;
+    }
+
+    /**
+     * SAGA-pekarblock for the full card — surfaces the case's coordination
+     * pointers (ärenderum-token, groupfolder-id, deck-board/-kort, kalender-uri,
+     * conversation) so the GUI can deep-länka utan en egen pekare-fråga. THIN +
+     * NEVER-SoR: ENDAST koordinationsstate (id/token), aldrig PII/innehåll.
+     *
+     * findByCaseId() är id-DESC (nyast först); vi behåller det SIST sedda värdet
+     * per typ medan vi itererar ⇒ SAGA-ORIGINALET (äldsta) väljs, även om en pekare
+     * råkat skrivas om. GRACEFUL: ingen pekareMapper ⇒ TOM_PEKARE (alla null).
+     *
+     * @return array<string,mixed>
+     */
+    private function pekarBlock(string $hubsCaseId): array {
+        if ($this->pekareMapper === null) {
+            return self::TOM_PEKARE;
+        }
+        $block = self::TOM_PEKARE;
+        $deckBoardId = null;
+        foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $p) {
+            // id-DESC ⇒ skriv varje typ varv för varv; sista (= äldsta) vinner.
+            switch ($p->getObjektTyp()) {
+                case 'talk_room':
+                    $block['talkToken'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
+                    break;
+                case 'groupfolder':
+                    $block['groupfolderId'] = $this->pekareInt($p->getObjektId());
+                    break;
+                case 'conversation':
+                    $block['conversationId'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
+                    break;
+                case 'deck_card':
+                    // riktning = boardId, objekt_id = cardId (samma som R5-skrivningen).
+                    $deckBoardId = $this->pekareInt($p->getRiktning());
+                    $block['deckBoardId'] = $deckBoardId;
+                    $block['deckCardId'] = $this->pekareInt($p->getObjektId());
+                    break;
+                case 'calendar':
+                    $block['calendarUri'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
+                    break;
+            }
+        }
+        // bevakningBoardId speglar deck-boardet (bevakningar bor på ärendekortets board).
+        $block['bevakningBoardId'] = $deckBoardId;
+        return $block;
+    }
+
+    /**
+     * Casta ett pekare-fält (text-kolumn) till int, men behåll null/'' som null —
+     * en saknad pekare blir ALDRIG ett falskt 0.
+     */
+    private function pekareInt(?string $value): ?int {
+        return ($value === null || $value === '') ? null : (int)$value;
     }
 
     /**

@@ -70,6 +70,7 @@ class TeamService {
 	 *     memberCount: int,
 	 *     olasta: int,           // honest 0 — no chat-unread source server-side yet
 	 *     omnamnanden: int,      // honest 0 — no mention source server-side yet
+	 *     token: ?string,        // best-effort enhetschatt-room token; honest null when none
 	 *     members: list<{
 	 *       uid: string,
 	 *       namn: string,        // display name, falls back to uid
@@ -89,6 +90,7 @@ class TeamService {
 	 *   memberCount: int,
 	 *   olasta: int,
 	 *   omnamnanden: int,
+	 *   token: ?string,
 	 *   members: list<array{uid: string, namn: string, roll: string, narvaro: string, status: ?string}>
 	 * }>
 	 */
@@ -187,8 +189,59 @@ class TeamService {
 			// is available, then these become real.
 			'olasta' => 0,
 			'omnamnanden' => 0,
+			// Best-effort enhetschatt-room token for this enhet (group). NULL is
+			// the expected, honest value on instances where no group-bound room is
+			// trivially discoverable — the panel just falls back to no deep link.
+			'token' => $this->roomTokenForGroup($gid),
 			'members' => $members,
 		];
+	}
+
+	/**
+	 * Best-effort resolution of an enhetschatt-room token for an enhet (NC group).
+	 *
+	 * Null-safe and conservative by design: if spreed's Manager is not loadable in
+	 * this process we return null immediately, and even when it is, we only return
+	 * a token for a room that is *trivially and unambiguously* bound to the group
+	 * (object_type 'room' + object_id === $gid). When nothing matches we return
+	 * null — we never invent or guess a room.
+	 *
+	 * It is ACCEPTABLE and expected that this returns null on dev15 (no group-bound
+	 * enhetschatt-rooms provisioned yet). This method NEVER throws.
+	 *
+	 * NEVER-SoR: only the opaque room token (a PII-free coordination pointer) ever
+	 * leaves this method.
+	 */
+	private function roomTokenForGroup(string $gid): ?string {
+		// Guard: in-process spreed must be loadable. On dev15 / minimal instances
+		// it may not be — return the honest null rather than risk a fatal.
+		if (!class_exists(\OCA\Talk\Manager::class)) {
+			return null;
+		}
+
+		try {
+			/** @var \OCA\Talk\Manager $mgr */
+			$mgr = \OCP\Server::get(\OCA\Talk\Manager::class);
+
+			// A group-bound room is one spreed created "for" the group: its
+			// object_type is 'room' and object_id is the GID. We only trust this
+			// trivial, unambiguous binding; anything fancier (membership scans,
+			// fuzzy name matching) would risk surfacing the wrong room, so we
+			// decline and return null instead.
+			if (!method_exists($mgr, 'getRoomByObject')) {
+				return null;
+			}
+
+			/** @var object $room */
+			$room = $mgr->getRoomByObject('room', $gid);
+			$token = $room->getToken();
+
+			return is_string($token) && $token !== '' ? $token : null;
+		} catch (\Throwable $e) {
+			// No matching room (the common case) or spreed not ready — honest null.
+			$this->logger->debug('[hubs-start] team: no group-bound room for ' . $gid . ': ' . $e->getMessage());
+			return null;
+		}
 	}
 
 	/**

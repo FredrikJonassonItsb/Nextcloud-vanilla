@@ -218,6 +218,48 @@ export async function fetchGuestIdentity(token, actorId) {
 }
 
 // ---------------------------------------------------------------------------
+// Egna anteckningar (#12) + ärende-berikning vid expand (#3/#15/#16)
+// ---------------------------------------------------------------------------
+
+/**
+ * Handläggarens privata anteckningar ("Egna anteckningar"). Per-user, append-only,
+ * krypterat — backas av Spreed Note-to-Self via en sdkmc-läs-yta. Aldrig delat.
+ * @return {Promise<{notes: Array<{id:string, text:string, createdAt:string}>}>} newest-first
+ */
+export async function fetchNotes() {
+	if (DEMO) return demo.fetchNotes()
+	const res = await axios.get(SDKMC_OCS('/note-to-self'))
+	return ocsData(res) ?? { notes: [] }
+}
+
+/**
+ * Lägg till en privat anteckning. Body-fältet heter `text` (ej `message`).
+ * @param {string} text
+ * @return {Promise<{note:{id:string, text:string, createdAt:string}}>}
+ */
+export async function addNote(text) {
+	if (DEMO) return demo.addNote(text)
+	const res = await axios.post(SDKMC_OCS('/note-to-self'), { text })
+	return ocsData(res)
+}
+
+/**
+ * Berika ett expanderat ärendekort med ärenderums-innehåll (diskussion-summary)
+ * som sdkmc äger, givet ärenderummets talk-token (ur motorns full.pekare.talkToken).
+ * Tunn motor-princip (#3 hybrid): motorn ger pekaren, sdkmc berikar vid expand.
+ * Graceful: tom-shape när token saknas, sdkmc/spreed ej nåbart eller vid fel.
+ * @param {?string} talkToken ärenderummets diskussions-token
+ * @return {Promise<{diskussion:object, meddelanden:Array, moten:Array}>}
+ */
+export async function fetchArendeEnrichment(talkToken) {
+	const tom = { diskussion: { olasta: 0, omnamnandeTillMig: false, deltagare: [], meddelanden: [] }, meddelanden: [], moten: [] }
+	if (!talkToken) return tom
+	if (DEMO) return tom
+	const res = await axios.get(SDKMC_OCS('/arende-enrichment'), { params: { talkToken } })
+	return ocsData(res) ?? tom
+}
+
+// ---------------------------------------------------------------------------
 // Triage actions (own the case, mark done) — delegate to sdkmc tag API
 // ---------------------------------------------------------------------------
 
@@ -605,4 +647,7 @@ export default {
 	setMessageTag,
 	kopplaMeddelandeTillArende,
 	fetchAppointmentConfigs,
+	fetchNotes,
+	addNote,
+	fetchArendeEnrichment,
 }

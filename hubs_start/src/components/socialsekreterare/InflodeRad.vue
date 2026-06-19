@@ -44,9 +44,14 @@
 			</p>
 
 			<div class="inflode-rad__chips">
-				<span class="inflode-rad__typ-chip" :title="messageTypeLabel">
-					<TagOutlineIcon :size="13" />
+				<span
+					class="inflode-rad__typ-chip"
+					:class="{ 'inflode-rad__typ-chip--oklassad': !arKlassad }"
+					:title="typChipTitle">
+					<TagOutlineIcon v-if="arKlassad" :size="13" />
+					<HelpRhombusOutlineIcon v-else :size="13" />
 					<span class="inflode-rad__typ-text">{{ messageTypeLabel }}</span>
+					<span v-if="!arKlassad" class="inflode-rad__sr-only"> — {{ t('hubs_start', 'oklassad') }}</span>
 				</span>
 				<KopplingBadge
 					:koppling="rad.koppling"
@@ -55,6 +60,16 @@
 					@avvisa="$emit('avvisa', rad)" />
 				<FristChip v-if="rad.frist" :frist="rad.frist" />
 			</div>
+
+			<!-- #1 PII-fritt utdrag + verifierad-källa-badge (renderas bara när de finns). -->
+			<p v-if="harExcerpt" class="inflode-rad__excerpt">{{ rad.excerpt }}</p>
+			<span
+				v-if="verifieradKalla"
+				class="inflode-rad__kalla-badge"
+				:title="kallaBadgeLabel">
+				<IconVerified :size="13" />
+				{{ kallaBadgeLabel }}
+			</span>
 		</div>
 
 		<!-- Åtgärder: primär som knapp, övriga i "Mer"-meny -->
@@ -99,6 +114,7 @@ import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
 import IconInbox from 'vue-material-design-icons/InboxArrowDown.vue'
 import FolderAccountIcon from 'vue-material-design-icons/FolderAccount.vue'
 import TagOutlineIcon from 'vue-material-design-icons/TagOutline.vue'
+import HelpRhombusOutlineIcon from 'vue-material-design-icons/HelpRhombusOutline.vue'
 import IconVerified from 'vue-material-design-icons/ShieldCheck.vue'
 import IconUnverified from 'vue-material-design-icons/AccountQuestion.vue'
 import DotsHorizontalIcon from 'vue-material-design-icons/DotsHorizontal.vue'
@@ -110,6 +126,16 @@ import { channelMeta } from '../../services/channels.js'
 import KopplingBadge from './KopplingBadge.vue'
 import FristChip from './FristChip.vue'
 
+// De KÄNDA innehållstyperna (ärende-/innehållsvokabulär). En rad räknas som
+// klassad ENBART när messageType är en av dessa — en kanal-transporttyp
+// (internal_message/fax_message/…) eller ett tomt värde är INTE klassad och
+// faller tillbaka till kanal-etiketten (#19). Lägg aldrig till transporttyper här.
+const KANDA_TYPER = new Set([
+	'orosanmalan', 'komplettering', 'fraga', 'remiss', 'internpost', 'fax', 'sdk_myndighet', 'skrap',
+	// Innehållstyper som sdkmc:s ämnes-brygga (#19) kan härleda utöver korg-vokabulären.
+	'bistandsansokan', 'samverkan',
+])
+
 export default {
 	name: 'InflodeRad',
 
@@ -120,6 +146,7 @@ export default {
 		IconInbox,
 		FolderAccountIcon,
 		TagOutlineIcon,
+		HelpRhombusOutlineIcon,
 		IconVerified,
 		IconUnverified,
 		DotsHorizontalIcon,
@@ -152,7 +179,19 @@ export default {
 			return (this.rad.korg && this.rad.korg.label) || ''
 		},
 
-		/** Svensk etikett för meddelandetypen. */
+		/** Kanal-etikett (server-lokaliserad om den finns, annars channelMeta-fallback
+		 * 'Okänd kanal'). Aldrig tom — används som typ-chip-fallback för oklassade rader. */
+		channelLabel() {
+			return (this.rad.channel && this.rad.channel.channelLabel) || this.channel.label
+		},
+
+		/** En rad är klassad bara när messageType är en KÄND innehållstyp. */
+		arKlassad() {
+			return KANDA_TYPER.has(this.rad && this.rad.messageType)
+		},
+
+		/** Svensk etikett för meddelandetypen. Faller ALDRIG tillbaka till ett rått
+		 * maskin-id eller blankt: en oklassad rad visar kanal-etiketten i stället (#19). */
 		messageTypeLabel() {
 			const m = {
 				orosanmalan: this.t('hubs_start', 'Orosanmälan'),
@@ -163,8 +202,34 @@ export default {
 				fax: this.t('hubs_start', 'Fax'),
 				sdk_myndighet: this.t('hubs_start', 'SDK-myndighet'),
 				skrap: this.t('hubs_start', 'Skräp'),
+				bistandsansokan: this.t('hubs_start', 'Ansökan om bistånd'),
+				samverkan: this.t('hubs_start', 'Samverkan'),
 			}
-			return m[this.rad.messageType] || this.rad.messageType || ''
+			if (this.arKlassad) {
+				return m[this.rad.messageType]
+			}
+			return this.channelLabel
+		},
+
+		/** Tooltip för typ-chippet — markerar oklassad utan att hitta på en typ. */
+		typChipTitle() {
+			return this.arKlassad
+				? this.messageTypeLabel
+				: this.t('hubs_start', 'Oklassad — {kanal}', { kanal: this.channelLabel })
+		},
+
+		/** #1 — PII-fritt utdrag (motor-redigerat). Saknas på live-feeden idag. */
+		harExcerpt() {
+			return !!(this.rad.excerpt && String(this.rad.excerpt).trim())
+		},
+
+		/** #1 — verifierad källa (t.ex. SITHS/BankID-ursprung). === true, ej truthy. */
+		verifieradKalla() {
+			return this.rad.verifieradKalla === true
+		},
+
+		kallaBadgeLabel() {
+			return (this.rad.kallaBadge && String(this.rad.kallaBadge)) || this.t('hubs_start', 'Verifierad källa')
 		},
 
 		/** Identitets-badge — "Ej verifierad — anonym" är ett legitimt tillstånd. */
@@ -351,6 +416,35 @@ export default {
 		font-size: 0.76rem;
 		font-weight: 600;
 		white-space: nowrap;
+
+		// Oklassad = provisoriskt tillstånd (ej fel): streckad ram + dämpad ton +
+		// ikon + sr-only-ord bär signalen (aldrig enbart färg).
+		&--oklassad {
+			border-style: dashed;
+			color: var(--color-text-maxcontrast);
+		}
+	}
+
+	// #1 — PII-fritt utdrag (en rad, klipps med ellipsis).
+	&__excerpt {
+		margin: 2px 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-maxcontrast);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	// #1 — verifierad-källa-badge (success-ton, align-self så den ej sträcks i kolumn-flex).
+	&__kalla-badge {
+		align-self: flex-start;
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		margin-top: 2px;
+		font-size: 0.76rem;
+		font-weight: 600;
+		color: var(--hs-status-success);
 	}
 
 	&__actions {

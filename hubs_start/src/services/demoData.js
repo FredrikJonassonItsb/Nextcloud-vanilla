@@ -264,8 +264,23 @@ const recipients = [
 	{ id: 'fax-vc', displayName: 'Vårdcentralen Centrum (fax)', address: '0521234567@fax', classification: FAX, ssn: null, sms: null },
 ]
 
+// #12 — "Egna anteckningar" (Spreed Note-to-Self): per-user, append-only, private.
+// Mutable in demo so addNote() reflects immediately. createdAt uses the browser
+// clock (this is app code, runs in the browser/jsdom — not a workflow script).
+const notes = [
+	{ id: 'demo-note-2', text: 'Ringa BUP angående Lukas innan fredag.', createdAt: T.yesterday },
+	{ id: 'demo-note-1', text: 'Kontrollera att vårdnadshavare fått kallelsen.', createdAt: T.t0740 },
+]
+let noteSeq = 100
+
 export const demo = {
 	getSettings: () => ({ loginSecurity: { loa: 'LOA3' }, loa3Tag: '$label1', demo: true }),
+	fetchNotes: () => ({ notes: JSON.parse(JSON.stringify(notes)) }),
+	addNote: (text) => {
+		const note = { id: 'demo-note-' + (++noteSeq), text: String(text || ''), createdAt: new Date().toISOString() }
+		notes.unshift(note)
+		return { note: JSON.parse(JSON.stringify(note)) }
+	},
 	getPreferences: () => ({ onboardingSeen: true, keyboardMode: false, profile: 'forvaltare' }),
 	savePreferences: (p) => ({ onboardingSeen: true, keyboardMode: false, ...p }),
 	fetchSummary: () => JSON.parse(JSON.stringify(summary)),

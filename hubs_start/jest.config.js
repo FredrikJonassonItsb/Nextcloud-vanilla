@@ -16,6 +16,10 @@ module.exports = {
 		'^@nextcloud/axios$': '<rootDir>/tests/mocks/nextcloud.js',
 		'^@nextcloud/dialogs$': '<rootDir>/tests/mocks/nextcloud.js',
 		'^@nextcloud/initial-state$': '<rootDir>/tests/mocks/nextcloud.js',
+		// @nextcloud/vue components ship ESM with browser globals jsdom lacks; component
+		// tests shallowMount (children stubbed by tag) so a render-null stub suffices.
+		'^@nextcloud/vue/dist/.*': '<rootDir>/tests/mocks/ncvue.js',
+		'^@nextcloud/vue$': '<rootDir>/tests/mocks/ncvue.js',
 		// jest does not transform .vue SFCs inside node_modules; stub the icon set.
 		'^vue-material-design-icons/.*\\.vue$': '<rootDir>/tests/mocks/icon.js',
 	},

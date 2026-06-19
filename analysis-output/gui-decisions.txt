@@ -1,0 +1,50 @@
+HEADLINE: 19 fynd = mest tunna integrationsgap (motorn ärlig-tom, frontend wirad mot demo): ~6 äkta buggar är snabba lågrisk-fixar, resten är 8 obyggda läs-ytor (groupfolder/Spreed/Deck/möten) + 4 produktbeslut — bygg buggarna först, sedan läs-ytorna, parallellisera men serialisera MinaArenden.vue & ArendeKort.vue.
+
+===== DECISIONS =====
+
+[#12 personliga anteckningar] Vilken backend för handläggarens privata anteckningar?
+  opt1: Spreed 'Note-to-Self' (finns redan i hubs-code/spreed-itsl: NoteToSelfService.php) — privat 1:1-rum per användare, krypterat, ingen ny app-install; modal i ArendeKort hämtar/postar meddelanden
+  opt2: Nextcloud Tasks/Notes-app — kräver app-install + OCS-integration + ICS-sync; ger struktur men ny driftberoende
+  opt3: Markdown-fil i ärenderummets groupfolder — enklast tekniskt MEN delad med teamet → bryter integritetskravet
+  >> REK: Spreed Note-to-Self. Koden finns redan i repot, det är per-användare privat och krypterat, kräver ingen ny app-install, och återanvänder Talk-OCS som dashboarden redan pratar med. Bygg en 'Mina anteckningar'-modal i ArendeKort som fetchar/postar mot användarens privata 1:1-rum. Avfärda groupfolder-fil (delad = sekretessbrott) och Tasks/Notes (ny drift utan mervärde här).
+
+[#5 Treserva default-dokumentval] Vilka dokument ska vara förvalda i Treserva-överföringen?
+  opt1: Alla dokument förvalda (handläggaren bockar AV det som ska undantas)
+  opt2: Inget förvalt (handläggaren bockar I aktivt — explicit medvetet val per dokument)
+  opt3: Konfigurerbart per ärendetyp (t.ex. hoppa över utkast via filnamns-/metadata-mönster), styrt av admin-policy
+  >> REK: Alla förvalda + obligatorisk granskning innan commit (handläggaren ser listan och kan bocka av). Det matchar 'hela akten ska till facksystemet'-normen och minimerar risken att glömma en handling, men låter handläggaren undanta utkast. Lägg en TODO-krok för per-ärendetyp-policy (alternativ 3) men bygg den inte nu — kräver en admin-policydokument som inte finns. Öppen fråga till verksamheten: finns en lista över MÅSTE-överföras vs FÅR-överföras dokumenttyper?
+
+[#6 signering 'kommer vidare'-UX] Hur ska post-signerings-flödet (LibreSign → tillbaka till commit) hanteras?
+  opt1: Temporär: wrappa libresign-redirect i en modal/drawer med kryssruta 'Jag har signerat dokumentet' → visar 'Nästa steg: För till Treserva'-knapp
+  opt2: Långsiktig: bädda in LibreSign som iframe i CommitGrind så signering + commit blir ett orkestrerat flöde (kräver libresign-app-refaktor)
+  opt3: Skicka dnr/callback till LibreSign så den kan posta tillbaka till ärendet automatiskt (kräver libresign-integration)
+  >> REK: Temporär kryssrute-modal (alternativ 1) nu, med en tydlig 'Nästa steg'-knapp som öppnar CommitGrind. Det löser den upplevda 'flödet bröts'-känslan på minuter utan att blockera på libresign-refaktor. Lägg iframe-integrationen (alternativ 2) som en separat backlog-post — den är rätt slutmål men för stor för denna omgång.
+
+[#7/11 Deck-board för bevakning] Hur väljs rätt Deck-board istället för hårdkodad board/2?
+  opt1: Hämta board-id från enhet/team-metadata via en ny endpoint (GET enhet/bevakings-board) och cacha per session
+  opt2: Bädda in bevakingBoardId direkt i arende-summary-svaret (motorn/sdkmc returnerar det per ärende)
+  opt3: Skapa board on-demand per enhet vid första användning + registrera i en pekare/registry
+  >> REK: Inkludera bevakingBoardId i arende-summary (alternativ 2) eftersom dashboarden redan hämtar summary och det ger rätt board per ärende/enhet utan ett extra anrop. Som snabb Wave 1-säkring: behåll en 404-säker fallback (om board saknas → visa felmeddelande istället för tom board). Öppen verksamhetsfråga: är bevaknings-boarden delad per etat eller per enhet?
+
+[#3 tunn vs tjock läs-yta] Ska mapToFullCard() ladda extern data (Spreed/mail/Deck) eller ska en ny sdkmc-aggregator göra det?
+  opt1: Utöka mapToFullCard i hubs_arende att läsa case-room + meddelanden + möten (bryter mot 'tunn motor'-principen men ett ställe)
+  opt2: Ny sdkmc-endpoint GET /arende/{ref}/full-content som merge:ar motor + ärenderum + länkade meddelanden + möten, anropas vid expand
+  opt3: Hybrid: motorn äger bara koordinationsstate (pekare-uppslag), sdkmc-aggregatorn berikar PII/innehåll vid expand
+  >> REK: Hybrid (alternativ 3). Låt hubs_arende fortsätta vara tunn men returnera pekarna (talk_room, groupfolder, conversation) i full-card-formen; lägg berikningen (Spreed-meddelanden, mail-länkar, mötesdata) i en sdkmc-läs-yta som anropas vid expand. Det bevarar motorns ärlighet (#3-grundprincipen), undviker att blanda PII in i motorn, och ger en naturlig graceful-degradering när en källa saknas på dev15. Detta är arkitektur-ramen som #13/#16/#15 bör byggas inom.
+
+[#16 diskussion-innehåll] Vad ska diskussion-summaryn innehålla?
+  opt1: Bara olasta-antal + omnamnandeTillMig (minimalt, billigt)
+  opt2: Antal + omnamnandeTillMig + 1-2 senaste avsändare (aktivitetssynlighet)
+  opt3: Full senaste-meddelande-preview + avsändarnamn + deltagarlista
+  >> REK: Antal + omnamnandeTillMig + 1-2 senaste avsändare (alternativ 2). Ger handläggaren tillräcklig aktivitetssignal för att veta om något hänt utan att läcka mer innehåll än nödvändigt i ett kort-sammanhang. Full preview (alternativ 3) sparas till själva Diskussion-fliken där rummet öppnas på riktigt.
+
+[#19 klassning: sdkmc nu vs hubs_arende senare] Ska sdkmc klassificera innehåll själv eller vänta på hubs_arende-motorn?
+  opt1: Minim-fix i sdkmc nu: korg-match + enkla subject-mönster (t.ex. 'Orosanmälan' i ämnesrad → 'orosanmalan'), märkt som bridge
+  opt2: Vänta på hubs_arende-klassningsmotorn (arkitekturellt 'rätt' ägare) — men den är inte live på dev15
+  opt3: Hybrid: sdkmc gör bridge-klassning + frontend-fallback som visar kanal-etikett om innehållstyp saknas, tills motorn tar över
+  >> REK: Hybrid bridge (alternativ 3). Utöka contentTypeFromKorg med konservativ subject-scan OCH lägg frontend-fallback i InflodeRad så en oklassad rad visar kanal-etiketten istället för blank. Märk koden tydligt som bridge tills hubs_arende-klassningen kopplas in. Att vänta (alternativ 2) lämnar prod-feeden trasig på obestämd tid; ren sdkmc-klassning (alternativ 1) utan frontend-skydd riskerar dolda etiketter.
+
+===== TEST STRATEGY =====
+Tre lager som hade fångat alla 19 fynd, i prioritetsordning: (1) KOMPONENT-TESTER (Vue Test Utils + Jest, körs i hubs_start/ via npm test som redan finns) — montera ArendeKort/InflodeRad/MotesRemsa/CommitGrind med PROD-formad data (tomma arrays, {namn,fileid}-objekt, identitet:{badge:'',verifierad:false}) i stället för demo-data och assertera: dokument-pill renderar d.namn inte '[object Object]' (#14), 'Visa'/'Diskutera'/'Bevakning'-knappar finns och emitterar rätt event (#2,#10,#7/11), MotesRemsa läser store.state.meetings inte A.moten (#17), CommitGrind har dokument-checkboxar (#5). Detta är största luckan — demo-data maskerade allt. (2) BACKEND-INTEGRATIONSTEST (PHPUnit, körs via composer:2 docker-image enligt hubs-local-tests-minnet, ingen php på host) — anropa mapToFullCard() och INTE bara assertera 'returnerar utan kast' utan att diskussion/meddelanden/moten faktiskt POPULERAS när pekare finns (#3,#13,#15,#16); assertera att createCase() skriver referens-fil i groupfoldern (#8); assertera InflodeFeedService::toFeedRow() ger riktig identitet-badge + excerpt + innehållstyp för en mock-orosanmälan (#1,#19). (3) GUI E2E (Playwright mot dev15, byggt på det redan körda E2E-flödet ta-emot→commit→kvittens) — kör mot PROD-mode (inte demo) och verifiera EFTER varje åtgärd: efter bokat möte → mötet syns i MotesRemsa (#17); efter commit → valda dokument finns i payloaden (#5); öppna ett expanderat kort → flikarna har innehåll, inte 'Inga…' (#3,#15,#16); klicka 'Visa' → rätt mail-tråd öppnas (#2). NYCKEL-INSIKT: kör testerna i PROD/DEMO_OFF-läge — alla 19 fynd undgick upptäckt för att test kördes mot demo-data där backend-tomheten var dold. Lägg en CI-gate som kör lager 1+2 vid varje PR och lager 3 nattligt mot dev15.
+
+===== QUICK WINS: ["#4 (byt en etikett-sträng, ArendeKort.vue:215)","#14 (rendera d.namn + title, ArendeKort.vue:97 — fixar live '[object Object]'-buggen)","#17 (byt :meetings-bindning till store + refreshMeetings-anrop; all infra finns redan)","#9 (skicka arende.dnr till composerLink, MinaArenden.vue:599-602)","#8 (anropa skrivMeddelandeReferens i createCase R9, samma mönster som kopplaMeddelande)"]

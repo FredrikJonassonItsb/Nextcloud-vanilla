@@ -66,6 +66,21 @@ export function callLink(token) {
 }
 
 /**
+ * Open a diskussion-/enhetschatt-rum by its room token. Returns null when no token
+ * is known so the caller MUST disable the control / show an honest empty state —
+ * never a hardcoded room. Same underlying route as callLink, kept separate so the
+ * call-site intent (öppna rummet, inte ring upp) is explicit.
+ * @param {?string} token room token
+ * @return {?string} url, or null when token is absent
+ */
+export function spreedRoomLink(token) {
+	if (!token) {
+		return null
+	}
+	return generateUrl('/call/{token}', { token })
+}
+
+/**
  * Open the ärenderum (the groupfolder whose mount_point === hubsCaseId) in Files.
  * @param {string} hubsCaseId groupfolder mount_point = hubsCaseId
  * @return {string}
@@ -120,9 +135,11 @@ export function resolve(deepLink) {
 		return mailboxLink(deepLink.params.mailboxId)
 	case 'call':
 		return callLink(deepLink.params.token)
+	case 'room':
+		return spreedRoomLink(deepLink.params.token)
 	default:
 		return generateUrl('/apps/hubs_start/')
 	}
 }
 
-export default { threadLink, composerLink, mailboxLink, callLink, arenderumLink, fileLink, loa3UpgradeLink, resolve }
+export default { threadLink, composerLink, deckLink, mailboxLink, callLink, spreedRoomLink, arenderumLink, fileLink, loa3UpgradeLink, resolve }

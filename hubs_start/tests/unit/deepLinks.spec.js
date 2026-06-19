@@ -6,11 +6,13 @@
  * We therefore assert on the resulting path fragments rather than absolute URLs.
  */
 
-import {
+import deepLinks, {
 	threadLink,
 	composerLink,
+	deckLink,
 	mailboxLink,
 	callLink,
+	spreedRoomLink,
 	loa3UpgradeLink,
 	resolve,
 } from '../../src/services/deepLinks.js'
@@ -53,6 +55,45 @@ describe('callLink', () => {
 	})
 })
 
+describe('deckLink', () => {
+	it('builds the Deck board route from a board id', () => {
+		expect(deckLink(3)).toBe('/index.php/apps/deck/board/3')
+	})
+
+	it('falls back to the Deck board list when no board id is known (404-safe)', () => {
+		expect(deckLink(null)).toBe('/index.php/apps/deck/')
+		expect(deckLink()).toBe('/index.php/apps/deck/')
+	})
+})
+
+describe('spreedRoomLink', () => {
+	it('builds the room route from a token', () => {
+		expect(spreedRoomLink('4w54xxqc')).toBe('/index.php/call/4w54xxqc')
+	})
+
+	it('returns null when no token is known (caller must disable the control)', () => {
+		expect(spreedRoomLink(null)).toBeNull()
+		expect(spreedRoomLink('')).toBeNull()
+		expect(spreedRoomLink(undefined)).toBeNull()
+	})
+})
+
+// Regression: the default-export object MUST expose every helper a component calls
+// as `deepLinks.<fn>` (MinaArenden imports the default and calls deepLinks.deckLink).
+// deckLink was added as a named export but originally omitted from the default
+// object, so deepLinks.deckLink was undefined → the Bevakning button threw at runtime.
+describe('default export surface', () => {
+	it('exposes every helper used via the default import', () => {
+		for (const fn of ['threadLink', 'composerLink', 'deckLink', 'mailboxLink', 'callLink', 'spreedRoomLink', 'arenderumLink', 'fileLink', 'loa3UpgradeLink', 'resolve']) {
+			expect(typeof deepLinks[fn]).toBe('function')
+		}
+	})
+
+	it('deepLinks.deckLink resolves a board through the default import', () => {
+		expect(deepLinks.deckLink(7)).toBe('/index.php/apps/deck/board/7')
+	})
+})
+
 describe('loa3UpgradeLink', () => {
 	it('uses the Hubs Start return url by default', () => {
 		expect(loa3UpgradeLink()).toBe(
@@ -90,6 +131,10 @@ describe('resolve', () => {
 
 	it('resolves a call descriptor', () => {
 		expect(resolve({ app: 'call', params: { token: 'tok' } })).toBe('/index.php/call/tok')
+	})
+
+	it('resolves a room descriptor', () => {
+		expect(resolve({ app: 'room', params: { token: 'tok' } })).toBe('/index.php/call/tok')
 	})
 
 	it('falls back to the Hubs Start home for a null descriptor', () => {

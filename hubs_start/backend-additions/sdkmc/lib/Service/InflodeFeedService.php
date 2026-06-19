@@ -105,12 +105,14 @@ class InflodeFeedService {
      *     id:string, kind:'inflode',
      *     korg:{ addr:string, label:string, scope:string },
      *     channel:{ channel:string, channelLabel:string, messageType:string },
-     *     messageType:string,
+     *     messageType:string,               // INNEHÅLLS-typ: korg → subject → channel
      *     avsandare:string,                 // anonymised, never clear-text PII
-     *     identitet:{ badge:string, verifierad:bool },
+     *     identitet:{ badge:string, verifierad:bool }, // verified-SOURCE (kanal) badge
+     *     excerpt:string,                   // PII-scrubbed preview snippet ('' default)
      *     titel:string,                     // anonymised channel/dnr title
      *     inkomDatum:?string,               // ISO-8601
      *     messageId:string,
+     *     conversationId:string,            // engine idempotency anchor (PII-free)
      *     deepLink:{ app:string, params:array<string,mixed> }
      *   }
      *
@@ -267,7 +269,7 @@ class InflodeFeedService {
     private function fetchIncomingRows(string $email): array {
         try {
             $qb = $this->db->getQueryBuilder();
-            $qb->select('m.id AS db_id', 'm.message_id', 'm.thread_root_id', 'm.subject', 'm.sent_at', 'm.flag_seen', 'a.id AS account_id')
+            $qb->select('m.id AS db_id', 'm.message_id', 'm.thread_root_id', 'm.subject', 'm.preview_text', 'm.sent_at', 'm.flag_seen', 'a.id AS account_id')
                 ->from('mail_messages', 'm')
                 ->join('m', 'mail_mailboxes', 'mb', $qb->expr()->eq('m.mailbox_id', 'mb.id'))
                 ->join('mb', 'mail_accounts', 'a', $qb->expr()->eq('mb.account_id', 'a.id'))
@@ -285,7 +287,11 @@ class InflodeFeedService {
                 }
             }
             $r->closeCursor();
-            return $rows;
+            // #1 DEDUP: a function mailbox backed by TWO mail_accounts mirrors the
+            // SAME logical message into both INBOX copies (4 db rows for 2 real
+            // messages on dev15). Collapse here, INSIDE the fetch, so the korgar
+            // 'otriagerat' count (count(rows)) collapses together with the band.
+            return $this->dedupRows($rows);
         } catch (\Throwable $e) {
             // mail app absent / schema mismatch / no inflow on dev15 → honestly
             // empty for this korg, never crash, never synthesise.
@@ -293,6 +299,71 @@ class InflodeFeedService {
             return [];
         }
     }
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ #1 dedup ──────────────────────
+    /**
+     * Collapse duplicate INBOX rows that represent the SAME logical message.
+     * A function mailbox (e.g. orosanmalan@gruppbox) may be backed by more than
+     * one mail_account, so the same incoming message lands once per backing
+     * account → several db rows for one real message. We collapse on the most
+     * stable identity available: thread_root_id, else message_id, else db_id.
+     *
+     * On a collision we KEEP the copy that actually carries body text: the
+     * mirrored copies on dev15 have an EMPTY preview_text, so preferring a
+     * non-empty preview_text keeps the excerpt-bearing row. Tiebreak (both empty
+     * or both non-empty) → the lower db_id, for a stable, deterministic pick.
+     * Order of first appearance is preserved (the SELECT already sorts by
+     * sent_at DESC). Never throws.
+     *
+     * @param list<array<string,mixed>> $rows
+     * @return list<array<string,mixed>>
+     */
+    private function dedupRows(array $rows): array {
+        $kept = [];
+        foreach ($rows as $row) {
+            $key = (string)($row['thread_root_id'] ?? '');
+            if ($key === '') {
+                $key = (string)($row['message_id'] ?? '');
+            }
+            if ($key === '') {
+                $key = (string)($row['db_id'] ?? '');
+            }
+            if ($key === '') {
+                // No usable identity — never silently drop a real row.
+                $kept[] = $row;
+                continue;
+            }
+
+            if (!isset($kept[$key])) {
+                $kept[$key] = $row;
+                continue;
+            }
+
+            if ($this->preferRow($row, $kept[$key])) {
+                $kept[$key] = $row;
+            }
+        }
+        return array_values($kept);
+    }
+
+    /**
+     * Whether $candidate should replace the already-kept $current for the same
+     * dedup key: prefer a non-empty preview_text; on a tie, prefer the lower
+     * db_id. Pure, never throws.
+     *
+     * @param array<string,mixed> $candidate
+     * @param array<string,mixed> $current
+     */
+    private function preferRow(array $candidate, array $current): bool {
+        $candHasText = trim((string)($candidate['preview_text'] ?? '')) !== '';
+        $curHasText = trim((string)($current['preview_text'] ?? '')) !== '';
+        if ($candHasText !== $curHasText) {
+            return $candHasText;
+        }
+        // Same text-presence → deterministic tiebreak on the lower db_id.
+        return (int)($candidate['db_id'] ?? 0) < (int)($current['db_id'] ?? 0);
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
 
     /**
      * Map a raw incoming mail row to a feed row carrying ONLY sdkmc-knowable
@@ -318,29 +389,43 @@ class InflodeFeedService {
                 'scope' => $korg['scope'],
             ],
             'channel' => $channelInfo,
-            // >>> HUBS-START-ADD (upstream-kandidat) ─ gap27 innehållstyp ──────
+            // >>> HUBS-START-ADD (upstream-kandidat) ─ gap27 + #19 innehållstyp ─
             // The `channel` object above keeps the authoritative KANAL/transport
             // type (sdk_message, fax_message, …) from ChannelClassificationService
             // — that is intentionally UNCHANGED. The top-level `messageType` the
             // inflöde-list reads is, by contract, an INNEHÅLLS-typ (orosanmalan,
-            // komplettering, …). sdkmc can derive that content type only when the
-            // korg localpart is itself a content corridor (e.g. 'orosanmalan@' →
-            // 'orosanmalan'); otherwise it stays the channel messageType and the
-            // ärende-motorn (hubs_arende) owns the real content classification.
-            'messageType' => $this->contentTypeFromKorg($korg) ?? $channelInfo['messageType'],
+            // komplettering, …). korg stays authoritative: sdkmc derives the
+            // content type from the korg localpart when it is itself a content
+            // corridor ('orosanmalan@' → 'orosanmalan'); only when the korg
+            // yields null does the #19 subject heuristic fire; and only when that
+            // too yields null does it fall back to the channel messageType (the
+            // ärende-motorn still owns the real content classification).
+            'messageType' => $this->contentTypeFromKorg($korg)
+                ?? $this->contentTypeFromSubject((string)($row['subject'] ?? ''))
+                ?? $channelInfo['messageType'],
             // <<< HUBS-START-ADD ─────────────────────────────────────────────
             // Anonymised — only the channel label, never the citizen/sender PII.
             'avsandare' => $channelInfo['channelLabel'],
-            // sdkmc cannot assert LOA per-message here; emit a neutral,
-            // honest "unknown verification" badge. The ärende-motorn /
-            // identity layer fills the real LOA badge downstream.
-            'identitet' => [
-                'badge' => '',
-                'verifierad' => false,
-            ],
+            // >>> HUBS-START-ADD (upstream-kandidat) ─ #1 verified-source badge ─
+            // sdkmc CANNOT assert a per-message LOA here (no BankID/SITHS/LOA3
+            // claim is available at this layer — that stays the ärende-motorn /
+            // identity layer's job downstream). What sdkmc CAN honestly say is
+            // the trust of the TRANSPORT-kanal the message arrived on, so the
+            // badge reflects the channel, in Hubs/Swedish terms only.
+            'identitet' => $this->identitetForChannel($channelInfo),
+            // #1 EXCERPT: a scrubbed, PII-safe snippet of the raw preview text so
+            // the band can show a hint of content without leaking citizen PII.
+            'excerpt' => $this->safeExcerpt((string)($row['preview_text'] ?? '')),
+            // <<< HUBS-START-ADD ─────────────────────────────────────────────
             'titel' => $this->anonymiseTitle($channelInfo, $row),
             'inkomDatum' => $inkomDatum,
             'messageId' => $messageId,
+            // >>> HUBS-START-ADD (upstream-kandidat) ─ engine idempotency anchor ─
+            // Stable conversation id the SPA reads as rad.conversationId — the
+            // ärende-motorn's idempotency key (a PII-free coordination pointer:
+            // thread root, else the message id, never citizen content).
+            'conversationId' => (string)($row['thread_root_id'] ?? $row['message_id'] ?? ''),
+            // <<< HUBS-START-ADD ─────────────────────────────────────────────
             'deepLink' => $this->deepLinkForRow($row, $mailbox),
         ];
     }
@@ -388,6 +473,102 @@ class InflodeFeedService {
             'remiss', 'remisser' => 'remiss',
             default => null,
         };
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ #19 subject bridge ─────────────
+    /**
+     * HYBRID BRIDGE (#19) — conservative subject heuristic; supersede when
+     * hubs_arende owns content classification.
+     *
+     * Derive the INNEHÅLLS-typ from the message SUBJECT, but ONLY as a fallback:
+     * the korg (contentTypeFromKorg) stays authoritative and this fires only
+     * when the korg yields null, so there is no double-logic. Case-insensitive,
+     * narrowest-first so the most specific corridor wins. Anything sdkmc cannot
+     * positively name returns null and the caller keeps the channel messageType.
+     * Never throws.
+     */
+    private function contentTypeFromSubject(string $subject): ?string {
+        $subject = trim($subject);
+        if ($subject === '') {
+            return null;
+        }
+        // Narrowest-first: orosanmälan, then komplettering, then bistånd/ansökan,
+        // then samverkan/SIP. (\b on SIP avoids matching it inside other words.)
+        if (preg_match('/orosanm/iu', $subject) === 1) {
+            return 'orosanmalan';
+        }
+        if (preg_match('/komplett/iu', $subject) === 1) {
+            return 'komplettering';
+        }
+        if (preg_match('/(bist[åa]nd|ans[öo]kan)/iu', $subject) === 1) {
+            return 'bistandsansokan';
+        }
+        if (preg_match('/(samverkan|\bsip\b)/iu', $subject) === 1) {
+            return 'samverkan';
+        }
+        return null;
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ #1 verified-source badge ───────
+    /**
+     * The verified-source identity badge for a feed row, derived from the
+     * TRANSPORT-kanal the message arrived on (the only trust signal sdkmc owns
+     * at this layer). NO per-message LOA claim is made here — no 'BankID',
+     * 'SITHS' or 'LOA3' — because sdkmc cannot assert LOA per message; that is
+     * the ärende-motorn / identity layer's to fill downstream. Hubs/Swedish
+     * terms only. Never throws.
+     *
+     * @param array{channel:string,channelLabel:string,messageType:string} $channelInfo
+     * @return array{badge:string,verifierad:bool}
+     */
+    private function identitetForChannel(array $channelInfo): array {
+        $channel = (string)($channelInfo['channel'] ?? '');
+        return match ($channel) {
+            ChannelClassificationService::CHANNEL_SDK => ['badge' => 'Myndighetskanal · verifierad', 'verifierad' => true],
+            ChannelClassificationService::CHANNEL_INTERNAL => ['badge' => 'Internt · verifierad', 'verifierad' => true],
+            ChannelClassificationService::CHANNEL_SECURE => ['badge' => 'Säker e-post', 'verifierad' => false],
+            default => ['badge' => 'Ej verifierad', 'verifierad' => false],
+        };
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ #1 PII-safe excerpt ────────────
+    /**
+     * A short, PII-SCRUBBED excerpt of a raw preview/body snippet for the band.
+     * preview_text is raw citizen text, so this is deliberately defensive:
+     *   - personnummer (\b\d{6,8}[-+]?\d{4}\b)  → '…'
+     *   - quoted names ("…" / '…')              → '…'
+     *   - standalone digit runs ≥4              → '…'
+     * then trim and hard-cap at ~120 chars. Empty in → '' out; when in doubt we
+     * return '' rather than risk a leak. Never throws.
+     */
+    private function safeExcerpt(string $text): string {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        // Scrub personnummer FIRST (before the generic digit-run rule would only
+        // partially mask it). YYMMDD / YYYYMMDD + optional -/+ + 4 digits.
+        $text = (string)preg_replace('/\b\d{6,8}[-+]?\d{4}\b/u', '…', $text);
+        // Quoted names — both double and single quotes (citizen/barn names are
+        // routinely quoted in anmälningar). Non-greedy, bounded.
+        $text = (string)preg_replace('/"[^"]{1,80}"/u', '…', $text);
+        $text = (string)preg_replace("/'[^']{1,80}'/u", '…', $text);
+        // Any remaining standalone digit run of 4+ (phone, dnr fragments, …).
+        $text = (string)preg_replace('/\b\d{4,}\b/u', '…', $text);
+
+        // Collapse whitespace the scrubbing may have left ragged, then cap.
+        $text = trim((string)preg_replace('/\s+/u', ' ', $text));
+        if ($text === '') {
+            return '';
+        }
+        if (mb_strlen($text) > 120) {
+            $text = rtrim(mb_substr($text, 0, 119)) . '…';
+        }
+        return $text;
     }
     // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
 

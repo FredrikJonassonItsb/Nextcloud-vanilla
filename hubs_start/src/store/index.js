@@ -190,18 +190,52 @@ const store = {
 		this.loadFavoriter()
 	},
 
-	/** Lazy-load a full ärende (flik content) when a card expands. */
-	async loadArende(dnr) {
-		if (state.arende.full[dnr]) {
-			return state.arende.full[dnr]
+	/**
+	 * Lazy-load a full ärende (flik content) when a card expands. `ref` is the
+	 * STABLE cache key — always triageRef (= dnr ?? hubsCaseId), never the
+	 * sometimes-null dnr (else an unregistered case caches under one key but the
+	 * card reads another and the flikar render forever-empty). Components MUST call
+	 * with arende.triageRef || arende.dnr and read full[that same key].
+	 */
+	async loadArende(ref) {
+		if (state.arende.full[ref]) {
+			return state.arende.full[ref]
 		}
 		try {
-			const a = await api.fetchArende(dnr)
-			Vue.set(state.arende.full, dnr, a)
+			const a = await api.fetchArende(ref)
+			Vue.set(state.arende.full, ref, a)
+			// #3 — berika med ärenderums-innehåll (diskussion-summary) som sdkmc äger.
+			// Icke-fatal: motorns ärlig-tomma fält står kvar om berikningen saknas/felar.
+			this.enrichArende(ref, a)
 			return a
 		} catch (e) {
 			return null
 		}
+	},
+
+	/**
+	 * #3/#15/#16 — slå upp sdkmc-ägd ärenderums-berikning (diskussion-summary) via
+	 * motorns full.pekare.talkToken och MERGE:a in den UTAN att skriva över
+	 * motor-ärliga fält (steg/frist/provenance/pekare/rum). Tunn-motor-principen:
+	 * motorn äger koordinations-state + pekare, sdkmc berikar PII-innehållet vid expand.
+	 * @param {string} ref cache-nyckeln (triageRef)
+	 * @param {object} card det redan cachade motor-kortet
+	 */
+	async enrichArende(ref, card) {
+		const talkToken = card && card.pekare && card.pekare.talkToken
+		if (!talkToken) return
+		try {
+			const enr = await api.fetchArendeEnrichment(talkToken)
+			const current = state.arende.full[ref]
+			if (!current || !enr) return
+			Vue.set(state.arende.full, ref, {
+				...current,
+				// Fyll motorns ärlig-tomma listor; ersätt ALDRIG befintliga motor-fält.
+				meddelanden: (enr.meddelanden && enr.meddelanden.length) ? enr.meddelanden : current.meddelanden,
+				moten: (enr.moten && enr.moten.length) ? enr.moten : current.moten,
+				diskussion: enr.diskussion || current.diskussion,
+			})
+		} catch (e) { /* non-fatal: kortet visar motorns ärlig-tomma flikar */ }
 	},
 
 	/**
