@@ -8,6 +8,7 @@ import { addTagToQuery } from './tagQueryUtils.js'
 import { registerEditorPlugin } from '../../ckeditor/pluginRegistry.js'
 import PastePreserveNewlinesPlugin from '../ckeditor/paste/PastePreserveNewlinesPlugin.js'
 import { initScrollMarginHandler } from './scrollMarginHandler.js'
+import { initComposerDeepLink } from './initComposerDeepLink.js'
 import { loadState } from '@nextcloud/initial-state'
 import useItslStore from '../store/itslStore.js'
 import dragEventBus from '../../directives/drag-and-drop/util/dragEventBus.js'
@@ -33,6 +34,7 @@ export function initITSL() {
 	})
 	initInterceptors()
 	initStore()
+	initComposerDeepLink() // Hubs Start: open composer from ?type=…&case=… deep links + post-send ärende-koppling
 	initTags()
 	initTagPermissions()
 	initTagNullGuard()

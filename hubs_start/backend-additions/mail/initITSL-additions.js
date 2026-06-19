@@ -1,6 +1,16 @@
 /**
  * Hubs Start — mail overlay routerhook (DROP-IN SNIPPET).
  *
+ * ⚠ STATUS (2026-06-19): INTEGRATED. This recipe now lives as a real module at
+ *   hubs-code/mail/mail-main/overlay/src/itsl/utils/initComposerDeepLink.js and is
+ *   called from initITSL() (after initStore()). The live module additionally:
+ *     - parses `&case={dnr|hubsCaseId}` and carries it as itsl.caseRef, and
+ *     - on send, couples the sent message to the ärende by REUSING the engine's
+ *       verified Väg-A koppling (hubs_arende OCS /inflode/koppla) — no re-tagging.
+ *   This snippet is kept as the documented reference. The mail overlay must be
+ *   REBUILT + REDEPLOYED for the integration to take effect, and the send-time
+ *   koppling needs GUI verification (login + an actual send).
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  *  INTEGRATION (overlay/src/itsl/utils/initITSL.js)
  * ─────────────────────────────────────────────────────────────────────────────
