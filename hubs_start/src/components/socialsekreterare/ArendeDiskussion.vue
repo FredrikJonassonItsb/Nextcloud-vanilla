@@ -14,6 +14,23 @@
 			:sekretess="sekretess"
 			:deltagare="deltagare" />
 
+		<!-- 1b) #10 — öppna ärenderummets diskussion i sin helhet. Disabled (ej dold)
+		     när rummets token ännu saknas, så ytan är ärlig i stället för att hoppa. -->
+		<div class="arende-diskussion__rum">
+			<NcButton
+				type="tertiary"
+				class="hs-target"
+				:disabled="!talkToken"
+				:title="rumTitle"
+				:aria-label="rumTitle"
+				@click="openRum">
+				<template #icon>
+					<ForumOutlineIcon :size="18" />
+				</template>
+				{{ t('hubs_start', 'Öppna diskussionen') }}
+			</NcButton>
+		</div>
+
 		<!-- 2) Tråden -->
 		<ol
 			v-if="meddelanden.length"
@@ -114,6 +131,7 @@ import SendIcon from 'vue-material-design-icons/Send.vue'
 
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 
+import { spreedRoomLink } from '../../services/deepLinks.js'
 import SekretessRad from './SekretessRad.vue'
 
 export default {
@@ -145,6 +163,12 @@ export default {
 		diskussion: {
 			type: Object,
 			default: () => ({}),
+		},
+		/** #10 — ärenderummets diskussions-token (ur motorns full.pekare.talkToken).
+		 * null ⇒ rummet saknas ännu; knappen visas men inaktiverad (aldrig hårdkodad). */
+		talkToken: {
+			type: String,
+			default: null,
 		},
 	},
 
@@ -187,11 +211,26 @@ export default {
 		kanSkicka() {
 			return this.utkast.trim().length > 0
 		},
+
+		/** Tooltip för diskussionsrums-knappen — ärlig om rummet ännu saknas. */
+		rumTitle() {
+			return this.talkToken
+				? this.t('hubs_start', 'Öppna ärenderummets diskussion')
+				: this.t('hubs_start', 'Diskussionsrum saknas ännu')
+		},
 	},
 
 	methods: {
 		t,
 		n,
+
+		/** #10 — navigera till ärenderummets diskussion via dess token (aldrig hårdkodad). */
+		openRum() {
+			const url = spreedRoomLink(this.talkToken)
+			if (url) {
+				window.location.href = url
+			}
+		},
 
 		/** Kort sv-SE-tid: "14 jun · 09:12". Tål trasig ISO genom att falla tillbaka. */
 		kortTid(iso) {

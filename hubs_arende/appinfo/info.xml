@@ -26,7 +26,7 @@ Kärnegenskaper:
 Beroende-not: denna app **konsumerar sdkmc** (tag-API, inflöde). sdkmc lämnas orörd.
 Designad ExApp-rent (in-process NC-app nu → paketeras som ExApp senare).
     ]]></description>
-    <version>0.7.3</version>
+    <version>0.7.4</version>
     <licence>agpl</licence>
     <author mail="info@itsl.se">ITSL</author>
     <namespace>HubsArende</namespace>

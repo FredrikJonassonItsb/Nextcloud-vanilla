@@ -112,6 +112,7 @@
 				@signera="onSignera"
 				@commit="onCommit"
 				@bevakning="onBevakning"
+				@anteckningar="onAnteckningar"
 				@godkann="onGodkann"
 				@expand="onExpand" />
 
@@ -130,6 +131,7 @@
 				@signera="onSignera"
 				@commit="onCommit"
 				@bevakning="onBevakning"
+				@anteckningar="onAnteckningar"
 				@godkann="onGodkann"
 				@expand="onExpand" />
 
@@ -169,6 +171,17 @@
 			:payload="commitPayload"
 			@committed="onCommitted"
 			@close="commitOpen = false" />
+		<!-- #6 — signerings-grind: bekräfta signering → öppnar CommitGrind -->
+		<SigneringsGrind
+			v-if="signeringOpen"
+			:arende="signeringArende"
+			@nasta-steg="onSigneringNastaSteg"
+			@close="signeringOpen = false" />
+		<!-- #12 — privata anteckningar (per-användare, aldrig delade) -->
+		<MinaAnteckningar
+			v-if="anteckningarOpen"
+			:arende="anteckningarArende"
+			@close="anteckningarOpen = false" />
 		<MeetingWizard
 			v-if="meetingWizardOpen"
 			:start-now="false"
@@ -245,6 +258,8 @@ import TreservaKvittens from './TreservaKvittens.vue'
 import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
 import CommitGrind from './CommitGrind.vue'
+import SigneringsGrind from './SigneringsGrind.vue'
+import MinaAnteckningar from './MinaAnteckningar.vue'
 import OnboardingTour from './OnboardingTour.vue'
 import MeetingWizard from '../MeetingWizard.vue'
 import CommandPalette from '../CommandPalette.vue'
@@ -258,7 +273,7 @@ export default {
 		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, TreservaKvittens, ArendeZon,
-		MotesRemsa, CommitGrind, OnboardingTour, MeetingWizard, CommandPalette,
+		MotesRemsa, CommitGrind, SigneringsGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -271,6 +286,11 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
+			// #6 signerings-grind + #12 egna anteckningar (modaler).
+			signeringOpen: false,
+			signeringArende: null,
+			anteckningarOpen: false,
+			anteckningarArende: null,
 			attHanteraGruppering: 'arende',
 			favoritOpen: false,
 			favoritRad: null,
@@ -596,7 +616,14 @@ export default {
 
 		// --- Enhetschatt (sidopanel) ----------------------------------------
 		onOppnaTradar(team) {
-			showInfo(this.t('hubs_start', 'Öppnar enhetschatt: {label}', { label: team && team.label }))
+			// #18 — öppna enhetens diskussionsrum via dess token (ur team-rowen). null
+			// på t.ex. dev15 där inget grupp-rum ännu finns → ärlig info-fallback.
+			const url = deepLinks.spreedRoomLink(team && team.token)
+			if (url) {
+				window.location.href = url
+				return
+			}
+			showInfo(this.t('hubs_start', 'Enhetschatten saknar rum ännu: {label}', { label: (team && team.label) || '' }))
 		},
 		onStartaFordelningsmote() {
 			store.toggleEnhetschatt(false)
@@ -617,8 +644,21 @@ export default {
 			window.location.href = deepLinks.composerLink('secure_email', null, ref)
 		},
 		onSignera(arende) {
-			// Inera AES via the signing app.
-			window.location.href = generateUrl('/apps/libresign/')
+			// #6 — öppna signerings-grinden (bekräfta-kryssruta) i stället för en abrupt
+			// full-sides-redirect till underskriftstjänsten. Bekräftelsen leder vidare
+			// till CommitGrind (typ 'signerat-beslut'). Grinden avancerar aldrig steg själv.
+			this.signeringArende = arende
+			this.signeringOpen = true
+		},
+		/** #6 — handläggaren bekräftade signering → öppna CommitGrind för överföringen. */
+		onSigneringNastaSteg(arende) {
+			this.signeringOpen = false
+			this.onCommit(arende, { typ: 'signerat-beslut', arende })
+		},
+		/** #12 — öppna privata anteckningar för (kontext-)ärendet. */
+		onAnteckningar(arende) {
+			this.anteckningarArende = arende
+			this.anteckningarOpen = true
 		},
 		onBevakning(arende) {
 			// #7/11 — öppna ärendets/enhetens bevaknings-board (bevakningBoardId ur
@@ -627,17 +667,21 @@ export default {
 			window.location.href = deepLinks.deckLink(arende && arende.bevakningBoardId)
 		},
 		onExpand(arende, flik) {
-			store.loadArende(arende.dnr || arende.triageRef)
+			// Stabil cache-nyckel: triageRef (alltid satt) — inte den ibland-null:a dnr.
+			store.loadArende(arende.triageRef || arende.dnr)
 			// expansion handled inside ArendeKort via its own state; flik hint optional
 		},
 
 		// --- Commit (Frends → Treserva) -------------------------------------
 		onCommit(arende, payload) {
 			this.commitArende = arende
-			this.commitPayload = payload || { typ: 'beslut', arende }
+			// #5 — bär med ärenderummets dokumentlista (om ArendeKort skickade den) så
+			// CommitGrind kan visa den granskbara urvalslistan (alla förvalda).
+			const bas = payload || { typ: 'beslut', arende }
+			this.commitPayload = { ...bas, arende, dokument: (payload && payload.dokument) || [] }
 			this.commitOpen = true
 		},
-		async onCommitted(result) {
+		async onCommitted(result, valdaDokument) {
 			this.commitOpen = false
 			const arende = this.commitArende
 			// "Hela vägen": commit to the facksystem (Treserva via Frends). Only show
@@ -646,7 +690,9 @@ export default {
 			// non-throwing ok:false — showed a false "registrerat" toast. Now both
 			// surface honestly. (gap12)
 			try {
-				const r = await store.commitArende({ ...this.commitPayload, arende })
+				// #5 — tråda CommitGrindens dokumenturval till det (idempotenta) andra
+				// store-committet så urvalet är identiskt i båda anropen.
+				const r = await store.commitArende({ ...this.commitPayload, arende, valdaDokument: valdaDokument || (this.commitPayload && this.commitPayload.valdaDokument) })
 				if (r && r.ok && r.verifierad) {
 					showSuccess(this.t('hubs_start', 'Fört till Treserva — registrerat i akten.'))
 					// gap1 — efter en VERIFIERAD commit: advancera ärendet ett steg i grafen

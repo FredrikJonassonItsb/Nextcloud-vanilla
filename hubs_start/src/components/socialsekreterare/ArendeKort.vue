@@ -38,7 +38,7 @@
 		<!-- Frist + provenans + ärendechatt-chip -->
 		<div class="arende-kort__meta">
 			<FristChip :frist="arende.frist" />
-			<ProvenansChip :provenance="arende.provenance" @commit="$emit('commit', arende)" />
+			<ProvenansChip :provenance="arende.provenance" @commit="emitCommit" />
 			<DiskussionChip
 				v-if="arende.diskussion"
 				:diskussion="arende.diskussion"
@@ -112,6 +112,7 @@
 					v-else-if="activeFlik === 'diskussion'"
 					:arende="arende"
 					:diskussion="full.diskussion || { meddelanden: [], deltagare: [], sekretess: {} }"
+					:talk-token="diskussionsToken"
 					@gor-till-handling="onGorTillHandling"
 					@lyft-enhetschatt="$emit('lyft-enhetschatt', arende)"
 					@skicka="$emit('skicka-diskussion', $event)" />
@@ -205,10 +206,22 @@ export default {
 		pliktAktiv() {
 			return !!(this.arende.plikt && !this.arende.plikt.kvitterad)
 		},
+		/** Stabil cache-nyckel: triageRef (= dnr ?? hubsCaseId, ALLTID satt) — aldrig
+		 * den ibland-null:a dnr. Annars cachas ett oregistrerat ärende under en nyckel
+		 * medan kortet läser en annan (full[undefined]) → flikarna blir evigt tomma och
+		 * full.pekare.talkToken syns aldrig. */
+		cacheKey() {
+			return this.arende.triageRef || this.arende.dnr
+		},
 		/** Lazily-loaded full ärende (flik content) merged over the collapsed one. */
 		full() {
-			const f = store.state.arende.full[this.arende.dnr]
+			const f = store.state.arende.full[this.cacheKey]
 			return f ? { ...this.arende, ...f } : this.arende
+		},
+		/** #10 — ärenderummets diskussions-token ur motorns full.pekare (kollapsad
+		 * fallback). null när rummet ännu saknas → knappen visas inaktiverad. */
+		diskussionsToken() {
+			return (this.full.pekare && this.full.pekare.talkToken) || this.full.talkToken || null
 		},
 		flikar() {
 			return [
@@ -227,6 +240,7 @@ export default {
 				{ key: 'boka-mote', icon: 'VideoPlus', short: t('hubs_start', 'Möte'), label: t('hubs_start', 'Boka säkert möte') },
 				{ key: 'signera', icon: 'FileSign', short: t('hubs_start', 'Signera'), label: t('hubs_start', 'Skicka för underskrift') },
 				{ key: 'bevakning', icon: 'BellPlus', short: t('hubs_start', 'Bevakning'), label: t('hubs_start', 'Skapa bevakning') },
+				{ key: 'anteckningar', icon: 'TextBoxOutline', short: t('hubs_start', 'Anteckningar'), label: t('hubs_start', 'Mina anteckningar') },
 			]
 		},
 	},
@@ -241,8 +255,8 @@ export default {
 		iconFor,
 		toggleExpand() {
 			this.localExpanded = !this.localExpanded
-			if (this.localExpanded && this.arende.dnr) {
-				store.loadArende(this.arende.dnr)
+			if (this.localExpanded && this.cacheKey) {
+				store.loadArende(this.cacheKey)
 			}
 			this.$emit('expand', this.arende)
 		},
@@ -265,7 +279,19 @@ export default {
 		},
 		/** "Gör detta till en handling" → human-in-the-loop → commit-grinden (förälder). */
 		onGorTillHandling(payload) {
-			this.$emit('commit', this.arende)
+			this.emitCommit()
+		},
+		/** #5 — emit:a commit MED ärenderummets dokumentlista så CommitGrind kan visa
+		 * den granskbara (alla förvalda) urvalslistan. */
+		emitCommit() {
+			this.$emit('commit', this.arende, { dokument: this.normaliseraDok() })
+		},
+		/** Normalisera ärenderummets dokument till {fileid,namn} (stöd strängar + objekt). */
+		normaliseraDok() {
+			const docs = (this.full.rum && this.full.rum.dokument) || []
+			return docs.map((d) => (d && typeof d === 'object')
+				? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: this.dokNamn(d) }
+				: { fileid: null, namn: String(d) })
 		},
 		/** Dokumentets visningsnamn. arenderumDokument() ger {namn,fileid}-objekt på
 		 * riktig data; demo-data ger strängar. Stöd båda (annars '[object Object]'). */

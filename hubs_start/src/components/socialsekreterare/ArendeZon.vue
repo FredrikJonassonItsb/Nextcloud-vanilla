@@ -48,8 +48,9 @@
 				@skicka="bubble('skicka', $event)"
 				@boka-mote="bubble('boka-mote', $event)"
 				@signera="bubble('signera', $event)"
-				@commit="bubble('commit', $event)"
+				@commit="(ar, extra) => $emit('commit', ar, extra)"
 				@bevakning="bubble('bevakning', $event)"
+				@anteckningar="bubble('anteckningar', $event)"
 				@godkann="(ar, mo) => $emit('godkann', ar, mo)"
 				@expand="bubble('expand', $event)" />
 		</div>

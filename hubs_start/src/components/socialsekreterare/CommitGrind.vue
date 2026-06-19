@@ -42,6 +42,30 @@
 				</dl>
 			</section>
 
+			<!-- #5 — Dokument som förs över. Alla förvalda; handläggaren bockar AV det
+			     som ska undantas (t.ex. utkast). Obligatorisk granskning innan commit. -->
+			<section class="commit-grind__section">
+				<h3 class="commit-grind__heading">
+					<FileExportIcon :size="18" />
+					{{ t('hubs_start', 'Dokument som förs över') }}
+				</h3>
+				<ul v-if="valda.length" class="commit-grind__docs">
+					<li v-for="(d, i) in valda" :key="i" class="commit-grind__doc">
+						<NcCheckboxRadioSwitch
+							:checked.sync="d.vald"
+							:disabled="isRunning || committed">
+							{{ d.namn }}
+						</NcCheckboxRadioSwitch>
+					</li>
+				</ul>
+				<p v-else class="commit-grind__docs-empty">
+					{{ t('hubs_start', 'Inga dokument i ärenderummet.') }}
+				</p>
+				<p v-if="valda.length" class="commit-grind__docs-hint">
+					{{ t('hubs_start', 'Avmarkera dokument du inte vill föra över (t.ex. utkast).') }}
+				</p>
+			</section>
+
 			<!-- Frends tre-stegs progress -->
 			<section class="commit-grind__section">
 				<h3 class="commit-grind__heading">
@@ -130,6 +154,7 @@
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 
 import CheckIcon from 'vue-material-design-icons/Check.vue'
 import AlertIcon from 'vue-material-design-icons/AlertCircleOutline.vue'
@@ -168,7 +193,7 @@ export default {
 	name: 'CommitGrind',
 
 	components: {
-		NcModal, NcButton, NcLoadingIcon,
+		NcModal, NcButton, NcLoadingIcon, NcCheckboxRadioSwitch,
 		CheckIcon, AlertIcon, InfoIcon, FileExportIcon, DatabaseIcon,
 		DrawPenIcon, TransferIcon,
 	},
@@ -200,7 +225,19 @@ export default {
 			isRunning: false,
 			result: null,
 			timers: [],
+			// #5 — granskbar dokumentlista (alla förvalda). Normaliserar både
+			// {namn,fileid}-objekt (riktig data) och strängar (demo).
+			// TODO[per-arendetyp-dokumentpolicy]: framtid — härled initial `vald`
+			// per payload.typ/arendeTyp (t.ex. exkludera utkast). Nu, beslut #5: alla förvalda.
+			valda: [],
 		}
+	},
+
+	created() {
+		const docs = (this.payload && this.payload.dokument) || []
+		this.valda = docs.map((d) => (d && typeof d === 'object')
+			? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: d.namn || d.name || '', vald: true }
+			: { fileid: null, namn: String(d), vald: true })
 	},
 
 	computed: {
@@ -310,9 +347,12 @@ export default {
 			this.isRunning = true
 			this.activeIndex = 0
 
+			// #5 — bara de valda dokumenten förs över (vald-flaggan strippas).
+			const valdaDokument = this.valda.filter((d) => d.vald).map(({ fileid, namn }) => ({ fileid, namn }))
+
 			try {
 				// Step 0 → 1: Skickat → Bekräftat (call the Frends connector here).
-				const r = await api.commitToTreserva({ ...this.payload, arende: this.arende })
+				const r = await api.commitToTreserva({ ...this.payload, valdaDokument, arende: this.arende })
 				if (!r || r.ok === false) {
 					throw new Error('frends-rejected')
 				}
@@ -324,7 +364,9 @@ export default {
 
 				this.committed = true
 				this.isRunning = false
-				this.$emit('committed', this.result)
+				// Andra argumentet låter föräldern tråda valdaDokument vidare till sitt
+				// (idempotenta) andra store-commit, så urvalet är identiskt i båda.
+				this.$emit('committed', this.result, valdaDokument)
 			} catch (e) {
 				// Failure: stay at "Skickat", show fel-tone. No move. (Demo: never.)
 				this.clearTimers()
@@ -407,6 +449,27 @@ export default {
 	&__inline-icon {
 		flex-shrink: 0;
 		color: var(--color-text-maxcontrast);
+	}
+
+	&__docs {
+		list-style: none;
+		margin: 0;
+		padding: 0;
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	&__docs-empty {
+		margin: 0;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.9rem;
+	}
+
+	&__docs-hint {
+		margin: 2px 0 0;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.82rem;
 	}
 
 	&__steps {
