@@ -135,7 +135,7 @@
 
 			<!-- Zon 4: mina möten idag (mötesanteckning-godkännande sker i ärendekortet) -->
 			<MotesRemsa
-				:meetings="A.moten"
+				:meetings="meetings"
 				@join="onJoin" />
 
 			<!-- Zon 4.5: kvittenser & gallring (Treserva = slutlagring; Hubs = mellanlagring) -->
@@ -282,6 +282,12 @@ export default {
 	computed: {
 		A() {
 			return this.state.arende
+		},
+		/** #17 — "Mina möten idag" läser den LIVE mötesytan (GET /meetings/today via
+		 * refreshMeetings), inte arende-summary.moten. Ett nybokat fristående möte
+		 * landar i /meetings/today men inte i arende-summary, så den måste bindas hit. */
+		meetings() {
+			return this.state.meetings || []
 		},
 		prefs() {
 			return this.state.prefs
@@ -447,7 +453,14 @@ export default {
 			}
 		},
 		onOpenTriage(rad) {
-			showInfo(this.t('hubs_start', 'Visar inkommande: {titel}', { titel: rad.titel }))
+			// #2 — "Visa" öppnar det faktiska meddelandet i mail-klienten via radens
+			// deepLink ({app:'thread', params:{itslMailboxId, mid}}) → sdkmc mailbox-link-
+			// redirect som alltid landar i rätt konto/tråd. Fallback: info-toast.
+			if (rad && rad.deepLink) {
+				window.location.href = deepLinks.resolve(rad.deepLink)
+				return
+			}
+			showInfo(this.t('hubs_start', 'Kunde inte öppna meddelandet — saknar länk.'))
 		},
 		/**
 		 * Skapa ett ärende ur en inflöde-rad och VÄNTA på utfallet innan kvittot
@@ -597,15 +610,21 @@ export default {
 			window.location.href = deepLinks.arenderumLink(arende && arende.hubsCaseId)
 		},
 		onSkicka(arende) {
-			// Fas-spärr enforced in the card; here open secure compose flow.
-			window.location.href = deepLinks.composerLink('secure_email')
+			// #9 — öppna säker compose med ärende-kontext (dnr/hubsCaseId) så det sända
+			// meddelandet pre-taggas case: på ärendet direkt (kräver mail-routerhook honorerar
+			// &case=). Typ = secure_email (säker kanal till medborgare).
+			const ref = arende && (arende.dnr || arende.hubsCaseId)
+			window.location.href = deepLinks.composerLink('secure_email', null, ref)
 		},
 		onSignera(arende) {
 			// Inera AES via the signing app.
 			window.location.href = generateUrl('/apps/libresign/')
 		},
 		onBevakning(arende) {
-			window.location.href = generateUrl('/apps/deck/board/2')
+			// #7/11 — öppna ärendets/enhetens bevaknings-board (bevakningBoardId ur
+			// arende-summary när det finns), annars Deck-board-listan (404-säker fallback
+			// i st.f. hårdkodad board som kanske inte finns i denna kommun).
+			window.location.href = deepLinks.deckLink(arende && arende.bevakningBoardId)
 		},
 		onExpand(arende, flik) {
 			store.loadArende(arende.dnr || arende.triageRef)
@@ -676,10 +695,11 @@ export default {
 		async onMeetingBooked() {
 			this.meetingWizardOpen = false
 			showSuccess(this.t('hubs_start', 'Säkert möte bokat'))
-			// gap15 — ladda om ärende-summary (källan till A.moten) så det nya mötet
-			// dyker upp i Zon 4 / ärendekortets möteslista utan manuell omladdning.
+			// #17 — det nybokade mötet ligger i /meetings/today, så ladda om den LIVE
+			// mötesytan (refreshMeetings → state.meetings) så MotesRemsa visar det direkt.
+			// Ladda även om arende-summary (ärende-bundna möten / puls) som tidigare.
 			try {
-				await store.loadArendeSummary()
+				await Promise.all([store.refreshMeetings(), store.loadArendeSummary()])
 			} catch (e) { /* non-fatal; mötet är redan bokat */ }
 		},
 		onJoin(meeting) {

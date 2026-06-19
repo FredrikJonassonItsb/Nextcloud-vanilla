@@ -30,12 +30,29 @@ export function threadLink(itslMailboxId, mid) {
  * @param {?string} to recipient address/value
  * @return {string}
  */
-export function composerLink(messageType, to = null) {
+export function composerLink(messageType, to = null, caseRef = null) {
 	let url = generateUrl('/apps/mail/new') + '?type=' + encodeURIComponent(messageType)
 	if (to) {
 		url += '&to=' + encodeURIComponent(to)
 	}
+	// caseRef (dnr/hubsCaseId) lets the mail routerhook pre-apply the case:-tag so
+	// the sent message lands tagged on the ärendet directly (no manual koppling).
+	if (caseRef) {
+		url += '&case=' + encodeURIComponent(String(caseRef))
+	}
 	return url
+}
+
+/**
+ * Open a Deck board. Falls back to the Deck board list when no board id is known
+ * (404-safe — never a hardcoded board that may not exist in this kommun).
+ * @param {?string|number} boardId
+ * @return {string}
+ */
+export function deckLink(boardId = null) {
+	return boardId
+		? generateUrl('/apps/deck/board/{boardId}', { boardId })
+		: generateUrl('/apps/deck/')
 }
 
 /** Open a mail virtual/special mailbox. */

@@ -94,7 +94,7 @@
 				<!-- Dokument -->
 				<ul v-if="activeFlik === 'dokument'" class="arende-kort__list">
 					<li v-if="full.rum" class="arende-kort__muted">{{ t('hubs_start', 'Behörighet:') }} {{ full.rum.acl }} · {{ n('hubs_start', '%n oläst', '%n olästa', full.rum.olasta || 0) }}</li>
-					<li v-for="(d, i) in (full.rum && full.rum.dokument) || []" :key="i"><FileDocumentIcon :size="16" /> {{ d }}</li>
+					<li v-for="(d, i) in (full.rum && full.rum.dokument) || []" :key="i" :title="dokTitle(d)"><FileDocumentIcon :size="16" /> {{ dokNamn(d) }}</li>
 					<li v-if="!full.rum || !full.rum.dokument || !full.rum.dokument.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga dokument än.') }}</li>
 				</ul>
 
@@ -212,7 +212,7 @@ export default {
 		},
 		flikar() {
 			return [
-				{ id: 'dokument', label: t('hubs_start', 'Dokument') },
+				{ id: 'dokument', label: t('hubs_start', 'Ärenderum') },
 				{ id: 'meddelanden', label: t('hubs_start', 'Säkra meddelanden') },
 				{ id: 'diskussion', label: t('hubs_start', 'Diskussion') },
 				{ id: 'moten', label: t('hubs_start', 'Möten') },
@@ -266,6 +266,18 @@ export default {
 		/** "Gör detta till en handling" → human-in-the-loop → commit-grinden (förälder). */
 		onGorTillHandling(payload) {
 			this.$emit('commit', this.arende)
+		},
+		/** Dokumentets visningsnamn. arenderumDokument() ger {namn,fileid}-objekt på
+		 * riktig data; demo-data ger strängar. Stöd båda (annars '[object Object]'). */
+		dokNamn(d) {
+			return (d && typeof d === 'object') ? (d.namn || d.name || '') : d
+		},
+		/** Tooltip: filnamn + ev. fil-id (övrig info hålls i title, inte i listraden). */
+		dokTitle(d) {
+			if (d && typeof d === 'object') {
+				return d.fileid ? `${d.namn} · fil-id ${d.fileid}` : (d.namn || '')
+			}
+			return String(d)
 		},
 		bevClass(ok) {
 			return ok ? 'arende-kort__bev arende-kort__bev--ok' : 'arende-kort__bev'

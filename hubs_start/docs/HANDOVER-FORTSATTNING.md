@@ -115,6 +115,31 @@ GUI-verifierat: steg-advance släpps förbi grinden, ingen plikt-grind-avvisning
 mata in; bokning skickar riktig BankID/SMS-inbjudan = gated). Tilldela finns EJ i socialsekreterar-kortet (ligger i gruppledar-
 fördelningsvyn, annat roll-läge). Signera ej kört. Dokument: ärenderummet öppnas tomt (korrekt för nytt ärende).
 
+### ✅ SESSION 2c (2026-06-18/19) — GUI-FYND-FIXAR (våg 0+1 av 19 användarfynd)
+Användaren GUI-testade och rapporterade 19 fynd. Root-cause-pass (7-agents workflow) → headline:
+"mest tunna integrationsgap — motorn ärlig-tom, frontend wirad mot demo; ~6 äkta buggar = snabba
+lågrisk-fixar, resten = 8 obyggda läs-ytor + 4 produktbeslut." NYCKELINSIKT (varför ej fångat): alla
+tester kördes mot DEMO-data som maskerade backend-tomheten → behövs KOMPONENT-tester med PROD-formad
+data. Full triage/plan i workflow-output + analysis-output/gui-decisions.txt.
+**FIXAT+DEPLOYAT (hubs_start 1.2.11 + hubs_arende 0.7.3):**
+- #4 pill 'Dokument'→'Ärenderum' (ArendeKort.vue). #14 dokument-pill renderade {{ d }} på {namn,fileid}-
+  OBJEKT → '[object Object]' på riktig data; nu d.namn + tooltip (ArendeKort dokNamn/dokTitle).
+- #2 'Visa' på inflöde-rad → deepLinks.resolve(rad.deepLink) (MinaArenden.onOpenTriage). #9 'Skicka' →
+  composerLink med caseRef (&case=) för direkt-taggning. #7/11 'Bevakning' → deepLinks.deckLink(boardId)
+  med 404-säker fallback /apps/deck/ (i st.f. hårdkodad board/2). #17 MotesRemsa binder nu state.meetings
+  (live /meetings/today) + refreshMeetings() vid bokning (i st.f. A.moten).
+- #8 BACKEND: createCase R9 skriver nu en referens-fil (.url + groupfolder_ref-pekare) till startmeddelandet
+  i ärenderummet → ärenderummet är ej längre tomt vid födsel. DB-VERIFIERAT (case 225: groupfolder_ref
+  msg-*.url). Grindar: jest 49, phpunit 68.
+**ANOMALI (ej mina ändringar, ej i 19-listan):** nytt GUI-skapat orosanmalan-case sågs födas beslut+
+registrerad — TROLIGEN användarens samtidiga live-testning (224 advancerade också). Bevaka; ej en bug
+introducerad här (demo av, smoke bevisar ren födsel forhandsbedomning).
+**EJ GJORT ÄNNU (våg 2/3, root-cause klar):** #1 inflöde-dedup(4→2)+excerpt+verifierad-källa & #19 auto-
+klassning (InflodeFeedService+InflodeRad); #3/#15/#16 mapToFullCard-berikning (SpreedClient.getRoomMetadata
++ ArendeService läser pekare) — säkra-meddelanden + diskussion-summary; #10 Diskutera→spreed & #18
+enhetschatt→spreed (kräver talk-token i kort-datan); #5 Treserva dokument-val (CommitGrind); #6 signering
+'kommer vidare'-kryssruta; #12 personliga anteckningar (REK: Spreed Note-to-Self).
+
 ### ÅTERSTÅR efter session 2 (prioriterad)
 - **AB-01 (kat2 insats-sub-typ-router)** — BYGGS EJ ensidigt: kräver (a) bekräftelse att `insatsTyp` finns
   på inflöde-raden, och (b) en **migration** (persistera resolverad frendsModul/insatsTyp på case-raden så

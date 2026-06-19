@@ -542,6 +542,15 @@ class ArendeService {
             } else {
                 $this->skipStep('R9', $hubsCaseId);
             }
+            // #8 — skriv en REFERENS till startmeddelandet i ärenderummet så akten inte
+            // är tom vid födsel: en .url-pekare (+ groupfolder_ref-pekare) i groupfoldern,
+            // ENDAST metadata (hubsCaseId + meddelande-ref), aldrig PII/innehåll (NEVER-SoR,
+            // samma mönster som kopplaMeddelande). conversationId är den durabla
+            // meddelande-ankaren. Best-effort/graceful: no-op om groupfoldern ännu ej är
+            // resolverbar eller referensFilService/rootFolder saknas (positionell testharness).
+            if ($conversationId !== '') {
+                $this->referensFilService?->skrivMeddelandeReferens($hubsCaseId, $conversationId);
+            }
             $compensations[] = [
                 'name' => 'R9:untag-message',
                 'fn' => function () use ($hubsCaseId, $rad): void {
