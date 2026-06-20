@@ -306,10 +306,13 @@ class InflodeFeedService {
     /**
      * Drop rows whose message has already been triaged — i.e. carries a
      * 'behandlad' tag or a 'case:'-tag (set in the handläggarens session when they
-     * pressed "Ta emot" or coupled the message to an ärende). Keyed on
-     * mail_message_tags.imap_message_id == mail_messages.message_id (both the RFC
-     * Message-ID). FAIL-OPEN: any error here returns the rows UNFILTERED — a
-     * tag-join hiccup must never blank the whole "Att ta emot"-band.
+     * pressed "Ta emot" or coupled the message to an ärende). The tags live in
+     * sdkmc's OWN tag store (oc_sdkmc_itsl_message_tag + oc_sdkmc_itsl_tag, written
+     * by ItslTagService), NOT in the upstream mail_* tag tables. Keyed on
+     * sdkmc_itsl_message_tag.imap_message_id == mail_messages.message_id (both the
+     * RFC Message-ID). Soft-deleted tags (deleted_at) are ignored. FAIL-OPEN: any
+     * error here returns the rows UNFILTERED — a tag-join hiccup must never blank
+     * the whole "Att ta emot"-band.
      *
      * @param list<array<string,mixed>> $rows
      * @return list<array<string,mixed>>
@@ -331,9 +334,10 @@ class InflodeFeedService {
             }
             $qb = $this->db->getQueryBuilder();
             $qb->selectDistinct('mmt.imap_message_id')
-                ->from('mail_message_tags', 'mmt')
-                ->join('mmt', 'mail_tags', 'mt', $qb->expr()->eq('mmt.tag_id', 'mt.id'))
+                ->from('sdkmc_itsl_message_tag', 'mmt')
+                ->join('mmt', 'sdkmc_itsl_tag', 'mt', $qb->expr()->eq('mmt.tag_id', 'mt.id'))
                 ->where($qb->expr()->in('mmt.imap_message_id', $qb->createNamedParameter($msgIds, IQueryBuilder::PARAM_STR_ARRAY)))
+                ->andWhere($qb->expr()->isNull('mt.deleted_at'))
                 ->andWhere($qb->expr()->orX(
                     $qb->expr()->eq('mt.imap_label', $qb->createNamedParameter('behandlad', IQueryBuilder::PARAM_STR)),
                     $qb->expr()->like('mt.imap_label', $qb->createNamedParameter('case:%', IQueryBuilder::PARAM_STR)),
