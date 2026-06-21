@@ -10,6 +10,22 @@
 		:can-close="!isRunning"
 		@close="onClose">
 		<div class="commit-grind">
+			<!-- #6 — signerings-bekräftelse, INBÄDDAD här (inte en egen staplad NcModal).
+			     Två NcModaler som monteras/avmonteras i samma tick deadlockar focus-trap +
+			     scroll-lock → UI:t hänger. En enda modal löser det. Visas bara för
+			     signerat-beslut (payload.kraverSignering); "För över" gateas tills ikryssad. -->
+			<section v-if="kraverSignering" class="commit-grind__section commit-grind__sign">
+				<p class="commit-grind__sign-lead">
+					<DrawPenIcon :size="18" />
+					<span>{{ t('hubs_start', 'Har du signerat dokumentet i underskriftstjänsten? Bekräfta nedan så går vi vidare till överföringen.') }}</span>
+				</p>
+				<NcCheckboxRadioSwitch
+					:checked.sync="signeradBekraftad"
+					:disabled="isRunning || committed">
+					{{ t('hubs_start', 'Jag har signerat dokumentet') }}
+				</NcCheckboxRadioSwitch>
+			</section>
+
 			<!-- Vad som förs över -->
 			<section class="commit-grind__section">
 				<h3 class="commit-grind__heading">
@@ -136,7 +152,7 @@
 				<NcButton
 					v-if="!committed"
 					type="primary"
-					:disabled="isRunning"
+					:disabled="isRunning || (kraverSignering && !signeradBekraftad)"
 					class="commit-grind__commit"
 					@click="onCommit">
 					<template #icon>
@@ -225,6 +241,8 @@ export default {
 			isRunning: false,
 			result: null,
 			timers: [],
+			// #6 — signerings-bekräftelse (gateas "För över" när kraverSignering).
+			signeradBekraftad: false,
 			// #5 — granskbar dokumentlista (alla förvalda). Normaliserar både
 			// {namn,fileid}-objekt (riktig data) och strängar (demo).
 			// TODO[per-arendetyp-dokumentpolicy]: framtid — härled initial `vald`
@@ -243,6 +261,10 @@ export default {
 	computed: {
 		dialogTitle() {
 			return t('hubs_start', 'För över till Treserva')
+		},
+		/** #6 — kräver detta commit en signerings-bekräftelse först (signerat-beslut)? */
+		kraverSignering() {
+			return !!(this.payload && this.payload.kraverSignering)
 		},
 		handlingLabel() {
 			return t('hubs_start', TYP_LABEL[this.payload.typ] || 'Handling')
@@ -341,6 +363,11 @@ export default {
 		 */
 		async onCommit() {
 			if (this.isRunning || this.committed) {
+				return
+			}
+			// #6 — gate: kräver signering men ej bekräftad → gör inget (knappen är
+			// redan disablad; detta är en defensiv spärr även i logiken).
+			if (this.kraverSignering && !this.signeradBekraftad) {
 				return
 			}
 			this.failed = false
@@ -470,6 +497,19 @@ export default {
 		margin: 2px 0 0;
 		color: var(--color-text-maxcontrast);
 		font-size: 0.82rem;
+	}
+
+	&__sign-lead {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin: 0 0 8px;
+
+		svg {
+			flex-shrink: 0;
+			margin-top: 1px;
+			color: var(--color-text-maxcontrast);
+		}
 	}
 
 	&__steps {

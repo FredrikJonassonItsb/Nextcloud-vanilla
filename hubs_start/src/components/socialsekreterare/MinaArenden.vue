@@ -179,12 +179,6 @@
 			:payload="commitPayload"
 			@committed="onCommitted"
 			@close="commitOpen = false" />
-		<!-- #6 — signerings-grind: bekräfta signering → öppnar CommitGrind -->
-		<SigneringsGrind
-			v-if="signeringOpen"
-			:arende="signeringArende"
-			@nasta-steg="onSigneringNastaSteg"
-			@close="signeringOpen = false" />
 		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång) -->
 		<AvslutaGrind
 			v-if="avslutaOpen"
@@ -275,7 +269,6 @@ import TreservaKvittens from './TreservaKvittens.vue'
 import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
 import CommitGrind from './CommitGrind.vue'
-import SigneringsGrind from './SigneringsGrind.vue'
 import AvslutaGrind from './AvslutaGrind.vue'
 import MinaAnteckningar from './MinaAnteckningar.vue'
 import OnboardingTour from './OnboardingTour.vue'
@@ -291,7 +284,7 @@ export default {
 		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, TreservaKvittens, ArendeZon,
-		MotesRemsa, CommitGrind, SigneringsGrind, AvslutaGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
+		MotesRemsa, CommitGrind, AvslutaGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -304,9 +297,8 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
-			// #6 signerings-grind + #5 avsluta-grind + #12 egna anteckningar (modaler).
-			signeringOpen: false,
-			signeringArende: null,
+			// #5 avsluta-grind + #12 egna anteckningar (modaler). #6-signering är nu
+			// inbäddad i CommitGrind (ingen egen modal → ingen modal-stapling).
 			avslutaOpen: false,
 			avslutaArende: null,
 			avslutaRunning: false,
@@ -672,16 +664,12 @@ export default {
 			window.location.href = deepLinks.composerLink('secure_email', null, ref)
 		},
 		onSignera(arende) {
-			// #6 — öppna signerings-grinden (bekräfta-kryssruta) i stället för en abrupt
-			// full-sides-redirect till underskriftstjänsten. Bekräftelsen leder vidare
-			// till CommitGrind (typ 'signerat-beslut'). Grinden avancerar aldrig steg själv.
-			this.signeringArende = arende
-			this.signeringOpen = true
-		},
-		/** #6 — handläggaren bekräftade signering → öppna CommitGrind för överföringen. */
-		onSigneringNastaSteg(arende) {
-			this.signeringOpen = false
-			this.onCommit(arende, { typ: 'signerat-beslut', arende })
+			// #6 — öppna CommitGrind DIREKT med signerings-bekräftelsen inbäddad (en
+			// enda modal). Tidigare öppnades en separat SigneringsGrind-modal som i sin
+			// tur öppnade CommitGrind → två staplade NcModaler monterades/avmonterades i
+			// samma tick och deadlockade focus-trap/scroll-lock (UI:t "hängde"). "För
+			// över" gateas tills handläggaren kryssat "Jag har signerat dokumentet".
+			this.onCommit(arende, { typ: 'signerat-beslut', arende, kraverSignering: true })
 		},
 		/** #12 — öppna privata anteckningar (per-användare, ej ärende-bundna). */
 		onAnteckningar(arende) {

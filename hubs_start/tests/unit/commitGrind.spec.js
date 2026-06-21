@@ -62,3 +62,25 @@ describe('CommitGrind #5 — document selection', () => {
 		expect(api.commitToTreserva).toHaveBeenCalled()
 	})
 })
+
+describe('CommitGrind #6 — embedded signing confirmation (no modal stacking)', () => {
+	it('kraverSignering gates the commit until "Jag har signerat" is checked', async () => {
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true })
+		expect(w.vm.kraverSignering).toBe(true)
+		// Not confirmed yet → onCommit is a no-op (the button is also disabled).
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).not.toHaveBeenCalled()
+		// Confirm signed → commit proceeds.
+		w.vm.signeradBekraftad = true
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
+		expect(w.emitted('committed')).toBeTruthy()
+	})
+
+	it('a normal commit (no kraverSignering) is never gated', async () => {
+		const w = mountG({ typ: 'beslut' })
+		expect(w.vm.kraverSignering).toBe(false)
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
+	})
+})
