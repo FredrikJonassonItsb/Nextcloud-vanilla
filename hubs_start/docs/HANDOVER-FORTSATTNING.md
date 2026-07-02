@@ -181,6 +181,29 @@ valda fileids som handlingar) — frontend skickar det, motorn läser det ej än
 på dev15 (token=null tills ett enhetschatt-rum provisioneras); (c) #12 anteckningar är PER-ANVÄNDARE (ej
 per-ärende) per beslut #12 — överväg case-scoping; (d) #3-berikning + #18 är graceful-empty på tunn dev15-data.
 
+### ✅ SESSION 3 (2026-06-19/20) — ANVÄNDAR-STYRDA FIXAR + DRIFT-LÄRDOMAR (hubs_start 1.2.15, hubs_arende 0.7.5)
+Commits `0fb67a1c`→`9e4f0645` (deployat dev15). Grindar: **jest 88, phpunit 72, bygg grönt, smoke OK inkl [8b] hela resan**.
+
+**⚠️ TVÅ KRITISKA DRIFT-LÄRDOMAR (läs FÖRST):**
+1. **KÖR ALDRIG `docker restart hubs-php`.** NC:s entrypoint kör en `apps/`-omsynk vid varje container-start som **RENSAR alla `apps/sdkmc`-tillägg** (backend-additions). `custom_apps` (hubs_start, hubs_arende) + DB överlever. opcache `validate_timestamps` är PÅ → filändringar plockas upp UTAN restart, så restart behövs aldrig. **Om det ändå hänt:** re-deploya hela `hubs_start/backend-additions/sdkmc/lib`-trädet → `apps/sdkmc`, och pusha en komplett `routes.php` (spara en kopia av den deployade innan). Jag råkade göra detta en gång och återställde allt (401-verifierat).
+2. **Reset till känt läge:** `scripts/dev15-reset.sh` (committat) → 0 ärenden/pekare/kvittenser/case-taggar/ärenderum, **de 2 orosanmälningarna otaggade i "Att ta emot"**. Idempotent. Raderar ärenderum via `occ groupfolders:delete` (UUID-namn). Lämnar kvar orphan Talk-/Deck-/kalenderobjekt (osynliga). dev15 är i detta läge NU.
+
+**FIXAT + DEPLOYAT:**
+- **"Ta emot"-buggen (rot-orsak hittad):** `skapaArende` skapade ärendet men **taggade aldrig källmeddelandet** → det kom tillbaka i "Att ta emot" varje poll + fick ingen tagg. Fix: (a) `api.skapaArende` taggar nu meddelandet i ANVÄNDARENS session (`case:{id}`+`behandlad`, IDOR-säkert, auto-skapar taggen); (b) feeden exkluderar behandlade — **OBS: taggarna bor i sdkmc:s EGNA tabeller `oc_sdkmc_itsl_message_tag`+`oc_sdkmc_itsl_tag`, INTE i `oc_mail_tags` (tomma)** — `filterHandled` joinar rätt tabeller nu (fail-open). Verifierat mot riktig data.
+- **#6 signering-hang FIXAD:** två staplade NcModaler (SigneringsGrind→CommitGrind i samma tick) deadlockade focus-trap/scroll-lock → UI frös. **SigneringsGrind borttagen**; signerings-bekräftelsen ("Jag har signerat") är nu en INBÄDDAD, gateande sektion i CommitGrind (`payload.kraverSignering`) → EN modal, ingen stapling. `onSignera` öppnar CommitGrind direkt.
+- **Hela resan till avslut:** ny **AvslutaGrind** + nästa-åtgärd "Avsluta ärende" vid uppfoljning → `transitionSteg('avslutat')` (ren steg-övergång, ej ny commit). Smoke `[8b]` bevisar utredning→beslut→uppfoljning→avslutat live.
+- **Demo-länk (#1 önskemål):** `isDemo()` läser `?demo=1/0` (sessionStorage-persist) ovanpå boot-flaggan; fot-länk "Visa i demoläge". Default AV på skarp instans.
+- **PII-principen (rättad ansats):** Hubs SKA visa PII för BEHÖRIGA — invarianten är "läck aldrig över behörighetsgräns", inte "göm PII". Feeden visar nu RIKTIG ämnesrad + oskrubbad excerpt (ACL-scopad till egna korgar). Sparad som kärnprincip → auto-minne [[hubs-pii-authorization-principle]].
+- **Egna anteckningar** flyttade UT ur ärendekortet till global fot-knapp (per-användare, ej ärende-bundet).
+- **Test-härdning:** komponent-tester aktiverade (babel-core@7-bridge + ncvue-stub), `@nextcloud/*`-mock märkt `__esModule` (annars trasig axios-default-import). jest 49→88.
+
+**KOPPLAT I KOD MEN EJ DEPLOYAT (kräver dig):**
+- **Punkt 4 — meddelandegränssnittet:** mail-overlayns `initITSL()` anropade aldrig composer-deep-link-haken → "Skicka" (`&case=`) var en no-op. NY modul `hubs-code/mail/mail-main/overlay/src/itsl/utils/initComposerDeepLink.js` (inkopplad i `initITSL`) öppnar komponeraren + kopplar sänt meddelande till ärendet via Väg-A. **Mail-overlayn har EGEN byggkedja + kräver GUI-verify (login + riktigt skick) — jag deployade den EJ.**
+
+**MARKNADSFÖRING/VÄRDE:** `analysis-output/VARDE-OPERATIVA-VERKSAMHETSLAGRET.md` (untracked) — beslutsfattar-underlag om det operativa verksamhetslagret (grundkoncept, 6 personas, tidsvinster: Digg ~30 min/ärende + modellerat ~2–3 v/handläggare/år, compliance, differentiering).
+
+**KVAR ATT GUI-KLICK-VERIFIERA (BankID-login krävs — jag kan ej):** hela resan Ta emot→tagg→ut ur feed→förhandsbed→utredning→beslut→signering(nu fixad)→uppföljning→avsluta; demo-länken; overlay-bygget för punkt 4. **Untracked i git:** `analysis-output/VARDE-*.md`, `analysis-output/rapport/`.
+
 ### ÅTERSTÅR efter session 2 (prioriterad)
 - **AB-01 (kat2 insats-sub-typ-router)** — BYGGS EJ ensidigt: kräver (a) bekräftelse att `insatsTyp` finns
   på inflöde-raden, och (b) en **migration** (persistera resolverad frendsModul/insatsTyp på case-raden så
