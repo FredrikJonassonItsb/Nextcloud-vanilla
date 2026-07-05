@@ -140,6 +140,20 @@ EOT;
         return null;
     }
 
+    /**
+     * The identity-table row for an agent code, or null when unknown.
+     *
+     * @return array{agentCode:string,owner:string,display:string}|null
+     */
+    public static function identityForAgentCode(string $agentCode): ?array {
+        foreach (self::IDENTITIES as $row) {
+            if ($row['agentCode'] === $agentCode) {
+                return $row;
+            }
+        }
+        return null;
+    }
+
     /** Default owner uid for an agent code (routing map v1 = the identity table). */
     public static function defaultOwnerForAgentCode(string $agentCode): ?string {
         foreach (self::IDENTITIES as $row) {

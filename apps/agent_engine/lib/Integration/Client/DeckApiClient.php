@@ -78,11 +78,58 @@ class DeckApiClient {
         ];
     }
 
-    /** Full board payload — carries labels[]. Null on failure. */
+    /** Full board payload — carries labels[] + acl[]. Null on failure. */
     public function getBoard(int $boardId): ?array {
         $res = $this->request('GET', self::API_BASE . '/boards/' . $boardId, null, [], [200]);
         $data = $res === null ? null : $this->unwrap($res['body']);
         return is_array($data) ? $data : null;
+    }
+
+    /**
+     * All boards visible to the bot-engine service account (owned + shared).
+     * Read call — returns [] on failure and lets the caller degrade.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public function listBoards(): array {
+        $res = $this->request('GET', self::API_BASE . '/boards', null, [], [200]);
+        $data = $res === null ? null : $this->unwrap($res['body']);
+        return is_array($data) ? array_values(array_filter($data, 'is_array')) : [];
+    }
+
+    /**
+     * Share a board with a USER participant, upserting the permission bits.
+     * Deck route: POST /boards/{id}/acl (type 0 = user). Idempotent-ish: Deck
+     * rejects a duplicate participant with 400/403, which we treat as "already
+     * shared" (the enrollment path re-runs freely). The actor is bot-engine, so
+     * bot-engine must already have MANAGE on the board — the engine board's own
+     * owner is bot-engine, and human boards grant it manage via this very call
+     * (bot-engine is added with manage first). Returns true when the ACL now
+     * exists (freshly created OR already present), false on a hard failure.
+     */
+    public function shareBoardAcl(
+        int $boardId,
+        string $participant,
+        bool $edit = true,
+        bool $share = false,
+        bool $manage = false,
+    ): bool {
+        $res = $this->request(
+            'POST',
+            self::API_BASE . '/boards/' . $boardId . '/acl',
+            [
+                'type' => 0, // ACL_PERMISSION_TYPE user (Deck's Acl::PERMISSION_TYPE_USER)
+                'participant' => $participant,
+                'permissionEdit' => $edit,
+                'permissionShare' => $share,
+                'permissionManage' => $manage,
+            ],
+            [],
+            // 200/201 = created; 400/403 = participant already on the board / no
+            // change — both mean the desired ACL exists, so enrollment proceeds.
+            [200, 201, 400, 403],
+        );
+        return $res !== null;
     }
 
     /** Resolve a stack id by exact title on a board. Null when absent. */

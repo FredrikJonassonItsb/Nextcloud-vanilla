@@ -39,4 +39,10 @@ med bot-engine-servicekontot (samma mönster som hubs_arende DeckClient).
     <background-jobs>
         <job>OCA\AgentEngine\BackgroundJob\SweepJob</job>
     </background-jobs>
+    <settings>
+        <admin>OCA\AgentEngine\Settings\AdminSettings</admin>
+        <admin-section>OCA\AgentEngine\Settings\AdminSection</admin-section>
+        <personal>OCA\AgentEngine\Settings\PersonalSettings</personal>
+        <personal-section>OCA\AgentEngine\Settings\PersonalSection</personal-section>
+    </settings>
 </info>

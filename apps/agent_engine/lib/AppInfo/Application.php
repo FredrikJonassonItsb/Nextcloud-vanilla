@@ -11,6 +11,7 @@ namespace OCA\AgentEngine\AppInfo;
 
 use OCA\AgentEngine\Dashboard\MyAgentWidget;
 use OCA\AgentEngine\Listener\CommentsEventHandler;
+use OCA\AgentEngine\Listener\DeckAclListener;
 use OCA\AgentEngine\Listener\DeckCardListener;
 use OCA\AgentEngine\Notification\Notifier;
 use OCP\AppFramework\App;
@@ -53,6 +54,16 @@ class Application extends App implements IBootstrap {
         'OCA\\Deck\\Event\\CardUpdatedEvent',
     ];
 
+    /**
+     * Deck board-ACL event FQCNs — the self-service enrollment trigger
+     * (§2.10): sharing a board with bot-engine activates its agents, un-sharing
+     * deactivates. Bound by string FQCN, same discipline as the card events.
+     */
+    private const DECK_ACL_EVENTS = [
+        'OCA\\Deck\\Event\\AclCreatedEvent',
+        'OCA\\Deck\\Event\\AclDeletedEvent',
+    ];
+
     public function __construct() {
         parent::__construct(self::APP_ID);
     }
@@ -68,6 +79,14 @@ class Application extends App implements IBootstrap {
         // absent the listener simply never fires (the 2-min sweep covers intake).
         foreach (self::DECK_CARD_EVENTS as $eventClass) {
             $context->registerEventListener($eventClass, DeckCardListener::class);
+        }
+
+        // Board-ACL events drive self-service enrollment (§2.10): a user shares
+        // their board with the "Agent Engine" account to activate agents on it.
+        // Same UNCONDITIONAL string-FQCN binding as the card events above — NC
+        // resolves the listener lazily, after Deck's autoloader is registered.
+        foreach (self::DECK_ACL_EVENTS as $eventClass) {
+            $context->registerEventListener($eventClass, DeckAclListener::class);
         }
 
         $context->registerNotifierService(Notifier::class);
