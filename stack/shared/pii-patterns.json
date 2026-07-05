@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "generated": "2026-07-05",
+  "description": "Shared write-firewall patterns for the ITSL Open Stack (CONTRACTS.md section 3). Consumed by openbrain-svc (capture_thought + /ingest), capture-bot and agent_engine's takeover pipeline. A match means: refuse with HTTP 422, store nothing, never send the content to any external embedding/LLM API. Regex syntax is ECMAScript (JS) compatible; PHP consumers must translate flags accordingly.",
+  "message_sv": "Blockerat: innehållet matchar mönster som inte får lagras i hjärnor (PII/secrets).",
+  "patterns": [
+    {
+      "id": "swedish_personnummer",
+      "regex": "\\b(19|20)?\\d{6}[-+]?\\d{4}\\b",
+      "flags": "",
+      "reason_sv": "innehållet ser ut att innehålla ett svenskt personnummer"
+    },
+    {
+      "id": "anthropic_api_key",
+      "regex": "sk-ant-",
+      "flags": "",
+      "reason_sv": "innehållet ser ut att innehålla en Anthropic API-nyckel (sk-ant-…)"
+    },
+    {
+      "id": "openrouter_api_key",
+      "regex": "sk-or-v1-",
+      "flags": "",
+      "reason_sv": "innehållet ser ut att innehålla en OpenRouter API-nyckel (sk-or-v1-…)"
+    },
+    {
+      "id": "aws_access_key",
+      "regex": "AKIA[0-9A-Z]{16}",
+      "flags": "",
+      "reason_sv": "innehållet ser ut att innehålla en AWS-accessnyckel"
+    },
+    {
+      "id": "hubs_case_uuid_in_case_context",
+      "regex": "(?:hubsCaseId|hubs_case|case[ _-]?id|ärende|arende|orosanmälan|orosanmalan)[^\\n]{0,80}?[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+      "flags": "i",
+      "reason_sv": "innehållet ser ut att innehålla ett Hubs-ärende-id (UUID i ärendekontext)"
+    },
+    {
+      "id": "bankid_number",
+      "regex": "bank[ -]?id[^\\n]{0,60}?(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|\\d{6,})",
+      "flags": "i",
+      "reason_sv": "innehållet ser ut att referera ett BankID-nummer eller BankID-orderreferens"
+    },
+    {
+      "id": "private_key_block",
+      "regex": "-----BEGIN [A-Z ]*PRIVATE KEY-----",
+      "flags": "",
+      "reason_sv": "innehållet ser ut att innehålla en privat nyckel (PEM-block)"
+    },
+    {
+      "id": "credential_assignment",
+      "regex": "(?:password|passwd|lösenord|losenord|api[_-]?key|secret|token)\\s*[:=]\\s*['\"]?[^\\s'\"]{8,}",
+      "flags": "i",
+      "reason_sv": "innehållet ser ut att innehålla en credential-tilldelning (lösenord/token/nyckel)"
+    }
+  ],
+  "limits": {
+    "max_chars": 15000,
+    "reason_max_chars_sv": "innehållet är för stort för en hjärntanke (över 15000 tecken) — troligen en kod- eller transkriptdump",
+    "max_role_prefixed_lines": 8,
+    "role_prefix_regex": "^\\s*(?:user|assistant|system|human|ai)\\s*[:>]",
+    "role_prefix_flags": "gim",
+    "reason_role_lines_sv": "innehållet ser ut som en transkriptdump (fler än 8 rollprefixade rader)"
+  }
+}

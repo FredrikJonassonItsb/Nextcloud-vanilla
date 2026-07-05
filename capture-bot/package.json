@@ -1,0 +1,17 @@
+{
+  "name": "capture-bot",
+  "version": "1.0.0",
+  "description": "ITSL Open Stack Talk capture bot (CONTRACTS §6): Talk webhook -> PII firewall -> brain /ingest, !queue -> Deck Inbox card, !status -> agent_engine ledger",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

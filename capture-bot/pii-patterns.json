@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "note": "Bundled fallback. The canonical shared list is stack/shared/pii-patterns.json (generated from the hubs_arende patterns) and is mounted over this file in compose (PII_PATTERNS_PATH). Same list is used by openbrain-svc /ingest.",
+  "patterns": [
+    {
+      "id": "personnummer",
+      "pattern": "\\b(19|20)?\\d{6}[-+]?\\d{4}\\b",
+      "message": "svenskt personnummer"
+    },
+    {
+      "id": "anthropic-api-key",
+      "pattern": "sk-ant-",
+      "message": "Anthropic API-nyckel"
+    },
+    {
+      "id": "openrouter-api-key",
+      "pattern": "sk-or-v1-",
+      "message": "OpenRouter API-nyckel"
+    },
+    {
+      "id": "aws-access-key",
+      "pattern": "AKIA[0-9A-Z]{16}",
+      "message": "AWS-accessnyckel"
+    },
+    {
+      "id": "hubs-case-id",
+      "pattern": "hubsCaseId[\"'\\s:=-]{0,4}[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+      "message": "hubs ärende-id"
+    },
+    {
+      "id": "bankid-reference",
+      "pattern": "bankid[^\\n]{0,20}\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b",
+      "flags": "i",
+      "message": "BankID-referens"
+    }
+  ]
+}
