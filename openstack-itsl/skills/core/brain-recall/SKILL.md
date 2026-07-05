@@ -27,8 +27,8 @@ Sök **egen hjärna + teamhjärnan** på uppgiftens ämne innan du börjar:
 
 - Interaktivt: MCP-verktygen `search_thoughts` (och `fetch`/`list_recent` vid behov) på
   servrarna `brain-<namn>` och `brain-team`.
-- Headless: `brain-api.sh recall "<ämne/nyckelord>"` (söker egen hjärna; teamhjärnan med
-  `--team`).
+- Headless: `brain-api.sh search '<ämne/nyckelord>' [limit]` (söker din egen hjärna;
+  standardgräns 5). Teamhjärnan nås via dess egna MCP-server `brain-team`, inte via en flagga.
 
 Använd kortets titel + Desired outcome som frågeunderlag. Saknar svaret embedding körs
 ILIKE-fallback — svaret flaggar det; behandla träffarna som svagare.
@@ -61,8 +61,8 @@ diffar.
 
 - Interaktivt: `capture_thought` i egen hjärna. Team-relevanta lärdomar → teamhjärnan som
   **medveten promotion, aldrig automatisk** (skriv om den så den står självständigt).
-- Headless: `brain-api.sh writeback --card AE-<n> "<kompakt text>"` — metadata sätts till
-  `source:"runner"`, `card:"AE-<n>"`, `agent:"<din agentkod>"`.
+- Headless: `brain-api.sh create '<kompakt text>' --source runner --metadata '{"card":"AE-<n>"}'`
+  — `agent:"<din agentkod>"` sätts åt dig.
 - Metadata-konvention: allt en agent skriver taggas `agent: <kod>`; källor: `mcp` · `talk` ·
   `claude_code_ambient` · `runner` · `agent_memory`.
 - Dedupe är inbyggd (content-fingerprint/upsert) — skriv hellre en gång rätt än tre varianter.

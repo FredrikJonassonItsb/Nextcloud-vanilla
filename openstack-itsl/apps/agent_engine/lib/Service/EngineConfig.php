@@ -66,6 +66,40 @@ class EngineConfig {
         return Protocol::defaultOwnerForAgentCode($agentCode);
     }
 
+    /**
+     * Reverse of ownerForAgentCode(): every agent code owned by a human uid.
+     * The app-config routing map wins (VERIFIED uids, CONTRACTS §1); the
+     * identity-table default fills in any agent not present in the map. Used by
+     * the "Min agent" dashboard widget to find the logged-in human's agent(s).
+     *
+     * @return string[] agent codes (may be empty when the uid owns no agent)
+     */
+    public function agentCodesForOwner(string $ownerUid): array {
+        $codes = [];
+        $raw = $this->appConfig->getAppValueString('routing_map', '');
+        $map = $raw !== '' ? json_decode($raw, true) : null;
+        if (is_array($map)) {
+            foreach ($map as $agentCode => $uid) {
+                if (is_string($agentCode) && is_string($uid) && $uid === $ownerUid) {
+                    $codes[$agentCode] = true;
+                }
+            }
+        }
+        // Identity-table fallback for agents the map does not (yet) pin.
+        foreach (Protocol::IDENTITIES as $row) {
+            $agentCode = $row['agentCode'];
+            // The map is authoritative when it lists this agent — do not let the
+            // default owner re-add an agent the map deliberately reassigned.
+            $mappedOwner = is_array($map) && isset($map[$agentCode]) && is_string($map[$agentCode])
+                ? $map[$agentCode]
+                : null;
+            if ($mappedOwner === null && $row['owner'] === $ownerUid) {
+                $codes[$agentCode] = true;
+            }
+        }
+        return array_keys($codes);
+    }
+
     public function piiPatternsPath(): string {
         return $this->appConfig->getAppValueString('pii_patterns_path', '');
     }
