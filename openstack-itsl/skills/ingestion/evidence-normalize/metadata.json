@@ -1,0 +1,7 @@
+{
+  "category": "ingestion",
+  "core": true,
+  "requires_skills": ["source-connector-contract"],
+  "tags": ["normalize", "evidence", "schema", "brain", "metadata"],
+  "version": "1.0"
+}
