@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\AgentEngine\AppInfo;
 
+use OCA\AgentEngine\Dashboard\MyAgentWidget;
 use OCA\AgentEngine\Listener\CommentsEventHandler;
 use OCA\AgentEngine\Listener\DeckCardListener;
 use OCA\AgentEngine\Notification\Notifier;
@@ -70,6 +71,11 @@ class Application extends App implements IBootstrap {
         }
 
         $context->registerNotifierService(Notifier::class);
+
+        // The per-person "Min agent" overview widget (INTERAKTIONSDESIGN §2.9).
+        // IAPIWidgetV2 returns WidgetItems as data — NC renders them itself, so
+        // no frontend pipeline is needed for this app.
+        $context->registerDashboardWidget(MyAgentWidget::class);
     }
 
     public function boot(IBootContext $context): void {

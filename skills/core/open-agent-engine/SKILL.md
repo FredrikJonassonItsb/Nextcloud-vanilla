@@ -152,10 +152,11 @@ interaktivt: ditt personliga NC-app-lösenord ur din keychain).
 ```
 engine-api.sh queue                                  # GET /queue/{agentCode} — nästa eligible kort + öppna BLOCKED/HOLD/Review-resumés
 engine-api.sh claim <engineCardId>                   # POST /claim/{id} — atomisk claim; 200 {cardId,reread} | 409 {claimedBy} | 422
-engine-api.sh receipt <engineCardId> <TOKEN> [--move needs_input|review|done|working] [--body "<detalj ≤900 tecken>"]
+engine-api.sh receipt <engineCardId> <TOKEN> [--move needs_input|review|done|working] [--message "<detalj ≤900 tecken>"]
                                                      # POST /receipt/{id} — token valideras mot vokabulären
-engine-api.sh ledger [--field "Last queue result=claimed AE-217" ...]   # PUT /ledger/{agentCode} — upsert AGENT STATUS på plats
-engine-api.sh origin-note <engineCardId> --body "<text ≤900>"           # POST /origin-note/{id} — ENDA vägen till människotavlan (⇄-relä)
+engine-api.sh ledger '{"last_queue_result":"claimed AE-217","runtime":"Claude Code"}'
+                                                     # PUT /ledger/{agentCode} — JSON med §4.8-nycklar (snake_case); upsert AGENT STATUS på plats
+engine-api.sh origin-note <engineCardId> "<text ≤900>"                  # POST /origin-note/{id} — positionell text; ENDA vägen till människotavlan (⇄-relä)
 ```
 
 Deck-kommentarer har max 1000 tecken — skriv alla kvitton/statusar **≤900 tecken**; längre

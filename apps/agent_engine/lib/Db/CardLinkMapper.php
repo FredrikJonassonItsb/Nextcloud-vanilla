@@ -142,6 +142,26 @@ class CardLinkMapper extends QBMapper {
         return $this->findEntities($qb);
     }
 
+    /**
+     * Every link (any state) that concerns a human uid — either their agent
+     * owns it (owner_uid) or they requested it (requester_uid). Newest first.
+     * The dashboard widget joins these against live Deck stack state to build
+     * the per-person "Min agent" buckets (INTERAKTIONSDESIGN §2.9).
+     *
+     * @return CardLink[]
+     */
+    public function findForOwnerOrRequester(string $uid): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->orX(
+                $qb->expr()->eq('owner_uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)),
+                $qb->expr()->eq('requester_uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)),
+            ))
+            ->orderBy('updated_at', 'DESC');
+        return $this->findEntities($qb);
+    }
+
     /** Delete a link row (takeover compensation when Deck ops failed). */
     public function deleteById(int $id): void {
         $qb = $this->db->getQueryBuilder();

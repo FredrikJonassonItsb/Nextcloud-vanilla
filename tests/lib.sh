@@ -514,7 +514,14 @@ iso_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 agent_code_of() { printf '%s-claude' "${1#bot-}"; }
 
 owner_of() {
-  case "$1" in
+  # The takeover assigns the RESOLVED human uid from agent_engine's routing_map
+  # (per-instance: BankID uids are personnummer). Override with OWNER_UID_<BOT>
+  # in tests/.env.test to match; falls back to the canonical dev name.
+  local bot="$1" up ov
+  up=$(printf '%s' "${bot#bot-}" | tr '[:lower:]' '[:upper:]')
+  eval "ov=\${OWNER_UID_${up}:-}"
+  if [ -n "$ov" ]; then printf '%s' "$ov"; return; fi
+  case "$bot" in
     bot-reb) printf 'rebecca' ;;
     bot-atlas) printf 'fredrik' ;;
     bot-ada) printf 'sandra' ;;
