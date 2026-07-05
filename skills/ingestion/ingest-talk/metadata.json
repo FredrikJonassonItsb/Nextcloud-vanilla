@@ -1,0 +1,7 @@
+{
+  "category": "ingestion",
+  "requires_skills": ["source-connector-contract", "evidence-normalize"],
+  "requires": { "env": ["NEXTCLOUD_USER", "NEXTCLOUD_APP_PASSWORD"], "note": "user must be a room member" },
+  "tags": ["ingest", "talk", "spreed", "nextcloud", "chat"],
+  "version": "1.0"
+}

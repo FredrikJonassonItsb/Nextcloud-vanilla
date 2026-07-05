@@ -26,7 +26,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # ── 1) Sync sources: tar-over-ssh ────────────────────────────────────────────
-COMPONENTS=(stack openbrain-svc capture-bot runner)
+COMPONENTS=(stack openbrain-svc capture-bot runner ingestion)
 present=()
 for c in "${COMPONENTS[@]}"; do
   if [[ -d "$REPO_ROOT/$c" ]]; then
@@ -98,6 +98,8 @@ ensure_var OPENROUTER_API_KEY ""
 ensure_var ANTHROPIC_API_KEY ""
 for a in REB ATLAS ADA MARVIN ENGINE; do ensure_var "BOT_APP_PASSWORD_$a" ""; done
 ensure_var NC_BASE "https://dev15.hubs.se"
+ensure_var ZAMMAD_TOKEN ""
+ensure_var ZAMMAD_BASE_URL "https://zammad.itsl.se"
 ensure_var RUNNER_ENABLED "0"
 ensure_var RUNNER_DAILY_USD_CAP "10"
 ensure_var EMBED_MODEL "openai/text-embedding-3-small"

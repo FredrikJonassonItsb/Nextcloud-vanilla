@@ -9,7 +9,9 @@
 #     default 10; exceeded ⇒ pause the slot until tomorrow + Talk alert to
 #     "Agent Ops" as bot-engine)
 #   → claude -p prompts/queue-run.md with a Bash allowlist limited to
-#     engine-api.sh / brain-api.sh, --max-turns 40
+#     engine-api.sh / brain-api.sh (plus read-only Read/Grep and read-only web
+#     research WebSearch/WebFetch — the Bash sandbox stays tight, so a hostile
+#     card still cannot shell out or read secrets), --max-turns 40
 #   → parse the CLI's JSON result, INSERT engine_meta.run_log via psql
 #
 # Env (from compose / /run/runner-env):
@@ -193,7 +195,7 @@ OUT_JSON=$(claude -p "$(cat "$PROMPT_FILE")" \
   --model "${RUNNER_MODEL:-claude-sonnet-4-5}" \
   --max-turns 40 \
   --output-format json \
-  --allowedTools "Bash(engine-api.sh:*),Bash(brain-api.sh:*),Bash(/app/bin/engine-api.sh:*),Bash(/app/bin/brain-api.sh:*),Read,Grep" \
+  --allowedTools "Bash(engine-api.sh:*),Bash(brain-api.sh:*),Bash(/app/bin/engine-api.sh:*),Bash(/app/bin/brain-api.sh:*),Read,Grep,WebSearch,WebFetch" \
   2>>"$LOG_FILE")
 CLAUDE_EXIT=$?
 set -e 2>/dev/null || true

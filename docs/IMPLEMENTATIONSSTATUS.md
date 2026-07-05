@@ -83,7 +83,7 @@ Fyra saker har ändrats/klarnat sedan bedömarna körde. De korrigerar §3/§5/�
 | Runner: key-gate + arm/disarm (ingen körning utan nyckel) | `runner/entrypoint.sh:25-40`; `run-agent.sh:50-53` | MORGONRAPPORT §3 (RUNNER_ENABLED=1) |
 | HMAC wake-listener (timing-safe, ±300 s, per-agent debounce) + staggered cron | `runner/wake-listener.js`; `runner/crontab` | **live**: "wake accepted for reb-claude" (MORGONRAPPORT §3) |
 | Per-agent flock + daglig USD-cap läst tillbaka från `run_log` (samma tabell den skriver) | `runner/bin/run-agent.sh:60-262` | **live**: "daily spend $0, cap $10" (MORGONRAPPORT §3) |
-| `claude -p` med snävt allowedTools (bara engine-api.sh/brain-api.sh + Read/Grep) | `runner/bin/run-agent.sh:192-197` | **live** (AE-255 slutförd) |
+| `claude -p` med snävt allowedTools (engine-api.sh/brain-api.sh + Read/Grep + läs-webb WebSearch/WebFetch; Bash-sandlådan snäv) | `runner/bin/run-agent.sh:192-197` | **live** (AE-255 slutförd) |
 | HOME/PATH-fix (HOME=/home/runner, /app/bin i PATH) | `runner/bin/run-agent.sh:187-189` | **live**: claude kör som runner (MORGONRAPPORT §4.8) |
 | provision: idempotenta occ-provision.sh / deck-bootstrap.mjs / enroll-board.mjs / deploy-app.sh; per-instans-uid (personnummer) | `provision/*` | on-disk `state/bootstrap.json` (board 10), `PENDING-USERS.md` |
 | Smoke-svit (8 script + 842-raders lib.sh) + CONTRACTS.md/README/.env.test.example | `tests/*`, `docs/CONTRACTS.md` | self-hosting; körd på dev15 (MORGONRAPPORT §2) |

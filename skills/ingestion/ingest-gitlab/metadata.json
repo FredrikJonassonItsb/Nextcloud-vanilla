@@ -1,0 +1,7 @@
+{
+  "category": "ingestion",
+  "requires_skills": ["source-connector-contract", "evidence-normalize"],
+  "requires": { "env": ["GITLAB_TOKEN"], "scope": "read_api" },
+  "tags": ["ingest", "gitlab", "commits", "merge-requests", "issues"],
+  "version": "1.0"
+}

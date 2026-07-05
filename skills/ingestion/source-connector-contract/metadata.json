@@ -1,0 +1,7 @@
+{
+  "category": "ingestion",
+  "core": true,
+  "requires_skills": ["evidence-normalize", "pii-pseudonymize"],
+  "tags": ["ingestion", "contract", "incremental", "brain", "openbrain-svc", "cursor", "dedup"],
+  "version": "1.0"
+}
