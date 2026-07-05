@@ -95,9 +95,17 @@ Fyra personliga companion-agenter — **Johan utesluts i detta skede**:
 - `Kunskapsbanken/kb-pipeline` — eget lokalt git, ej på gemensam GitHub.
 - **CRM** — MacMini, okänt repo.
 
-**Mål:** all Open Stack-kod i ETT GitHub-hanterat repo. **Öppet beslut:** (a) allt under `Nextcloud-vanilla/openstack-itsl/`, eller (b) ett nytt dedikerat `itsl-open-stack`-repo dit openstack-itsl + vls-core + kb-pipeline + CRM + KB-UI flyttas. Rekommendation: **(b) dedikerat repo** — Open Stack är en egen produkt skild från Hubs-apparna; renare historik och CI.
+**BESLUTAT (Fredrik 2026-07-05):** ETT nytt dedikerat GitHub-repo **`itsl-open-stack`** (privat) — Open Stack är en egen produkt skild från Hubs-apparna (renare historik, CI, behörigheter).
 
-**Migrationsplan (M-REPO):** kb-pipeline (bevara historik via `git subtree`/filter-repo) · vls-core (bevara historik) · CRM (när lokaliserad) · KB-UI (redan i kb-pipeline). Denna sessions ingestion-arbete: pushat på gren [`feat/openstack-ingestion`](https://github.com/FredrikJonassonItsb/Nextcloud-vanilla).
+**Migrationsplan (M-REPO), historikbevarande:**
+1. Skapa privat repo `FredrikJonassonItsb/itsl-open-stack`.
+2. **openstack-itsl** → repo-roten, historik bevarad via `git subtree split -P openstack-itsl` (från Nextcloud-vanilla) → push som `main`. (Denna sessions arbete ligger på gren `feat/openstack-ingestion` — merga den först, så följer den med.)
+3. **vls-core** → `legacy/vls-core/` via subtree-merge (historik bevarad från FredrikJonassonItsb/vls-core).
+4. **kb-pipeline** → `kb-pipeline/` via subtree (dess lokala git pushas först till GitHub, sedan subtree-merge; historik bevarad). KB-UI (`web/review.html`) följer med.
+5. **CRM** → `crm/` när koden lokaliserats på MacMini.
+6. openstack-itsl i Nextcloud-vanilla: lämnas kvar tills nya repot verifierats, tas sedan bort (undvik dubbelunderhåll).
+
+**Val att bekräfta före körning:** (i) bevara full historik per källa (rek.) vs färsk start; (ii) köra nu vs efter merge av `feat/openstack-ingestion`.
 
 ---
 
