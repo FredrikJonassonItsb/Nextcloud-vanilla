@@ -122,6 +122,68 @@ class EngineConfig {
         return array_keys($codes);
     }
 
+    /**
+     * Rich per-agent metadata for a human uid — the settings UI's connection
+     * view. Reads the nested routing map (agent display name + bot uid) and
+     * falls back to the identity table for anything the map does not pin.
+     *
+     * @return array<int,array{agentCode:string,agent:string,bot:string,human:string}>
+     */
+    public function agentInfoForOwner(string $ownerUid): array {
+        $raw = $this->appConfig->getAppValueString('routing_map', '');
+        $map = $raw !== '' ? json_decode($raw, true) : null;
+        $agents = (is_array($map) && isset($map['agents']) && is_array($map['agents']))
+            ? $map['agents']
+            : (is_array($map) ? $map : []);
+
+        $out = [];
+        foreach ($this->agentCodesForOwner($ownerUid) as $agentCode) {
+            $entry = $agents[$agentCode] ?? null;
+            $identity = Protocol::identityForAgentCode($agentCode);
+            $out[] = [
+                'agentCode' => $agentCode,
+                'agent' => is_array($entry) && isset($entry['agent'])
+                    ? (string)$entry['agent']
+                    : ($identity['display'] ?? $agentCode),
+                'bot' => is_array($entry) && isset($entry['bot'])
+                    ? (string)$entry['bot']
+                    : ((string)(Protocol::botForAgentCode($agentCode) ?? '')),
+                'human' => $ownerUid,
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * The full routing map as human uid ↔ agent metadata rows — the admin
+     * view's read-only table. Map wins; identity-table default fills gaps.
+     *
+     * @return array<int,array{agentCode:string,agent:string,bot:string,human:string}>
+     */
+    public function routingRows(): array {
+        $raw = $this->appConfig->getAppValueString('routing_map', '');
+        $map = $raw !== '' ? json_decode($raw, true) : null;
+        $agents = (is_array($map) && isset($map['agents']) && is_array($map['agents']))
+            ? $map['agents']
+            : (is_array($map) ? $map : []);
+
+        $rows = [];
+        foreach (Protocol::IDENTITIES as $bot => $identity) {
+            $agentCode = $identity['agentCode'];
+            $entry = $agents[$agentCode] ?? null;
+            $human = is_array($entry) && isset($entry['human']) && $entry['human'] !== ''
+                ? (string)$entry['human']
+                : (Protocol::defaultOwnerForAgentCode($agentCode) ?? '');
+            $rows[] = [
+                'agentCode' => $agentCode,
+                'agent' => is_array($entry) && isset($entry['agent']) ? (string)$entry['agent'] : $identity['display'],
+                'bot' => $bot,
+                'human' => $human,
+            ];
+        }
+        return $rows;
+    }
+
     public function piiPatternsPath(): string {
         return $this->appConfig->getAppValueString('pii_patterns_path', '');
     }
