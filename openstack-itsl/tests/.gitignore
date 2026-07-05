@@ -1,0 +1,2 @@
+# Lokala hemligheter — checkas aldrig in (CONTRACTS §4: nycklar reser aldrig i git)
+.env.test

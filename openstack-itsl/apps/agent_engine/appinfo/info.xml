@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!--
+  - SPDX-FileCopyrightText: ITSL <info@itsl.se>
+  - SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>agent_engine</id>
+    <name>Agent Engine</name>
+    <summary>Deck-baserad agentmotor för ITSL Open Stack — takeover, spegling, kö, kvitton och liggare.</summary>
+    <description><![CDATA[
+Agent Engine är limmet mellan människotavlor och Agent Engine-tavlan i Deck.
+
+Kärnan (per CONTRACTS §3 och INTERAKTIONSDESIGN §2):
+- **Takeover:** tilldela en bot på ett enrollat kort → deterministisk PHP skapar
+  ett komplett engine-kort i Agent Todo (8-sektionsmall, kanoniska Boundaries),
+  PII-brandväggen körs FÖRST på kopieringsvägen.
+- **Tvåvägsspegling** ursprungskort ⇄ engine-kort med strukturellt loop-skydd
+  (aktörsfilter, ⇄-markör, länk-tillståndsmaskin, idempotensnycklar).
+- **Atomisk claim** (en vinnare, förloraren får 409), serversidig kö-filtrering,
+  kvittovokabulär-validering och statusliggare uppdaterad på plats.
+- **2-minuters-svepet** är korrekthetsgolvet: missade events degraderar till
+  latens, aldrig till ett tyst ignorerat kort.
+
+Motorn skriver ALDRIG direkt i Decks tabeller — allt går via Decks egna API:er
+med bot-engine-servicekontot (samma mönster som hubs_arende DeckClient).
+    ]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author mail="info@itsl.se">ITSL</author>
+    <namespace>AgentEngine</namespace>
+    <category>integration</category>
+    <category>tools</category>
+    <bugs>https://itsl.se</bugs>
+    <dependencies>
+        <php min-version="8.1"/>
+        <nextcloud min-version="31" max-version="32"/>
+    </dependencies>
+    <background-jobs>
+        <job>OCA\AgentEngine\BackgroundJob\SweepJob</job>
+    </background-jobs>
+</info>
