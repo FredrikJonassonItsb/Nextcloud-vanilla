@@ -26,7 +26,7 @@ export class FirewallError extends Error {
  * Load and compile the shared pattern file.
  * Throws on missing/invalid file: the service must not boot without its firewall.
  */
-export function loadFirewall(jsonPath) {
+export function loadFirewall(jsonPath, { enabled = true } = {}) {
   const raw = JSON.parse(readFileSync(jsonPath, "utf8"));
   if (!Array.isArray(raw.patterns) || raw.patterns.length === 0) {
     throw new Error(`Invalid pii-patterns file (no patterns): ${jsonPath}`);
@@ -52,6 +52,9 @@ export function loadFirewall(jsonPath) {
    * @returns {null | { patternId: string, reasonSv: string }}
    */
   function check(text) {
+    // Toggle (PII_FIREWALL_ENABLED=0): accept everything. Internal use with
+    // consent; re-enable later without a code change. See CONTRACTS §3.
+    if (!enabled) return null;
     if (typeof text !== "string" || text.length === 0) return null;
 
     for (const p of patterns) {
@@ -87,5 +90,5 @@ export function loadFirewall(jsonPath) {
     if (hit) throw new FirewallError(hit.patternId, hit.reasonSv, messageSv);
   }
 
-  return { check, assert, messageSv };
+  return { check, assert, messageSv, enabled };
 }

@@ -53,6 +53,8 @@ export function loadConfig(env = process.env) {
     rooms,
     roomsPath,
     piiPatternsPath: env.PII_PATTERNS_PATH || fileURLToPath(new URL('../pii-patterns.json', import.meta.url)),
+    // PII firewall. Default ON. PII_FIREWALL_ENABLED=0/false/off accepts all.
+    firewallEnabled: !/^(0|false|off)$/i.test(String(env.PII_FIREWALL_ENABLED ?? '1').trim()),
     bootstrapPath: env.BOOTSTRAP_PATH || '/opt/openstack/state/bootstrap.json',
     botEngineUser: env.BOT_ENGINE_USER || 'bot-engine',
     botEnginePassword: env.BOT_APP_PASSWORD_ENGINE || '',
