@@ -29,9 +29,12 @@ export function loadPatterns(path) {
 }
 
 /** @returns {{ check(text: string): null | { id: string, message: string } }} */
-export function createFirewall(patterns) {
+export function createFirewall(patterns, { enabled = true } = {}) {
   return {
     check(text) {
+      // Toggle (PII_FIREWALL_ENABLED=0): accept everything. Internal use with
+      // consent; re-enable later without a code change.
+      if (!enabled) return null;
       const s = String(text ?? '');
       for (const p of patterns) {
         // Fresh lastIndex per call in case a pattern carries the g flag.

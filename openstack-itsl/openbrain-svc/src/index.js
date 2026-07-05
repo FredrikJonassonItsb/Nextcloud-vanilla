@@ -37,8 +37,10 @@ async function ensureSchemaWithRetry(pool, { attempts = 60, delayMs = 5000 } = {
 
 async function main() {
   const config = loadConfig();
-  const firewall = loadFirewall(config.piiPatternsPath);
-  log.info(`[boot] firewall loaded from ${config.piiPatternsPath}`);
+  const firewall = loadFirewall(config.piiPatternsPath, { enabled: config.firewallEnabled });
+  log.info(
+    `[boot] firewall loaded from ${config.piiPatternsPath} (enabled=${config.firewallEnabled})`,
+  );
 
   const pool = createPool(config.databaseUrl);
   await ensureSchemaWithRetry(pool);

@@ -21,6 +21,15 @@ import { FALLBACK_METADATA } from "./openrouter.js";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Structured identity/routing metadata keys — system-set, not user free text,
+// and legitimately hold values that look like PII (BankID uids ARE personnummer).
+// The write firewall skips these; it only scans content + free-text metadata.
+const STRUCTURED_META_KEYS = new Set([
+  "talk_actor", "author", "agent", "agentCode", "card", "card_id", "source",
+  "room", "roomToken", "import_key", "uid", "owner_uid", "requester_uid",
+  "reviewer_uid", "actor", "actorUid",
+]);
+
 export function contentFingerprint(content) {
   const normalized = content.replace(/\s+/g, " ").trim().toLowerCase();
   return createHash("sha256").update(normalized, "utf8").digest("hex");
@@ -93,9 +102,13 @@ export function createStore({
    */
   async function captureThought({ content, source, author, extraMetadata = {} }) {
     firewall.assert(content);
-    const extraKeys = extraMetadata && Object.keys(extraMetadata);
-    if (extraKeys && extraKeys.length > 0) {
-      firewall.assert(JSON.stringify(extraMetadata));
+    // Only scan FREE-TEXT metadata. Structured identity fields (uids, source,
+    // card ids, room tokens) are system-set, never user content — and a BankID
+    // uid IS a valid personnummer, so scanning them false-positives on every
+    // message from such a user (see docs/DEV15-FACTS.md, uid-in-text rule).
+    for (const [k, v] of Object.entries(extraMetadata || {})) {
+      if (STRUCTURED_META_KEYS.has(k)) continue;
+      if (typeof v === "string" && v.length > 0) firewall.assert(v);
     }
 
     const { embedding, extracted, embedPending, metaPending } = await embedAndExtract(content);

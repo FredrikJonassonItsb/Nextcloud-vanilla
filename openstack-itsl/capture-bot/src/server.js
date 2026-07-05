@@ -24,8 +24,8 @@ const dedupe = createDedupe((sql, params) => pool.query(sql, params));
 
 let firewall;
 try {
-  firewall = createFirewall(loadPatterns(config.piiPatternsPath));
-  log.info({ msg: 'pii firewall loaded', path: config.piiPatternsPath });
+  firewall = createFirewall(loadPatterns(config.piiPatternsPath), { enabled: config.firewallEnabled });
+  log.info({ msg: 'pii firewall loaded', path: config.piiPatternsPath, enabled: config.firewallEnabled });
 } catch (err) {
   // Fail CLOSED: without patterns nothing may be captured.
   log.error({ msg: 'pii patterns failed to load — blocking all captures', err: String(err) });

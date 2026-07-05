@@ -47,6 +47,11 @@ export function loadConfig(env = process.env) {
     // client, per BYGGPLAN section 2.1.
     defaultAuthor: (env.DEFAULT_AUTHOR || "").trim(),
 
+    // PII/secrets write firewall. Default ON. Set PII_FIREWALL_ENABLED=0 to
+    // accept everything (internal use with consent; re-enable later, no code
+    // change). "0"/"false"/"off" (case-insensitive) disable it.
+    firewallEnabled: !/^(0|false|off)$/i.test((env.PII_FIREWALL_ENABLED ?? "1").trim()),
+
     backfillIntervalMs: parseInt(env.BACKFILL_INTERVAL_MS || String(5 * 60 * 1000), 10),
     backfillBatchSize: parseInt(env.BACKFILL_BATCH_SIZE || "25", 10),
   };

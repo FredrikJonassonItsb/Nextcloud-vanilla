@@ -9,6 +9,8 @@ x-brain-env: &brain-env
   OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
   EMBED_MODEL: ${EMBED_MODEL:-openai/text-embedding-3-small}
   PII_PATTERNS_PATH: /app/pii-patterns.json
+  # PII write firewall. Default on; PII_FIREWALL_ENABLED=0 accepts everything.
+  PII_FIREWALL_ENABLED: ${PII_FIREWALL_ENABLED:-1}
 
 x-brain-service: &brain-service
   build: ../openbrain-svc
@@ -169,6 +171,7 @@ services:
       NC_BASE: ${NC_BASE:-https://dev15.hubs.se}
       ROOMS_PATH: /app/rooms.json
       PII_PATTERNS_PATH: /app/pii-patterns.json
+      PII_FIREWALL_ENABLED: ${PII_FIREWALL_ENABLED:-1}
       # Talk bot HMAC secrets (one per room bot)
       TALK_BOT_SECRET_REB: ${TALK_BOT_SECRET_REB:-}
       TALK_BOT_SECRET_ATLAS: ${TALK_BOT_SECRET_ATLAS:-}
