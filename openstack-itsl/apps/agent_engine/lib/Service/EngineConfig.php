@@ -56,14 +56,42 @@ class EngineConfig {
      * fallback is the identity table constant.
      */
     public function ownerForAgentCode(string $agentCode): ?string {
-        $raw = $this->appConfig->getAppValueString('routing_map', '');
-        if ($raw !== '') {
-            $map = json_decode($raw, true);
-            if (is_array($map) && isset($map[$agentCode]) && is_string($map[$agentCode]) && $map[$agentCode] !== '') {
-                return $map[$agentCode];
-            }
+        $agents = $this->routingAgents();
+        if (isset($agents[$agentCode]) && $agents[$agentCode] !== '') {
+            return $agents[$agentCode];
         }
         return Protocol::defaultOwnerForAgentCode($agentCode);
+    }
+
+    /**
+     * Normalize the routing map to a flat {agentCode => humanUid} array.
+     * occ-provision.sh writes the NESTED shape
+     *   {"version":"v1","agents":{"atlas-claude":{"human":"…","bot":"…"}}}
+     * — but a flat {"atlas-claude":"…"} is also accepted for forward-compat.
+     *
+     * @return array<string,string>
+     */
+    private function routingAgents(): array {
+        $raw = $this->appConfig->getAppValueString('routing_map', '');
+        if ($raw === '') {
+            return [];
+        }
+        $map = json_decode($raw, true);
+        if (!is_array($map)) {
+            return [];
+        }
+        $agents = (isset($map['agents']) && is_array($map['agents'])) ? $map['agents'] : $map;
+        $out = [];
+        foreach ($agents as $agentCode => $entry) {
+            if (!is_string($agentCode)) {
+                continue;
+            }
+            $uid = is_array($entry) ? ($entry['human'] ?? null) : $entry;
+            if (is_string($uid) && $uid !== '') {
+                $out[$agentCode] = $uid;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -76,13 +104,10 @@ class EngineConfig {
      */
     public function agentCodesForOwner(string $ownerUid): array {
         $codes = [];
-        $raw = $this->appConfig->getAppValueString('routing_map', '');
-        $map = $raw !== '' ? json_decode($raw, true) : null;
-        if (is_array($map)) {
-            foreach ($map as $agentCode => $uid) {
-                if (is_string($agentCode) && is_string($uid) && $uid === $ownerUid) {
-                    $codes[$agentCode] = true;
-                }
+        $agents = $this->routingAgents();
+        foreach ($agents as $agentCode => $uid) {
+            if ($uid === $ownerUid) {
+                $codes[$agentCode] = true;
             }
         }
         // Identity-table fallback for agents the map does not (yet) pin.
@@ -90,10 +115,7 @@ class EngineConfig {
             $agentCode = $row['agentCode'];
             // The map is authoritative when it lists this agent — do not let the
             // default owner re-add an agent the map deliberately reassigned.
-            $mappedOwner = is_array($map) && isset($map[$agentCode]) && is_string($map[$agentCode])
-                ? $map[$agentCode]
-                : null;
-            if ($mappedOwner === null && $row['owner'] === $ownerUid) {
+            if (!isset($agents[$agentCode]) && $row['owner'] === $ownerUid) {
                 $codes[$agentCode] = true;
             }
         }
