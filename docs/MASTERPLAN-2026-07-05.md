@@ -13,13 +13,13 @@ Fyra personliga companion-agenter — **Johan utesluts i detta skede**:
 
 | Agent | Människa | Domän (preliminär) | Brain |
 |---|---|---|---|
-| **Reb** | Rebecca | (ersätter Johans tidigare CTO-yta — roll att bekräfta) | brain-reb |
+| **Reb** | Rebecca | **Leder kundteamet** (Ada + Marvin ingår) | brain-reb |
 | **Atlas** | Fredrik | Ledning/strategi | brain-atlas |
-| **Ada** | Sandra | Ekonomi & marknad | brain-ada |
-| **Marvin** | Mattias | **Support & drift (äger Zammad-kunskapen)** | brain-marvin |
-| *(team)* | — | delad org-kunskap + router | brain-team |
+| **Ada** | Sandra | Kundteam — ekonomi & marknad | brain-ada |
+| **Marvin** | Mattias | Kundteam — support & drift (äger Zammad-kunskapen) | brain-marvin |
+| *(team)* | — | delad kundteam-/org-kunskap + router | brain-team |
 
-**Öppet:** Johans tidigare CTO/dev-domän — absorberas av Reb, delas, eller vilar. Bekräfta Rebeccas roll.
+**Scope:** Open Stack = **kundteamet** (Reb leder; Ada + Marvin ingår) + Atlas (ledning). **Johan (CTO) och utvecklingsteamet ingår INTE i detta skede** — de arbetar med andra verktyg och en annan kadens.
 
 ---
 
@@ -129,14 +129,13 @@ Ordning efter beroende och värde. Fetstil = kan börja nu utan blockerare.
 
 ---
 
-## 8. Öppna beslut (behöver dig)
+## 8. Beslut (uppdaterat 2026-07-05)
 
-1. **Mono-repo:** (a) under Nextcloud-vanilla, eller **(b) nytt dedikerat `itsl-open-stack`-repo** (rek.)?
-2. **CRM-kod:** var ligger den på MacMini? (repo/sökväg) — behövs för M-CRM.
-3. **Rebeccas roll** (Reb) nu när Johan utesluts — tar hon dev/CTO-domänen?
-4. **VLS-omtag:** hur mycket av `vls-core`-idéerna (108 processer, SoA, KPI, PDCA, riskregister) ska med i första VLS-versionen?
-5. **Router-åtkomst:** ser central router bara 2-menings-sammanfattningar (rek.) eller mer?
-6. **Zammad-token:** rotera (chatt-exponerad); VPN-väg dev15→Zammad fixas när?
+- ✅ **Mono-repo:** nytt dedikerat privat `itsl-open-stack`-repo (§6). Historik bevaras; migreras efter merge av `feat/openstack-ingestion` → main (PR #1 mergad).
+- ✅ **Roller:** Reb leder kundteamet (Ada + Marvin); Atlas = ledning. Johan (CTO) + dev-teamet utanför scope (andra verktyg/kadens).
+- ✅ **Zammad-token:** ingen rotering behövs; ligger i dev15 `.env` för när VPN dev15→Zammad öppnas.
+- ⏭️ **CRM** (lokalisera kod på MacMini → porta som-den-är → External Site) och **VLS-omtag** (omfång av vls-core-idéer): **nästa steg**.
+- ⏳ **Router-åtkomst:** ser central router bara 2-menings-sammanfattningar (rek.) eller mer? — kvar.
 
 ---
 
