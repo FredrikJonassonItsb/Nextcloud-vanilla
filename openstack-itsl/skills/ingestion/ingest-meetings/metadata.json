@@ -1,0 +1,7 @@
+{
+  "category": "ingestion",
+  "requires_skills": ["source-connector-contract", "evidence-normalize"],
+  "requires": { "env": ["FIREFLIES_API_KEY"], "alt": "NC Talk call recordings/transcripts" },
+  "tags": ["ingest", "meetings", "fireflies", "transcripts", "turns"],
+  "version": "1.0"
+}

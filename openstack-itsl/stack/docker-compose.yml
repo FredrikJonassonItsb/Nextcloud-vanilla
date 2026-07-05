@@ -265,6 +265,37 @@ services:
       retries: 3
       start_period: 10s
 
+  # Native källinhämtning (batch, source-connector-contract). Startar INTE med
+  # `up -d` (profiles: ingestion) — körs on-demand:
+  #   docker compose --profile ingestion run --rm ingestion \
+  #     extract --source zammad --brain marvin --pseudonymize --since 30d
+  ingestion:
+    build: ../ingestion
+    profiles: ["ingestion"]
+    networks: [openstack]
+    depends_on:
+      brain-db:
+        condition: service_healthy
+    environment:
+      ZAMMAD_TOKEN: ${ZAMMAD_TOKEN:-}
+      ZAMMAD_BASE_URL: ${ZAMMAD_BASE_URL:-https://zammad.itsl.se}
+      INGEST_SINCE: ${INGEST_SINCE:-1y}
+      INGEST_EXPERT_NAMES: ${INGEST_EXPERT_NAMES:-johan}
+      INGEST_DATA_DIR: /app/data
+      # brain-mål: samma interna endpoints + nycklar som capture-bot
+      BRAIN_URL_REB: http://brain-reb:7101
+      BRAIN_URL_ATLAS: http://brain-atlas:7102
+      BRAIN_URL_ADA: http://brain-ada:7103
+      BRAIN_URL_MARVIN: http://brain-marvin:7104
+      BRAIN_URL_TEAM: http://brain-team:7105
+      BRAIN_KEY_REB: ${BRAIN_KEY_REB:-}
+      BRAIN_KEY_ATLAS: ${BRAIN_KEY_ATLAS:-}
+      BRAIN_KEY_ADA: ${BRAIN_KEY_ADA:-}
+      BRAIN_KEY_MARVIN: ${BRAIN_KEY_MARVIN:-}
+      BRAIN_KEY_TEAM: ${BRAIN_KEY_TEAM:-}
+    volumes:
+      - ingestion-data:/app/data
+
 networks:
   openstack:
     name: openstack
@@ -274,3 +305,5 @@ volumes:
     name: openstack_braindb
   caddy_data:
   caddy_config:
+  ingestion-data:
+    name: openstack_ingestion_data

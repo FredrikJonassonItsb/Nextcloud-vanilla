@@ -122,7 +122,9 @@ kompakt. Bots registreras: `occ talk:bot:install "Reb (agent)" <secret> http://1
 Loop per slot (körs endast om nyckel finns): flock → `GET /queue/{agentCode}` →
 om resumable/eligible: `claude -p` (headless) med `runner/prompts/queue-run.md`
 (Nates 19 steg Deck-adapterade + INTERAKTIONSDESIGN 12b tolknings-checkpoint) +
-`--allowedTools` whitelist (Bash begränsad till `engine-api.sh`, `brain-api.sh`) +
+`--allowedTools` whitelist (Bash begränsad till `engine-api.sh`, `brain-api.sh`;
+läsverktyg `Read`/`Grep` + läs-webb `WebSearch`/`WebFetch` — Bash-sandlådan förblir
+snäv, så ett fientligt kort ändå inte kan shell:a ut eller läsa hemligheter) +
 `--max-turns 40`. Verktygsskal: `runner/bin/engine-api.sh` (claim/receipt/ledger/origin-note
 via curl mot agent_engine, bot-app-lösenord ur env), `runner/bin/brain-api.sh`
 (recall/writeback mot egen hjärna). Exakt EN task per körning. Kostnadslogg per körning
