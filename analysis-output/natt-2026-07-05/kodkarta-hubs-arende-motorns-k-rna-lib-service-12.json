@@ -1,0 +1,209 @@
+{
+ "omrade": "hubs_arende-motorns kärna: lib/Service (12 filer), lib/Db (10 filer), lib/Migration (5 filer), lib/Exception + gallrings-/frist-bakgrundsjobben",
+ "sammanfattning": "hubs_arende är en koordinationsmotor (aldrig System of Record) för svensk socialtjänst-ärendehantering ovanpå Nextcloud. Kärnan är ArendeService::createCase — en distribuerad SAGA (R0–R10 + T) där varje framåtsteg registrerar en kompenserande closure som körs i omvänd ordning vid fel: R0 fail-closed säkerhetsskyddsgrind, R1 UUID-mint, pre-saga-hook (kat6 diarieför-direkt), R2 register-INSERT (commit_destination NOT NULL + idempotens på conversationId med UNIQUE-index-race-hantering), R3/R9 sdkmc case-taggar, M medlemsledger + per-case-NC-grupp (åtkomstlistan), T Team/circle (presentationslager), R4 groupfolder (ärenderum), R5 Deck-kort, R6 Spreed-rum, R7 kalenderobjekt, R8 frist ur inkom-datum, R10 status/steg-finalisering. Allt parametriseras av datadrivna ArendeTyp-config-rader (8 seedade typer, inga kategori-if-grenar; ~2 deklarerade hooks via EdiariumPort). Livscykeln är en bunden övergångsgraf i ArendeLifecycleService med pliktgrind (skyddsbedömning måste kvitteras innan utredning för pliktGrind-typer) och per-steg frist-omräkning. Medlemsmodellen är förstaklassig (hubs_arende_member, 4 roller) och speglas till en per-ärende-NC-grupp via ArenderumGroupService med handoff-avsmalning (tilldelad handläggare ersätter mottagningskretsen i åtkomstlistan). Commit-flödet (FacksystemCommitService → port/stub) ger verifierade kvitton som flippar provenans/dnr/retention/gallrasDatum, med H3-idempotens; GallringService+GallringJob purgar motorns egen rad + pekare + medlemmar + journal + grupp efter deadline med dubbel säkerhetsvakt. Händelsejournalen (hubs_arende_handelse, 7 typer) skrivs best-effort vid varje mutation och gallras med ärendet. Pekar-registret (hubs_arende_pekare) binder ärendet till alla externa objekt och driver både kompensationer, deep-links (pekarBlock) och rivning.",
+ "formagor": [
+  "R0 fail-closed säkerhetsskydds-/visselblåsningsgrind före all sidoeffekt (strukturerade klass-nycklar + nyckelordsfallback, diakrit-normaliserad) — hubs_arende/lib/Service/SakerhetsskyddGrind.php:173 (evaluate), anropad i hubs_arende/lib/Service/ArendeService.php:285",
+  "Retroaktiv karantän av redan skapat ärende: untag index, arkivera Spreed-rum, deny-all-ACL på groupfolder (bevisbevarande, raderas ej), ta bort case-tagg, register→karantan+retention pausad, auditbart kvitto med fullstandig-flagga — hubs_arende/lib/Service/SakerhetsskyddGrind.php:255 (evaluateRetroaktiv)",
+  "AvvisadException bär avvisningskvitto + retroaktiv-flagga till OCS-lagret — hubs_arende/lib/Exception/AvvisadException.php:21",
+  "Idempotent createCase på conversationId (pre-check + M6: UNIQUE-index-race fångas och vinnarraden returneras) — hubs_arende/lib/Service/ArendeService.php:309 och :396-420; index i hubs_arende/lib/Migration/Version000100Date20260617120000.php:60",
+  "Saga-kompensationsstack körd i omvänd ordning, varje kompensation best-effort med critical-logg vid fel — hubs_arende/lib/Service/ArendeService.php:2554 (compensate), :2744 (logCompensationFailure)",
+  "commit_destination NOT NULL-invariant + server-side allowlist (L4: facksystem|diarium|e_arkiv|extern_myndighet|triage_forward|karantan) — hubs_arende/lib/Service/ArendeService.php:2171 (resolveCommitDestination), :79 (VALID_DESTINATIONS); schema-nivå i hubs_arende/lib/Migration/Version000000Date20260616000000.php:114",
+  "Datadriven ArendeTyp-modell: 8 config-rader (orosanmalan, ansokan_bistand, ekonomi, komplettering, vard_samverkan, rattsligt_tvang, verkstallighet, familjeratt) med fristPolicy/aclProfil/sekretessGrund/frendsModul/hooks/partsModell; idempotent seedning som bevarar kommunens lokala ändringar — hubs_arende/lib/Service/ArendeTypRegistry.php:159 (defaultRows), :90 (seedDefaults); RepairStep hubs_arende/lib/Migration/RegisterArendeTyper.php:33",
+  "Deklarativa saga-hooks utan kategori-grenar: dispatchHook + handler-register; kat6 'diariefor_direkt' pre-saga FAIL-CLOSED (kastar utan EdiariumPort), kat8 'familjeratt_yttrande' post-commit best-effort; okänd hook = loggad no-op — hubs_arende/lib/Service/ArendeService.php:2101 (dispatchHook), :2126 (hookHandlers), pre-hook-anrop :373, post-hook :1907",
+  "Född-registrerad rad ur pre-hook-kvitto (provenans='registrerad' + dnr seedas i buildEntity) med kompensation som critical-loggar kvarstående diarienummer — hubs_arende/lib/Service/ArendeService.php:2450-2458 och :375-391",
+  "M1/M2 pseudonymvalidering pre-flight OCH i buildEntity: personnummer-mönster/whitespace/längd avvisas, positiv UUID/token-allow för objektRef; triageRef mjukvaliderad — hubs_arende/lib/Service/ArendeService.php:2204 (validateObjektRef), :2241 (validateTriageRef), :346-350",
+  "Förstaklassig medlemsledger med 4 roller (mottagningskrets/handlaggare/co_handlaggare/observator), idempotent record via UNIQUE(hubs_case_id,uid,roll) inkl. race-hantering — hubs_arende/lib/Db/Member.php:48-54, hubs_arende/lib/Db/MemberMapper.php:41 (record); schema hubs_arende/lib/Migration/Version000200Date20260617140000.php:85",
+  "Per-ärende-NC-grupp som åtkomstlista (gid 'hubs-case-{uuid}'): ensure/sync (exakt mängdspegling av ledgern)/delete — hubs_arende/lib/Service/ArenderumGroupService.php:56, :80, :134",
+  "Handoff-medveten åtkomstlista: finns handläggare/co/observatör ÄR de åtkomsten och mottagningskretsen revokeras, annars kretsen (OSL 26 inre sekretess, GAP-057) — hubs_arende/lib/Service/ArendeService.php:2702 (atkomstUids), synk vid varje medlemsmutation :2689 (syncArenderumGrupp)",
+  "T-steget: ett Team/circle per ärende med per-case-gruppen som enda medlem (presentationslager, ägarmodellen oförändrad); grantas som extra applicable på groupfolder (R4) och Talk-deltagare (R6) — hubs_arende/lib/Service/ArendeService.php:514-535, :549-551, :639-642",
+  "Mottagningskrets resolvad ur enhetens NC-grupp(er) med normaliserad enhet↔grupp-konvention (trailing '@' strippas, lowercase), fail-closed tom krets — hubs_arende/lib/Service/ArendeService.php:2606 (aclKretsUids), :2660 (resolveEnhetGroups), :2078 (normaliseEnhet)",
+  "tilldela(): användarvalidering + assignee-behörighetsgate (måste vara i enhetens krets) + 4-lagers koherens (groupfolder-ACL-reapply, sdkmc-tagg, Deck-label 'assignee:', kalender-re-home till handläggarens egen kalender med pekare-riktning-uppdatering) + register-flip + medlemsrad + gruppsynk + journal + notis — hubs_arende/lib/Service/ArendeService.php:1368-1463, :2638 (assertAssigneeBehorig)",
+  "laggTillMedlem/taBortMedlem med rollbegränsning (endast co_handlaggare/observator får hanteras av operatör; handlaggare/mottagningskrets skyddade), Spreed-deltagarsynk, journal + notis — hubs_arende/lib/Service/ArendeService.php:1477, :1519",
+  "Livscykelgraf som enda lagliga steg-flyttare: inflode→forhandsbedomning→utredning→beslut→uppfoljning→avslutat med återöppning uppfoljning→utredning, idempotent same-step-no-op, okänt steg/otillåten kant → InvalidArgumentException — hubs_arende/lib/Service/ArendeLifecycleService.php:53 (ALLOWED_TRANSITIONS), :89 (transitionera)",
+  "Config-driven pliktgrind: pliktGrind-typ får inte gå forhandsbedomning→utredning utan explicit skyddsbedomningKvitterad i kontext; 'inte inleda' (→avslutat) ogated — hubs_arende/lib/Service/ArendeLifecycleService.php:119-130",
+  "Per-steg frist-omräkning ur fristPolicy.perStegFrist/stegFrister vid övergång; annars orörd frist — hubs_arende/lib/Service/ArendeLifecycleService.php:176 (maybeRecomputeFristDue), :195 (perStegFristDays)",
+  "Frist ur inkom-datum (inte now()) per policy-typ: 14d_forhandsbedomning=14, manadscykel=30, forvaltningsratt_skyndsam=21; ingen/koordinering/arver/speglasUrTreserva ⇒ null (ingen egen klocka) — hubs_arende/lib/Service/ArendeService.php:2467 (computeFristDue), R8 :698-702",
+  "Frist-projektion med signerade dagar kvar och tone error/warning(≤3d)/neutral — hubs_arende/lib/Service/ArendeService.php:1338 (fristObjekt); plikt-projektion :2277 (pliktForArende); nastaAtgard ur typens forstaAtgard :2294",
+  "Födelsesteg gap23: case-skapande typer föds i 'forhandsbedomning', rena triage-destinationer (triage_forward/karantan) i 'inflode' — hubs_arende/lib/Service/ArendeService.php:2259 (fodelseSteg), R10 :745-750",
+  "Commit-flöde: H3-idempotens (redan registrerad ⇒ kvitto ur persisterat state utan port-anrop), stabil correlationId 'hubs-case:{id}', payload-berikning (destination/frends_modul/arendetyp), verifierat kvitto flippar dnr+provenans+retention+gallrasDatum, L3 registerPersisted=false-signal vid DB-fel, journal, post-commit-hook — hubs_arende/lib/Service/ArendeService.php:1821-1922, :1974 (receiptFromRegistered)",
+  "FacksystemCommitService: enda vägen in i facksystem-commit; destination-gate (triage_forward/karantan avvisas), FAIL-CLOSED modulresolution (tom frends_modul kastar — gissar aldrig modul = sekretessincident-skydd), canonical INTEGRATION_MODE-nyckel — hubs_arende/lib/Service/FacksystemCommitService.php:83 (commit), :146 (assertCommittable), :172 (resolveModul)",
+  "GDPR-gallring med dubbel säkerhetsvakt (query-predikat + oberoende arGallringsbar-koll i loopen), purgar referensfiler→team→pekare→medlemmar→journal→per-case-grupp→registerrad, idempotent, PII-fri loggning — hubs_arende/lib/Service/GallringService.php:89 (gallra), :172 (arGallringsbar); query hubs_arende/lib/Db/ArendeMapper.php:134 (findGallringsbara); dygnsjobb hubs_arende/lib/BackgroundJob/GallringJob.php:47",
+  "Händelsejournal: 7 händelsetyper (skapad/steg/tilldelad/medlem/registrerad/rum/kopplad), detalj=litet koordinations-JSON, aktorUid ur session (''=system), best-effort-skrivning som aldrig fäller mutationen, äldst-först-läsning, gallras med ärendet — hubs_arende/lib/Db/Handelse.php:41-54, hubs_arende/lib/Db/HandelseMapper.php:43 (record), :77 (deleteByCaseId); loggaHandelse hubs_arende/lib/Service/ArendeService.php:248; läsyta historik() :1578",
+  "H1 objekt-authz: enhets-tillhörighet fail-closed, obehörig får DoesNotExistException (404, aldrig 403 — existens läcks ej); system/CLI-kontext (ingen session) tillåts; admin passerar allt — hubs_arende/lib/Service/ArendeService.php:2003 (assertEnhetAtkomst), :2020 (assertEnhetAtkomstForEnhet), :2047 (enhetTillaten)",
+  "show() = existens + authz i ett, uppslag på hubsCaseId ELLER dnr — hubs_arende/lib/Service/ArendeService.php:796, :809 (resolveByRef)",
+  "Dashboard-läsytor (engine-honest, PII fabriceras aldrig): dashboardSummary med puls/klartIdag :880, medlemsbaserad 'Mina ärenden' (mineOnly via ledgern) :948, mapToCard med kortRef/frist/plikt/tilldelning/pekare :981, mapToFullCard med groupfolder-dokumentlista+medlemmar :1096, fordelningSummary med utredarBelastning+ofordeladDagar :1155, treservaReceipts (verifierade kvitton) :1199 — alla i hubs_arende/lib/Service/ArendeService.php",
+  "SAGA-pekarblock för deep-links (talkToken, groupfolderId, deckBoard/Card, calendarUri, teamId, conversationId, talkRooms[] äldst-först=saga-originalet) — hubs_arende/lib/Service/ArendeService.php:2315 (pekarBlock), TOM_PEKARE :96",
+  "1:n-utökning: laggTillTalkrum (extra Spreed-rum med rumsnamn i pekare-riktning) :1642 och laggTillGroupfolder (grantar ENBART per-case-gruppen, aldrig enhetsgruppen) :1685 — hubs_arende/lib/Service/ArendeService.php",
+  "kopplaMeddelande med IDOR-skydd: durabel admin-taggning AVSTÄNGD by default (config koppla_admin_tag), conversation-pekare skrivs ENDAST när taggen verifierat landade, dedupliceradt/idempotent, referensfil skrivs alltid — hubs_arende/lib/Service/ArendeService.php:1731-1795, :1804 (kopplaAdminTagAktiverad)",
+  "ReferensFilService: .url-pekarfil i ärenderummets groupfolder (hashat filnamn, endast djuplänk+id, aldrig innehåll), pekare objekt_typ='groupfolder_ref', idempotent, taBortReferenser vid gallring/purge — hubs_arende/lib/Service/ReferensFilService.php:60, :108",
+  "Innehållsklassning: deterministisk 4-lagers kaskad (strukturerat SDK-fält 1.0 → avsändartyp 0.85 → blankett 0.6 → nyckelord 0.35) mot server-side tröskel (default 0.75, klamrad), under tröskel ⇒ 'oklassad' (fail mot människa); 8 ortogonala cross-cutting-flaggor beräknas alltid parallellt — hubs_arende/lib/Service/InnehallsKlassService.php:230 (klassificera), :282 (korKaskad), :471 (beraknaFlaggor); konsumeras av InfodeController.php:115",
+  "Matchningskaskad för arendekoppling: explicit case-tagg (1.0, enda bilagespegling) → dnr (1.0, ingen spegling) → conversationId (0.95) → partsheuristik (tak 0.7 < tröskel 0.9 ⇒ max 'foreslagen'); TF 2:18-fail-closed SSN-steg bakom positiv allow (partsModell + joinNyckel + ingen anonymitetssignal) — hubs_arende/lib/Service/ArendeMatchService.php:160 (match), :553 (partStegTillatet); konsumeras av InfodeController.php:116, :365",
+  "PII-fria statusaggregat (version, per-port integration_mode, counts per steg/status/provenans/destination, gallringsbara pending) — hubs_arende/lib/Service/StatusService.php:45; SQL-injection-skyddad GROUP BY-allowlist hubs_arende/lib/Db/ArendeMapper.php:303 (countByColumn)",
+  "Demo-seed genom RIKTIGA motorn (createCase→transitionera→tilldela→commit), idempotent, exakt purge via 'demo-'-prefix som river externa objekt per pekartyp (speglar sagans kompensationer) + reseed — hubs_arende/lib/Service/DemoSeedService.php:101 (seed), :152 (purge), :192 (tearDownExternal)",
+  "UUID v4-mint via NC ISecureRandom (CSPRNG) med korrekta versions-/variantbitar; kortRef = 6 första hex som mänsklig pseudonym-referens — hubs_arende/lib/Service/ArendeService.php:2525 (mintUuidV4), :189 (kortRef)",
+  "NC-notiser best-effort (tilldelad/medlem, självnotiser hoppas) — hubs_arende/lib/Service/ArendeService.php:214 (skickaNotis); dagligt frist-varsel vid exakt T-3 och T-0 till handläggare eller mottagningskrets — hubs_arende/lib/BackgroundJob/FristVarselJob.php:55, källquery hubs_arende/lib/Db/ArendeMapper.php:185 (findMedFristSenast)",
+  "Bevakningar-läsprojektion av ärendets Deck-kort via service-konto (aldrig skrivyta) — hubs_arende/lib/Service/ArendeService.php:1608 (bevakningar)",
+  "Pekar-register med reverse-lookup (extern id → ärende, för team-resursprovidern) — hubs_arende/lib/Db/PekareMapper.php:105 (findByTypAndObjektId); riktning-fältet överlagras (deck boardId, kalenderägar-uid, rumsnamn) hubs_arende/lib/Db/Pekare.php:53",
+  "Schema: 4 kärntabeller (case/typ/flagga/pekare) med UNIQUE hubs_case_id + index — hubs_arende/lib/Migration/Version000000Date20260616000000.php:42; härdning (UNIQUE conversation_id + gallras_datum) Version000100; member-tabell Version000200; handelse-tabell Version000300"
+ ],
+ "filer": [
+  {
+   "path": "hubs_arende/lib/Service/ArendeService.php",
+   "roll": "Motorns enda skrivare + saga-orkestrerare (R0–R10+T, kompensationer), authz (H1), tilldelning/medlemskap, commit-flöde, dashboard-projektioner, pekarblock — 2751 rader"
+  },
+  {
+   "path": "hubs_arende/lib/Service/ArendeLifecycleService.php",
+   "roll": "Enda lagliga steg-flyttaren: övergångsgraf, pliktgrind, per-steg frist-omräkning, journal"
+  },
+  {
+   "path": "hubs_arende/lib/Service/ArendeTypRegistry.php",
+   "roll": "Datadrivet ärendetyp-register: get/all/seedDefaults med de 8 default-config-raderna"
+  },
+  {
+   "path": "hubs_arende/lib/Service/SakerhetsskyddGrind.php",
+   "roll": "R0 fail-closed grind (säkerhetsskydd/visselblåsning) + retroaktiv karantän med auditkvitto"
+  },
+  {
+   "path": "hubs_arende/lib/Service/FacksystemCommitService.php",
+   "roll": "Enda vägen till facksystem-commit: destination-gate, fail-closed modulrouting, port-konsument (stub/live)"
+  },
+  {
+   "path": "hubs_arende/lib/Service/GallringService.php",
+   "roll": "GDPR-gallringssvep av motorns egna rader (pekare/medlem/journal/grupp/register) med dubbel säkerhetsvakt"
+  },
+  {
+   "path": "hubs_arende/lib/Service/ArenderumGroupService.php",
+   "roll": "Per-ärende-NC-grupp = ärenderummets åtkomstlista: ensure/sync/delete, speglad ur medlemsledgern"
+  },
+  {
+   "path": "hubs_arende/lib/Service/InnehallsKlassService.php",
+   "roll": "Deterministisk innehållsklassning till primärkategori + cross-cutting-flaggor med server-side tröskel"
+  },
+  {
+   "path": "hubs_arende/lib/Service/ArendeMatchService.php",
+   "roll": "Matchningskaskad för arendekoppling (case-tagg/dnr/conversationId/part) med TF 2:18-fail-closed partsteg"
+  },
+  {
+   "path": "hubs_arende/lib/Service/ReferensFilService.php",
+   "roll": ".url-referensfiler (pekare, aldrig kopia) i ärenderummets groupfolder + gallringsstädning"
+  },
+  {
+   "path": "hubs_arende/lib/Service/StatusService.php",
+   "roll": "PII-fri status/aggregat för admin-sida och occ-kommando"
+  },
+  {
+   "path": "hubs_arende/lib/Service/DemoSeedService.php",
+   "roll": "Dev/demo: seed genom riktiga motorn, exakt purge inkl. rivning av externa objekt, reseed"
+  },
+  {
+   "path": "hubs_arende/lib/Db/Arende.php",
+   "roll": "Registerentitet (hubs_arende_case): endast koordinationsstate, commitDestination NOT NULL-invariant"
+  },
+  {
+   "path": "hubs_arende/lib/Db/ArendeMapper.php",
+   "roll": "Enda skrivpunkten mot registret: idempotens-/dnr-/gallrings-/frist-/fördelnings-queries + PII-fria aggregat"
+  },
+  {
+   "path": "hubs_arende/lib/Db/ArendeTyp.php",
+   "roll": "Config-rad-entitet (hubs_arende_typ) med sträng-PK arendeTypId"
+  },
+  {
+   "path": "hubs_arende/lib/Db/ArendeTypMapper.php",
+   "roll": "Mapper för typregistret (findByTypId/findAll/exists)"
+  },
+  {
+   "path": "hubs_arende/lib/Db/Handelse.php",
+   "roll": "Journalrad-entitet med 7 händelsetyps-konstanter, detalj=koordinations-JSON"
+  },
+  {
+   "path": "hubs_arende/lib/Db/HandelseMapper.php",
+   "roll": "Journal-skrivning/läsning/gallring (record/findByCaseId/deleteByCaseId)"
+  },
+  {
+   "path": "hubs_arende/lib/Db/Member.php",
+   "roll": "Förstaklassig medlemsentitet med 4 rollkonstanter"
+  },
+  {
+   "path": "hubs_arende/lib/Db/MemberMapper.php",
+   "roll": "Medlemsledger: idempotent record med UNIQUE-race-hantering, findCaseIdsByUid (Mina ärenden), delete-varianter"
+  },
+  {
+   "path": "hubs_arende/lib/Db/Pekare.php",
+   "roll": "Tvåvägs-pekare till externa objekt (8 objekt_typ-värden), riktning som överlagrat hint-fält"
+  },
+  {
+   "path": "hubs_arende/lib/Db/PekareMapper.php",
+   "roll": "Pekar-CRUD inkl. reverse-lookup extern id→ärende"
+  },
+  {
+   "path": "hubs_arende/lib/Migration/Version000000Date20260616000000.php",
+   "roll": "Grundschema: hubs_arende_case/typ/flagga/pekare + index och NOT NULL-invarianten"
+  },
+  {
+   "path": "hubs_arende/lib/Migration/Version000100Date20260617120000.php",
+   "roll": "Härdning: UNIQUE conversation_id (M6) + gallras_datum-kolumn (L2)"
+  },
+  {
+   "path": "hubs_arende/lib/Migration/Version000200Date20260617140000.php",
+   "roll": "Medlemsledger-tabell med UNIQUE (case,uid,roll)"
+  },
+  {
+   "path": "hubs_arende/lib/Migration/Version000300Date20260703000000.php",
+   "roll": "Händelsejournal-tabell hubs_arende_handelse"
+  },
+  {
+   "path": "hubs_arende/lib/Migration/RegisterArendeTyper.php",
+   "roll": "RepairStep som idempotent seedar de 8 ärendetyperna vid install/upgrade"
+  },
+  {
+   "path": "hubs_arende/lib/Exception/AvvisadException.php",
+   "roll": "R0-avvisning med kvitto + retroaktiv-flagga"
+  },
+  {
+   "path": "hubs_arende/lib/BackgroundJob/GallringJob.php",
+   "roll": "Dygnsvis cron-drivare för GallringService"
+  },
+  {
+   "path": "hubs_arende/lib/BackgroundJob/FristVarselJob.php",
+   "roll": "Dagligt frist-varsel vid T-3/T-0 till handläggare/mottagningskrets"
+  }
+ ],
+ "stubbar": [
+  "FacksystemCommitStub är default-porten: 'live'-läget saknar registrerad live-port — mode() är enbart logg-etikett tills seam D wirats; lazy stub-fallback när DI saknas — hubs_arende/lib/Service/FacksystemCommitService.php:38-41 (kommentar), :138-140 (port())",
+  "SakerhetsskyddGrind::detectIndicator är uttalad TODO[detection]-hook: konservativ nyckelords-/strukturfälts-heuristik, ingen riktig klassificerare (strukturerade SDK-fält/avsändarregister/lokal innehållsmodell saknas) — hubs_arende/lib/Service/SakerhetsskyddGrind.php:353-360, :59-62",
+  "ArendeMatchService::registerPartHook returnerar ALLTID null (partsregistret ej wirat) ⇒ kaskadsteg 3 (SSN/orgId) kan aldrig producera en kandidat i praktiken — hubs_arende/lib/Service/ArendeMatchService.php:601-605",
+  "InnehallsKlassService org-register är TODO[konfig]-hook med tom default; endast inbyggd AVSANDARTYP_KAT-fallback används — hubs_arende/lib/Service/InnehallsKlassService.php:91-95, :562-592",
+  "enhet→grupp-mappningen är uttalad TODO[konfig] — idag enbart namnkonvention (normaliserad gid == normaliserad enhet), fail-closed default — hubs_arende/lib/Service/ArendeService.php:2044-2046 (kommentar i enhetTillaten)",
+  "Saga-stegens externa anrop beskrivs i klassdok som 'marked TODO ... only the external call bodies are stubbed' (R3–R7, R9 konsumeras via isAvailable()-gatade klienter; graceful skip när granne saknas) — hubs_arende/lib/Service/ArendeService.php:59-62; noopCompensation-platshållare :2734",
+  "DemoSeedService är helt dev/demo: hårdkodad demo-handläggare '197411040293' (dev15-specifik), syntetiska 'demo-'-rader — hubs_arende/lib/Service/DemoSeedService.php:53, :61-72",
+  "advanceStegEfterCommit behålls medvetet OANVÄND som referens (gap24: frontend driver stegflytten efter commit) — hubs_arende/lib/Service/ArendeService.php:1931, motivering :1895-1900",
+  "committedAt i kvittensytan approximeras med registrets 'skapad' (ingen separat commit-tidsstämpel lagras); receiptFromRegistered ger committedAt=null — hubs_arende/lib/Service/ArendeService.php:1216-1220, :1979",
+  "Frist-typerna 'domstol' och 'tidsbegransat' i typ-configen har ingen beräkningsgren i computeFristDue (match ger null; de förlitar sig på speglasUrTreserva=true ⇒ ingen egen klocka) — hubs_arende/lib/Service/ArendeService.php:2483-2488 mot hubs_arende/lib/Service/ArendeTypRegistry.php:294-298, :319-323",
+  "Motorn lagrar ingen egen skyddsbedömnings-kvittens: pliktgrindens kvittens är ett klient-signal i kontext, och pliktForArende härleder 'gjord' enbart ur att steget passerat förhandsbedömning — hubs_arende/lib/Service/ArendeLifecycleService.php:116-118, hubs_arende/lib/Service/ArendeService.php:2270-2286"
+ ],
+ "kandaBrister": [
+  "hubs_arende_flagga-tabellen skapas i migrationen men har INGEN entity/mapper/skrivare — cross-cutting-flaggorna från InnehallsKlassService::beraknaFlaggor persisteras aldrig på ärendet (verifierat via grep: enda träffar är migrationen själv) — hubs_arende/lib/Migration/Version000000Date20260616000000.php:225-254",
+  "GALLRING RIVER INTE EXTERNA OBJEKT: GallringService::gallra raderar pekar-raderna men anropar aldrig groupfolderClient/spreedClient/deckClient/calendarClient/sdkmcClient — ärenderummets groupfolder (inkl. dokument), Talk-rum, Deck-kort, kalenderobjekt och case-tagg blir föräldralösa externa objekt utan pekare (jämför DemoSeedService::tearDownExternal som river allt) — hubs_arende/lib/Service/GallringService.php:116-145",
+  "Trolig bugg i tilldela() Layer 2: sdkmcClient->tagMessage anropas med inflowMessageIds(['assigneeUid' => $uid]) men inflowMessageIds läser endast nycklarna messageIds/messageId ⇒ tom lista ⇒ assignee-taggningen är i praktiken en no-op — hubs_arende/lib/Service/ArendeService.php:1400-1404 mot :2589-2592",
+  "tilldela() Layer 1-kommentaren lovar 'revoke mottagning, grant assignee write' men applyAcl re-applicerar bara typens acl_profil; den faktiska avsmalningen sker via per-case-gruppsynken — semantiken beror helt på GroupfolderClient-implementationen — hubs_arende/lib/Service/ArendeService.php:1387-1394",
+  "tilldela() saknar kompensationsstack: register-flippen sker EFTER de fyra externa lagren; om ett lager kastar (klienterna förväntas vara graceful, men det är klientberoende) avbryts tilldelningen halvvägs utan rollback av redan utförda lager — hubs_arende/lib/Service/ArendeService.php:1386-1442",
+  "laggTillMedlem har INGEN enhets-behörighetskontroll på det tillagda uid:t (endast assertRiktigAnvandare) — en enhetsbehörig anropare kan lägga till en användare från en annan enhet som co-handläggare/observatör, vilket ger folder- och chattåtkomst över enhetsgränsen (jämför assertAssigneeBehorig som finns på tilldela-vägen) — hubs_arende/lib/Service/ArendeService.php:1477-1509",
+  "Retroaktiv karantän R-retro-1: untagMessage($hubsCaseId, []) med TOM messageId-lista — indexborttagningen gör sannolikt ingenting reellt (samma mönster erkänns som 'graceful no-op' i DemoSeedService:214) — hubs_arende/lib/Service/SakerhetsskyddGrind.php:275-280",
+  "komplettering/verkstallighet (frendsModul=null, 'ärver värd-modulen') kan inte committas idag: resolveModul kastar fail-closed och attach-vägen som ska tråda in värd-ärendets modul finns inte — hubs_arende/lib/Service/FacksystemCommitService.php:172-181, hubs_arende/lib/Service/ArendeTypRegistry.php:254, :329",
+  "Rad med retention_state='gallras_efter_commit' men utan gallrasDatum i kvittot blir ALDRIG gallringsbar (findGallringsbara kräver gallras_datum IS NOT NULL) — evig koordinationsrad om facksystemet inte levererar deadline — hubs_arende/lib/Service/ArendeService.php:1862-1873, hubs_arende/lib/Db/ArendeMapper.php:144-152",
+  "karantan-/triage_forward-rader kan per definition aldrig committas (assertCommittable avvisar) och har retention aktiv/pausad ⇒ de gallras aldrig av sweepen; ingen separat städväg finns för dem — hubs_arende/lib/Service/FacksystemCommitService.php:55, hubs_arende/lib/Service/SakerhetsskyddGrind.php:326-333",
+  "findAll(limit 200)-tak i dashboardArenden/utredarBelastning/klartIdag: vid >200 ärenden blir 'Mina ärenden', belastningssiffror och dagspulsen tyst ofullständiga — hubs_arende/lib/Service/ArendeService.php:919, :962, :1285",
+  "klartIdag räknar bara avslutade ärenden som SKAPADES idag (ingen avslut-/uppdaterings-tidsstämpel finns) — erkänt i koden som honest fallback men siffran är systematiskt för låg — hubs_arende/lib/Service/ArendeService.php:911-932",
+  "R5: Deck-kortet skapas med due=null (fristen beräknas först i R8) och due sätts aldrig i efterhand — bevaknings-kortet bär aldrig fristen trots stegkommentaren 'due=frist' — hubs_arende/lib/Service/ArendeService.php:583-594",
+  "FristVarselJob varslar endast vid EXAKT dagarKvar==3 eller ==0: en missad cron-dag (underhåll/nere) ⇒ tröskeln passeras ovarslad; ingen varsel-state lagras — hubs_arende/lib/BackgroundJob/FristVarselJob.php:72",
+  "Pekare saknar unik-constraint på (hubs_case_id, objekt_typ) — medvetet för 1:n talk_room/groupfolder, men även deck_card/calendar/team kan dubbleras vid partiella omkörningar; pekarBlock kompenserar med äldst-vinner-heuristik — hubs_arende/lib/Migration/Version000000Date20260616000000.php:256-288, hubs_arende/lib/Service/ArendeService.php:2309-2311",
+  "M6-UNIQUE på conversation_id förlitar sig på att NULLs är distinkta 'på Postgres' — beteendet är DB-beroende (kommentaren erkänner bara Postgres) — hubs_arende/lib/Migration/Version000100Date20260617120000.php:57-62",
+  "aclProfil-strängarna ('mycket_hog', 'arver', 'delad_kommun_region', 'familjeratt_inre_sekretess', 'karantan_deny_all' …) skickas opaka till GroupfolderClient — den faktiska ACL-semantiken (inkl. 'arver'-ärvning) är inte implementerad i motorlagret; kat4/kat7:s hela ärv-modell (enhet/ACL/sekretess/frist 'arver') saknar mekanism — hubs_arende/lib/Service/ArendeService.php:553-557, hubs_arende/lib/Service/ArendeTypRegistry.php:249-251, :324-326",
+  "partsModell='flerpartsarende' (familjerätt) har ingen verkställande mekanism i motorn — ingen partsåtskillnad/motparts-ACL byggs (endast config-värde + matchnings-allow-lista läser fältet) — hubs_arende/lib/Service/ArendeTypRegistry.php:357, hubs_arende/lib/Service/ArendeMatchService.php:112-116",
+  "summary(null) förväntar sig att OCS-lagret scope:ar till anroparens enheter men returnerar tomt aggregat i stället för att räkna upp — enhetslös översikt för flerehets-användare saknas i servicelagret — hubs_arende/lib/Service/ArendeService.php:828-838",
+  "HandelseMapper::record och MemberMapper::record använder new \\DateTime() direkt i stället för ITimeFactory — inkonsistent klockkälla mot resten av motorn (testbarhet) — hubs_arende/lib/Db/HandelseMapper.php:49, hubs_arende/lib/Db/MemberMapper.php:51",
+  "Handelse-typen 'avslutad' nämns i migrationskommentaren men har ingen konstant/skrivare (avslut journalförs endast som TYP_STEG-övergång) — hubs_arende/lib/Migration/Version000300Date20260703000000.php:63 mot hubs_arende/lib/Db/Handelse.php:41-54",
+  "dnr saknar unik-constraint i schemat och findByDnr tar setMaxResults(1) — vid dnr-kollision (kända dubbletter från stubben, se mapToCard-kommentaren) resolveras ref tyst till godtycklig rad — hubs_arende/lib/Db/ArendeMapper.php:79-93, hubs_arende/lib/Service/ArendeService.php:984-987",
+  "frist_due saknar index trots att findMedFristSenast filtrerar/sorterar på kolumnen (mindre prestandabrist) — hubs_arende/lib/Db/ArendeMapper.php:185-203, hubs_arende/lib/Migration/Version000000Date20260616000000.php:124-126"
+ ]
+}

@@ -1,0 +1,77 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/03 Förhandsbedömning och beslut att inleda eller inte inleda utredning.docx",
+    "titel": "03 Förhandsbedömning och beslut att inleda eller inte inleda utredning",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Mottagning / Barn och familj]",
+        "[Namn — och om vårdnaden är gemensam/ensam, om relevant för beslutet]",
+        "[ÅÅÅÅ-MM-DD klockslag]",
+        "[beskriv]",
+        "[Namn/funktion — eller \"anonym\" om anmälaren är okänd/skyddad]",
+        "[Gjord ÅÅÅÅ-MM-DD — resultat i korthet]",
+        "[Tidigare anmälningar, pågående/avslutade insatser, tidigare utredningar, skyddade uppgifter — det som är känt utan att utreda.]",
+        "[datum, kort vad som framkom]",
+        "[Sammanfatta det befintliga informationsunderlaget och avgränsningen. Notera om något är oklart men medvetet lämnats till en eventuell utredning.]",
+        "[Vad i underlaget talar för att barnet kan behöva utredas?]",
+        "[Vad talar emot ett utredningsbehov?]",
+        "[Ålder, sårbarhet, uttryckt vilja om känd]",
+        "[Din slutsats i sak, kort motiverad.]",
+        "[Motivera varför utredning inleds / inte inleds / hanteras på annat sätt. Var konkret och saklig.]",
+        "[Namn]",
+        "[Titel, t.ex. 1:e socialsekreterare / enhetschef]",
+        "[Punkt i delegationsordningen som beslutet stödjer sig på]",
+        "[ÅÅÅÅ-MM-DD — ska ligga inom 14 dagar från att anmälan kom in]",
+        "[ange vad som görs och vem som ansvarar]",
+        "[Namn, titel]",
+        "[Namn, titel, delegationspunkt]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Ev. medbedömare/gruppledare]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "anmalan-ansokan-inkom-typ-av-aktualisering",
+            "etikett": "Anmälan/ansökan inkom:  Typ av aktualisering",
+            "token": "[ÅÅÅÅ-MM-DD klockslag]"
+        },
+        {
+            "id": "anmalare-sokande-kalla",
+            "etikett": "Anmälare/sökande/källa",
+            "token": "[Namn/funktion — eller \"anonym\" om anmälaren är okänd/skyddad]"
+        },
+        {
+            "id": "omedelbar-skyddsbedomning",
+            "etikett": "Omedelbar skyddsbedömning",
+            "token": "[Gjord ÅÅÅÅ-MM-DD — resultat i korthet]"
+        },
+        {
+            "id": "tidigare-kannedom-i-arendet",
+            "etikett": "Tidigare kännedom i ärendet",
+            "token": "[Tidigare anmälningar, pågående/avslutade insatser, tidigare utredningar, skyddade uppgifter — det som är känt utan att utreda.]"
+        },
+        {
+            "id": "risk-orossignaler",
+            "etikett": "Risk-/orossignaler",
+            "token": "[Vad i underlaget talar för att barnet kan behöva utredas?]"
+        },
+        {
+            "id": "skydds-friskfaktorer",
+            "etikett": "Skydds-/friskfaktorer",
+            "token": "[Vad talar emot ett utredningsbehov?]"
+        },
+        {
+            "id": "barnets-situation-och-behov",
+            "etikett": "Barnets situation och behov",
+            "token": "[Ålder, sårbarhet, uttryckt vilja om känd]"
+        },
+        {
+            "id": "sammanvagd-bedomning",
+            "etikett": "Sammanvägd bedömning",
+            "token": "[Din slutsats i sak, kort motiverad.]"
+        }
+    ]
+}

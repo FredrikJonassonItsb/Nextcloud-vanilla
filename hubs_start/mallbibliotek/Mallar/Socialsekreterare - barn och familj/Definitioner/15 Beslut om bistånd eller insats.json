@@ -1,0 +1,43 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/15 Beslut om bistånd eller insats.docx",
+    "titel": "15 Beslut om bistånd eller insats",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[Namn — ange vem som ansökt: vårdnadshavare, barnet självt, eller om insatsen initierats av nämnden]",
+        "[hubsCaseId / Treserva-dnr]",
+        "[Barn och familj]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Beskriv den insats eller det bistånd som ansökts om eller som nämnden överväger — t.ex. öppenvård, kontaktperson/kontaktfamilj, stödsamtal, placering]",
+        "[Vad barnet själv gett uttryck för, i förhållande till ålder och mognad — eller varför barnets inställning inte inhämtats]",
+        "[Samtycke / delat samtycke / inställning]",
+        "[Ev. ytterligare tillämplig bestämmelse — t.ex. avgift, insats enligt annan lag]",
+        "[Hänvisa till utredningen och övrigt underlag — datum och dnr]",
+        "[med vem]",
+        "[t.ex. läkarintyg, skolyttrande — ange endast det som faktiskt vägts in]",
+        "[Beskriv det behov utredningen visat hos barnet]",
+        "[Motivera varför insatsen bifalls, delvis bifalls eller avslås — koppla till behovet och till barnets bästa]",
+        "[Ange särskilt vilken del som avslås, vilket behov som inte anses föreligga eller kan tillgodoses på annat sätt, och grunden för det]",
+        "[Ange exakt vilken insats som beviljas]",
+        "[T.ex. antal tillfällen/timmar per vecka, kontaktperson visst antal timmar]",
+        "[Vem verkställer insatsen]",
+        "[Namn]",
+        "[T.ex. socialsekreterare / 1:e socialsekreterare / enhetschef]",
+        "[Ange punkt/nummer i kommunens delegationsordning — verifiera behörighet för just denna beslutstyp]",
+        "[datum]",
+        "[datum/hur]",
+        "[Namn, titel]",
+        "[Punkt i delegationsordningen]",
+        "[Signerat ÅÅÅÅ-MM-DD hh:mm]",
+        "[Treserva dnr / tidpunkt]",
+        "[Namn, datum]"
+    ],
+    "falt": [
+        {
+            "id": "beslutet-grundas-pa",
+            "etikett": "Beslutet grundas på",
+            "token": "[Hänvisa till utredningen och övrigt underlag — datum och dnr]"
+        }
+    ]
+}

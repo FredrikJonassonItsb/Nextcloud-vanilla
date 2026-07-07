@@ -1,0 +1,104 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/04 Utredningsplan (BBIC).docx",
+    "titel": "04 Utredningsplan (BBIC)",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr]",
+        "[Barn och familj / utredningsgrupp]",
+        "[Namn — ensam/gemensam vårdnad]",
+        "[Namn — ange om annan boendeförälder eller umgängesförälder]",
+        "[Namn, titel]",
+        "[Namn, om utredningen görs i par]",
+        "[Namn]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Kort sammanfattning av orosanmälan/ansökan och det som ligger till grund för beslutet att inleda utredning. I sak, utan värderingar.]",
+        "[Frågeställning 1 — t.ex. Har barnet behov av skydd eller stöd som inte tillgodoses idag?]",
+        "[Frågeställning 2 — t.ex. Vilka behov hos barnet är otillgodosedda och varför?]",
+        "[Frågeställning 3 — t.ex. Vilken förmåga har vårdnadshavarna att tillgodose barnets behov?]",
+        "[Frågeställning 4 — vid behov]",
+        "[Beskriv kort varför de markerade områdena är relevanta för frågeställningarna, och varför övriga områden lämnats utanför.]",
+        "[Namn eller funktion, t.ex. förskola, skola, BVC/elevhälsa, BUP, öppenvård]",
+        "[Vilken fråga/vilket BBIC-område kontakten gäller]",
+        "[datum/hänvisning till samtyckesblankett]",
+        "[kort notering om vad som får delas]",
+        "[Ange befintlig dokumentation/tidigare aktualiseringar som kan användas, så att samma uppgifter inte begärs i onödan.]",
+        "[Ex. enskilt samtal, ev. med tolk, plats där barnet känner sig tryggt]",
+        "[Hur samtalet läggs upp utifrån barnets förutsättningar]",
+        "[ange och motivera kort]",
+        "[tidpunkt/form]",
+        "[vilka och varför]",
+        "[ange]",
+        "[Ex. första samtal med vårdnadshavare / eget samtal med barn / inhämtande från skola / sammanställning / kommunicering]",
+        "[planerad tidpunkt]",
+        "[notera skäl och beslut]",
+        "[Ange eventuella invändningar eller önskemål och hur de hanterats. Notera om barnet eller vårdnadshavare har en annan uppfattning om vad som bör utredas.]",
+        "[Ev. medutredare/gruppledare]",
+        "[Namn, datum]",
+        "[Ja/nej, datum — anpassat efter ålder och mognad]",
+        "[Personakt / Treserva dnr]"
+    ],
+    "falt": [
+        {
+            "id": "vad-foranleder-utredningen",
+            "etikett": "Vad föranleder utredningen",
+            "token": "[Kort sammanfattning av orosanmälan/ansökan och det som ligger till grund för beslutet att inleda utredning. I sak, utan värderingar.]"
+        },
+        {
+            "id": "motivering-till-urvalet-av-omraden",
+            "etikett": "Motivering till urvalet av områden",
+            "token": "[Beskriv kort varför de markerade områdena är relevanta för frågeställningarna, och varför övriga områden lämnats utanför.]"
+        },
+        {
+            "id": "kontakt-referensperson",
+            "etikett": "Kontakt/referensperson",
+            "token": "[Namn eller funktion, t.ex. förskola, skola, BVC/elevhälsa, BUP, öppenvård]"
+        },
+        {
+            "id": "vad-ska-belysas",
+            "etikett": "Vad ska belysas",
+            "token": "[Vilken fråga/vilket BBIC-område kontakten gäller]"
+        },
+        {
+            "id": "uppgifter-som-redan-finns-i-arendet-och-inte-behover-hamtas-in-pa-nytt",
+            "etikett": "Uppgifter som redan finns i ärendet och inte behöver hämtas in på nytt",
+            "token": "[Ange befintlig dokumentation/tidigare aktualiseringar som kan användas, så att samma uppgifter inte begärs i onödan.]"
+        },
+        {
+            "id": "planeras-antal-form",
+            "etikett": "☐ Planeras — antal/form",
+            "token": "[Ex. enskilt samtal, ev. med tolk, plats där barnet känner sig tryggt]"
+        },
+        {
+            "id": "anpassning-efter-alder-och-mognad",
+            "etikett": "Anpassning efter ålder och mognad",
+            "token": "[Hur samtalet läggs upp utifrån barnets förutsättningar]"
+        },
+        {
+            "id": "barnets-eget-samtal-genomfors-med-utan-vardnadshavare-narvarande",
+            "etikett": "Barnets eget samtal genomförs med/utan vårdnadshavare närvarande",
+            "token": "[ange och motivera kort]"
+        },
+        {
+            "id": "planen-genomgangen-med-vardnadshavare-1-datum",
+            "etikett": "Planen genomgången med vårdnadshavare 1 — datum",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "planen-genomgangen-med-vardnadshavare-2-datum",
+            "etikett": "Planen genomgången med vårdnadshavare 2 — datum",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "planen-genomgangen-med-barnet-anpassat-efter-alder-och-mognad-datum",
+            "etikett": "Planen genomgången med barnet (anpassat efter ålder och mognad) — datum",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "synpunkter-pa-planen-fran-vardnadshavare-barn",
+            "etikett": "Synpunkter på planen från vårdnadshavare/barn",
+            "token": "[Ange eventuella invändningar eller önskemål och hur de hanterats. Notera om barnet eller vårdnadshavare har en annan uppfattning om vad som bör utredas.]"
+        }
+    ]
+}

@@ -302,6 +302,12 @@ export default {
 			type: [String, Number],
 			default: null,
 		},
+		/** gap17 — ärendet bokningen hör till: dnr/hubsCaseId märks in i kalender-
+		 * objektet (X-HUBS-DNR/CATEGORIES) så mötet syns i kortets Möten-flik. */
+		arende: {
+			type: Object,
+			default: null,
+		},
 	},
 
 	data() {
@@ -573,6 +579,11 @@ export default {
 			}
 			if (this.form.colleague?.id) {
 				payload.colleagueUserId = this.form.colleague.id
+			}
+			// gap17 — ärende-bindning: dnr (eller pseudonymt hubsCaseId) följer med
+			// bokningen så kalenderobjektet märks och mötet landar i kortets Möten-flik.
+			if (this.arende && (this.arende.dnr || this.arende.hubsCaseId)) {
+				payload.dnr = this.arende.dnr || this.arende.hubsCaseId
 			}
 			if (this.fromMailboxId !== null && this.fromMailboxId !== '') {
 				payload.fromMailboxId = this.fromMailboxId

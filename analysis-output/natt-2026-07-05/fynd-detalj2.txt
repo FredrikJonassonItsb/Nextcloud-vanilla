@@ -1,0 +1,80 @@
+### [P1][saga][KANT_ESKALERAT] Klientfel (inte bara saknad granne) är fail-open i R3–R9 + idempotensankaret gör degraderingen permanent — ärenden föds utan akt/chatt och kan aldrig läkas
+BESKR: Alla integrationsklienter sväljer HTTP-/auth-fel och returnerar null (SpreedClient::ocsRequest catch→null; DeckClient dokumenterar 'any sub-step failing / unauthenticated ⇒ NO-OP'). Sagan behandlar null identiskt med 'app saknas': steget hoppas, ingen pekare skrivs, kompensering triggas INTE, och cr
+EV: hubs_arende/lib/Integration/Client/SpreedClient.php:298-333 (ocsRequest: catch \Throwable → warning + null; :288-293 TODO[auth] 'Failures are swallowed + logged so the SAGA continues'); hubs_arende/lib/Integration/Client/DeckClient.php:39-4
+FÖRSLAG: Skilj 'app ej installerad' (isAvailable=false ⇒ skip, som idag) från 'anrop misslyckades' (kasta typad IntegrationException ⇒ saga-kompensering ⇒ 500 ⇒ retry återskapar allt) för de resursbärande stegen R4/R6; alternativ
+
+### [P1][saga][NYTT] Omfördelning är ingen handoff: förra handläggaren behåller medlemskap, folderåtkomst och ärendet i 'Mina ärenden'
+BESKR: tilldela() registrerar bara den NYA handläggaren (memberMapper->record) och raderar aldrig den tidigare ROLL_HANDLAGGARE-raden. atkomstUids() räknar ALLA handlaggare-/co-/observatörsrader som aktiv åtkomst, så efter omfördelning A→B (OmfordelaModal → api.tilldela, GUI-verifierad väg) synkas per-case
+EV: hubs_arende/lib/Service/ArendeService.php:1440-1451 (setAgareUid + record(ny uid) — ingen delete av tidigare handläggarrad; jfr :1361-1363 docblock 'the mottagning krets is revoked (atomic, no sekretess window — GAP-057)'), :2702-2719 (atko
+FÖRSLAG: I tilldela(): när agareUid byts, radera tidigare ägares ROLL_HANDLAGGARE-rad (deleteByCaseUidRoll) innan record av den nya, och journalför bytet ('tilldelad' med franUid/tillUid); produktbeslut om ex-handläggaren i ställ
+
+### [P1][data][NYTT] Retention-flippen sker ENBART i commit()-vägen — kat6 diariefor_direkt, triage_forward, karantan och avslutade-utan-registrering blir aldrig gallringsbara
+BESKR: findGallringsbara kräver provenance='registrerad' AND retention='gallras_efter_commit' AND gallras_datum satt. Enda skrivpunkten för den kombinationen är ArendeService::commit() vid verifierat kvitto. Ett kat6-ärende (diariefor_direkt) FÖDS registrerat via pre-saga-hooken men buildEntity sätter rete
+EV: ArendeService.php:2443 ($arende->setRetentionState('aktiv') i buildEntity), :2450-2458 (preHookKvitto sätter ENDAST provenance+dnr, ej retention/gallrasDatum), :1830-1837 (idempotent short-circuit före flippen), :1854-1864 (enda flip-/setGa
+FÖRSLAG: (a) I createCase: när preHookKvitto flippar provenance till 'registrerad', sätt även retention='gallras_efter_commit' + gallras_datum ur kvittot (EdiariumStub måste då leverera gallrasDatum). (b) Definiera och implemente
+
+### [P1][data][NYTT] Klienten kan skriva över commit_destination/frends_modul i commit-payloaden — kringgår karantän-invarianten och retention-pausen, och kan felrouta till fel facksystem-modul
+BESKR: ArendeService::commit() låter payloaden vinna över registret: $payload['commit_destination'] ?? $arende->getCommitDestination() (samma för frends_modul), och FacksystemCommitService::assertCommittable validerar PAYLOAD-värdet, inte registerraden. Given: SakerhetsskyddGrind har retroaktivt karantäner
+EV: ArendeService.php:1840-1843 (payload ?? register för båda fälten), :1859 (setRetentionState('gallras_efter_commit') utan hänsyn till 'pausad'); ArendeController.php:174 (public function commit(string $hubsCaseId, array $payload = []) — rå k
+FÖRSLAG: Vänd prioriteten i ArendeService::commit: registret + typregistret är sanningen — ignorera payload för commit_destination/frends_modul (eller kasta 400 vid avvikelse), och gör retention-flippen villkorad (flippa aldrig F
+
+### [P1][data][NYTT] Ingen UserDeletedEvent-lyssnare: raderas en handläggares NC-konto strandas dess tilldelade ärenden tyst (död agare_uid, osynliga i alla vyer)
+BESKR: agare_uid och member.uid är FK-by-convention utan städ- eller reparationsväg — grep visar 0 lyssnare på UserDeletedEvent/GroupDeletedEvent i hela hubs_arende. Given: en handläggare slutar och kontot raderas (normal offboarding i en kommun) → ärendet förblir status='tilldelat' med död agare_uid: det 
+EV: grep 'UserDeletedEvent|GroupDeletedEvent' i hubs_arende = 0 träffar; ArendeMapper.php:237-248 (findOtilldelade filtrerar på status='otilldelat'); FristVarselJob.php:100-104 (mottagare = enbart agare_uid när satt); MemberMapper.php:126-139 (
+FÖRSLAG: Registrera en IEventListener för UserDeletedEvent i Application::register som: (1) för varje ärende med agare_uid=raderad uid → status='otilldelat', agare_uid=null, journalpost, notis till mottagningskretsen; (2) deleteB
+
+### [P1][data][NYTT] Mail-speglade taggarna (oc_mail_tags/oc_mail_message_tags) saknar varje raderingsväg — överlever dev15-reset, gallring OCH retroaktiv karantän
+BESKR: F2b-speglingen dubbelskriver case:{uuid}- och behandlad-taggar till mail-appens egna tabeller så de syns i trådvyn, men ingen kod raderar spegeln: sdkmc:s deleteTag soft-deletar bara ItslTag (+IMAP-städjobb), dev15-reset.sh DELETE:ar enbart oc_sdkmc_itsl_message_tag/oc_sdkmc_itsl_tag, och GallringSe
+EV: ItslTagService.php:85-106 (mirrorTagToMailApp: insert i oc_mail_tags + tagMessage — enbart skrivväg), :207-232 (deleteTag: soft-delete av ItslTag, ingen mailTagMapper-radering); dev15-reset.sh:77-84 (rensar endast oc_sdkmc_itsl_*-tabellerna
+FÖRSLAG: Lägg spegel-radering i sdkmc: när en Hubs-tagg tas bort (deleteTag/DeleteTagsJob), radera motsvarande oc_mail_tags-rad + oc_mail_message_tags-mappningar per userId; komplettera dev15-reset.sh med DELETE mot oc_mail_tags/
+
+### [P1][ux][NYTT] Backendfel visas som lugnande tomtillstånd — 'allt inkommande är omhändertaget' när motorn i själva verket felade
+BESKR: Om hubs_arende/sdkmc svarar 500 eller nätet felar vid load sätts state.error men INGEN komponent renderar det — vyn visar i stället tomma zoner med aktivt lugnande texter: 'Inget otriagerat just nu — allt inkommande är omhändertaget' (1a) och 'Inga aktiva ärenden' (zon 3). loadInflodeSummary/loadTea
+EV: hubs_start/src/store/index.js:184-188 ('catch (e) { state.error = e }' — grep över alla .vue ger noll träffar på state.error); store/index.js:316-321,335-337 (tysta catch); hubs_start/src/components/socialsekreterare/AttTaEmotSektion.vue:11
+FÖRSLAG: Rendera ett felband i MinaArenden när state.error är satt ('Kunde inte hämta ärenden — visar senast kända läge') och ge varje sektion ett distinkt felstate skiljt från tomstate; lägg retry-knapp. Plats: MinaArenden.vue t
+
+### [P1][ux][KANT_ESKALERAT] Gruppledarens fördelningsvy är bruten i live — 'Fördela' postar till en sdkmc-endpoint som svarar 400 okand_atgard
+BESKR: onFordela/onOmfordela kör store.inflodeAction('tilldela'/'omfordela'), och api.inflodeAction boundary-routar bara ['skapa','koppla','registrera','gallra'] till hubs_arende — 'tilldela'/'omfordela' går till sdkmc POST /inflode/{action}. sdkmc-controllerns whitelist är exakt ['besvara','vidarebefordra
+EV: hubs_start/src/components/socialsekreterare/MinaArenden.vue:727-750 (onFordela/onOmfordela → store.inflodeAction('tilldela'/'omfordela')); hubs_start/src/services/api.js:739-741 (ARENDE_VERB = ['skapa','koppla','registrera','gallra'] → allt
+FÖRSLAG: Byt onFordela/onOmfordela till att anropa api.tilldela(ref, uid) (hubs_arende POST /arende/{ref}/tilldela — redan byggd, GUI-verifierad via kortets omfördelning). Plats: MinaArenden.vue onFordela/onOmfordela. Storlek: S
+
+### [P1][drift][NYTT] Wipe-återställningskällan är inte versionshanterad — hela session 4–5c-lagret ligger okommittat i arbetsytan
+BESKR: Senaste commit är 5a8551c7 (session 3-handover). ALLT som byggts/deployats i session 4–5c ligger som modified/untracked i den lokala Windows-arbetsytan: sdkmc-återställningskällorna routes-ocs-snippet.php (?? hubs_start/backend-additions/sdkmc/appinfo/), ItslTagService.php (F2/F2b-recoveryfilen), Ca
+EV: git status: '?? hubs_start/backend-additions/sdkmc/appinfo/' (routes-ocs-snippet.php), '?? hubs_start/backend-additions/sdkmc/lib/Service/ItslTagService.php', '?? hubs_arende/lib/Migration/Version000300Date20260703000000.php', '?? hubs_aren
+FÖRSLAG: Committa hela arbetsläget (hubs_arende 0.8.2 + hubs_start 1.3.4 + backend-additions + scripts) i en eller flera commits NU — det är ren versionshantering av redan deployad, GUI-verifierad kod. Storlek S (kräver dock anvä
+
+### [P1][drift][NYTT] Service-kontot (sa_user/sa_token) är en hård prereq utan provisioneringssteg — och koden hänvisar till en doc som inte finns
+BESKR: ServiceAccountAuth kräver app-config sa_user + sa_token för att sagan ska kunna skapa riktiga rum (groupfolder/Talk/Deck/kalender/team). Koden hänvisar till 'provision/service-account.md' — den filen finns inte, och sa_user/sa_token förekommer ingenstans i provision/ (0 grep-träffar). Designen är 's
+EV: hubs_arende/lib/Integration/ServiceAccountAuth.php:24 ('see provision/service-account.md' — ls provision/ = README.md, bootstrap.sh, manifest.yaml, reset-restore.md), :28-31 + :46-52 (null ⇒ graceful no-op); grep 'sa_user|sa_token|service.a
+FÖRSLAG: Skriv provision/service-account.md (occ user:add hubs-arende-svc, app-password, gruppmedlemskap) + nytt bootstrap-steg som sätter sa_user/sa_token via occ config:app:set --sensitive, + utöka steg (h)-verifieringen med en
+
+### [P1][drift][NYTT] Ingen verifiering av cron-läge/jobbexekvering + FristVarsel utan catch-up: en missad jobbdag = lagfrist-varsel borta för alltid
+BESKR: GallringJob och FristVarselJob registreras via info.xml, men ingenting i provision/bootstrap.sh eller något verifieringssteg kontrollerar att NC:s background-jobs-läge är cron (inte AJAX) eller att jobben faktiskt exekverar (0 grep-träffar på 'cron' i provision/). FristVarselJob varslar dessutom END
+EV: hubs_arende/lib/BackgroundJob/FristVarselJob.php:72 ('if ($dagarKvar !== 3 && $dagarKvar !== 0) continue;'), :29-31 (kommentar: förfallna varslas inte igen), :85-91 (catch \Throwable → logger only); GallringJob.php:54-61 (samma mönster); ap
+FÖRSLAG: (a) Byt exakt-match mot fönster+state: varsla vid dagarKvar<=3 respektive <=0 med en flagga/handelse-rad 'varslad_t3/varslad_t0' så missade dagar hämtas ikapp; (b) lägg 'occ config:app:get core backgroundjobs_mode' + las
+
+### [P0][juridik][KANT_ESKALERAT] Tyst stub-fallback fullbordar en olaglig gallringskedja: syntetisk 'verifierad' commit → retention-flip → fysisk destruktion av register + journal
+BESKR: Given en felkonfigurerad prod-instans (integration_mode_facksystem='live' utan bunden live-adapter, eller stavfel) resolvar porten TYST till FacksystemCommitStub som mintar dnr och ett kvitto med verifierad=true + gallrasDatum=+90 dagar. ArendeService::commit flippar då provenanceState='registrerad'
+EV: hubs_arende/lib/AppInfo/Application.php:137 ('$impl = $modeMap[$mode] ?? $default;' — okänt/'live'-läge faller tyst till stub) + :73 (enda mode i mappen är MODE_STUB); hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php:29-30,82 (veri
+FÖRSLAG: Gör resolvePort fail-closed: kasta RuntimeException när konfigurerat mode saknas i modeMap (i st.f. '?? $default'), plus occ-statuskommando som visar effektivt mode per port. Kräv dessutom explicit app-config-flagga ('ga
+
+### [P1][juridik][KANT_ESKALERAT] Signering är ett honor-system utan bevisvärde: checkbox-intyget persisteras aldrig, SigneringPort har noll konsumenter, dokumenturvalet läses aldrig
+BESKR: För 'signerat-beslut' gatear CommitGrind knappen 'För över' på checkboxen 'Jag har signerat dokumentet' — men signeradBekraftad skickas inte med i commit-payloaden, motorn läser varken den eller valdaDokument (0 träffar i hubs_arende), SigneringPort/SigneringStub konsumeras inte av något motorflöde,
+EV: hubs_start/src/components/socialsekreterare/CommitGrind.vue:17-27 (checkbox), :370 (endast knapp-gate), :378-382 (payload = {...this.payload, valdaDokument, arende} — signeradBekraftad saknas); grep valdaDokument i hubs_arende = 0 träffar; 
+FÖRSLAG: Persistera ett signeringsintyg i commit-flödet: utöka commit-payload/kvitto + händelsejournalen med {signeringsMetod, intygadAvUid, tid, dokumentHashRef, valdaDokument[]}; läs valdaDokument server-side och skriv det i jo
+
+### [P1][juridik][KANT_ESKALERAT] Skyddsbedömnings-kvittensen (SoL 11:1a) är ett flyktigt klient-boolean som aldrig dokumenteras
+BESKR: Pliktgrinden blockerar korrekt forhandsbedomning→utredning tills kontext['skyddsbedomningKvitterad']===true — men kvittensen förkastas efter kontrollen: journalen får bara {fran, till}, och vem som kvitterade skyddsbedömningen, när, och med vilket utfall skrivs ingenstans. Vilken API-klient som hels
+EV: hubs_arende/lib/Service/ArendeLifecycleService.php:119-130 (grinden läser $kontext['skyddsbedomningKvitterad']), :144-148 (journalen skriver ENDAST ['fran'=>$franSteg,'till'=>$nyttSteg] — kontexten förkastas); hubs_arende/lib/Db/Handelse.ph
+FÖRSLAG: Journalför kvittensen i samma transition: lägg skyddsbedomningKvitterad + aktorUid i TYP_STEG-detaljen, eller inför Handelse::TYP_SKYDDSBEDOMNING som skrivs när grinden passeras. Storlek S (en detalj-utökning i ArendeLif
+
+### [P1][juridik][KANT_ESKALERAT] Ratificerat BESLUT-12 ej implementerat: ArendeTyp saknar PuB-/laglig-grund-fälten ('config-fält från dag 1')
+BESKR: BESLUT-12 ratificerades 2026-06-16 med rekommendationen 'Config-fält i ArendeTyp-registry från dag 1' (lagligGrund, personuppgiftsansvarig, andamaalsbegransning, gdpr_art9) — och registret BYGGDES efter ratificeringen — men entiteten saknar samtliga fyra fält (grep i hela hubs_arende: 0 träffar). Be
+EV: hubs_start/docs/HUBS-BESLUTSLOGG.md:58 + :165-171 (BESLUT-12 REK, ratificerad enligt :14-16); hubs_arende/lib/Db/ArendeTyp.php:56-77 (komplett fältlista — lagligGrund/personuppgiftsansvarig/andamaalsbegransning/gdpr_art9 saknas); grep 'lagl
+FÖRSLAG: En migration som adderar fyra nullable kolumner på hubs_arende_typ + fälten i ArendeTyp-entiteten/jsonSerialize + seed-värden för orosanmälan (art 6.1.e + SoLPuL; art 9.2.g för känsliga uppgifter) i RegisterArendeTyper. 
+
+### [P1][juridik][NYTT] Ingen läs-/åtkomstlogg: otillåten intern slagning kan varken upptäckas eller utredas
+BESKR: Händelsejournalen loggar ENBART mutationer (skapad/steg/tilldelad/medlem/registrerad/rum/kopplad). Läsningar — ArendeService::show, GET /arende/{ref}/historik, case-messages, bevakningar, inflödes-excerpts — loggas ingenstans i hubs_arende eller sdkmc-tilläggen. Intern otillåten slagning (kollega lä
+EV: hubs_arende/lib/Db/Handelse.php:41-54 (uttömmande händelsetyplista — ingen läs-typ); hubs_arende/appinfo/routes.php:58-61 (historik-läsyta utan loggning); grep 'åtkomstlogg|läslogg|loggkontroll' i hubs_start/docs = endast widget-referenser 
+FÖRSLAG: Inför en åtkomstlogg-tabell (hubsCaseId, uid, yta, tid) skriven i show()/historik()/case-messages-vägarna med batchning + EGEN gallringsfrist (t.ex. 5 år, längre än ärendets), alternativt kanalisera till NC admin_audit m
+

@@ -1,0 +1,166 @@
+{
+ "kapitel": 2,
+ "kapitelRubrik": "MODUL-, SYSTEM-, LICENS- & DATALAGERARKITEKTUR (områdeskod ARK)",
+ "krav": [
+  {
+   "id": "K-2.1",
+   "rubrik": "Kärna-plus-tillägg-paketering (M0 + fyra SKU:er)",
+   "beskrivning": "Hubs SKA paketeras enligt kärna-plus-tillägg-modell, inte som fyra likvärdiga block: en obligatorisk osynlig plattformskärna M0 plus fyra säljbara SKU:er — M1 Meddelanden (ankare), M2 Video & Chat, M3 Filer, M4 Verksamhet. Motivering: sdkmc är redan ett delat plattformslager (egna DB-tabeller, taggmotor) och utpekat hem för ärendemotorn; M4 lagrar ingen egen verksamhetsdata.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Överlappar K-1.17; refereras i §10 roadmap (rad 695)"
+  },
+  {
+   "id": "K-2.2",
+   "rubrik": "Bryt sdkmc-monoliten i M0 + sdkmc-msg FÖRE M4",
+   "beskrivning": "Dagens sdkmc-monolit SKA brytas i M0 (sdkmc-core, namespace sdkmc_core) + sdkmc-msg (M1) INNAN M4 byggs. M0 äger: case:{id}-taggmotorn, sdkmc_arende-registret, ArendeService (saga), AppDetectionService-kontraktet och OCS-aggregat; sdkmc-msg behåller MessageTypeService, retention-stacken, korg-provisioning, trådning/kvittenser och DIGG-synk. Det är en kod-refaktor, INTE en data-migration (sdkmc_itsl_*-tabellerna ligger kvar, ägandet flyttar) — görs det inte först cementeras monoliten.",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS]/[BYGGS]",
+   "beroenden": "Motsvarar beslut B-MOD-1 i §9 beslutslogg; dubbleras som K-1.18 och K-3.28; refereras i §9 (rad 681) och §10 roadmap (rad 727); blockerar M4-bygget"
+  },
+  {
+   "id": "K-2.3",
+   "rubrik": "Taggmotorn flyttas till M0 — enda ägare av case:-token",
+   "beskrivning": "Taggmotorn (ItslTagService + Db/ItslTag med case:{id}-token) SKA flyttas till M0, och M0 SKA vara det ENDA stället som äger case:-token. Taggmotorn är join-mekanismen mellan alla moduler, inte mail-logik. Dokumentet verifierar att ItslTagMapper extends QBMapper mot tabellen sdkmc_itsl_tag.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS]→[BYGGS] (flytt)",
+   "beroenden": "Förutsätter uppdelningen i K-2.2"
+  },
+  {
+   "id": "K-2.4",
+   "rubrik": "Beroenderiktning mellan moduler (hård/mjuk)",
+   "beskrivning": "Beroenderiktningarna SKA vara: allt → M0 = HÅRD; M1 → M0 = HÅRD; M4 → M1/M2/M3/Kontakter = MJUK (graceful); M2 och M3 har inga hårda beroenden. M4:s minsta säljbara enhet = M0+M1+M4. Detta definierar systemgränserna och vad som får säljas separat.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Överlappar K-1.19"
+  },
+  {
+   "id": "K-2.5",
+   "rubrik": "M4 degraderar per saknad granne via saga-steg-skip",
+   "beskrivning": "M4 SKA degradera per saknad grannmodul genom att hoppa saga-steg utan att invarianterna bryts: saknas M1 → tom triage men ärendevyn lever; saknas M2 → chatt-/talkToken-steget hoppas; saknas M3 → ärenderum (Groupfolder) skapas ej; saknas Kontakter → FavoritValjare/motpartsresolver blir tom. Den stegvis degraderbara sagan R1–R9 är fundamentet för 'sälj separat'.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Kopplat till K-2.6 (funktions-detektering) och K-3.12 (graceful saga-steg)"
+  },
+  {
+   "id": "K-2.6",
+   "rubrik": "AppDetectionService utökas till funktions-detektering",
+   "beskrivning": "AppDetectionService SKA utökas från kanal- till funktions-detektering: lägg till calendar, groupfolders, files och contacts, och låt saga-motorn fråga tjänsten per steg. Dokumentet verifierar nuläget: HUBS_APPS = ['sdkmc','mail','spreed','calendar'] och CHANNEL_BY_APP täcker bara sdkmc/mail. Detta är hela fundamentet för graceful degradation.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]→[BYGGS]",
+   "beroenden": "Förutsättning för K-2.5/K-3.12; överlappar K-1.4"
+  },
+  {
+   "id": "K-2.7",
+   "rubrik": "Kontakter konsumeras som-den-är — ingen fork",
+   "beskrivning": "Nextcloud Kontakter SKA konsumeras oförändrad via ett tunt sdkmc-resolverlager — ingen fork och ingen egen SKU; det är ett mjukt M4-beroende. Contacts v8.3.12 med nativt CardDAV/vCard plus resolver räcker; favorit är en pekare (X-HUBS-SDK-REF), aldrig en kopia.",
+   "typ": "integration",
+   "statusIDok": "[FINNS] (resolver [BYGGS])",
+   "beroenden": "Mjukt beroende från M4 enligt K-2.4"
+  },
+  {
+   "id": "K-2.8",
+   "rubrik": "Processgränsen som licensgräns",
+   "beskrivning": "Arkitekturen SKA placera processgränsen som licensgräns: in-process PHP mot OCP = 'combined work' → AGPL; egen process/DB med app-nivå-HTTP-API = 'separate program' → kan vara proprietärt. Grundas på AGPLv3:s copyleft-trigger ('combined work'), §13-nätverkscopyleft (utlöses bara vid modifiering) och FSF:s hållning att pipes/sockets/HTTP normalt är separata program.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Bas för K-2.10–K-2.12 och K-2.20; disclaimer i dokumenthuvudet: ej juridisk rådgivning, se §9 B-LIC-1"
+  },
+  {
+   "id": "K-2.9",
+   "rubrik": "Komponenter som SKA vara/förbli AGPL",
+   "beskrivning": "Följande SKA vara/förbli AGPL utan valfrihet: bro-appen i NC (hubs_start-skalet), all OCP-användande PHP, sdkmc så länge den kör in-process, samt de forkade apparna mail (AGPL-3.0-only, verifierat) och spreed-itsl (AGPL-3.0-or-later, verifierat). Dokumentet verifierar hubs_start/appinfo/info.xml licence=agpl, NC 30–32; forkar ärver AGPL via upphovsrätten oavsett distributionskanal.",
+   "typ": "juridik",
+   "statusIDok": "[FINNS]",
+   "beroenden": "Licensskillnaden -only vs -or-later ska juristgranskas enligt K-2.12"
+  },
+  {
+   "id": "K-2.10",
+   "rubrik": "Vad som KAN vara proprietärt (villkorat)",
+   "beskrivning": "Följande KAN vara proprietärt, villkorat och endast efter juristverifiering: M4-verksamhetslogiken som ExApp-tjänst (egen process+DB, app-nivå-API, minimalt AGPL-ExApp-skal, ej app store), frontend-SPA endast om den talar rå OCS/REST utan @nextcloud/*-bundling, per-produkt-facksystemkonnektorer, samt ärenderegister-datalagret i ExApp-DB. Affärsvärdet: M4-motorn + konnektorer blir separat prissatta artefakter (5–10× GAP-019); förutsätter privat distribution + arm's-length.",
+   "typ": "juridik",
+   "statusIDok": "[BESLUT KRÄVS]/[BYGGS]",
+   "beroenden": "Motsvarar B-LIC-1 i §9 beslutslogg; kräver K-2.12 (jurist); refereras i §9 (rad 693); förutsätter ExApp-rent schema K-2.15"
+  },
+  {
+   "id": "K-2.11",
+   "rubrik": "App store kräver AGPL — proprietär M4 endast privat distribution",
+   "beskrivning": "Allt som publiceras på apps.nextcloud.com SKA vara AGPL-3.0-or-later/kompatibelt. Proprietär M4 FÅR endast distribueras privat — privat distribution tar bort store-politiken men INTE copyleft-mekaniken för combined work (att kringgå storen löser inte upphovsrätten för in-process-kod).",
+   "typ": "juridik",
+   "statusIDok": "[EXTERN] (NC-policy)",
+   "beroenden": "Villkorar K-2.10"
+  },
+  {
+   "id": "K-2.12",
+   "rubrik": "Inget proprietärt licensbeslut utan IP-jurist",
+   "beskrivning": "Inget proprietärt-licens-beslut FÅR fattas utan IP-/upphovsrättsjurist som verifierar: (i) att ExApp-gränssnittet är 'arm's length'; (ii) att inga AGPL-bibliotek bundlas proprietärt; (iii) distributionsmodellen; (iv) §13-skyldigheterna för driftande part; (v) mail-forkens AGPL-3.0-only vs spreeds -or-later (-only kan ej uppgraderas till framtida AGPLv4); (vi) securemails egna licens (separat Node/Express-container). Hela proprietär-tesen står och faller på juridisk verifiering.",
+   "typ": "juridik",
+   "statusIDok": "[EXTERN] (jurist)",
+   "beroenden": "Grindvakt för K-2.10; kopplad till B-LIC-1 i §9 beslutslogg"
+  },
+  {
+   "id": "K-2.13",
+   "rubrik": "Nextcloud Tables underkänns som motor-backend",
+   "beskrivning": "Nextcloud Tables SKA underkännas som backend för ärendemotorn, till förmån för en proper relationell DB — detta stänger den öppna designfrågan i HUBS-INTERNALS §1.2.4 och vänder tidigare design. Motivering: Tables bryter mot varje saga-krav — ingen single-writer (rader är användar-redigerbara → sekretess-haveri), ingen transaktion/rollback, svaga constraints/FK/unique, ingen schema-/migrationskontroll, dålig volymprestanda (EAV) och inget rad-lås (GAP-057 kan ej stängas).",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS] (vänder tidigare design)",
+   "beroenden": "Motsvarar B-DL-1 i §9 beslutslogg (topp-beslut, 'fatta först'); refereras av K-3.3 (rad 192) och §9 (rad 680); refererar underlagsdok HUBS-INTERNALS-ARENDEMOTOR.md (§11 dokumentregister)"
+  },
+  {
+   "id": "K-2.14",
+   "rubrik": "Ärenderegistret som proper NC-app-DB i M0/sdkmc (alternativ b)",
+   "beskrivning": "Ärenderegistret SKA implementeras som proper NC-app-DB i M0/sdkmc (alternativ b): Migration + QBMapper + IDBConnection med single-writer via service-lager. Tabeller: sdkmc_arende, sdkmc_arende_typ, sdkmc_arende_receipt. Detta är exakt mönstret sdkmc redan kör (ItslTagMapper extends QBMapper, Types::JSON, addUniqueIndex, soft-delete, getOrCreate-idempotens) — noll ny infrastruktur. Kapitlets migrationsvägs-block preciserar: Version02xxxxCreateArendeTable.php med addUniqueIndex(['hubs_case_id']) och NOT NULL på commit_destination.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (mönster [FINNS])",
+   "beroenden": "Förutsätter K-2.13 (Tables underkänd); mål-lyft till ExApp-DB enligt K-2.15; motsvarar GAP-056-registret i P0-byggsteg"
+  },
+  {
+   "id": "K-2.15",
+   "rubrik": "Schemat ExApp-rent från dag ett",
+   "beskrivning": "Schemat SKA designas ExApp-rent från dag ett: (a) inga FK:er ut mot oc_*-tabeller — alla NC-pekare (deckCardId, talkToken, groupfolderId, caseTagId, calendarObjUri) lagras som opaka strängar/int; (b) all skrivning går genom ETT service-lager (ArendeService = single writer), aldrig Mapper direkt från controllers. Detta gör senare lyft från (b) sdkmc-DB till (c) ExApp-DB till en utbytt persistens-adapter plus data-migrering, inte en omskrivning.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Möjliggör K-2.10 (proprietär M4 i ExApp); refereras i §9 (rad 694); samverkar med K-3.4/K-3.6"
+  },
+  {
+   "id": "K-2.16",
+   "rubrik": "Fält-allokering: användarens data i NC, motorns i intern DB",
+   "beskrivning": "Fält-allokeringen SKA följa enradsregeln 'det användaren rör → NC; det motorn räknar och pekar med → intern DB'. BEHÅLL I NC: ärendekort (Deck), ärenderum/dokument (Files/Groupfolders där ACL = OSL-gränsen), ärende-chatt (Spreed), kontakter/favoriter, case:{id}-systemtaggen. FLYTTA TILL INTERN DB: registret hubsCaseId↔dnr↔pekare, routing-/matchnings-state, ArendeTyp-config, frist-spegling, kvittens-/audit-logg (append-only), idempotens-/lås-nycklar. Skiljer projektion från sanning — NC-objekten blir vyer.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Samma regel som K-3.7"
+  },
+  {
+   "id": "K-2.17",
+   "rubrik": "NC-objekt som projektioner + reconciliation-jobb",
+   "beskrivning": "NC-objekten SKA vara projektioner/vyer, aldrig SoR för ärendet: DB-raden bär objektets id som opak pekare och NC-objektet bär case:{id}-tagg. ArendeReconciliationJob (GAP-056) SKA köras som BackgroundJob mot proper DB (mönster: UpdateAddressBookBackgroundJob) med indexerad SELECT och constraints som fångar dinglande pekare. Favorit-vCard får ALDRIG taggas med hubsCaseId. Garanterar registret som single point of truth — Deck/Files/Spreed kan bytas eller saknas utan att ärendet förloras.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-056; detaljeras vidare i K-3.17; favorit-pekar-regeln kopplar till K-2.7"
+  },
+  {
+   "id": "K-2.18",
+   "rubrik": "Intern DB håller endast koordinations-state (never-SoR)",
+   "beskrivning": "Intern DB SKA hålla endast koordinations-state (pekare + koordination), aldrig verksamhetsinnehåll. Att byta backend från Tables till intern DB ändrar INTE Hubs SoR-status: 'intern DB = kartan, facksystemet = territoriet'.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Upprepning/precisering av invariant K-1.5"
+  },
+  {
+   "id": "K-2.19",
+   "rubrik": "commitDestination som NOT NULL-constraint",
+   "beskrivning": "commitDestination SKA hävdas som NOT NULL-constraint på varje rad i sdkmc_arende_typ. Utan icke-null destination blir Hubs tyst de-facto-SoR; proper DB stärker invarianten på schema-nivå, vilket Tables aldrig kunde garantera.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Motsvarar B-INV-1 i §9 beslutslogg (refereras rad 682); samma invariant som K-1.6 och K-3.23"
+  },
+  {
+   "id": "K-2.20",
+   "rubrik": "Tre licensgränser utritade i dataflödet",
+   "beskrivning": "Tre gränser SKA vara utritade i dataflödet: (i) NC-processgränsen = AGPL-zonen; (ii) HTTP/AppAPI-gränsen = potentiell licensgräns (M4-ExApp kan vara proprietär; trafiken bär verksamhetsbegrepp i JSON — ingen intern-RPC); (iii) facksystemgränsen = SoR-gränsen (commitDestination-invarianten). Referensdataflödet skapa-ärende: M1-inflöde → case:-tagg (M0) → M0-bron vidarebefordrar app-event över HTTP → M4 skapar DB-rad + saga → opaka pekare, NC-objekt bär case:-tagg → commit via konnektor → append-only kvittens. De tre gränserna sammanfaller med modul-/licens-/SoR-gränsen.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Binder ihop K-2.8 (licensgräns), K-2.19 (SoR-gräns) och K-2.4 (modulgräns)"
+  }
+ ]
+}

@@ -139,3 +139,26 @@ Set the landing page per installation:
 ```
 occ config:system:set defaultapp --value='hubs_start,dashboard,files'
 ```
+
+---
+
+## KOMPLETTERING 2026-07-03 — fas 2d-släpet + kort-flikarnas läsytor
+
+**⚠ Återställnings-källa för routes.php:** hela det deploybara `'ocs'`-blocket
+(16 rutter) finns nu i **`sdkmc/appinfo/routes-ocs-snippet.php`** — använd DEN
+vid wipe-återställning, rekonstruera aldrig ur tabellerna nedan.
+
+Filer som tillkommit EFTER grund-tabellerna ovan (alla deployas till
+`apps/sdkmc/` med samma tar-recept):
+
+| Fil (backend-additions/sdkmc/) | Target | Route |
+|---|---|---|
+| lib/Service/NoteToSelfWrapperService.php | lib/Service/ | GET+POST /api/v1/note-to-self |
+| lib/Controller/OCS/NoteToSelfController.php | lib/Controller/OCS/ | (samma) |
+| lib/Service/ArendeEnrichmentService.php | lib/Service/ | GET /api/v1/arende-enrichment |
+| lib/Controller/OCS/ArendeEnrichmentController.php | lib/Controller/OCS/ | (samma) |
+| demo-data/InflodeDemoData.php | lib/Service/DemoData/ | — (config-gated demo) |
+| lib/Service/CaseMessagesService.php | lib/Service/ | GET /api/v1/case-messages |
+| lib/Controller/OCS/CaseMessagesController.php | lib/Controller/OCS/ | (samma) |
+| lib/Service/MeetingService.php (UPPDATERAD: getCaseMeetings) | lib/Service/ | GET /api/v1/arende-meetings |
+| lib/Controller/OCS/MeetingController.php (UPPDATERAD: forCase) | lib/Controller/OCS/ | (samma) |

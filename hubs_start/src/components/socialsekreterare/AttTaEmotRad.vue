@@ -33,24 +33,30 @@
 			</p>
 
 			<div class="att-ta-emot-rad__chips">
+				<!-- INNEHÅLLS-typen (server-klassad: korg-korridor → ämne → kanal).
+				     En rad i orosanmalan@-korgen SKA synas som "Orosanmälan" redan
+				     i triaget — inte bara som transportkanal. -->
+				<span v-if="typLabel" class="att-ta-emot-rad__typ">{{ typLabel }}</span>
 				<FristChip v-if="rad.frist" :frist="rad.frist" />
 				<ProvenansChip :provenance="rad.provenance" />
 			</div>
 		</div>
 
-		<!-- Åtgärder -->
+		<!-- Åtgärder. pending inaktiverar (dubbelklicksgard — ETT anrop per rad). -->
 		<div class="att-ta-emot-rad__actions">
 			<NcButton
 				type="primary"
 				class="att-ta-emot-rad__start"
+				:disabled="pending"
 				@click="onTriage('start')">
 				<template #icon>
 					<IconStart :size="20" />
 				</template>
-				{{ t('hubs_start', 'Ta emot & starta förhandsbedömning') }}
+				{{ pending ? t('hubs_start', 'Skapar ärende…') : t('hubs_start', 'Ta emot & starta förhandsbedömning') }}
 			</NcButton>
 			<NcButton
 				type="secondary"
+				:disabled="pending"
 				@click="onTriage('koppla')">
 				<template #icon>
 					<IconLink :size="20" />
@@ -83,6 +89,7 @@ import IconUnverified from 'vue-material-design-icons/AccountQuestion.vue'
 import { translate as t } from '@nextcloud/l10n'
 
 import { channelMeta } from '../../services/channels.js'
+import { typLabel } from '../../services/messageTypes.js'
 import FristChip from './FristChip.vue'
 import ProvenansChip from './ProvenansChip.vue'
 
@@ -106,12 +113,23 @@ export default {
 			type: Object,
 			required: true,
 		},
+		/** Pågående skapa-anrop för denna rad — knapparna inaktiveras. */
+		pending: {
+			type: Boolean,
+			default: false,
+		},
 	},
 
 	computed: {
 		/** Resolved channel presentation descriptor (icon + label + colour). */
 		channel() {
 			return channelMeta(this.rad.channel && this.rad.channel.channel)
+		},
+
+		/** Innehålls-typens etikett — delad vokabulär (services/messageTypes.js);
+		 * okänd typ ⇒ null ⇒ inget chip; transportkanaler renderas aldrig som typ. */
+		typLabel() {
+			return typLabel(this.rad && this.rad.messageType)
 		},
 
 		/** Identitets-badge text — legitimate "Ej verifierad — anonym" when unverified. */
@@ -241,6 +259,15 @@ export default {
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
+	}
+
+	&__typ {
+		font-size: 0.78rem;
+		font-weight: 600;
+		padding: 1px 10px;
+		border-radius: var(--border-radius-pill, 16px);
+		background: var(--color-primary-element-light, #e7f1f7);
+		color: var(--color-primary-element);
 	}
 
 	&__chips {

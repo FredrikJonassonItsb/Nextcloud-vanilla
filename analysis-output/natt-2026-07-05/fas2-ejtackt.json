@@ -1,0 +1,1856 @@
+[
+ {
+  "k": 1,
+  "id": "K-1.1",
+  "rubrik": "Hubs scope: säker kommunikations- och ärendekoordinationssvit, mellanlager",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lyft spreed-itsl-pinningen (min/max i dess info.xml) och verifiera hubs_arende+hubs_start mot NC 32-testinstans; livesidan av mellanlagret hör till GAP-019 (kap 2/3). Storlek M.",
+  "motivering": "Scope-principen (mellanlager, SoR utanför) är kodad och deklarerad i manifestet, och NC 32 är formellt stödd i info.xml. Men driftplattformen är NC 31 och NC 32-lyftet blockeras av spreed-itsl-pinningen; dessutom är hela mellanlagrets utsida (facksystem/diarium/signering) stub-only, så 'mellanlager mellan inflöde och facksystem' är bara bevisad mot stubbar."
+ },
+ {
+  "k": 1,
+  "id": "K-1.3",
+  "rubrik": "Öppna ärende = server-side aggregering, aldrig klient-fan-out",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Dokumentera/hävda tvåpunkts-ACL-modellen som medveten, eller bygg en samlad GET /arende/{ref}/aggregat i ArendeController som server-side komponerar flikdata (motorn anropar sdkmc med service-konto + vidarebefordrad authz). Storlek M.",
+  "motivering": "Mönstret följs: taggbara objekt (meddelanden) nås via systemtaggen case:{hubsCaseId} server-side, icke-taggbara (Talk/Deck/kalender/team) via register-pekare, och frontend gör aldrig fan-out mot råobjekt. Men det finns ingen EN samlad aggregerings-endpoint — kortet lazy-hämtar per flik från två separata ACL-system (motorns H1-enhetsgrind + sdkmc:s mailbox-ACL), så OSL-gränsen är samlad på två ställen, inte ett; filer bär ingen systemtagg utan nås enbart via ärenderummets groupfolder."
+ },
+ {
+  "k": 1,
+  "id": "K-1.4",
+  "rubrik": "Graceful degradation per grannapp",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Utöka AppDetectionService med funktions-capabilities (map funktion→krävda appar) och exponera i boot-payloaden så MinaArenden/ArendeKort släcker flikar/knappar per funktion; koppla ArendeReconciliationJob-beslutet (BESLUT-19) för efterläkning. Storlek M.",
+  "motivering": "Kärnan är byggd: varje saga-steg hoppar över saknad granne utan att kärninvarianten (registerraden) bryts, och frontend har honest-null-deeplinks. Men AppDetectionService är exakt den kanal-nivå kravet säger måste utökas — CHANNEL_BY_APP (:25-28) mappar app→kanal, ingen funktions-detektering (t.ex. 'bevakningar kräver deck', 'team-flik kräver circles') exponeras till UI:t; dessutom sväljs fel även när grannen FINNS men anropet fallerar (ingen reconciliation, känd brist)."
+ },
+ {
+  "k": 1,
+  "id": "K-1.7",
+  "rubrik": "SoR-doktrinen som fyrvägs-utfall per ärendetyp",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Migration + registry-utökning: sorFallback-kolumn på hubs_arende_typ med resolution i FacksystemCommitService; separat gallringsväg för karantan/triage_forward-rader i GallringService; datamodell för utfall (iii) kräver T-SOR-1-beslut per kommun innan innehåll sätts. Storlek M.",
+  "motivering": "Destinationen är datadriven per ärendetyp och tre av fyra utfall har verklig mekanism. Men sorFallback-fältet som gör fallback-destinationen per-kommun-konfigurerbar finns inte, utfall (iii) (tidsbegränsat mellanlager med uttryckligt beslut + gallringsregel + rättslig grund) saknar helt datamodell, och terminerande rader (utfall iv) blir eviga koordinationsrader utan städväg."
+ },
+ {
+  "k": 1,
+  "id": "K-1.8",
+  "rubrik": "Retention-flipp kräver registrerat utfall + verifierad callback",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "S-fix omedelbart: resolvePort ska kasta/logga error vid okänt eller olevererat integration_mode i stället för tyst stub-fallback (Application.php:124-142). Callback-route + live-port hör till GAP-019 (kap 3). Storlek S för fail-fast-fixen.",
+  "motivering": "Motor-invarianten är byggd och testad åt rätt håll (fail-safe: ingen callback ⇒ ingen gallring, aldrig tid/kryssruta). Men i en felkonfigurerad produktionsmiljö skulle den tysta stub-fallbacken producera syntetiska verifierade callbacks och flippa retention utan att någon verklig facksystem-lagring skett — vilket är exakt det kravet förbjuder. Verklig callback-mottagning (async route + live-port) saknas helt."
+ },
+ {
+  "k": 1,
+  "id": "K-1.9",
+  "rubrik": "Enda legitima SoR-roll: audit-/provenans-spåret",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Ny hook-handler 'handover_kvittens' i hookHandlers() + en smal kvittens-tabell (hubs_arende_kvittens: hubsCaseId, mottagare, status, tidsstämpel — aldrig innehåll) med egen retention. Blir aktuell först med extern_myndighet-flöden utanför socialtjänst-verticalen. Storlek S-M.",
+  "motivering": "Det smala audit-/provenans-SoR-spåret (bevis att handover/eskaleringskvittens skedde — 'skickat' ≠ 'mottaget', fallen F42/F45) är inte byggt: ingen handover_kvittens-handler, ingen kvittenslagring med egen gallringsfrist. Hook-infrastrukturen är dock generisk och deklarativ, så bygget är litet när fallet blir aktuellt."
+ },
+ {
+  "k": 1,
+  "id": "K-1.10",
+  "rubrik": "Säkerhetsskyddsklassat material avvisas/karantänsätts",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Kör SakerhetsskyddGrind (eller en portad detektor) per rad i sdkmc InflodeFeedService::buildSummary innan excerpt byggs, med samma karantän-markör som InfodeController::avvisadAvGrind; detektorkällan (funktionsadress-register per B-SEC-1) är beslutspunkt. Storlek M.",
+  "motivering": "Kravets kärnsemantik är korrekt byggd och testad: terminerande utfall (inte ACL), skild från skyddade PU, med retroaktiv karantän som bevarar bevis. Men i det verkliga flödet grindas bara ärendefödseln (Ta emot→createCase→R0) — feed-visningen i UI:t går via sdkmc:s ogrindade InflodeFeedService, så klassade rader kan exponeras med excerpt i inflödesbandet innan någon grind körs; detektionen är dessutom uttalad TODO[detection]-heuristik (nyckelord/strukturfält)."
+ },
+ {
+  "k": 1,
+  "id": "K-1.11",
+  "rubrik": "Visselblåsning isoleras, passerar aldrig sagan",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "(a) Grinda sdkmc-feeden (samma byggsteg som K-1.10); (b) explicit deny-lista av vissel-funktionsadresser i ConsolidateMailboxesJob + ArendeMatchService med test; (c) per-kommun-konfig av vilka korgar som är vissel-kanaler. Storlek M; kanalvalet (Lantero/WhistleB) är externt.",
+  "motivering": "Sagans hårda gräns är byggd och testad — visselblåsning föder aldrig ärende och retroaktiv isolering finns. Men kravets tvingande opt-out ur matchningsmotorn och konsolideringen är inte verkställd: på motorns läsväg skyddar M3-ordningen (grind före match), men den vägen är tom, och den verkliga sdkmc-feeden/konsolideringen saknar all vissel-medvetenhet. T-VISSEL-1 kräver dessutom att opt-outen TESTAS, inte bara konfigureras."
+ },
+ {
+  "k": 1,
+  "id": "K-1.12",
+  "rubrik": "12 roller som datadrivna config-profiler",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Sekvens: först K-1.26 (7 fälten i schema+registry, M), sedan seeda 1-2 pilotroller (registrator = e-diarium-instansen per K-1.13) som rena config-rader och verifiera att motorn kör dem utan kodändring. Storlek L totalt, men per roll S efter fälten.",
+  "motivering": "Kravets mekanism-halva är bevisad (en motor, config-rader, inga rollspecifika kodflöden), vilket var kravets verifierade poäng. Men 0 av 12 roller existerar som backend-config: config-vokabulären är inte utökad med de 7 fälten, och 11 av 12 roller har varken ärendetyper, korgar eller konnektorer — endast frontend-personas med demo-data."
+ },
+ {
+  "k": 1,
+  "id": "K-1.14",
+  "rubrik": "Roller klassas på SoR-typ (a–e) som styr integrationsmönster",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg sorTyp-fält på roll-/typ-nivå (hänger ihop med K-1.26-migrationen) och låt FacksystemCommitService/ArendeMatchService läsa klassningen (t.ex. sorTyp='d' ⇒ matchning körs ej, sorTyp='e' ⇒ deny). Beror på K-1.12-breddningen. Storlek M.",
+  "motivering": "SoR-typ-klassningen (a–e) som datadriven styrning av commitDestination/fallback/matchning finns inte i koden — commitDestination sätts idag direkt per ärendetyp utan mellanliggande klassning. Dokumentanalysen är gjord och grundlig, men kravet är ett arkitekturkrav på koden."
+ },
+ {
+  "k": 1,
+  "id": "K-1.15",
+  "rubrik": "Cross-role-routing: primarRoll + medmottagare, akter slås aldrig ihop",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Designa medmottagar-tabell (hubsCaseId, roll, enhet, egen commitDestination) + separat ACL-krets per medmottagare; kräver samtidigt FAM-2/FAM-3-besluten om partsmodell (DESLUT-listan) — bygg ej datamodellen ensidigt. Storlek L.",
+  "motivering": "Flermottagar-mönstret (eskalering/parallell mottagare/transit med egen ACL-krets + egen commit per medmottagare) har ingen datamodell eller mekanism. Positivt ur kravets riskvinkel: eftersom inget flermottagarstöd finns kan akter heller inte slås ihop av misstag — men de tre arketyperna kan inte hanteras alls."
+ },
+ {
+  "k": 1,
+  "id": "K-1.16",
+  "rubrik": "Behörighet via Circles + aclProfil-bibliotek, per-roll-konfigurerbar default",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Implementera applyAcl-regeluppsättning per profil (groupfolders ACL-API: per-grupp read/write/share-regler ur en profil→regler-map) + skrivare för hubs_arende_flagga med skyddade_personuppgifter-överstyrning i atkomstUids/mapToCard. Storlek M-L; per-roll-default kräver K-1.12-vokabulären.",
+  "motivering": "Biblioteksstrukturen (8 namngivna profiler som data) och Circles-fundamentet är på plats, men profilerna är opaka strängar utan verkställighet — den faktiska åtkomsten styrs idag enbart av per-case-gruppspegling, inte av profilen. Kravets två skarpaste delar (profil→ACL-regler, skyddade_personuppgifter som hårdare överstyrning) är obyggda; 'arver'-profilens hela ärv-modell saknar mekanism."
+ },
+ {
+  "k": 1,
+  "id": "K-1.17",
+  "rubrik": "Fem moduler i kärna-plus-tillägg-modell (M0–M4)",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Inget bygge — förlika kravdokumentet med HUBS-BESLUTSLOGG (revidera K-1.17/K-1.18 eller ompröva BESLUT-03) och fastställ SKU-modellen (B-SKU-1). Kunddialog/affärsbeslut, ej kod.",
+  "motivering": "Modellens anda uppnås delvis på annan väg än kravet specar: motorn (M4) är kod-separerad med egen DB och mjuka beroenden, men M0 sdkmc-core som egen modul finns inte och ska enligt ratificerad beslutslogg inte byggas — kravtexten och beslutsloggen står i konflikt (dokumenterad diskrepans i KOMPLETT-ANALYS). Kärna-plus-tillägg är därmed inte 'kod-tvingad' på M0/M1-snittet."
+ },
+ {
+  "k": 1,
+  "id": "K-1.18",
+  "rubrik": "Bryt sdkmc-monoliten i M0 + sdkmc-msg FÖRE M4",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Inget bygge ensidigt: stryk/omformulera K-1.18 mot BESLUT-03, eller ompröva beslutet om 'M1 säljs separat utan resten av sdkmc' blir affärskrav. Ren beslutspunkt.",
+  "motivering": "Kravet är inte uppfyllt och kommer per ratificerad beslutslogg inte att uppfyllas — arkitekturen valde standalone-motor i stället för monolit-split, och M4 byggdes utan splitten. Konsekvensen kravet varnade för ('sälj M4 separat är osant') är delvis mildrad av att motorn är egen app, men M4:s kärnlöfte kräver fortfarande hela sdkmc som M1. Kravtext och beslut måste förlikas av användaren."
+ },
+ {
+  "k": 1,
+  "id": "K-1.19",
+  "rubrik": "Minsta säljbara enheter + mjuka modulberoenden",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Paketera sdkmc-tilläggen deploybart (del av persistens-fixen, största operativa risken) och definiera install-profiler per SKU i provision/manifest.yaml. Storlek M; SKU-definitionen är B-SKU-1-beslut.",
+  "motivering": "Den tekniska halvan (M4:s beroenden mot M2/M3/Kontakter är mjuka/graceful) är genuint byggd och kravets kärnlöfte — motorn fungerar med bara M0+M1 — håller i koden. Säljbarhets-halvan (paketerade minsta enheter) existerar inte som artefakt och beror på B-SKU-1."
+ },
+ {
+  "k": 1,
+  "id": "K-1.20",
+  "rubrik": "Licensgräns vid processgränsen; M4-motorn ExApp-ren",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Abstrahera CalendarClient bakom en port med OCS/CalDAV-HTTP-implementation som ExApp-alternativ (S-M); ExApp-lyftets tidpunkt är B-EXAPP-1-beslut ('bygg inte i förskott'); slutför licensmatrisen med jurist.",
+  "motivering": "Motorn är designad med ExApp-disciplin i schema och skrivvägar, och juristspåret är påbörjat/delvis stängt. Men kalender-skrivvägen är ett dokumenterat in-process-undantag som bryter processgränsen, appen körs idag in-process (b-läget), och det slutliga licensvalet per artefakt (mail -only vs spreed -or-later, securemail) är inte låst — kravet säger uttryckligen att inget proprietärt beslut får fattas utan IP-jurist."
+ },
+ {
+  "k": 1,
+  "id": "K-1.24",
+  "rubrik": "Designprincip: Flow vs programmatiskt hålls isär",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Dokumentera Flow-användningsgränsen i provision/README + lägg eventuella tagg-baserade Flow-regler (t.ex. auto-markering i ärenderum) som konfigrecept i provision/manifest.yaml när behov uppstår. Storlek S.",
+  "motivering": "Koden bryter inte principen — ingenting orkestreras i Flow som borde vara programmatiskt. Men den deklarativa sidan (core-Flow för fil-/tagg-centriska regler) är varken uppsatt i provision/ eller dokumenterad som konfigrecept, så isärhållningen är idag trivialt sann snarare än designad."
+ },
+ {
+  "k": 1,
+  "id": "K-1.25",
+  "rubrik": "Designprincip: commitDestination-invarianten bärande",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Server-side gallra-verb i InfodeController/ArendeService som (a) kräver handlingstyp ur konfigurerad DHP-källa (T-DHP-1-beslut för källan), (b) journalför gallringsbeslutet (aktör, handlingstyp, beslutsgrund) i händelsejournalen. Storlek M; DHP-källan är beslutspunkt.",
+  "motivering": "Två av tre led i invarianten är schema-/kodhävdade och testade. Tredje ledet (registrerings-/gallringsgrinden för ej-kopplat) är en ren frontend-grind: vid skarpt bruk fattas gallringsbeslut mot en demo-DHP-lista och lämnar inget spår i motorn — juridiskt svagt mot TF/arkivlagen när riktiga meddelanden gallras."
+ },
+ {
+  "k": 1,
+  "id": "K-1.26",
+  "rubrik": "ArendeTyp-raden utökas med 7 strukturella fält",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "En migration (7 nullable kolumner på hubs_arende_typ) + ArendeTyp-entity/registry-utökning + att karantanKravs konsumeras i createCase (enda fältet som rör motorn — routa till karantän-utfallet i stället för avvisa). Fältens INNEHÅLL per roll/kommun är beslut (T-SOR-1 m.fl.), men schemat kan byggas nu. Storlek M.",
+  "motivering": "Inget av de 7 Δ-breddfälten (KOMMUNROLLER §-utökningen: bl.a. sorFallback och karantanKravs) finns i schemat, registryn eller entiteten. Detta är den konkreta blockeraren bakom K-1.7/K-1.12/K-1.14 — baslinjens skattning 'Δ-breddfälten saknas i schemat' stämmer mot koden."
+ },
+ {
+  "k": 2,
+  "id": "K-2.1",
+  "rubrik": "Kärna-plus-tillägg-paketering (M0 + fyra SKU:er)",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Revidera M0-M4-modellen mot den FAKTISKA appuppsättningen (orörd sdkmc + standalone hubs_arende i st.f. sdkmc-core-split) och fastställ SKU:erna (B-SKU-1) + paketeringsartefakter (bundles/privat registry per BESLUT-04). Dokument-/paketeringsarbete, M.",
+  "motivering": "Paketeringsmodellen är dokumenterad och SKU-modellen ratificerad, och modulgränser finns de facto i appstrukturen (standalone-motor + bro + forkar). Men M0 finns inte (BESLUT-03 tog bort splitten som skulle skapa den), ingen SKU-paketering/artefakter existerar, och B-SKU-1 (affärsmässigt fastställande) är öppet per HUBS-KRAVSTALLNING-TOTAL.md:695."
+ },
+ {
+  "k": 2,
+  "id": "K-2.2",
+  "rubrik": "Bryt sdkmc-monoliten i M0 + sdkmc-msg FÖRE M4",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Ingen kod. Revidera kravdokumentet (K-2.2 + dubbletterna K-1.18/K-3.28 + §9 B-MOD-1 + §10 P0.1) så det speglar BESLUT-03 — annars styr obsolet krav framtida agenter fel. S.",
+  "motivering": "Kravet är formellt upphävt av beslutsloggen 2026-06-16. Kravets premiss ('görs det inte först cementeras monoliten') falsifierades delvis: M4-motorn byggdes utan split, i standalone-app med egen DB som konsumerar sdkmc via OCS — syftet (motorn cementeras inte in i monoliten) uppnått på annan väg."
+ },
+ {
+  "k": 2,
+  "id": "K-2.3",
+  "rubrik": "Taggmotorn flyttas till M0 — enda ägare av case:-token",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Om single-ägarskap fortfarande önskas: kontraktfäst ägarmodellen för case:-token mellan hubs_arende (mint/beslut) och sdkmc (lagring), inkl. den saknade e-post-scopade case-tag-rutten på sdkmc-sidan (SdkmcClient.php:44-63 kräver idag manuell sdkmc_tag_account-config). S-M.",
+  "motivering": "Flytten upphävd av BESLUT-03 (sdkmc behåller taggar, HUBS-BESLUTSLOGG.md:18). case:-tokenägandet är idag delat i praktiken: hubs_arende mintar case:{uuid} och beordrar taggning via OCS; sdkmc lagrar i sdkmc_itsl_tag och sätter dessutom case:-taggar själv vid 'Ta emot'. Ingen enskild ägare, men ingen känd kollision."
+ },
+ {
+  "k": 2,
+  "id": "K-2.4",
+  "rubrik": "Beroenderiktning mellan moduler (hård/mjuk)",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Formalisera beroendematrisen mot faktisk appuppsättning: dependencies i info.xml där hårt beroende avses + dokumenterad supportmatris per SKU (kopplas till B-SKU-1). S.",
+  "motivering": "MJUK-riktningarna är byggda och verifierbara. HÅRD-riktningarna (allt→M0, M1→M0) kan inte verkställas eftersom M0 inte existerar; motorn har i kod inte ens hårt beroende på sdkmc (degraderar gracefully) — starkare än kravets modell, men 'minsta säljbara enhet' är oformaliserad (ingen dependency-deklaration eller supportmatris per SKU)."
+ },
+ {
+  "k": 2,
+  "id": "K-2.6",
+  "rubrik": "AppDetectionService utökas till funktions-detektering",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Utöka HUBS_APPS + lägg functionCoverage() i hubs_start/lib/Service/AppDetectionService.php (groupfolders, files, contacts, circles) och konsumera i dashboardens täckningsdeklaration; alternativt ratificera per-klient-mönstret som ersättning och revidera kravet. S.",
+  "motivering": "Kravet som skrivet (central tjänst utökad med calendar/groupfolders/files/contacts som sagan frågar per steg) är inte byggt — men graceful degradation-fundamentet finns via decentraliserad per-klient-detektering, funktionellt ekvivalent för saga-skip. Kvarvarande reell lucka: hubs_start-dashboarden kan inte ärligt deklarera funktions-täckning för files/groupfolders/contacts, och contacts-detektering saknas helt på båda sidor."
+ },
+ {
+  "k": 2,
+  "id": "K-2.7",
+  "rubrik": "Kontakter konsumeras som-den-är — ingen fork",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Bygg DIGG-/användarkatalog-batch-resolven (KONTAKTER-FAVORITER §2.3 steg 2) i FavoriterService (färskhetskoll, identitet-badge, removed-tombstone) + aktivera contacts-appen på dev15. M.",
+  "motivering": "Huvudkravet (ingen fork, tunt pekarlager, pekare-inte-kopia) är uppfyllt och verifierat. Men resolverlagret som kravet förutsätter ('plus resolver räcker') är uttryckligen obyggt — a/c-favoriter kan aldrig färskhetskontrolleras, tombstone-mekanismen kan aldrig triggas (removed hårdkodad false) — och contacts är DISABLED på dev15 (HUBS-BESLUTSLOGG.md:10) trots BESLUT-18."
+ },
+ {
+  "k": 2,
+  "id": "K-2.10",
+  "rubrik": "Vad som KAN vara proprietärt (villkorat)",
+  "status": "BESLUT_KRAVS",
+  "prio": "BESLUT",
+  "forbattring": "Inget bygge nu. När B-EXAPP-1 aktiveras: lös app_api-blockeraren på dev15, definiera app-nivå-API-kontraktet, och genomför K-2.12-grinden först. Beslutsägare: Fredrik + IP-jurist.",
+  "motivering": "Kravet är en villkorad möjlighet, inte en byggorder — och MODULARISERING §5.1 punkt 6 säger uttryckligen 'bygg inte i förskott'. Förutsättningen (ExApp-rent schema) är säkrad via K-2.15; själva lyftet, distributionsmodellen och den formella juristverifieringen (K-2.12) är öppna beslut. Dessutom infrastrukturblockerare på dev15."
+ },
+ {
+  "k": 2,
+  "id": "K-2.12",
+  "rubrik": "Inget proprietärt licensbeslut utan IP-jurist",
+  "status": "BESLUT_KRAVS",
+  "prio": "BESLUT",
+  "forbattring": "Extern aktivitet: dokumentera juristens verifiering per punkt (i)-(vi) — särskilt securemail-licensen och -only/-or-later-konflikten — som bilaga till beslutsloggen INNAN första proprietära artefakten. Ingen kod.",
+  "motivering": "Grinden är delvis passerad (en ratificeringsmening utan underlag) men ingen dokumenterad juristverifiering av punkterna (i)-(vi) finns i repot. Eftersom inget proprietärt har byggts är grinden ännu inte bruten — kravet är i praktiken respekterat men inte formellt uppfyllt."
+ },
+ {
+  "k": 2,
+  "id": "K-2.14",
+  "rubrik": "Ärenderegistret som proper NC-app-DB (alternativ b)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg till append-only kvittenstabell (hubs_arende_receipt: hubs_case_id, dnr, committed_at, correlation_id, destination, payload-digest) + migration + skrivning i commit-flödet (ArendeService.php:1821-1922). S-M.",
+  "motivering": "Registret + typ-tabellen är byggda enligt exakt det föreskrivna mönstret (Migration + QBMapper + unique-index + NOT NULL), i den ratificerat reviderade placeringen. Den tredje föreskrivna tabellen (kvittens) saknas — commit-kvittot flippas på case-raden och committedAt approximeras med 'skapad' (ArendeService.php:1216-1220 per kodkarta), vilket försvagar spårbarheten."
+ },
+ {
+  "k": 2,
+  "id": "K-2.16",
+  "rubrik": "Fält-allokering: användarens data i NC, motorns i intern DB",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "(1) Append-only receipt-tabell (samma byggsteg som K-2.14); (2) Flagga-entity+mapper och persistens från InnehallsKlassService::beraknaFlaggor — eller ta bort den döda tabellen medvetet. M.",
+  "motivering": "Enradsregeln är realiserad för alla huvudposter utom två: (1) kvittens-/audit-loggen uppfyller inte 'append-only' (HandelseMapper::deleteByCaseId + GallringService raderar den), (2) matchnings-/klassningsstate (cross-cutting-flaggorna) beräknas men persisteras aldrig trots att tabellen skapats."
+ },
+ {
+  "k": 2,
+  "id": "K-2.17",
+  "rubrik": "NC-objekt som projektioner + reconciliation-jobb",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg ArendeReconciliationJob som TimedJob (mönster: UpdateAddressBookBackgroundJob): svep hubs_arende_pekare, verifiera att externa objekt finns/bär rätt case-tagg, journalför+notifiera divergens, deny-by-default i aggregering vid divergens per BESLUT-19. M.",
+  "motivering": "Projektions-/pekar-arkitekturen är komplett, men reconciliation-jobbet — ratificerat 'från dag 1' i BESLUT-19 (HUBS-BESLUTSLOGG.md:65, GAP-056) — är obyggt. Det är extra allvarligt eftersom graceful degradation-designen tyst sväljer integrationsfel (ingen retry-kö): dinglande/saknade pekare upptäcks idag aldrig."
+ },
+ {
+  "k": 2,
+  "id": "K-2.20",
+  "rubrik": "Tre licensgränser utritade i dataflödet",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Inget förtida bygge. När B-EXAPP-1 aktiveras: definiera app-nivå-API-kontraktet (JSON, verksamhetsbegrepp, ingen intern-RPC) som första artefakt, därefter event-bryggan. Beslutskopplad.",
+  "motivering": "Dokumentkravet ('utritade') är uppfyllt och två av tre gränser är verkliga i kod. Licensgränsen (ii) är ren målbild — medvetet uppskjuten per B-EXAPP-1/'bygg inte i förskott' (MODULARISERING §5.1 p.6). Även referensdataflödets steg 2 (app-event över HTTP) saknas; dagens flöde är in-process + pull."
+ },
+ {
+  "k": 3,
+  "id": "K-3.2",
+  "rubrik": "Identitets-trippeln hålls isär",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Designval krävs: antingen idempotensnyckel = (conversation_id, objekt_ref) med sammansatt UNIQUE + conversationIds via pekare-tabellen som kanonisk 1:n-bärare, eller JSON-kolumn conversation_ids. Rör Version-migration + ArendeMapper::findByConversationId + createCase-idempotenskoll. Storlek M. Gränsar till beslut (syskonfallsmodellen).",
+  "motivering": "De tre identiteterna hålls korrekt isär och dnr föds aldrig lokalt. Men kravets syskonfalls-modell (1 conversationId → n hubsCaseId, conversationIds[] per rad) är AKTIVT BLOCKERAD av M6-UNIQUE-härdningen: ett andra barn på samma anmälan kan inte få eget ärende. 1:n finns bara delvis via pekare objekt_typ='conversation' (kopplaMeddelande :1769-1778), som dessutom är default avstängd (koppla_admin_tag)."
+ },
+ {
+  "k": 3,
+  "id": "K-3.5",
+  "rubrik": "Registrets rad-shape",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Skriv Flagga-entity/mapper + persistera InnehallsKlassService-flaggor vid createCase (S/M). 2) Låt commit-kvittot bära fristDue och skriv den i commit() bredvid gallrasDatum (S, kräver kontraktstillägg i FacksystemCommitPort). 3) conversationIds[] enligt K-3.2 (M).",
+  "motivering": "Kärn-shapen finns och pekare-i-egen-tabell uppfyller syftet bättre än kolumner. Tre kravfält saknas i praktiken: conversationIds[], flaggor[] (tabell utan skrivare) och fristDue-spegling ur facksystemet (GAP-018 öppen — speglasUrTreserva=true ger idag null, dvs. ingen klocka alls tills konnektor finns)."
+ },
+ {
+  "k": 3,
+  "id": "K-3.9",
+  "rubrik": "Sagans led R1–R9",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg (a) Automated-Tagging-regelskapande i GroupfolderClient::createArenderum (Flow-API, M), (b) aclProfil→regel-översättning i applyAcl (M), (c) konfigurera case-tag-kontot på sdkmc-sidan (S).",
+  "motivering": "Alla tio led körs i rätt ordning med kompensationer och kravets återanvändning (ItslTagService-tagMessage via OCS, native Deck/Spreed/groupfolders/CalDAV). Två delar fattas: Flow Automated-Tagging-regeln i R4 (löpande fil-taggning) och att ACL-profilstrings ännu inte översätts till faktiska ACL-regler; R3 är dessutom seam-pending på sdkmc:s case-tag-konto."
+ },
+ {
+  "k": 3,
+  "id": "K-3.11",
+  "rubrik": "Idempotensnyckel + rad-lås",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Villkorad register-flip i tilldela(): UPDATE ... SET agare_uid=:uid, status='tilldelat' WHERE hubs_case_id=:id AND status='otilldelat' (ny ArendeMapper-metod), flippa registret FÖRE de externa lagren eller avbryt vid 0 rader. Storlek S/M.",
+  "motivering": "Idempotensdelen är komplett och DB-härdad (dubbelklick/retry föder aldrig två ärenden). Men GAP-057-fönstret vid fördelning är bara delvis stängt: två samtidiga tilldela() kan interleava sina fyra externa lager och register-flippen är sista-skrivare-vinner utan compare-and-set."
+ },
+ {
+  "k": 3,
+  "id": "K-3.13",
+  "rubrik": "dnr-parning frikopplad från skapa-sagan",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Skriv dnr-alias-tagg via SdkmcClient efter verifierad flip i commit() (S). 2) HTTP-route POST /api/v1/facksystem/callback som verifierar callbackToken och kör flippen (M). 3) fristDue i kvitto-kontraktet (S).",
+  "motivering": "Mönstret (senare/asynkron parning, retention bunden till verifierad callback, aldrig tid/kryssruta) är korrekt implementerat mot stubben. Tre kravdelar fattas: dnr-alias-taggen, fristDue-speglingen och en riktig async-callback-endpoint."
+ },
+ {
+  "k": 3,
+  "id": "K-3.14",
+  "rubrik": "case:-propagering med två bärartyper",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Wira fil-taggning: anropa sdkmc TagFileController/ISystemTagManager vid filhändelser eller skapa Automated-Tagging-regeln per ärenderum i R4. Storlek M.",
+  "motivering": "Båda bärartyperna finns för meddelanden respektive icke-taggbara objekt; fil-benet av taggbäraren är obyggt. I praktiken bär groupfolder-pekaren fil-kopplingen, men retention-/Flow-flöden som förutsätter fil-taggar kan inte byggas förrän detta finns."
+ },
+ {
+  "k": 3,
+  "id": "K-3.16",
+  "rubrik": "Gränsdragning Flow vs programmatiskt",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Konfigurations-/kodpaket: registrera Flow-operationer (retention-tagg vid commit, File Access Control för karantän) och dokumentera per-kommun-konfig. Storlek M, delvis driftkonfig snarare än kod.",
+  "motivering": "Gränsdragningen efterlevs (inget som borde vara programmatiskt görs i Flow), men Flow-benets deklarativa uppgifter är obyggda/okonfigurerade — kravets [KONFIG]-del kvarstår."
+ },
+ {
+  "k": 3,
+  "id": "K-3.17",
+  "rubrik": "Reconciliation-loop mot dinglande pekare",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg lib/BackgroundJob/ArendeReconciliationJob.php (TimedJob, dygnsvis) enligt kravets tre kontroller, med rapport till loggen + StatusService-räknare; mönster från GallringJob. Storlek M.",
+  "motivering": "Ingen periodisk verifiering av (1) pekar-existens, (2) case:X-objekt utan registerrad, (3) conversation-diff finns. Risken är reell: pekare saknar unik-constraint, kompensationer är best-effort och sdkmc-tilläggen är efemära — drift isär upptäcks idag inte alls."
+ },
+ {
+  "k": 3,
+  "id": "K-3.19",
+  "rubrik": "ArendeTyp-radens fält",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Additiv migration + registry-utökning med de 5 fälten när första konsumenten byggs (frendsMappning ihop med K-3.22-konnektorn). Storlek S per fält.",
+  "motivering": "Registryt bär 15 av kravets ~20 fält och är seedat, idempotent och reviderbart. De fem saknade fälten hör till mallar/konnektor-payload som ännu inte konsumeras av någon kod — luckan blir skarp först när live-konnektorer och åtgärdsmallar byggs."
+ },
+ {
+  "k": 3,
+  "id": "K-3.21",
+  "rubrik": "Cross-cutting-flaggor på instansen",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Flagga-entity/mapper + skrivning i createCase/koppla (S/M). 2) flag:-taggar via SdkmcClient (S). 3) ACL-överstyrning: skyddade_pu ⇒ hårdare aclProfil i R4/tilldela (M, sekretesskritisk).",
+  "motivering": "Flagg-beräkningen finns och är korrekt ortogonal, men flaggorna dör i API-svaret: de landar aldrig på ärendeinstansen, bärs inte som taggar och driver ingen ACL-överstyrning. Skyddade-PU-överstyrningen är sekretesskritisk och saknas helt."
+ },
+ {
+  "k": 3,
+  "id": "K-3.22",
+  "rubrik": "FacksystemCommitService med per-produkt-konnektorer",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "1) Gör 'live' utan registrerad port till ett HÅRT fel i resolvePort (S, gör omedelbart). 2) Bygg första Frends/Treserva-konnektorn bakom FacksystemCommitPort (L, extern beroende). 3) Attach-vägen som trådar in värd-ärendets modul för komplettering/verkstallighet (M).",
+  "motivering": "Generaliseringen och mönstret (commit → verifierad callback → flip) är byggt och korrekt fail-closed, men noll riktiga konnektorer existerar (GAP-019) och en felkonfigurerad 'live'-instans skulle tyst minta syntetiska dnr som ser verifierade ut. Detta hindrar produktionssättning."
+ },
+ {
+  "k": 3,
+  "id": "K-3.24",
+  "rubrik": "Terminerande föds-inte-utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Persistent avvisningsjournal (egen tabell eller handelse-rad utan case-FK) för R0-avvisningar (S/M, audit-nära, koppla till B-SEC-1). 2) Beslut+städväg för triage_forward/karantan-rader (retention/gallring eller terminering före INSERT) (M).",
+  "motivering": "Kravets kärna — säkerhetsskydd/visselblåsning når aldrig register/case-tagg/akt — är uppfylld via R0. Men 'inflödet loggas som hanterat' saknar durabel form (revisionsspår), och triage_forward/karantan som destinationer föder rader i stället för att terminera före INSERT, vilket skapar oåtkomliga evighetsrader."
+ },
+ {
+  "k": 3,
+  "id": "K-3.25",
+  "rubrik": "Retention via verifierad callback + TF-paus-hook",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) TF-paus-verb: POST /arende/{ref}/retention-paus (+ häv), journalförd, endast behörig roll (S/M). 2) Extern rivning i GallringService enligt DemoSeedService::tearDownExternal-mönstret (M).",
+  "motivering": "GAP-007-mönstret (retention startar enbart på verifierad commit) är komplett och dubbelvaktat. TF-pausen är fortfarande ett enum-värde utan trigger, och gallringssvepet lämnar föräldralösa externa objekt med kvarvarande innehåll — en GDPR-/sekretessrest."
+ },
+ {
+  "k": 3,
+  "id": "K-3.26",
+  "rubrik": "Kodplacering av motorns klasser",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg ArendeReconciliationJob (se K-3.17, M). Uppdatera kravdokumentet så placeringen refererar hubs_arende i stället för M0/sdkmc-core (dok, S).",
+  "motivering": "Placeringslistan är uppfylld i den beslutade standalone-appen; det enda som fattas är reconciliation-jobbet (samma gap som K-3.17)."
+ },
+ {
+  "k": 3,
+  "id": "K-3.28",
+  "rubrik": "Bryt sdkmc i M0 + sdkmc-msg före M4",
+  "status": "BESLUT_KRAVS",
+  "prio": "BESLUT",
+  "forbattring": "Formalisera: uppdatera HUBS-BESLUTSLOGG + HANDOVER + kravdokumentet så B-MOD-1/BESLUT-03 entydigt markeras UTGÅTT och K-3.26/K-3.28 revideras mot standalone-arkitekturen. Dokumentarbete, S — men kräver kundens/ägarens ratificering.",
+  "motivering": "Kravet är i praktiken superseded: motorn byggdes som standalone-app utan sdkmc-split, med kravets skyddade egenskap (motorn dras inte med meddelande-monoliten) uppnådd på annan väg. Men beslutsdokumentationen är internt motsägelsefull (UTGÅR vs REK vs HANDOVER-öppen), så kravet kan inte avföras ensidigt."
+ },
+ {
+  "k": 4,
+  "id": "K-4.1",
+  "rubrik": "Tre ortogonala klassningsaxlar",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg cross-app-enrichmenten: sdkmc InflodeFeedService anropar (eller eventar till) hubs_arende klass+match per rad, alternativt wira resolveInflodeRows() mot sdkmc-feeden via service-konto. Fixa samtidigt status-kontraktet ('auto' vs 'kopplad') och atgard-fältet i InfodeController.php:123,299. Storlek M.",
+  "motivering": "Alla tre axlar finns som kod och shapen {korg, messageType, klassning{primarKat,konfidens,flaggor}, koppling, arendekoppling} produceras server-side i en passage — men den passagen körs aldrig på riktig data (motorns feed är tom, sdkmc-feeden bär ingen klassning/koppling). Dessutom två latenta kontraktsfel: InfodeController.php:123 läser $klass['atgard'] som klassificera() aldrig returnerar, och arendekopplingOf (:299-301) testar status 'kopplad' medan ArendeMatchService emitterar 'auto' — en auto-kopplad rad skulle bandas 'nytt' i stället för 'hor_till'."
+ },
+ {
+  "k": 4,
+  "id": "K-4.3",
+  "rubrik": "Axel C: ArendeMatchService för ärendekoppling",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg listener/enrichment-vägen: antingen ett MessageReceivedEvent-lyssnarpar i sdkmc (efter mallen MessageImportantClassifiedListener, hubs-code/sdkmc/sdkmc-main/lib/Listener/) som anropar hubs_arende-match via OCS/service-konto, eller pull-enrichment i InflodeFeedService::toFeedRow. Storlek M.",
+  "motivering": "Tjänsten och UI-banden är byggda och zonOf routar exakt enligt kravet. Men ingen server-side körning på MessageReceivedEvent existerar — eventet finns inte i kodbasen och tjänsten anropas bara från InfodeController vars feed är tom. I drift hamnar därför alla inflödesrader i band 1a."
+ },
+ {
+  "k": 4,
+  "id": "K-4.5",
+  "rubrik": "InnehallsKlassService (ny tjänst)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Samma byggsteg som K-4.3-wiringen plus en tagg-skrivare: efter klassning ≥tröskel, tagMessages med imapLabel 'kat:{arendeTypId}' + itslTagMeta-utökning för läsbart namn. Lägg en unit-testfil för kaskaden. Storlek M.",
+  "motivering": "Tjänsten är byggd och genomtänkt, men båda wiring-delarna av kravet saknas: ingen MessageReceivedListener anropar den (eventet finns inte), och resultatet bärs aldrig som kat:-tagg via taggmotorn. Klassningen är i praktiken död kod på riktig feed. Ingen unit-test finns heller (tests/Unit/Service saknar InnehallsKlassServiceTest)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.6",
+  "rubrik": "Fallande deterministisk signalkaskad",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Definiera org-register-formatet (occ-nyckel innehallsklass_org_register finns redan) och seeda per kund; wira avsändar-verifieringen mot LOA3/SITHS-claims i stället för adress-substring när identitetslagret exponerar dem. Storlek S-M.",
+  "motivering": "Kaskaden är implementerad exakt enligt kravets ordning och konfidensdisciplin, inklusive 'org-typ är prior, inte facit' (skola utan barnindikation faller vidare :383-385). Det som fattas är den konfigurerbara org-register-datan per kund och LOA3-stärkningen av avsändarlagret; LLM-lager (e) är avsiktligt obyggt (K-4.7)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.7",
+  "rubrik": "LLM endast som människo-bekräftat förslagslager",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Bygg EJ ensidigt. När beslut/vägledning finns: lokalt förslagslager bakom config-flagga som postar kandidat till 'foreslagen'-utfallet (K-4.8) + Handelse-journalpost vid avvisat förslag. Storlek M, men beslutsgrindad.",
+  "motivering": "Inget LLM-lager existerar — invarianten 'aldrig autonom AI på sekretess' uppfylls vakuöst, vilket är rätt sida av felet. Men förslagslagret (lokalt, avstängbart, människo-bekräftat) och activity-loggningen av avvisade/korrigerade förslag är obyggda. GAP-052 markerar skarp AI-drift som röd zon i väntan på IMY/SKR/Socialstyrelsen."
+ },
+ {
+  "k": 4,
+  "id": "K-4.8",
+  "rubrik": "Klassningströskel server-side med tre utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka klassificera()-returen med status ∈ {klassad, foreslagen, oklassad} + kandidatKat när 0 < konfidens < tröskel; InfodeController exponerar den. Storlek S.",
+  "motivering": "Tröskeln är genuint server-side policy per kund (aldrig klientlogik) och default-riktningen är fail-mot-människa. Matchningen implementerar exakt de tre utfallen inkl. bilage-disciplinen. Men klassningen saknar mellanutfallet 'föreslagen' — en 0.6-blankett-träff blir oklassad utan exponerad kandidat, så människan får ingen förifylld bekräftelseyta."
+ },
+ {
+  "k": 4,
+  "id": "K-4.9",
+  "rubrik": "Fjärde terminerande utfall: avvisa/isolera (inkl. retroaktivt)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Låt FLAG_FELMOTTAGET + sekretessbärande signal trigga grinden (S). 2) Fixa R-retro-1: slå upp taggade messageIds via pekare/sdkmc innan untag (S). Båda i SakerhetsskyddGrind.php.",
+  "motivering": "Det terminerande utfallet finns och är seriöst byggt (fail-closed på detektorfel/saknad indata, retroaktiv-flagga vid befintligt conversationId, bevisbevarande i groupfolder). Två hål: felmottaget-men-känsligt-triggern saknas och den retroaktiva raderingen ur tagg-index är i praktiken tom, så 'radera ur index/tagg-DB' är inte uppfyllt fullt ut."
+ },
+ {
+  "k": 4,
+  "id": "K-4.10",
+  "rubrik": "Matchningskaskad för ärendekoppling",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Wira registerPartHook mot parts-/enhetsdata när partsregistret finns (beroende K-4.25); utöka steg 2 till trådens alla conversationIds om MessageThread-ankaret ska bära. Först dock feed-wiringen (K-4.3). Storlek M.",
+  "motivering": "Kaskadens struktur, konfidensdisciplin och bilage-regeln är byggda enligt spec (registret är hubs_arende_case, inte 'sdkmc_arende' — namnavvikelse utan funktionell betydelse). Men steg 4 kan aldrig producera kandidat (parts-registret owirat) och hela kaskaden saknar riktig indata, så täckningen är strukturell, inte operativ."
+ },
+ {
+  "k": 4,
+  "id": "K-4.12",
+  "rubrik": "Axelkorrelation som svag signal, aldrig hårdkodad",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Låt ingenTraff() i ArendeMatchService väga in typens kopplingDefault som svag prior för nytt/ej_kopplat, och rätta arendekopplingOf till fält som faktiskt produceras. Storlek S.",
+  "motivering": "ALDRIG-delen (ingen hårdkodning, UI-band opåverkade av kategori) är uppfylld. FÅR-delen (korrelationen som svag signal) är förberedd i data (kopplingDefault) men owirad, och den härledningskod som finns refererar obefintliga fält."
+ },
+ {
+  "k": 4,
+  "id": "K-4.13",
+  "rubrik": "Dubbelmärkning: EN primär kategori + SET flaggor",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg Flagga-entity/mapper mot hubs_arende_flagga + skrivning vid createCase/klassning och exponering i mapToCard. Storlek S-M.",
+  "motivering": "Klassningsmodellen implementerar dubbelmärkningen korrekt och undviker kombinatorisk explosion. Men 'modifierare på ärendeinstansen' kräver persistens — i dag existerar flaggorna bara i det transienta klassningssvaret och når aldrig registret, journalen eller UI:t."
+ },
+ {
+  "k": 4,
+  "id": "K-4.14",
+  "rubrik": "Flagg-effekter (prioritet, routing-override, ACL-gate)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Stegvis: 1) akut_fara/frist_kritisk → prioritetsfält i klassningssvaret + sortering i banden (S). 2) akut_fara → routing-override till jour-enhet i enhetsupplösningen (M). 3) skyddade_pu → deny-by-default-krets + exkludering ur fordelning/dashboard-aggregat (M, koordinera med GAP-058). Kräver K-4.13-persistensen först.",
+  "motivering": "Flaggberäkningen finns men samtliga effekter kravet räknar upp är obyggda. skyddade_pu-gaten är den sekretesskritiska delen (OSL 26 kap., döljning i aggregat) och beroende av GAP-058 (tre-lagers-ACL-koherens) som är öppen."
+ },
+ {
+  "k": 4,
+  "id": "K-4.15",
+  "rubrik": "Dubbelmärkning bevisar kategori-som-etikettaxel",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Efter K-4.14: flagga akut_fara på kat-7-rad skapar en skyddsbedömnings-uppgift (Deck-kort eller plikt-post) utan ny primärkategori; bygg KategoriBadge + FlaggChips i InflodeRad.vue. Storlek M.",
+  "motivering": "Grundbeteendet (primärkategorin skrivs aldrig över av flaggan) är garanterat av arkitekturen. Men bevisets verkställande delar — parallellt skyddsbedömningsspår och två-chips-renderingen — är obyggda; de faller ut ur K-4.14 respektive gap3/KategoriBadge."
+ },
+ {
+  "k": 4,
+  "id": "K-4.16",
+  "rubrik": "Kategori/flaggor som imap_label-taggar, korg-scopade",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Definiera tagg-konventionen (kat:{arendeTypId}, flag:{flagga}) + itslTagMeta-poster för läsbara namn/färger + skrivpunkt i klassnings-wiringen (K-4.5). Storlek S ovanpå K-4.5.",
+  "motivering": "Precis som statusIDok anger: taggmotorn som ska bära klassningen finns och är GUI-verifierad för case-taggar, men kat:{n}/flag:{x}-konventionen är inte implementerad någonstans — klassningen kan därför inte delas mellan handläggare med samma korg."
+ },
+ {
+  "k": 4,
+  "id": "K-4.17",
+  "rubrik": "Härledd riskKlass-axel",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Härledningsfunktion riskKlassFor(flaggor, sekretessGrund) → normal|forhojd|hog|kritisk i motorn + fält i mapToCard/aggregat; konsumeras först av audit-loggning och aggregat-synlighet, aldrig routing. Storlek S när beroendena finns.",
+  "motivering": "Axeln finns inte i någon form. Den är dessutom nedströms av två obyggda delar: flagg-persistensen (K-4.13) och sekretessGrund-strukturen (K-4.23)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.18",
+  "rubrik": "verksamhetsgren + sekretessMur",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Schemautökning på hubs_arende_typ: verksamhetsgren + sekretessMur-JSON {delningKraverMenprovning, getsEjBlandasMed[]} + validering i ArendeMatchService/koppla-vägen (vägra koppla över mur) och i laggTillMedlem/tilldela. Storlek M.",
+  "motivering": "Mur-modellen finns inte: ingenting hindrar klassningen/routingen från att lägga OSL-25-innehåll (vard_samverkan är redan seedad typ) i samma strukturer som OSL-26-akter — i dag skiljs de bara av separata ärenderum per ärende, inte av en verkställd gren-mur. Risken är latent så länge HSL-flödena är stubbar, men fältet måste in i typ-schemat före breddning."
+ },
+ {
+  "k": 4,
+  "id": "K-4.19",
+  "rubrik": "karantanKravs + sakerhetsskyddRegim styr terminerande saga-utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg karantanKravs:bool + sakerhetsskyddRegim på hubs_arende_typ, låt createCase läsa dem som preSagaHook='avvisa_sakerhetsskydd' (deklarativ väg genom befintliga dispatchHook) med grinden som verkställare. Storlek S-M. OBS B-SEC-1 i beslutslistan — stäm av innan.",
+  "motivering": "Det terminerande negativa saga-utfallet existerar och är fail-closed, men styrningen är hårdvirad i grinden i stället för datadriven per ärendetyp. 'klassificerad får ej ligga i moln' avvisas i praktiken via klassmarkörs-detekteringen (STRUKTURERADE_KLASS_NYCKLAR :95-104), inte via en regim-enum."
+ },
+ {
+  "k": 4,
+  "id": "K-4.22",
+  "rubrik": "systemOfRecord + sorFallback + inflodeVia",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Schemautökning på hubs_arende_typ: sorFallback + inflodeVia; verkställ inflodeVia='e_tjanst' som skapande-spärr i createCase (vägra minta koordinationsrad med kopia). Storlek S-M, men bör tas ihop med K-5-rollbreddningen.",
+  "motivering": "Fälten är obyggda. commitDestination täcker huvuddelen av 'inte alltid Treserva' på destinationsnivå, men sorFallback (vad som gäller när primärt SoR saknas — roll 5/9) och inflodeVia='e_tjanst'-spärren mot dubbellagring finns inte, vilket hör ihop med att 11 av 12 kommunroller saknar backend (K-5-luckan)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.23",
+  "rubrik": "sekretessGrund[]-struct med temporal sekretess",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "JSON-fält sekretess_grund på typ+instans med {grund, omfattning, temporal} + postCommitHook-typ för utgangsTrigger; ACL-degraderingsjobb över case-klustret (Talk/Deck/groupfolder via pekare). Storlek L; ta med rollbreddningen.",
+  "motivering": "Endast skalär-varianten kravet vill ersätta finns. Temporal sekretess (OSL 19:3-flippen som degraderar hela case:-klustret) hör primärt till upphandlingsrollen som saknar backend helt — därför senare-prio i nuvarande socialtjänstvertikal."
+ },
+ {
+  "k": 4,
+  "id": "K-4.24",
+  "rubrik": "externMyndighetMottagare + commitMode",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Kort steg: låt assertCommittable särbehandla extern_myndighet (ingen retention-flip utan människokvitto). Fullt: mottagare+commitMode-fält på typ/instans + extern_anmalan-flöde (payload-paket + manuell inlämning + kvittens). Storlek M-L.",
+  "motivering": "Fälten är obyggda; värre är att extern_myndighet i dag routas genom SAMMA facksystem-port som Treserva-commit och skulle flippa retention på stub-kvittot — motsatsen till kravets 'retentionState flippar INTE vid extern_anmalan'. Markerad [EXTERN] i kravdok; rollerna (IMY/MSB/IVO) saknar backend."
+ },
+ {
+  "k": 4,
+  "id": "K-4.25",
+  "rubrik": "Utökad partsModell + joinNyckel",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg joinNyckel som kolumn på hubs_arende_typ, utöka partsModell-enum, och låt ArendeMatchService slå upp typens partsModell/joinNyckel server-side i stället för att lita på rad-fälten. Storlek S-M. OBS FAM-2 (partsmodell-datamodell) står i beslutslistan — stäm av familjerätts-delen.",
+  "motivering": "Grundfältet och styrmekanismen (K-4.11) finns, men utökningen är obyggd och joinNyckel är klient-buret i stället för registry-härlett — matchningen kan aldrig få allow-signalen ur typen, bara ur raden. partsModell='flerpartsarende' saknar dessutom verkställande mekanism (känd brist i motor-kartan)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.26",
+  "rubrik": "forstaAtgard-enum med terminerande/icke-födande värden",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka enum + bygg karantan_vidarebefordra som ren no-mint-väg i InfodeController (ack + vidarebefordra + kvittens, ingen createCase). Löser samtidigt den ogallringsbara triage_forward/karantan-radfamiljen. Storlek M.",
+  "motivering": "Basenum:et är byggt och datadrivet, men samtliga terminerande/icke-födande värden saknas. Anti-sagan (ta emot→klassa→vidarebefordra→kvittera UTAN hubsCaseId) finns inte — dagens närmaste väg (commitDestination=triage_forward) föder ändå en registerrad som sedan aldrig kan gallras (känd brist)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.27",
+  "rubrik": "Feature-detektering styr både widget och saga-utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Kasta/varna i resolvePort när integration_mode='live' saknar live-port (S, redan README-utlovat). 2) Validera vid createCase/commit att destinationens port är i riktigt läge, annars degradera till 'föreslagen commit' med tydlig UI-markör. Storlek S-M.",
+  "motivering": "Detekteringen finns för widget-rendering, men kravets andra halva — att saknad facksystemskonnektor ska blockera commitDestination som pekar dit — är obyggd. Den tysta stub-fallbacken är den redan riskrankade felmoden (felkonfigurerad prod mintar syntetiska dnr som ser verifierade ut)."
+ },
+ {
+  "k": 4,
+  "id": "K-4.28",
+  "rubrik": "Routing-regeln kategori → mål-enhet (inkl. kat 2-subklassning)",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "AB-01: insatsTyp-fält (ao|lss|vuxen|ekb|barn) i skapa-flödet + subEnhet/subModul-uppslag; kräver kundens bekräftelse av insatstyp-taxonomin och en migration. Storlek M — efter beslut.",
+  "motivering": "Regeln kategori→enhet är byggd ovanpå befintligt behörighetsmaskineri precis som kravet vill. Sub-klassningen av kategori 2 till de 5 mål-enheterna saknas dock, och den är enligt handovern ett utpekat beslut (AB-01) som inte får byggas ensidigt."
+ },
+ {
+  "k": 4,
+  "id": "K-4.29",
+  "rubrik": "Flaggor kan flytta routing utan att ändra primärkategori",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "I enhetsupplösningen: flagg-hook före defaultEnhet-uppslaget (akut_fara → jourenhets-mappning ur config; skyddade_pu → skyddad krets i stället för enhetens fulla mottagningskrets). Storlek M, efter K-4.13/K-4.14.",
+  "motivering": "Override-vägen finns inte: akut_fara påverkar ingen kö/jour-routing och skyddade_pu överstyr inte aclProfil. Beroende av K-4.13 (persistens) och K-4.14 (effekter); detta krav är själva routing-delen av den familjen."
+ },
+ {
+  "k": 4,
+  "id": "K-4.30",
+  "rubrik": "Klassningsresultat endast via server-side-aggregat",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Samma wiring som K-4.1/K-4.3 (ett aggregat som bär både feed och klassning) + bygg KategoriBadge i InflodeRad.vue bredvid typ-chippen (S för badgen, M för wiringen).",
+  "motivering": "Arkitekturregeln (allt ur server-side-aggregat, ingen klient-fan-out, ingen klientlagring) efterlevs. Men själva klassningsresultatet når aldrig dashboarden eftersom det producerande aggregatet saknar data och det konsumerade aggregatet saknar klassning — och UI-atomen KategoriBadge är obyggd."
+ },
+ {
+  "k": 5,
+  "id": "K-5.1",
+  "rubrik": "En motor för alla 12 roller",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka hubs_arende_typ-schemat med K-5.2-fälten (ny migration + ArendeTypRegistry::hydrate) och seed:a första rollen utanför socialtjänst (t.ex. registrator R1) som ren config-rad. Storlek M.",
+  "motivering": "EN motor + N datadrivna rader är genuint byggt och hålls (inga per-roll-forkar), men endast socialtjänstens 8 ärendetyper finns som rader — 11 av 12 kommunroller saknar config, och schemat saknar breddfälten (K-5.2) som skulle göra dem konfigurerbara."
+ },
+ {
+  "k": 5,
+  "id": "K-5.2",
+  "rubrik": "7 nya/ombyggda ArendeTyp-fält",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Ny migration som adderar de 6 rena datafälten + karantan_kravs på hubs_arende_typ, uppdatera ArendeTyp-entitet + hydrate() + defaultRows(). Sex av sju är rena datafält utan motor-risk. Storlek M.",
+  "motivering": "Inget av de 7 fälten finns i schema, entitet eller registry. sekretessGrund finns men som platt sträng (migration :188-191), inte struct. joinNyckel finns bara som klientsignal per rad i ArendeMatchService, inte som typ-config."
+ },
+ {
+  "k": 5,
+  "id": "K-5.4",
+  "rubrik": "riskKlass som ortogonal axel",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg flagga→riskKlass-härledning + persistera i den redan skapade hubs_arende_flagga-tabellen (entity/mapper saknas). Storlek S/M.",
+  "motivering": "En ortogonal flagg-axel ovanpå typen finns (exakt kravets idé: lågrisk-typ + högrisk-instans via dubbelmärkning), men ingen riskKlass-skala normal/förhöjd/hög/kritisk, ingen härledning på instansen, och flaggorna persisteras aldrig — de beräknas per request och försvinner."
+ },
+ {
+  "k": 5,
+  "id": "K-5.5",
+  "rubrik": "Fyrvägs-SoR-doktrin per ArendeTyp",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg sor_fallback + mellanlager-beslutsfält (gallringsregel, rättslig grund) på typ-raden och låt retention-/commit-vägen läsa dem. Storlek M.",
+  "motivering": "Två av fyra utfall är konkret byggda (pekare, avvisa/karantän), mellanlagret finns som retention+gallring men utan spårat uttryckligt beslut/rättslig grund, och fallback-SoR saknas helt. Ingen per-ArendeTyp-deklaration av vilket av de fyra utfallen som gäller."
+ },
+ {
+  "k": 5,
+  "id": "K-5.7",
+  "rubrik": "Retention-flip kräver registrerat utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg en 'icke-diarieföringsbeslut'-mutation (journalförd, med aktör + motivering) som alternativ retention-startpunkt; koppla diariePlikt-fältet till en grind. Storlek S/M.",
+  "motivering": "Flip-halvan är korrekt byggd: retention kan aldrig flippa utan verifierat commit-kvitto, och icke-committade rader förblir aktiva (fail-safe, ingen tyst gallring). Men det alternativa spårade utfallet — uttryckligt icke-diarieföringsbeslut — saknas som kodväg, så kluster A-fall som legitimt inte ska diarieföras blir eviga rader i stället för spårat avslutade."
+ },
+ {
+  "k": 5,
+  "id": "K-5.8",
+  "rubrik": "Enda legitima SoR: audit-/provenansspåret",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg 'handover_kvittens' som hook-id i hookHandlers-mappen + kvittens-händelsetyp i journalen; en rad + ett config-värde per motorns eget mönster. Storlek S.",
+  "motivering": "Provenansspåret 'handover skedde + verifierad kvittens' finns för facksystem-commit-vägen (persisterat i register + händelsejournal). Den generaliserade postCommitHook='handover_kvittens' för F42/F45-fallen (vidaresänt/eskalerings-kvittens utanför commit-vägen) saknas."
+ },
+ {
+  "k": 5,
+  "id": "K-5.9",
+  "rubrik": "inflodeVia avgör mellanlagring",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Del av K-5.2-migrationen: inflode_via-kolumn + skip-mellanlagring-gren i createCase när värdet är e_tjanst. Storlek S ovanpå K-5.2.",
+  "motivering": "Ingen mekanism för att kanal (funktionsadress/e_tjanst/muntlig_kontakt) ska avgöra om Hubs mellanlagrar. Alla flöden som når createCase mellanlagras likadant; e-tjänst-förbikopplingen (R4/e-Wärna-fallet) kan inte uttryckas."
+ },
+ {
+  "k": 5,
+  "id": "K-5.10",
+  "rubrik": "FacksystemCommitService med konnektorfamiljer",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "1) Gör 'live' utan registrerad port till ett HÅRT fel i Application::resolvePort (S, gör först). 2) Bygg Treserva/Lifecare-livekonnektorn mot Frends inkl. async-callback-route (L, GAP-019). 3) Konnektorval via systemOfRecord+frendsModul när K-5.2-fälten finns (M).",
+  "motivering": "Generaliseringen och fail-closed-routingen är byggd, men det finns ingen konnektorfamilje-selektion (systemOfRecord-fältet saknas; frends_modul är enda nyckeln), noll riktiga konnektorer (GAP-019 öppen — Treserva/Lifecare-referensen obyggd), och den tysta live→stub-fallbacken är en produktionsrisk: felkonfigurerad prod skulle minta syntetiska dnr som ser verifierade ut."
+ },
+ {
+  "k": 5,
+  "id": "K-5.11",
+  "rubrik": "2-dimensionell frendsMappning (modul × produkt)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Design först (mappnings-id i typ-raden + mappningsregister per produkt), därefter per-produkt-transformkod i konnektorerna. Beror på K-5.10:s livekonnektor. Storlek L (dokumentet: 5-10× GAP-019).",
+  "motivering": "Mappningslagret modul×produkt existerar inte; dagens routing är en platt modulsträng rakt in i en enda port. Ingen mappnings-id i config, inga per-produkt-transformer."
+ },
+ {
+  "k": 5,
+  "id": "K-5.12",
+  "rubrik": "Multi-commit: frendsModul[] / commitPlan[]",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Inför commit_plan (JSON-lista av {destination, frendsModul, commitMode}) på typ-raden + loop i ArendeService::commit med per-mål-kvitton. Kräver K-5.2/K-5.13. Storlek M/L.",
+  "motivering": "En händelse kan bara committa till ETT mål. Inga commitPlan[]-strukturer, ingen multi-destination på vare sig typ eller instans."
+ },
+ {
+  "k": 5,
+  "id": "K-5.13",
+  "rubrik": "commitMode styr commit-riktning",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Del av K-5.2-migrationen: commit_mode-kolumn + hård default-deny för skriv när mode=las_konsument i FacksystemCommitService::assertCommittable (T-LAS-1 kräver kundbekräftelse av default). Storlek S/M.",
+  "motivering": "Ingen läs-vs-skriv-asymmetri är modellerad. Alla destinationer utom triage_forward/karantan behandlas som skrivbara commit-mål (FacksystemCommitService.php:55). las_konsument-förbudet (Pascal/NPÖ/SVOD — aldrig skriva, aldrig cacha) kan inte uttryckas."
+ },
+ {
+  "k": 5,
+  "id": "K-5.14",
+  "rubrik": "P0: generaliserad e-diarium/e-arkiv-konnektor",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "1) Wire 'arkivera_fgs' som post-commit-hook mot befintlig EdiariumPort::arkivera (S). 2) Bygg första live-FGS-adaptern mot en verklig produkt (Public360 eller W3D3) som referens (L). Prioriterad P0 i roadmap §10 — avlastar 9 roller.",
+  "motivering": "Porten, stubben och hook-konsumtionen är byggda och motortestade (kat6 diariefor_direkt fail-closed). Men 'generaliserad konnektor' finns inte: ingen produktdimension, ingen live-FGS-adapter, och postCommitHook='arkivera_fgs' existerar inte — arkivera-halvan av porten anropas aldrig."
+ },
+ {
+  "k": 5,
+  "id": "K-5.15",
+  "rubrik": "P1-konnektorer: Sokigo, Appva, HR, Överförmyndare",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Bygg EFTER e-diarium- och Treserva-konnektorerna, i dokumentets ordning (Sokigo → Appva → HR → ÖF). Storlek L per kluster.",
+  "motivering": "Inga av P1-konnektorerna är påbörjade. Förväntat läge — de förutsätter K-5.10/K-5.11-fundamentet som självt är obyggt."
+ },
+ {
+  "k": 5,
+  "id": "K-5.16",
+  "rubrik": "Extern myndighet = egen integrationsklass",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Bryt ut extern_myndighet ur FACKSYSTEM_DESTINATIONS till en egen ExternAnmalanService-väg: payload-förberedelse + PII-maskning + människo-inlämningskvitto, INGEN retention-flip. Storlek M.",
+  "motivering": "Kravet är inte bara obyggt — nuvarande kod gör MOTSATSEN: en extern_myndighet-commit skulle få dnr-callback-semantik och flippa retentionState, vilket kravet uttryckligen förbjuder (ankaret ska vara vetskap, ingen dnr, ingen retention-flip, människa lämnar in). Ingen av de 8 seedade typerna använder dock destinationen ännu, så felet är latent."
+ },
+ {
+  "k": 5,
+  "id": "K-5.17",
+  "rubrik": "P0-externa mål: IMY, MSB/CERT-SE, IVO",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Efter K-5.16: implementera IMY-målet först (mest universellt, 72h ur vetskap), sedan MSB/IVO. Kräver K-5.40-milstolpar. Storlek M per mål.",
+  "motivering": "Inga externa myndighets-commit-mål är byggda. Blockeras av både K-5.16 (integrationsklassen) och K-5.40 (multi-milstolpe-klockorna). Notera blind fläck P9: en PU-incident i Hubs själv kräver IMY-vägen — den saknas även out-of-band."
+ },
+ {
+  "k": 5,
+  "id": "K-5.18",
+  "rubrik": "Parallell flermottagare (Arketyp B)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Följer av K-5.12 (commitPlan[]) + K-5.40 (per-mål-klockor); bygg inte separat. Storlek ingår där.",
+  "motivering": "En händelse kan i dag föda exakt ett ärende med ett commit-mål och en frist. R5-fallet (NIS2 24h + IMY 72h ur samma händelse) kan inte representeras."
+ },
+ {
+  "k": 5,
+  "id": "K-5.19",
+  "rubrik": "Bred externMyndighetMottagare-enum",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Bygg fältet + tomt konfigurerbart mottagarregister; fyll innehåll först efter kundbeslut om org-registrets källa (DIGG-synk vs manuellt).",
+  "motivering": "Enum:en och registret saknas. Innehållet (vilka mottagare, LOA-krav per kanal, 2028-ställföreträdarregistret) är dessutom uttryckligen beslutsfrågor (T-ORG-1, T-2028-1) — schema-fältet kan byggas men registerinnehållet ska inte sättas ensidigt."
+ },
+ {
+  "k": 5,
+  "id": "K-5.21",
+  "rubrik": "Avvisning lämnar inga artefakter",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Persistera avvisningskvitton (reason/indikator/tidpunkt/conversationId-hash, ALDRIG innehåll) i egen tabell med egen gallringsfrist. Storlek S.",
+  "motivering": "Noll-artefakt-halvan är helt korrekt byggd. Men 'spårbart avvisningskvitto' lever endast i PSR-loggen och HTTP-svaret — loggrotation raderar spåret. För juridisk spårbarhet (och för att en avvisning kan vara en säkerhetsskyddsincident) behövs varaktig, innehållsfri avvisningslogg."
+ },
+ {
+  "k": 5,
+  "id": "K-5.22",
+  "rubrik": "Säkerhetsskydd ≠ skyddade personuppgifter",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Persistera FLAG_SKYDDADE_PU på ärendet och låt den överstyra aclProfil hårdare (snävare krets i ArenderumGroupService + gate i alla aggregatvyer, blind fläck P13). Storlek M.",
+  "motivering": "Den viktigaste enskilda arkitekturregeln (avvisa i stället för ACL:a säkerhetsskydd) är implementerad. Men kontrastsidan — skyddade_personuppgifter som SNÄVARE ACL inom systemet — saknar verkställande mekanism; distinktionen finns bara till hälften."
+ },
+ {
+  "k": 5,
+  "id": "K-5.23",
+  "rubrik": "Retroaktiv karantän vid felmottagning",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Fixa untag-no-op:en (resolva meddelande-id:n via case-taggen), implementera deny-all-regler i GroupfolderClient, och lägg incident-notifiering (NC-notis till säkerhetsfunktion) i evaluateRetroaktiv. Storlek M.",
+  "motivering": "Kärnan är byggd och bevisbevarande. Tre verifierade luckor: (1) R-retro-1 anropar untagMessage med TOM messageId-lista (:275-280) — indexborttagningen är sannolikt en no-op; (2) GroupfolderClient::applyAcl sätter bara ACL-flaggan, inte deny-all-regler (GroupfolderClient.php:136-138 TODO) — 'karantan_deny_all' verkställs inte; (3) ingen incidentrapportväg trots att upptäckten i sig kan vara en säkerhetsskyddsincident. Trådbred tagg-propagering rivs inte."
+ },
+ {
+  "k": 5,
+  "id": "K-5.24",
+  "rubrik": "Läges-/regimbyte (höjd beredskap/krig)",
+  "status": "BESLUT_KRAVS",
+  "prio": "BESLUT",
+  "forbattring": "Ta regimbyte-designbeslutet (B-SEC-1) med kund/säkerhetsskyddskompetens; teknisk förberedelse = en lägesflagga som R0-grinden konsulterar. Bygg EJ innan beslut.",
+  "motivering": "Ingen kod finns, och kravet är självt märkt [BESLUT KRÄVS]: hur kategorier flyttas till säkerhetsskyddsregim vid höjd beredskap är en designfråga (statiskt per typ vs dynamiskt lägesregister) som inte ska byggas ensidigt."
+ },
+ {
+  "k": 5,
+  "id": "K-5.26",
+  "rubrik": "Visselblåsning som NON-route",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Kör grinden (eller en lättviktsvariant) även i sdkmc:s feed-väg, alternativt centralisera grinden när skarp feed wiras (M3-seamen). Storlek M. T-VISSEL-1: opt-out:arna ska dessutom TESTAS.",
+  "motivering": "NON-route-mekaniken är byggd och fail-closed på hubs_arendes vägar. Två luckor: (1) detektionen är svag nyckelords-/flagg-heuristik (uttalad TODO); (2) den RIKTIGA inflödesfeeden är sdkmc:s InflodeFeedService som INTE kör någon grind (grep sakerhetsskydd/vissel i backend-additions/sdkmc: 0 träffar) — felmottagen visselpost VISAS i inflödeslistan tills ett createCase-försök görs. Extern restricted-SoR är korrekt [EXTERN]."
+ },
+ {
+  "k": 5,
+  "id": "K-5.27",
+  "rubrik": "aclProfil='vissel_isolerad' — tre hårda opt-outs",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "När vissel-hantering (isolera-i-stället-för-avvisa) byggs: inför profilen med matchnings-skip, feed-exkludering och aggregat-gate. Beror på K-5.33-biblioteket. Storlek M.",
+  "motivering": "Profilen och de tre opt-out:arna är obyggda. Delvis mildrat av att grinden avvisar vissel före match på befintliga vägar (K-5.26), men det är en annan mekanism än den kravställda profilburna isoleringen — och opt-out (3) ur aggregat saknas helt."
+ },
+ {
+  "k": 5,
+  "id": "K-5.28",
+  "rubrik": "Jäv-baserad intra-Circle-exkludering",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg exkludera_uid[] på ärendeinstansen (ny kolumn eller member-roll 'exkluderad') och subtrahera i atkomstUids + ArenderumGroupService::sync; täck i GAP-058-koherenstestet. Storlek S/M.",
+  "motivering": "Ingen instans-nivå-exkludering finns. Handoff-avsmalningen (tilldelad ersätter kretsen) ger viss de facto-snävning men kan inte uttrycka 'alla i kretsen UTOM uid X'."
+ },
+ {
+  "k": 5,
+  "id": "K-5.29",
+  "rubrik": "PuB-/laglig-grund-/ändamålsmatris i config",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "Migration + registry-fält (laglig_grund, personuppgiftsansvarig, andamalsbegransning, gdpr_art9) med seedade default-värden för de 8 typerna; exponera i StatusService för RoPA-underlag. Storlek S/M.",
+  "motivering": "Matrisen saknas helt trots ratificerat BESLUT-12 ('PuB-config-fält i ArendeTyp-registry från dag 1'). Dokumentets bedömning: utan den är Hubs juridiskt osäljbart — PuB-avtal och RoPA omöjliga. Ren config-utökning utan motor-risk; innehållet per kund är T-PUB-1 (beslut), men SCHEMAT ska finnas nu."
+ },
+ {
+  "k": 5,
+  "id": "K-5.30",
+  "rubrik": "Temporal sekretessGrund + utökad sekretessNiva",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Gör sekretess_grund till JSON-struct [{grund, fran, till, omfattning}] + lägg sekretess_niva-kolumn; motorn läser bakåtkompatibelt (sträng = enelements-lista). Storlek M.",
+  "motivering": "Grundfältet finns men som skalär utan temporalitet; sekretessNiva-skalan (offentlig_tills_menprovad→sakerhetsskydd) och omfattning='delfalt' saknas helt. De brutna antagandena A2/A3 (offentlighet som norm, temporal sekretess) är fortfarande inbyggda."
+ },
+ {
+  "k": 5,
+  "id": "K-5.31",
+  "rubrik": "Temporal ACL-degradering (anbudssekretess-flip)",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Design + hook 'slapp_anbudssekretess' som muterar hela case:-klustrets ACL via pekar-registret; avtalsspärr 10 dagar som milstolpe i fristPolicy. Storlek L. Bygg vid R9-aktivering.",
+  "motivering": "Helt obyggt, inklusive den svåra bakåt-läckage-delen (historik som blir utlämningsbar vid flip). Ej relevant för socialtjänst-vertikalen; blir kritiskt först vid upphandlings-/R9-roller."
+ },
+ {
+  "k": 5,
+  "id": "K-5.32",
+  "rubrik": "sekretessMur — verksamhetsgrens-mur",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Del av K-5.2: sekretess_mur + vardgivar_spar-fält på typ-raden; verkställ som separata Groupfolder-/krets-domäner per gren i sagan (aldrig samma ärenderum över muren). Storlek M.",
+  "motivering": "Muren saknas helt trots att kat 5 (vård/omsorg/samverkan, SoL↔HSL-gränsen) redan är en seedad typ — dokumentets varning 'modellen route:ar HSL-innehåll in i SoL-akt = inbyggd sekretessincident' gäller därmed redan dagens 8 typer, inte bara framtida roller."
+ },
+ {
+  "k": 5,
+  "id": "K-5.33",
+  "rubrik": "aclProfil-bibliotek (≥8 profiler)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Implementera profil→Circles-/ACL-mönster-mappning i GroupfolderClient/ArenderumGroupService (profilbibliotek som config), börja med de profiler dagens 8 typer redan refererar. Storlek M/L.",
+  "motivering": "Profil-id:n är data precis som kravet vill, och den FAKTISKA åtkomstkontrollen (per-case-NC-grupp speglad ur medlemsledgern, ArenderumGroupService) är en verklig mekanism — men profilerna själva är semantiskt tomma strängar utan verkställande bibliotek, och inget av kravets 8 profilnamn finns."
+ },
+ {
+  "k": 5,
+  "id": "K-5.34",
+  "rubrik": "Utökad partsModell + avstängbar SSN-matchning",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Flytta partsModell/joinNyckel-signalerna till typ-configen (server-auktoritativt) i K-5.2-migrationen; utöka enum:en när objekt-/uppdragsroller aktiveras. Storlek S.",
+  "motivering": "Avstängbarheten är byggd starkare än kravet (default av, positiv allow). Kvarstår: partsModell/joinNyckel/anonym läses ur KLIENT-raden, inte typ-configen (:328 — klientauktoritativt, L-fynd i säkerhetsgranskningen); partsModell-enum:en är inte utökad (endast enskild_klient/flerpartsarende i registret); och registerPartHook()=null gör hela steget vilande i praktiken."
+ },
+ {
+  "k": 5,
+  "id": "K-5.35",
+  "rubrik": "Cross-role på instansen (tre arketyper)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg primar_roll + medmottagare (JSON) + kors_axel på case-raden; konsumera i commit-planen (K-5.12) och ACL-kretsarna. Kräver rollbegreppet i datamodellen först. Storlek M/L.",
+  "motivering": "Ingen cross-role-modell finns. Instansen bär enhet+typ, aldrig roll; eskalering/parallell/transit kan inte uttryckas. Δ12-mönstret är helt obyggt."
+ },
+ {
+  "k": 5,
+  "id": "K-5.36",
+  "rubrik": "Medmottagares akter slås ALDRIG ihop",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Formulera som invariant/test när K-5.35 byggs: två medmottagare ⇒ två commit-mål + två kretsar, aldrig gemensam akt. Storlek S som del av K-5.35.",
+  "motivering": "Vakuöst ouppfyllbart i dag: eftersom flermottagar-modellen inte finns kan inget slås ihop — men den kravställda skyddskonstruktionen (koordinera via delat id, committa separat med olika kretsar) är obyggd och måste designas IN i K-5.35 från början, inte efterhand."
+ },
+ {
+  "k": 5,
+  "id": "K-5.37",
+  "rubrik": "felmottaget_men_känsligt — fail-closed + retroaktiv isolering",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg karantan_vidarebefordra som terminerande utfall (ingen läsning, spårbart vidarebefordrings-kvitto) + fixa tagg-rivningen. Storlek M.",
+  "motivering": "Fail-closed-isoleringen och opt-out-före-SSN-ankring finns på motorns vägar. Saknas: anti-sagan 'karantan_vidarebefordra' (vidarebefordra oöppnat) existerar inte som forstaAtgard eller kodväg; GAP-063-taggrivningen är svag (untag med tom lista, se K-5.23); felmottaget-flaggan persisteras aldrig."
+ },
+ {
+  "k": 5,
+  "id": "K-5.38",
+  "rubrik": "forstaAtgard: icke-födande/icke-commit-utfall",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Implementera utfallen som nya hook-handlers + forstaAtgard-värden i befintlig dispatchHook-infra; 'spegla_myndighetsbeslut' kräver dessutom att sagan kan starta från beslut (R7-rollen). Storlek M per utfallsklass.",
+  "motivering": "En av kravets utfallsklasser (diariefor_direkt) är fullt byggd via hook-mekanismen, och hook-infran gör tillägg billiga ('en rad + ett config-värde'). Men de tre saknade utfallsklasserna kvarstår: baklänges-sagan (ta_emot_uppdrag), karantän-vidarebefordran och triage-only utan commit-mål."
+ },
+ {
+  "k": 5,
+  "id": "K-5.39",
+  "rubrik": "retentionAnkare lösgörs från commit",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg retention_ankare-fält på typ-raden + alternativa gallrasDatum-källor i GallringService (lagstadgad frist ur config, kvittens-tidpunkt). Storlek S/M. Bygg vid R10-aktivering.",
+  "motivering": "Retention är helt commit-bunden; lagstadgad_tid- och vidaresant_kvittens-ankare finns inte. BESLUT-25 ratificerade lösgörandet men det är obyggt. Ej kritiskt för socialtjänst-vertikalen (kamera/RSA hör till R10)."
+ },
+ {
+  "k": 5,
+  "id": "K-5.40",
+  "rubrik": "fristPolicy som struct med multi-milstolpar",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka fristPolicy-schemat med milstolpar[]/forlangningsbar/bindande + gör computeFristDue milstolpe-medveten och FristVarselJob state-bärande. Storlek M. Förutsättning för K-5.17-klockorna.",
+  "motivering": "Struct-formen och ankare-fältet finns (rätt riktning), men kravets kärna saknas: milstolpar[] (NIS2 24h→72h→30d), sub-dygnsfrister, komplett-ansökan-ankare, avtalslivscykel, säsongsklump och bindande lag|avtal. FristVarselJob varslar dessutom bara vid exakt T-3/T-0 utan ikapp-logik."
+ },
+ {
+  "k": 5,
+  "id": "K-5.41",
+  "rubrik": "Registry + constraint + commit-tjänst i M4-zonen",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Inget bygge nu per B-EXAPP-1; håll schemat ExApp-rent (inga NC-interna FK) och lös app_api-blockeraren när lyftet beslutas.",
+  "motivering": "Kravets (b)-startläge är uppfyllt i beslutsloggens reviderade form (egen NC-app-DB, migrerbart schema, single-writer). Själva M4/ExApp-lyftet (c) är ogjort och dess TIDPUNKT är ett öppet beslut (B-EXAPP-1: 'bygg inte i förskott'), plus infra-blockeraren på dev15."
+ },
+ {
+  "k": 5,
+  "id": "K-5.42",
+  "rubrik": "Taggmotorn till M0 före M4",
+  "status": "BESLUT_KRAVS",
+  "prio": "BESLUT",
+  "forbattring": "Avgör om K-5.42 ska avskrivas mot BESLUT-03 eller om beslutet ska omprövas inför M4; dokumentera utfallet i beslutsloggen. Bygg EJ ensidigt.",
+  "motivering": "Kravet förutsätter en M0-modul som den ratificerade beslutsloggen uttryckligen har låtit utgå (B-MOD-1). Krav och beslutslogg står i direkt konflikt — flytten ska inte genomföras (eller kravet avskrivas) utan att användaren löser diskrepansen. Faktum i koden: ingen flytt är gjord."
+ },
+ {
+  "k": 6,
+  "id": "K-6.1",
+  "rubrik": "MinaArenden.vue som enda container",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Läs en boot-/prefs-flagga (socialsekreterareNewView, default på) i Start.vue:s isSocialsekreterare-gren och exponera en återställningspreferens — S.",
+  "motivering": "Containern, zonerna, zonOf-ägandet och eventroutingen är exakt som kravet beskriver och isolerade till personan. Vy-växeln grenar dock enbart på activePersona — den utlovade feature-flaggan/preferensen för att kunna återställa gamla vyn per användare är obyggd."
+ },
+ {
+  "k": 6,
+  "id": "K-6.2",
+  "rubrik": "zonOf som ren selector",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Extrahera zonOf till services/arendeFlow.js (eller egen modul) + unit-test över de tre inflöde-grenarna och fyra het-villkoren — S. Live-datat åtgärdas under K-6.7.",
+  "motivering": "Selektorn är byggd exakt enligt kravet och deterministisk, men den är en komponentmetod utan unit-test (kravet: 'testbar funktion') och i drift får den bara defaultgrenen eftersom sdkmc-raderna saknar arendekoppling."
+ },
+ {
+  "k": 6,
+  "id": "K-6.3",
+  "rubrik": "NastaAtgardKnapp med state machine + fas-spärr",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg typ-konfigurerad tillåten-åtgärd-per-steg-kontroll i ArendeService::commit (och ev. tilldela) speglad ur ArendeTypRegistry — M.",
+  "motivering": "Klient-state-machine och serverns steg-graf+pliktgrind är byggda och servern är auktoritet för övergångar. Åtgärdsnivåns fas-spärr (t.ex. commit av utredning i fel fas) saknas dock i motorn — den delen av kravet är kvar."
+ },
+ {
+  "k": 6,
+  "id": "K-6.4",
+  "rubrik": "ProcessStepper med pliktspärr",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg roving tabindex + vänster/höger-piltangenter i steppern — S.",
+  "motivering": "Allt utom piltangent-navigeringen är på plats, inklusive den dubbla pliktspärren (klient + motor). 'Pil-navigerbar' (WCAG-mönster för steglistor) är inte implementerad — knapparna nås enbart via tab."
+ },
+ {
+  "k": 6,
+  "id": "K-6.7",
+  "rubrik": "Tre band med samma datakälla",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg cross-app-enrichmenten: låt sdkmc-raden berikas med hubs_arende-motorns InnehallsKlassService+ArendeMatchService (arendekoppling/koppling/klassning) — antingen sdkmc→motor-anrop eller motorns inflode-summary med sdkmc-feed som källa — M/L (kap 3/4-beroende).",
+  "motivering": "UI-arkitekturen (en datakälla, ett filter, tre kognitiva band) är exakt byggd, men i skarpt läge kan datakällan inte populera band 1b/1c — kompletteringar och löst inflöde landar felaktigt i 'Att ta emot'."
+ },
+ {
+  "k": 6,
+  "id": "K-6.8",
+  "rubrik": "Kollapsbara tomma band + röd-när-gammal",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Beräkna alder{dagar,overSla} server-side i InflodeFeedService::toFeedRow ur sent_at (arbetsdagslogik) — S.",
+  "motivering": "Hela UI-mönstret inkl. den juridiska räknar-semantiken är byggt, men OSL 5:1-KPI:n är verkningslös i skarpt läge eftersom servern aldrig levererar åldersfältet."
+ },
+ {
+  "k": 6,
+  "id": "K-6.9",
+  "rubrik": "EjKoppladSektion — de sex åtgärderna",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "(1) Öppna deepLink:en vid besvara/vidarebefordra i onInflode i st.f. toast; (2) implementera gallra/registrera-utan-ärende som egna registerhändelser med journal/activity-post i motorn (skilj från createCase) — M.",
+  "motivering": "UI-kontraktet är komplett och skapa/koppla har riktiga effekter, men tre av sex verb saknar servereffekt och ger falska compliance-kvitton i skarpt läge — rader kan 'försvinna' (godkännas i UI) utan dokumenterat stöd."
+ },
+ {
+  "k": 6,
+  "id": "K-6.10",
+  "rubrik": "GallringsGrind — DHP-tvingat gallringsbeslut",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Bygg journalpost/activity för gallringsbekräftelsen i motorn omedelbart (ej beslutsberoende, S); DHP-källan (per-kommun-konfiguration) kräver kundbeslut — samla i §9-beslutsloggen innan bygge.",
+  "motivering": "Den juridiska grinden i UI:t är komplett byggd, men två av kravets tre ben fattas: kommunens DHP som källa (öppet kundbeslut) och den loggade bekräftelsen (arkivlag 1990:782 §10). I skarpt läge fattas gallringsbeslut idag mot en demolista utan spårbarhet."
+ },
+ {
+  "k": 6,
+  "id": "K-6.12",
+  "rubrik": "KopplingBadge — samma grammatik överallt",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Rendera KopplingBadge (status 'kopplad') på rader i Meddelanden-/Akten-flikarna i ArendeKort — S. Matchlagret live: se K-6.7.",
+  "motivering": "Grammatiken är konsekvent i inflödesbanden men kravets andra halva — samma badge på kortets flikobjekt (WCAG 3.2.4-konsekvens) — är obyggd, och live-mappningen mot case:-tagg/registerpekare aktiveras aldrig eftersom matchlagret saknar feed."
+ },
+ {
+  "k": 6,
+  "id": "K-6.13",
+  "rubrik": "Dagspulsen — femte räknare omnämnanden",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg pulsFilter==='omnamnanden'-gren i aktivaArenden/hetaArenden som filtrerar på a.diskussion.omnamnandeTillMig — S.",
+  "motivering": "Räknaren finns och räknar rätt sak (mentions-till-mig, inte olästa), men kravets klick-beteende 'filtrera väntar på mig' är en no-op — pillret togglar bara aktiv-stilen."
+ },
+ {
+  "k": 6,
+  "id": "K-6.15",
+  "rubrik": "Delad meddelandeyta: Säkra meddelanden vs Diskussion",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Montera ArendeDiskussion som flik i ArendeKort (mata med full.diskussion ur enrichArende + diskussionsToken; wire 'gor-till-handling'→emitCommit och 'lyft'→EnhetschattPanel) — S/M; allt material finns.",
+  "motivering": "Komponenten som uppfyller kravet är färdigbyggd och testad men monteras aldrig — i den skarpa vyn finns ingen intern diskussionstråd med sekretessrad eller handlings-bro. Baslinjens '[FINNS]' stämmer bara på filnivå."
+ },
+ {
+  "k": 6,
+  "id": "K-6.16",
+  "rubrik": "ArendeDiskussion — lättviktig trådvy",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Samma byggsteg som K-6.15 (montering i ArendeKort).",
+  "motivering": "Kravets designvakt ('ingen kanal-först', demo via fetchArende, prod via talkToken) är korrekt implementerad inuti komponenten, och talkToken-pekaren levereras redan av motorn — men eftersom komponenten är omonterad är kravet inte levererat till användaren."
+ },
+ {
+  "k": 6,
+  "id": "K-6.17",
+  "rubrik": "EnhetschattPanel — lugn sidoyta",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Rendera SekretessRad (krets + klassning) per team-tråd i panelen — S.",
+  "motivering": "Den lugna sidoytan med trådar och fördelningsmöte är byggd; kravets SekretessRad-per-tråd är dock inte med, och team-räknarna är ärliga nollor i drift tills sdkmc-teamytan levererar riktiga tal."
+ },
+ {
+  "k": 6,
+  "id": "K-6.19",
+  "rubrik": "Fördelningsläget rollgrindat",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Server-side rollgrind på Fordelning#fordelningSummary (kräv fördelarroll/grupp innan raderna returneras) + härled arFordelare ur samma källa — M.",
+  "motivering": "Klientens rollgrind finns och fungerar i drift (profilstyrd), men OSL-gränsen är inte serverburen på rollnivå — vilken inloggad användare som helst i rätt enhet kan hämta fördelningsaggregatet via OCS, och rollmodellen (team-baserad fördelarroll) saknas."
+ },
+ {
+  "k": 6,
+  "id": "K-6.22",
+  "rubrik": "Atomär fördelningshandling",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "(1) Routa onFordela/onOmfordela till api.tilldela(ref, uid) — S, omedelbar; (2) saga-ifiera tilldela med kompensations-/retrysteg eller åtminstone konsistensjournal vid partiellt fel (GAP-057) — M/L.",
+  "motivering": "UI-dialogen och motor-orkestreringen finns, men fördelningen är varken atomär (ingen kompensation vid halvfel) eller ens nåbar från fördelningsvyn i drift pga felroutat verb — bägge är kända (HANDOVER skönhetsfel-listan) men ofixade."
+ },
+ {
+  "k": 6,
+  "id": "K-6.23",
+  "rubrik": "FavoritValjare — pekare ovanpå Kontakter",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Bygg DIGG-batch-resolve + serverspärr mot medborgarklass i FavoriterService (K-2.7-mönstret) — M (kap 2-beroende).",
+  "motivering": "Pekar-modellen, tombstone-spärren och klass/proveniens-grammatiken är byggda i UI:t med en riktig sdkmc-yta bakom, men resolverlagrets kärna (färsk DIGG-resolve, klassvalidering) är stub/overifierad — kravets [EXTERN]-del kvarstår."
+ },
+ {
+  "k": 6,
+  "id": "K-6.25",
+  "rubrik": "CommitGrind — det synliga verifierade commit-ögonblicket",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Gata committed/steg-3 på r.verifierad (visa 'väntar på verifiering' vid ok-utan-verifierad) — S; riktig callback-driven progress kommer med Frends-porten (kap 3).",
+  "motivering": "Kärnmönstret (verifierad-kvitto-disciplin, fel stannar på skickat, aldrig kryssruta) är implementerat i store/vy-kedjan, men själva grinden kan visuellt påstå 'Registrerat' på ett obekräftat svar — en diskrepans som blir verklig först mot riktig asynkron Frends-callback (GAP-019, [EXTERN])."
+ },
+ {
+  "k": 6,
+  "id": "K-6.26",
+  "rubrik": "KategoriBadge SKA byggas",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Bygg KategoriBadge.vue (ikon+text+färg per messageType, .hs-chip-grammatik) och ersätt inline-chippen i EjKoppladRad/InflodeRad + rendera på kortobjekt — S.",
+  "motivering": "Precis som kravet självt förutsäger är KategoriBadge den enda uttryckligt efterfrågade komponenten som inte finns; typ-chippen dupliceras inline med olika markup i stället för en konsekvent atom (WCAG 3.2.4)."
+ },
+ {
+  "k": 6,
+  "id": "K-6.27",
+  "rubrik": "FristChip/FristPanel — server-beräknad fristton",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Kortsiktigt: gör panelens källtext ärlig (visa 'beräknad av Hubs tills facksystemspegling finns') — S. Långsiktigt: frist-spegling ur Treserva via Frends (kap 3, GAP-018) — L.",
+  "motivering": "Chip/panel/tone-arkitekturen är byggd och tonen kommer från servern, men kravets kärnpremiss ('Hubs räknar aldrig frister själv — speglad ur Treserva') är inte sann i drift; Frends-frist-speglingen (K-3.5 fristDue) är obyggd och paneltexten är därmed missvisande."
+ },
+ {
+  "k": 6,
+  "id": "K-6.28",
+  "rubrik": "WCAG 2.2 AA tvärgående",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg jest-axe (eller motsvarande) på nyckelkomponenterna + ett manuellt 400 %-/porträtt-pass på dev15 — S/M.",
+  "motivering": "Mönstret är konsekvent och konkret implementerat i alla granskade komponenter, men två kriterier går inte att verifiera statiskt och det saknas regressionsskydd — kravets '[KONFIG] verifiera per ny komponent' är en manuell rutin utan verktygsstöd."
+ },
+ {
+  "k": 6,
+  "id": "K-6.29",
+  "rubrik": "Varumärkesregel i UI-text (enforced)",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg eslint no-restricted-syntax-regel som flaggar 'Nextcloud|Talk|Circles|Deck|Spreed' i Literal/Template-strängar inom t()-anrop — S.",
+  "motivering": "Regeln efterlevs i praktiken i hela den granskade strängmassan, men kravets '(enforced)' — lint som stoppar nya strängar med leverantörsnamn — är obyggd; efterlevnaden vilar på disciplin."
+ },
+ {
+  "k": 7,
+  "id": "K-7.1",
+  "rubrik": "Strukturerad sekretessgrund per ärendetyp",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka hubs_arende_typ med JSON-kolumn sekretess_grund (lista av {grund,omfattning,temporal}) + migration + uppdaterade seed-rader i ArendeTypRegistry::defaultRows; behåll strängfältet som legacy-läsning. Storlek M.",
+  "motivering": "Sekretessgrund per typ finns datadrivet men som skalär sträng, inte strukturerat sekretessGrund[] med {grund, omfattning, temporal}. Enum-täckningen är endast OSL 26/25/10 — OSL 39, 19:3/31:16, 32:4, 18, 23+PDL, GDPR art. 9 och TF saknas helt."
+ },
+ {
+  "k": 7,
+  "id": "K-7.2",
+  "rubrik": "Femgradig sekretessNiva-enum + per-roll ACL-default",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Enum-fält sekretess_niva i hubs_arende_typ + per-roll default-tabell i app-config; gäller främst breddroller (bygglov/diarium/kontaktcenter). Storlek M.",
+  "motivering": "Ingen femgradig enum (offentlig_tills_menprovad/normal/hog/restricted/sakerhetsskydd) finns i koden och ACL-default är hårdkodad deny-by-default, inte per-roll konfigurerbar. Närmast är aclProfil-strängarna per typ, men de är en annan axel."
+ },
+ {
+  "k": 7,
+  "id": "K-7.3",
+  "rubrik": "Tre-lagers-ACL-koherens för inre sekretess",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Låt dashboardArenden/summary filtrera på medlemsledgern efter handoff (samma atkomstUids-sanning som ArenderumGroupService) + phpunit-koherenstest case-tagg ∩ groupfolder-ACL ∩ aggregat. Storlek M.",
+  "motivering": "Räknare/frist-färg läcker inte över ENHETSGRÄNS, men koherensen är enlagers: groupfolder-ACL:n är i praktiken oreglerad (applyAcl = enable-only), och efter handoff-avsmalning ser hela enheten fortfarande kort+räknare via enhetTillaten trots att aktens åtkomstlista snävats till per-case-gruppen. Inget koherenstest (GAP-058) finns."
+ },
+ {
+  "k": 7,
+  "id": "K-7.4",
+  "rubrik": "aclProfil-bibliotek ovanpå Circles",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg profil→ACL-regel-mappning i GroupfolderClient::applyAcl (per profil: vilka grupper får read/write/deny) + Circle-mönster per funktionsadress. Storlek L.",
+  "motivering": "Profil-BIBLIOTEKET finns som id:n i data (≥8 profiler inkl. familjeratt_inre_sekretess och delad_kommun_region), men ingen profil har implementerad semantik — applyAcl sätter inga per-grupp/per-user-regler och ingen Circle-mönster-mappning per funktionsadress finns. Circles/Team är presentationslager; åtkomstsanningen är per-case-NC-gruppen."
+ },
+ {
+  "k": 7,
+  "id": "K-7.5",
+  "rubrik": "Verksamhetsgren + sekretessMur mellan regimer",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "regim-fält (SoL/HSL/LSS...) på ArendeTyp + hård kontroll i koppla-/attach-vägen och ArendeMatchService att käll- och målregim matchar. Storlek M/L.",
+  "motivering": "Ingen mur-mekanism eller regim-axel finns i datamodellen. Närmaste skydd är fail-closed modulresolution (FacksystemCommitService.php:172-181) som hindrar gissad Treserva-modul, men inget hindrar HSL-innehåll i en SoL-akt på routing-/koppla-nivå."
+ },
+ {
+  "k": 7,
+  "id": "K-7.6",
+  "rubrik": "Jäv-exkludering exkludera_uid[] på instansnivå",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "exkludera_uid[]-lista på ärendeinstansen (ny kolumn/flaggtabell) + negativ kontroll i enhetTillaten/atkomstUids/dashboardArenden. Storlek M.",
+  "motivering": "Ingen exkluderingsmekanism finns — en person som själv är part men tillhör ägande enhet ser sitt eget ärende via enhets-default. Inget koherenstest täcker exkludering (finns inget att täcka)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.7",
+  "rubrik": "GallringsGrind för favoritlistor (Kontakter)",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Server-side spara-endpoint/validator i sdkmc: blockera personnummer/medborgar-PII i favorit-vCards, kräv X-HUBS-OWNER=funktion för klass b, hänvisa PII till ärenderummet. Storlek M.",
+  "motivering": "Pekar-modellen (aldrig auktoritativ kopia) och klass-modellen med X-HUBS-OWNER är implementerade i läsriktningen med ärlig staleness. Själva server-side-grinden vid SPARANDE (medborgar-PII-spärr, styrning till ärenderum under hubsCaseId, X-HUBS-OWNER-krav på klass b) finns inte — favoriter skrivs idag fritt via Kontakter-appen."
+ },
+ {
+  "k": 7,
+  "id": "K-7.8",
+  "rubrik": "skyddade_personuppgifter som hård ACL-override",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg Flagga-entity/mapper + skrivväg, låt aclKretsUids/atkomstUids kollapsa till handläggare-only vid flaggan, och filtrera bort flaggade rader ur summary/dashboardArenden/fordelningSummary/FristVarselJob. Storlek M.",
+  "motivering": "Flaggan finns inte som koncept i koden; ingen override av aclProfil till snävast krets och ingen döljning i summary/dashboardArenden/FristVarselJob. Infrastrukturen (flagga-tabellen) står tom och okonsumerad."
+ },
+ {
+  "k": 7,
+  "id": "K-7.9",
+  "rubrik": "Säkerhetsskydd = terminerande utfall (led -1, abort)",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Persistera avvisningskvitton i en liten auditbar tabell (utan innehåll) + ratificera B-SEC-1 innan detektorregister/klassificerare byggs. Storlek S/M.",
+  "motivering": "Abort-semantiken (terminerande utfall, inte sekretessnivå) är byggd och testad — starkare än kravets preSagaHook-form (global R0-grind). Två luckor: detektionen är uttalad TODO[detection]-heuristik (SakerhetsskyddGrind.php:59-62, 353-360) och avvisningskvittot persisteras inte (endast logg + exception-payload) — 'spårbart avvisningskvitto' vilar på loggkedjan. Beslut B-SEC-1 oratificerat."
+ },
+ {
+  "k": 7,
+  "id": "K-7.10",
+  "rubrik": "Retroaktiv karantängrind (fail-closed)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Resolva verkliga messageIds via pekare/sdkmc före untag, implementera riktig deny-all-ACL, och enhets-testa evaluateRetroaktiv-teardownen. Storlek M.",
+  "motivering": "Retroaktiv-mekaniken finns och default vid indikator är avvisa. Men tre verkställighetshål: untagMessage anropas med TOM messageId-lista (SakerhetsskyddGrind.php:275-280) så indexborttagningen är sannolikt no-op; groupfolder-låset vilar på applyAcl som inte sätter regler (GroupfolderClient.php:136-138); ingen bakåt-stoppning av tagg-propagering. Retroaktiv-flaggan är testad (SakerhetsskyddGrindTest.php:97-114) men själva teardownen är otestad (B-SEC-1-frågan)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.11",
+  "rubrik": "Regim-/lägesbyte vid höjd beredskap",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Efter B-SEC-1: occ-kommando/adminyta som kör evaluateRetroaktiv per kategori/enhet (mass-karantän). Storlek M.",
+  "motivering": "Ingen mekanism för att flytta ärendekategorier en masse till säkerhetsskydds-regim. Kravet är dessutom uttryckligen besluts-gatat (B-SEC-1 inkluderar regimbyte)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.12",
+  "rubrik": "Visselblåsning som NON-route med tre hårda opt-outs",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Explicit vissel-guard tidigt i ArendeMatchService::match (avbryt matchning på vissel-indikator) + T-VISSEL-1-test som bevisar opt-outen. Storlek S.",
+  "motivering": "Kärnan — visselblåsning passerar aldrig skapa-sagan — är byggd fail-closed. De tre specifika opt-outs saknas dock: ingen explicit exkludering i ArendeMatchService, ingen ConsolidateMailboxesService att opta ut ur (finns ej), ingen vissel_isolerad-ACL-domän. SSN-matchningsrisken är latent avstängd via registerPartHook=null (ArendeMatchService.php:601-605), inte via medveten vissel-guard. Ingen integration mot visselblåsarsystem finns (kravets EXTERN-del uppfylld genom frånvaro)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.13",
+  "rubrik": "Signeringsadapter med två utbytbara backends",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg signeringskö-ytan (frontend + OCS-route som anropar SigneringPort) och en LibreSign-adapter som första verkliga backend; Inera-adaptern läggs i samma modeMap. Storlek L.",
+  "motivering": "Adapter-SÖMMEN finns (port + stub + mode-väljare) men bara en backend (stub) är registrerad i modeMap, ingen LibreSign- eller Inera-adapter existerar, och inget kö-UI/bevarandepanel konsumerar porten. 'Bygg arbetsytan + bevarandepanelen' är alltså inte påbörjat — porten är död kod tills en konsument wiras."
+ },
+ {
+  "k": 7,
+  "id": "K-7.14",
+  "rubrik": "Inera obligatorisk för skarpa beslut och externa signatärer",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Inera-avtal + mTLS/OOB-val (B-SIGN-1, EXTERN) och därefter live-adapter bakom SigneringPort + policy-gate i commit-vägen som vägrar 'signerat-beslut' utan verifierat Inera-signRequestId. Storlek L.",
+  "motivering": "Det finns ingen teknisk enforcement att skarpa beslut/externa signatärer går via Inera — signeringen sker helt utanför systemet och bekräftas med en okontrollerad kryssruta. LibreSign på dev15 är demo-CA. Ett SMS-/kontosignerat avslagsbeslut kan idag passera grinden."
+ },
+ {
+  "k": 7,
+  "id": "K-7.15",
+  "rubrik": "Ärlig identitetsetikettering i demo/lågriskläge",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Härleda signatur-etiketten ur backend-läget (exponera integration_mode_signering via status-/boot-payload): stub/LibreSign ⇒ 'Demosignering — konto/SMS, ej BankID; inget LTV-anspråk'; Inera-etiketten först när live-porten svarar. Storlek S.",
+  "motivering": "Kravet är inte bara ouppfyllt utan aktivt brutet: UI:t påstår Inera/AES/PDF/A/LTV i ett läge där signeringen är stub/LibreSign-demo. Det är exakt den vilseledande bevisvärde-markering (GAP-035) kravet förbjuder."
+ },
+ {
+  "k": 7,
+  "id": "K-7.16",
+  "rubrik": "Arkivhärdning av signerat dokument (PDF/A + LTV)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Härdningssteg efter status='signed' (PDF/A-validering + LTV/tidsstämpel + persisterat valideringsintyg) + EXTERN verifiering om Inera-profilen levererar LTV/tidsstämpel direkt. Storlek L.",
+  "motivering": "Inget härdningssteg (PDF/A-1-konvertering, LTV-komplettering, kvalificerad tidsstämpel, valideringsintyg/'Giltig nu/Giltig då'-panel) existerar i mellanlagret. Stubben rapporterar PAdES-B-LTA som ren etikett."
+ },
+ {
+  "k": 7,
+  "id": "K-7.17",
+  "rubrik": "Endast hash exponeras mot Underskriftstjänsten",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Verifiera hash-profilen mot Inera (beslut/extern) + kontraktstest som avvisar innehållsfält i requestSignature-payload. Storlek S.",
+  "motivering": "Hash-baserad design är inbakad i port-kontraktet — ingen sekretessbärande text behöver lämna driftmiljön. Men ingen live-adapter finns, inget test/kontrakt hindrar en framtida adapter från att skicka innehåll, och den hash-baserade profilen är overifierad mot Inera (B-SIGN-1/OSL 10:2a)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.18",
+  "rubrik": "Juristgranskad SignMessage-text per dokumenttyp",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "Lägg signMessage-fält per dokumenttyp i adapter-config (struktur, S) — textinnehåll och granskning ägs av jurist/kund (B-SIGN-1).",
+  "motivering": "Inget signMessage-koncept finns i signeringsadaptern/porten; texterna per dokumenttyp och deras juristgranskning är dessutom ett kund-/juristbeslut som inte ska byggas ensidigt."
+ },
+ {
+  "k": 7,
+  "id": "K-7.19",
+  "rubrik": "Kravnivå-badge per dokumenttyp (SES/AES/QES)",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "kravniva-fält (SES/godkänn/AES/QES) i dokumenttyp-/ArendeTyp-config som frontend renderar som badge; matrisinnehållet är kundbeslut per kommun. Storlek S/M.",
+  "motivering": "En per-dokumenttyp-etikett visas i commit-grinden, men den är hårdkodad i frontend (och i dagsläget osann, se K-7.15) — inte en kravnivå-badge härledd ur en kund-/jurist-satt matris enligt SKR 2025."
+ },
+ {
+  "k": 7,
+  "id": "K-7.20",
+  "rubrik": "Gallring endast N dagar efter verifierad commit",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Hård vägran (exception vid boot/commit) när integration_mode='live' saknar registrerad live-port + HTTP-callback-route + fyra-ögon-bekräftan för fristbärande poster. Storlek M.",
+  "motivering": "GAP-007-mönstret är korrekt byggt: retention startar aldrig på tagg+tid eller manuell markering. Men (a) andrahandläggar-bekräftan för fristbärande poster (T-RET-1) saknas, (b) 'verifierad' är idag syntetisk — FacksystemCommitStub kör synchronousCallback=true (FacksystemCommitStub.php:80-81) och Application::resolvePort defaultar okänt/live-läge TYST till stub (Application.php:137) så en felkonfigurerad prod mintar kvitton som ser verifierade ut; ingen async-callback-route finns."
+ },
+ {
+  "k": 7,
+  "id": "K-7.21",
+  "rubrik": "GallringsGrind bunden till handlingstyp mot DHP",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "DHP-tabell/konfig i motorn (handlingstyp→bevaras/gallras+frist+ansvar) + endpoint som GallringsGrind läser + server-side validering av gallringsbeslutet. Storlek M.",
+  "motivering": "Grind-UX:t med gallringsbeslut per handlingstyp och ringa-spärr finns, och varje ärendetyp bär dhpHandlingstyp. Men grinden är frontend-only (servern verkställer inget), DHP-källan (T-DHP-1: konfigfil/tabell/integration) är obyggd — den inbäddade demolistan styr skarpa gallringsbeslut — och mötesinspelning/favoriter/utredningsmaterial finns inte som handlingstyper."
+ },
+ {
+  "k": 7,
+  "id": "K-7.23",
+  "rubrik": "Retention-paus vid utlämnandebegäran (TF)",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "POST /arende/{ref}/retention-paus (+ häv-endpoint) som sätter retentionState='pausad' + journalpost + orsak='utlamnandebegaran'; UI-knapp i ärendekortet. Storlek S.",
+  "motivering": "Ingen trigger kopplar en registrerad utlämnandebegäran till retention-paus — gallringsklockan kan radera en begärd handling innan prövningen är klar (GAP-031, listad blockerare). Mekaniskt är bygget litet eftersom findGallringsbara redan kräver retention_state='gallras_efter_commit' (pausad rad gallras aldrig)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.24",
+  "rubrik": "retentionAnkare lösgjort från commit",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "ankare-fält i DHP-/handlingstyp-config + alternativ gallringsklocka i GallringService/findGallringsbara. Storlek M.",
+  "motivering": "Retentionens enda ankare är den verifierade commiten; datadrivet ankare per handlingstyp (t.ex. lagstadgad kamera-lagringstid) finns inte. Beror på DHP-strukturen (K-7.21)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.25",
+  "rubrik": "fristPolicy-struct med verksamhetskorrekt ankare",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Utöka fristPolicy-JSON med milstolpar[]/forlangningsbar/bindande + ankarresolver för komplett_ansokan/delgivning (delgivning kräver K-7.28 först). Storlek M.",
+  "motivering": "fristPolicy finns som datadriven struct och det JO-kritiska ankaret (14-dagars förhandsbedömning ur inkom-datum, inte tilldelning) är korrekt implementerat. Saknas: milstolpar[], forlangningsbar, bindande:'lag'|'avtal' i structen; ankartyperna komplett_ansokan (PBL) och delgivningssätt (FL 44§); policy-typerna 'domstol'/'tidsbegransat' saknar beräkningsgren (default null, :2483-2488 — förlitar sig på spegling)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.26",
+  "rubrik": "Multi-milstolpe-frister, ankare=vetskap, parallella klockor",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Egen milstolpe-tabell (hubs_case_id, klocka, ankare, due, varslad) + FristVarselJob-loop per klocka. Storlek L.",
+  "motivering": "Ingen multi-milstolpe-modell, inget vetskaps-/kännedomsankare och ingen möjlighet till parallella klockor (t.ex. IMY 72h + MSB 24h ur samma händelse). Gäller främst breddroller (incident/HR), inte socialsekreterar-MVP:t."
+ },
+ {
+  "k": 7,
+  "id": "K-7.27",
+  "rubrik": "Facksystemet ensam fristägare efter överföring",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Exkludera provenance_state='registrerad' i findMedFristSenast (alternativt nolla frist_due vid verifierad commit när facksystemet tar över fristägarskapet) + riv/avaktivera kalenderpåminnelser. Storlek S.",
+  "motivering": "För de flesta typer räknar Hubs aldrig egen frist (speglas). Men för typer med egen klocka (orosanmälan 14d) avaktiveras INGET efter 'förd till facksystemet': frist_due ligger kvar och frist-varsel fortsätter — dubbelbevakningsrisken (GAP-018/044/047) kvarstår för den kategorin. Ingen riv-mekanism för kalender-VALARM finns."
+ },
+ {
+  "k": 7,
+  "id": "K-7.28",
+  "rubrik": "Spårning av delgivningssätt, ej påstådd delgivning",
+  "status": "SAKNAS",
+  "prio": "BESLUT",
+  "forbattring": "T-DELG-1-beslut först; därefter delgivningssatt-fält på ärendet/handlingen + tidsstyrt delgivningsflöde och överklagandefrist-ankare (matar K-7.25). Storlek M.",
+  "motivering": "Inget delgivningssätt-fält, inget tidsstyrt flöde (kontrollmeddelande/2-veckorsfiktion), ingen läsnotis-hantering finns. Rättsläget för digital brevlåda (T-DELG-1) ska dessutom verifieras per beslutstyp innan bygge."
+ },
+ {
+  "k": 7,
+  "id": "K-7.29",
+  "rubrik": "Maskerings-/sekretessprövningsstöd vid delning ur ärenderum",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Delnings-flöde i ärendekortets Akten-flik: välj enskilda handlingar (aldrig hela rummet som default), varna för tredjemansuppgifter, logga delningsbeslutet i händelsejournalen. Storlek M/L.",
+  "motivering": "Ingen delnings-/kommuniceringsyta med handlingsurval, tredjemansvarning eller maskeringsstöd finns; GAP-017 (major) står öppen. Delning ur ärenderummet sker idag med Nextclouds råa delningsfunktioner utan sekretessprövningsstöd."
+ },
+ {
+  "k": 7,
+  "id": "K-7.30",
+  "rubrik": "Korrekt samtyckes-formulering i UI",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "När samtyckes-/mallytan byggs: fast informationstext enligt kravet + T-SAMTYCKE-1 (Hubs aldrig auktoritativt samtyckesregister). Storlek S.",
+  "motivering": "Det finns ingen samtyckesyta att formulera fel eller rätt — kravets UI-text (samtycke = transparensdokumentation, häver inte sekretess, inte rättslig grund) är oimplementerad. Demo-texterna är neutrala men bär inte den juridiska distinktionen."
+ },
+ {
+  "k": 7,
+  "id": "K-7.31",
+  "rubrik": "Fasvalidering mot otillåten uppgiftsinhämtning i förhandsbedömning",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "tillatnaParter[] per fas i ArendeTyp-config + varning/spärr i den kommande uppgiftsinhämtnings-/kontaktytan (och i FavoritValjare/composer när fas=forhandsbedomning). Storlek M.",
+  "motivering": "Ingen datamodell eller widget-spärr begränsar vilka parter uppgifter får inhämtas från under förhandsbedömningsfasen — den rättsliga begränsningen vilar helt på handläggaren (GAP-006/013)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.32",
+  "rubrik": "PuB-/ändamåls-/regim-matris i ArendeTyp-config",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "Nya kolumner/JSON-fält i hubs_arende_typ (laglig_grund, pua, andamal, gdpr_art9, regim) + migration + defaultRows-seed med socialtjänst-värdena; kundvariation via seedDefaults-bevarandet av lokala ändringar. Storlek M.",
+  "motivering": "Ingen lagligGrund, personuppgiftsansvarig, ändamålsbegränsning, gdpr_art9-markering eller vardgivarSpar/regimAxel finns i typ-configen. Enligt baslinjen (B-PUB-1) är produkten 'osäljbar' utan matrisen — PuB kan inte undertecknas och RoPA inte genereras. Strukturen kan byggas nu; innehållet per kund är beslut (T-PUB-1)."
+ },
+ {
+  "k": 7,
+  "id": "K-7.33",
+  "rubrik": "Biträdesavtal + loggminimering med egen gallringsfrist",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Konfigurerbar max-ålder för handelse-rader (oberoende sweep) + dokumentera PuB-bilaga med loggomfång; inventera NC-kärnans loggytor. Storlek S.",
+  "motivering": "Journal-/loggminimeringen (referens/ID + händelse, aldrig PII-innehåll) är konsekvent implementerad; aktor_uid raderas vid gallring. Saknas: EGEN gallringsfrist för loggen (den följer ärendet — acceptabelt mönster men inte kravets fristmodell), biträdesavtalet är en avtalsartefakt som inte finns i repo, och NC:s egna activity-/serverloggar utanför appen är oadresserade."
+ },
+ {
+  "k": 7,
+  "id": "K-7.34",
+  "rubrik": "FGS-e-arkivering med tydlig ansvarsgräns",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "FGS-export-flöde för Hubs-only-material (konsumera arkivera() vid avslut av e_arkiv-destinerade typer) + regel som vägrar arkivering av rader med provenanceState='registrerad' mot facksystem. Storlek L.",
+  "motivering": "Ansvarsgränsen är datadrivet uttryckt via commitDestination per typ (facksystem-committat arkiveras av facksystemet), och diarieförings-vägen (FGS-Ärende/Diarium) konsumeras. Men Hubs egen FGS-export (mönster C, arkivera()/SIP-paket) har noll konsumenter, ingen live-FGS-adapter finns, och ingen vakt hindrar dubbelarkivering programmatiskt."
+ },
+ {
+  "k": 7,
+  "id": "K-7.35",
+  "rubrik": "Externa myndighets-commits som egen integrationsklass",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Egen gren i commit-vägen för destination='extern_myndighet': manuellt inlämnings-kvitto (ej portanrop), journalpost, INGEN retention-flip; frontend-text 'förberedd för inlämning'. Storlek M.",
+  "motivering": "Destinationsvärdet finns i enum:en men hela den kravställda särbehandlingen saknas: ingen commitMode='extern_anmalan' (Hubs förbereder, människa lämnar in), inget vetskaps-ankare, ingen PII-maskning — och dagens beteende är AKTIVT fel enligt kravet: en extern tillsynsrapport med verifierat kvitto flippar retentionState och startar gallringsklockan för Hubs-kopian."
+ },
+ {
+  "k": 7,
+  "id": "K-7.36",
+  "rubrik": "Single-writer + append-only audit-logg oavsett datalagerhem",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Larm/metrik vid misslyckad journalskrivning + sekvensnummer/hash-kedja per hubs_case_id i handelse-tabellen för manipulationsdetektering; ExApp-frågan hålls som beslut. Storlek M.",
+  "motivering": "Datalagerbeslutet (egen DB, Tables underkänd) är respekterat och journalen är i praktiken append-only på applikationsnivå med single-writer-disciplin. Svagheter mot kravets juridiska ribba: journal-skrivningen är BEST-EFFORT och får aldrig fälla mutationen (HandelseMapper.php:22-24) — auditspåret kan tyst tappa poster; ingen teknisk oförvanskbarhets-garanti (hash-kedja/WORM/DB-privilegier); ExApp-lyftet (B-EXAPP-1) och AGPL-gränsen är öppna beslut."
+ },
+ {
+  "k": 8,
+  "id": "K-8.6",
+  "rubrik": "Seam treserva.commit → Frends-flöde med verifierad callback",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Bygg FrendsCommitPortLive i hubs_arende/lib/Integration/Live/ + async callback-route i appinfo/routes.php; låt Application::resolvePort kasta/varna vid okänt mode (S för fail-fast, L för hela live-flödet, EXTERN)",
+  "motivering": "Finns: skarp OCS-route + motor-commit med verifierad-callback-disciplin och provenans/retention-flip. Fattas: live-Frends-adapter (endast stub), HTTP-route för asynkron callback, och /api/v2-konventionen (allt ligger på /api/v1, BESLUT-21 ej genomfört). Tysta live→stub-fallbacken är en prod-fälla (syntetiska dnr som ser verifierade ut)."
+ },
+ {
+  "k": 8,
+  "id": "K-8.7",
+  "rubrik": "Seam treserva.koppla → koppla inflöde till ärende",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg bilagespegling-vid-bekräftelse (kopiera bilaga till ärenderummets groupfolder i kopplaMeddelande) + e-post-scopad case-tag-rutt på sdkmc-sidan så durabel taggning fungerar utan admin-config (M)",
+  "motivering": "Koppla-vägen är byggd: systemtaggen case:{id} sätts (user-session best-effort, durabel admin-tagg config-gated av IDOR-skäl) och en referensfil skrivs i ärenderummet. Fattas: faktisk fil-/bilagespegling till ärenderummet (endast .url-pekare skrivs) och i default-miljö blir svaret verifierad=false."
+ },
+ {
+  "k": 8,
+  "id": "K-8.8",
+  "rubrik": "Seam treserva.tombstone → reconciliation med deny-by-default",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg ArendeReconciliationJob i hubs_arende/lib/BackgroundJob/ (pekare finns? case-tagg har registerrad? conversationIds matchar sdkmc-taggtabell?) enligt DeleteTagsJob-mönstret; larma + deny vid divergens (M)",
+  "motivering": "Inget reconciliation-jobb register↔objekt finns, inga integritets-larm, ingen deny-by-default-divergenshantering i aggregeringen."
+ },
+ {
+  "k": 8,
+  "id": "K-8.9",
+  "rubrik": "Seam favoriter → resolverlager med hård fail-closed",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg DIGG-batch-resolve i FavoriterService (mot sdkmc:s addressBook-cache) med {färska fält, resolvedAt, stale, removed} + HÅRD fail-closed (tom lista + fel) när cachen är onåbar (M)",
+  "motivering": "Det tunna resolverlagret finns (personlig ∪ funktions-delad adressbok, pekar-klasser, stale-flaggning) men batch-resolve mot DIGG-cachen är inte byggd: allt klass a/c är permanent stale, tombstones kan aldrig triggas, och det finns ingen fail-closed när DIGG inte nås."
+ },
+ {
+  "k": 8,
+  "id": "K-8.16",
+  "rubrik": "Bygg ArendeMatchService med deterministisk kaskad och server-side tröskel",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Wira sdkmc-inflödet till motorn: antingen event-lyssnare i sdkmc-additions som POST:ar till hubs_arende, eller låt InfodeController::resolveInflodeRows läsa sdkmc:s feed via OCS (M); åtgärda M3/M4-grindluckorna först (per SAKERHETSGRANSKNING)",
+  "motivering": "Servicen är byggd med deterministisk kaskad, server-side konfidenströskel, default ej_kopplat och bilagespegling först vid bekräftelse (KopplaValjare + koden). Men den lyssnar inte på något MessageReceivedEvent och matar aldrig riktig inflödesdata — klassnings-/matchlagret är owirat mot sdkmc-feeden."
+ },
+ {
+  "k": 8,
+  "id": "K-8.17",
+  "rubrik": "Bygg FacksystemCommitService (generalisering av TreservaCommitService)",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Bygg första riktiga konnektorn (Treserva via Frends) bakom FacksystemCommitPort som mall + ärv-modul-mekanism för attach-typerna (L, EXTERN — kräver Frends-avtal)",
+  "motivering": "Generaliseringen är gjord — servicen heter FacksystemCommitService (BESLUT-07), är destination-gated och fail-closed på modulrouting, och dnr-parningen ligger korrekt vid commit, inte i sagan. Fattas: samtliga live-produktkonnektorer (Frends→Treserva/Lifecare/Viva), fristDue-spegling ur facksystemet, och komplettering/verkstallighet (frendsModul=null) kan inte committas alls (ärv-mekanismen obyggd)."
+ },
+ {
+  "k": 8,
+  "id": "K-8.18",
+  "rubrik": "Bygg ArendeReconciliationJob",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Samma byggsteg som K-8.8: ArendeReconciliationJob (TimedJob) med tre verifieringar + critical-larm + deny-by-default-flagga som aggregatvyerna respekterar (M)",
+  "motivering": "Jobbet är beslutat (BESLUT-19) men obyggt. Pekare/case-taggar/conversationIds kan drifta utan att någon upptäcker det."
+ },
+ {
+  "k": 8,
+  "id": "K-8.19",
+  "rubrik": "GAP-019 (tyngst blockerare): hela Frends/facksystem-flödet med verifierad callback",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "P0-spåret: Frends-avtal/miljö (EXTERN) → FrendsCommitPortLive + signerad callback-route + registrera i resolvePort-modeMap med fail-fast vid okänt läge (L)",
+  "motivering": "Gapet gäller fortfarande fullt ut: ingen live-Frends-adapter, ingen callback-endpoint, ingen extern anslutning. Det som byggts sedan dokumentet är motor-SIDAN (port-kontraktet FacksystemCommitPort.php:60-91 + stateful stub + kontraktstester) — rätt förberedelse men noll live-integration."
+ },
+ {
+  "k": 8,
+  "id": "K-8.20",
+  "rubrik": "GAP-007: retention-start flyttas till verifierad callback",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Stängs automatiskt med K-8.19 (live-callback); besluta separat om mail-retentionens koppling till case-retention (S beslutsunderlag)",
+  "motivering": "Mönstret är byggt och enforce:at end-to-end i motor+frontend: gallring triggas aldrig av tid eller kryssruta utan endast av gallras_datum ur ett verifierat kvitto. Kvar: den FAKTISKA callbacken är stubbens synkrona simulering (hänger på GAP-019), och sdkmc:s mail-retention (ExpungeJob) är oförändrat tagg/tid-styrd på mail-sidan."
+ },
+ {
+  "k": 8,
+  "id": "K-8.21",
+  "rubrik": "GAP-001: tvingande backend-grind för skyddsbedömningens commit",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Persistera skyddsbedömnings-kvittensen i motorn (händelsejournal-typ + kolumn/flagga satt av verifierad commit med dokumenttyp=skyddsbedömning) och låt transitionera() kräva den persisterade kvittensen i st.f. request-flaggan (M)",
+  "motivering": "Backend-grinden finns nu (byggd sedan dokumentet, GUI-verifierad ORO-1) men den grindar på ett klient-påstående, inte på ett registrerat facksystem-utfall. Kravet 'säkerställer att skyddsbedömningen faktiskt COMMITTAS' är därmed bara delvis uppfyllt."
+ },
+ {
+  "k": 8,
+  "id": "K-8.22",
+  "rubrik": "GAP-034/035/037/033: svensk myndighets-e-underskrift (Inera/Sweden Connect + LTV + tidsstämpel)",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "Starta Inera-kundavtal/SITHS-ledtid NU (EXTERN); bygg först motor-konsumtionen av SigneringPort (commit-flöde för beslutsdokument) mot stubben så seam:en är körd innan live-adapter (M kod + L extern)",
+  "motivering": "Ingen Inera-integration är byggd. Porten+stubben är en registrerad men okonsumerad seam — signeringsflödet saknar motorväg helt; LibreSign på dev15 är demo och dessutom efemär. BESLUT-08 (Inera-stub först, avtal krävs) gäller."
+ },
+ {
+  "k": 8,
+  "id": "K-8.24",
+  "rubrik": "GAP-031 (drift): paus-hook för retention vid utlämnandebegäran (TF)",
+  "status": "SAKNAS",
+  "prio": "P0_blockerare",
+  "forbattring": "Bygg POST /arende/{ref}/retention-paus (+ häv) i ArendeController → ArendeService som sätter retention_state='pausad' med journalpost + orsak; GallringService respekterar redan state via findGallringsbara-predikatet (S)",
+  "motivering": "Gapet kvarstår oförändrat: 'pausad' är ett enum-värde med en enda skrivare (karantän-vägen). En registrerad TF-utlämnandebegäran kan inte pausa gallringen — GallringJob skulle gallra mitt under en pågående begäran."
+ },
+ {
+  "k": 8,
+  "id": "K-8.25",
+  "rubrik": "GAP-056: registret som single point of truth (saga + reconciliation + backup)",
+  "status": "DELVIS",
+  "prio": "P0_blockerare",
+  "forbattring": "Tre steg: (1) ArendeReconciliationJob (M, = K-8.18), (2) dokumenterad+testad backup/restore av hubs_arende_*-tabellerna i provision/ (S), (3) låt GallringService riva externa objekt via klienterna (återanvänd DemoSeedService::tearDownExternal-mönstret, M)",
+  "motivering": "Saga-benet av GAP-056 är stängt; reconciliation-, larm- och backup-benen är helt öppna trots BESLUT-19 ('från dag 1'). Registret är fortfarande en single point of failure utan drift-detektion eller återställningsrutin."
+ },
+ {
+  "k": 8,
+  "id": "K-8.26",
+  "rubrik": "GAP-057: atomär fördelning utan sekretessfönster",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg per-ärende-lås (DB-advisory eller status-CAS på registerraden) + verify-läsning av groupfolder-ACL efter grant/revoke innan svar; ena fördelningsvyn på api.tilldela (S frontend + M motor)",
+  "motivering": "Fördelningen är byggd med behörighetsgate och koherens-ansats men är inte atomär: parallella tilldelningar serialiseras inte, halvvägs-fel lämnar inkonsistenta lager, och slutläget verifieras aldrig innan kortet lämnar 'Att fördela'. Dessutom finns en parallell sdkmc-väg (fördelningsvyn kör inflodeAction('tilldela')) med annan semantik."
+ },
+ {
+  "k": 8,
+  "id": "K-8.27",
+  "rubrik": "GAP-058: en kanonisk ACL-källa för tre-lagers-koherens",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg koherens-checken in i ArendeReconciliationJob (tagg-medlemsmängd vs grupp-medlemsmängd vs Talk-deltagare per case) + deny-by-default-flagga i summary-läsytorna (M)",
+  "motivering": "Ett stort steg är taget sedan dokumentet (ledger→grupp→tre ytor är EN kedja), men tagg-lagret är fortfarande en andra sanning och koherensen testas/enforce:as inte automatiskt. Kända luckor: REMOVE ur NC-grupp propagerar inte till Talk; admin kan flippa team-config via Contacts-UI."
+ },
+ {
+  "k": 8,
+  "id": "K-8.28",
+  "rubrik": "GAP-061: favorit-resolverlager med obligatorisk färsk-resolve och fail-closed",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Samma byggsteg som K-8.9:s förbättring + tombstone-logik (removed=true när orgId saknas i DIGG-cachen) och blockering av val/vidarebefordran vid fail-closed (M)",
+  "motivering": "Kärnkraven i GAP-061 (obligatorisk färsk-resolve, HÅRD fail-closed när DIGG inte nås, tombstone-gallring) är inte byggda. Rutt-skalet och klassmodellen bedöms under K-8.9."
+ },
+ {
+  "k": 8,
+  "id": "K-8.29",
+  "rubrik": "GAP-062: favoritlistor som handlingstyper i DHP",
+  "status": "DELVIS",
+  "prio": "BESLUT",
+  "forbattring": "Per-kommun-aktivitet: ratificera favoritlistorna som handlingstyper i kommunens DHP + koppla klasserna a/b/c till DHP-rader i config (S kod, resten process)",
+  "motivering": "Dokumentkravet är täckt på spec-nivå men policy+process är inte verkställda: ingen server-side klassning wirar mot DHP, funktions-ägarskap/årlig översyn är inte etablerade processer, och DHP-innehållet är per-kommun (T-DHP-1-besläktat). Kräver kundens/arkivariens medverkan."
+ },
+ {
+  "k": 8,
+  "id": "K-8.30",
+  "rubrik": "GAP-063: vidarebefordra-via-favorit grindas som gallring",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Återanvänd GallringsGrind-mönstret före vidarebefordra i MinaArenden (samma modal-kontrakt) + server-side journal-/aktivitetspost med mottagarklass+LOA i inflode-action-vägen; rätta toast-texten tills loggningen finns (M)",
+  "motivering": "Gapet kvarstår: vidarebefordran passerar ingen registrera-först-grind, mottagar-LOA och provenans loggas inte, och blockeringen av ej-resolvbar favorit hänger på en klient-spärr (och på K-8.28:s obyggda resolve). Toast-texten är dessutom missvisande."
+ },
+ {
+  "k": 8,
+  "id": "K-8.31",
+  "rubrik": "GAP-064: server-side klassvalidering av favoriter (avvisa medborgar-PII)",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Bygg validerings-hook: antingen sdkmc-OCS POST /favoriter som enda skapa-väg i Hubs-UI:t (avvisar klass-c-PII → styr till ärendet) eller CardDAV-lyssnare som flaggar/avvisar; logga beslut i aktivitetslogg (M)",
+  "motivering": "Ingen server-side validering finns — favoriter skapas idag direkt i Contacts (CardDAV) utan någon Hubs-grind alls. BESLUT-18 säger dessutom att favorit-vCard aldrig får taggas hubsCaseId — även den invarianten är oenforce:ad."
+ },
+ {
+  "k": 8,
+  "id": "K-8.33",
+  "rubrik": "GAP-059: ärendechatt-retention + handlingsgrind + avidentifiering",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Steg 1 utan fork: låt GallringService radera ärendets Talk-rum via SpreedClient::deleteRoom (pekare finns) (S); steg 2: handlingsgrind i AvslutaGrind (S frontend); steg 3: server-side avidentifiering kräver spreed-itsl-fork (L)",
+  "motivering": "Endast frontend-broarna är byggda. Retention-bindningen, avsluts-grinden och server-side-avidentifieringen (Spreed-fork-territorium) saknas — chattinnehåll överlever ärendets gallring som föräldralöst rum."
+ },
+ {
+  "k": 8,
+  "id": "K-8.34",
+  "rubrik": "GAP-038/039: delgivningssätt och överklagandefristens start",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Datamodell: delgivningsSatt + delgivenDatum på beslutshändelsen + fristPolicy-ankare 'delgivning' i computeFristDue; UI först när beslutsflödet går skarpt (M, kräver T-DELG-1-beslut för digitala kanaler)",
+  "motivering": "Gapet kvarstår helt: delgivningssätt är inte modellerat och överklagandefrist härleds ingenstans. Läskvittens-ytan (kvittenser) finns men likställs korrekt INTE med delgivning någonstans i koden."
+ },
+ {
+  "k": 8,
+  "id": "K-8.35",
+  "rubrik": "GAP-018/044/047: fristDue speglas ur facksystemet",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Del av facksystem-läskonnektorn (K-8.17/19): GET-spegling av fristDue per dnr + FristVarselJob-riv när källan tar över (M, EXTERN-beroende)",
+  "motivering": "Halva invarianten hålls: Hubs räknar ALDRIG egen klocka för speglade frister (fail-honest null). Men speglingen själv (läskonnektor ur facksystemet) är obyggd — dessa ärenden står idag helt utan frist i Hubs. Hänger på GAP-019."
+ },
+ {
+  "k": 8,
+  "id": "K-8.37",
+  "rubrik": "GAP-065/066: omnämnande-aggregat och globalt frist-larm",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Gör FristVarselJob tröskel-baserad med varsel-state (varslat_t3/varslat_t0-flaggor) i st.f. exakt-dag-match (S); wira Talk-unread till enrichment när Talk-API:t tillåter (M)",
+  "motivering": "Båda delarna finns i grundform (pulsen är ingen andra inkorg; frist-larmet lever utanför filtren via varsellista+notiser). Fattas: kvittensmodell för omnämnanden, riktiga oläst-räknare, och ikapp-varsel vid missade cron-dygn."
+ },
+ {
+  "k": 8,
+  "id": "K-8.38",
+  "rubrik": "Samlade drift-/integrations-/per-kund-gap (GAP-016/021/024/025/030/045 + 040/011/023/036)",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Prioritera per kundcase: Deck-påminnelsemotor är den enda rent interna (M); övriga startas som externa spår (Forms-brygga S-M, recording/STT L+EXTERN)",
+  "motivering": "Blandat läge: lobby-/bokningsdelarna har fått riktig backend sedan dokumentet; övriga poster är fortsatt obyggda och flera är uttryckligen [EXTERN]/[KONFIG]/fork-beroende (recording-server, BankID native-lobby i spreed-itsl, BBIC-licens). Inget av detta är skarp-blockerande enligt kravets egen klassning."
+ },
+ {
+  "k": 8,
+  "id": "K-8.39",
+  "rubrik": "Δ1 systemOfRecord: commitDestination icke-null på varje ArendeTyp-rad",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg 'ingen' i VALID_DESTINATIONS + gate i assertCommittable (ej committbar) + lösgjort retention-ankare för sådana rader (S)",
+  "motivering": "Invarianten (icke-null + allowlist + ingen retention-flip utan registrerat utfall) är byggd, schema-enforcad och testad — implicit 'alltid Treserva' är borta. Enda avvikelsen: kravets sjunde värde 'ingen' finns inte, vilket blockerar modellering av No-SoR-fall utan commit-mål (46-fallslistan i kommunroller)."
+ },
+ {
+  "k": 8,
+  "id": "K-8.40",
+  "rubrik": "Δ2 sekretessGrund[] med temporalitet",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Migrera sekretessGrund till JSON-struct (samma mönster som fristPolicy-fältet som redan är JSON) + temporal-fält; konsumeras först av Δ10-hooken (M)",
+  "motivering": "Halva Δ2 är gjord sedan dokumentet: rättslig grund är datadriven per typ (inte bara en nivå-skalär). Struct-formen {grund, niva, temporal:{utgangsTrigger, utgangsDatum}} och det tidsbundna upphörandet saknas helt."
+ },
+ {
+  "k": 8,
+  "id": "K-8.41",
+  "rubrik": "Δ3 riskKlass ortogonal mot ärendetyp",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg riskKlass-kolumn på hubs_arende_case + eskaleringsregler (notis/varsellista-vikt); kan samköras med att ge hubs_arende_flagga-tabellen en skrivare (M)",
+  "motivering": "Risknivå finns inte som datafält någonstans — varken på typ- eller ärenderad. Dubbelmärkningskommentaren i kat7 ('akut_fara → även kat 1 via flaggor') pekar på flagg-tabellen som dessutom saknar skrivare."
+ },
+ {
+  "k": 8,
+  "id": "K-8.42",
+  "rubrik": "Δ4 externMyndighetMottagare + commitMode",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Destination-medveten flip i ArendeService::commit (extern_myndighet ⇒ provenans 'anmäld' utan retention-flip) + mottagarfält + frist-ankare 'vetskap' (M)",
+  "motivering": "Endast enum-värdet finns. Semantiken är fel för externa myndigheter: en commit med extern_myndighet skulle idag flippa retentionState och så småningom gallra raden trots att ingen arkivansvarsöverföring skett. Latent — ingen seedad typ använder destinationen ännu."
+ },
+ {
+  "k": 8,
+  "id": "K-8.43",
+  "rubrik": "Δ5 verksamhetsgren + sekretessMur",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg verksamhetsgren-fält på ArendeTyp + mur-check i H1-authz (enhetTillaten) och i ArendeMatchService (kandidater över mur avvisas); måste finnas FÖRE HSL/skol-breddning (M)",
+  "motivering": "Ingen binär mur mellan verksamhetsgrenar (IFO↔skola, SoL↔HSL) är modellerad eller verkställd. KOMMUNROLLER kallar SoL↔HSL-avsaknaden 'inbyggd sekretessincident' — obligatorisk del av P0.4-säkerhetsgolvet innan någon roll utanför socialtjänst aktiveras."
+ },
+ {
+  "k": 8,
+  "id": "K-8.44",
+  "rubrik": "Δ6 partsModell utökad + joinNyckel",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Utöka enum-värdena + gör joinNyckel till typfält; partsåtskild ACL (FAM-3) kräver kundbeslut först (S data, M verkan — vänta på FAM-beslut)",
+  "motivering": "Grundfälten finns och konsumeras säkerhetsmedvetet (TF 2:18-allow-mängden). Breddvärdena för objekts-/anonym-/bilage-ärenden är inte tillagda och partsmodellen har ingen ACL-verkan (FAM-2/FAM-3 står dessutom på DESLUT-listan — bygg ej ensidigt)."
+ },
+ {
+  "k": 8,
+  "id": "K-8.45",
+  "rubrik": "Δ7 karantanKravs / säkerhetsskydds-grind (terminerande, före R2)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg karantanKravs-flagga på ArendeTyp (forcerad avvisning per typ, S) + prioritera detektionskällor: auktoritativa kuvert-nycklar + per-funktionsadress-konfig (T-per-kommun) (M)",
+  "motivering": "Kärninvarianten (motorn vägrar minta hubsCaseId/skapa rum/mapp vid säkerhetsskyddsindikation, fail-closed) är byggd, testad och till och med starkare än kravet (körs på ALLA rader, inte bara flaggade typer). Fattas: den datadrivna per-typ-flaggan och en riktig detektionskälla (strukturerade SDK-fält/avsändarregister) — dagens nyckelordsheuristik är svag mot omärkt material."
+ },
+ {
+  "k": 8,
+  "id": "K-8.46",
+  "rubrik": "Δ8 felmottaget_men_kansligt: karantän-grind + retroaktiv isolering",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "(1) Slå upp ärendets kopplade messageIds via pekare/case-tagg innan untag (S); (2) POST /arende/{ref}/karantan (admin/operatör) → evaluateRetroaktiv (S)",
+  "motivering": "Den retroaktiva isoleringen finns och är testad, men den 'farligaste vägen' täcks bara delvis: taggar rivs inte ur meddelandeindexet (tom lista), och en handläggare som upptäcker felmottaget känsligt material i ett befintligt ärende har ingen knapp/route att trigga karantänen med."
+ },
+ {
+  "k": 8,
+  "id": "K-8.47",
+  "rubrik": "Δ9 visselblåsning som NON-route (medveten icke-integration)",
+  "status": "DELVIS",
+  "prio": "P1_viktig",
+  "forbattring": "Explicit vissel-exkludering i ArendeMatchService (före kaskaden) + i sdkmc-feed-ACL (funktionsadress-lista) + aclProfil 'vissel_isolerad' i biblioteket; testfall per opt-out (M)",
+  "motivering": "Huvudinvarianten ('får aldrig passera sagan') hålls via R0 och icke-integrationen är korrekt utebliven. Men skyddet vilar på en enda heuristisk grind — de deklarerade opt-outsen i match-/korgkonsolideringslagren och den egna ACL-domänen är obyggda, och T-VISSEL-1 kräver att opt-outen är TESTAD."
+ },
+ {
+  "k": 8,
+  "id": "K-8.48",
+  "rubrik": "Δ10 temporal ACL: släpp anbudssekretess för hela case-klustret",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Design + postCommitHook 'slapp_anbudssekretess' som degraderar hela case-klustrets ACL via pekar-registret; kräver Δ2 först (M-L, före upphandlingsroll)",
+  "motivering": "Inget byggt. Beroende av Δ2-strukturen och relevant först när upphandlingsrollen aktiveras — men bakåt-läckan (Spreed-historik/Deck-kort blir utlämningsbara) är dokumenterad och behöver design innan dess."
+ },
+ {
+  "k": 8,
+  "id": "K-8.49",
+  "rubrik": "Δ11 fristPolicy med multi-milstolpe och ankare",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Utöka computeFristDue till datadriven days-ur-policy + milstolpe-array med per-milstolpe-varsel i FristVarselJob (M, vid breddning)",
+  "motivering": "Strukturen är på plats (typ+ankare som data, per-steg-omräkning) men generaliseringens innehåll — förlängningsbarhet, multi-milstolpe och de utökade ankarna — saknas. Räcker för socialtjänst-vertikalen, inte för roll 5/8/9/11-bredden."
+ },
+ {
+  "k": 8,
+  "id": "K-8.50",
+  "rubrik": "Δ12 forstaAtgard-enum utökad",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg enum-värdena i typregistret + motsvarande grenar i nastaAtgard (ArendeService.php:2294) och frontend arendeFlow.js (S, vid breddning)",
+  "motivering": "Fältet finns och driver nastaAtgard-projektionen, men de sex utökade värdena för kommunroll-bredden är inte tillagda (och skulle behöva UI-mappning i arendeFlow.js)."
+ },
+ {
+  "k": 8,
+  "id": "K-8.51",
+  "rubrik": "Δ13 frendsModul som öppen enum (per-system-konnektorer)",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Följer K-8.17/K-8.19: första konnektorn som mall, sedan modul×produkt-matris i config (L, EXTERN)",
+  "motivering": "Fält-öppenheten och fail-closed-routingen (den viktigaste säkerhetsegenskapen — felklassning = sekretessincident) är byggda. Själva konnektorbiblioteket (GAP-019-klass × 5-10 produkter) är helt obyggt och [EXTERN]."
+ },
+ {
+  "k": 8,
+  "id": "K-8.52",
+  "rubrik": "Δ14 diariePlikt med spårad icke-diarieföring",
+  "status": "DELVIS",
+  "prio": "P2_senare",
+  "forbattring": "Migrera diariePlikt bool→enum + journalför icke-diarieförings-beslut som händelse (TYP-utökning i Handelse) med aktör+skäl (S-M)",
+  "motivering": "Grundfältet + direkt-vägen finns. Nyanserna (bedöms/villkorlig/registreringsbeslut) och framför allt den TF-kritiska spårningen av beslutet att INTE diarieföra saknas."
+ },
+ {
+  "k": 8,
+  "id": "K-8.53",
+  "rubrik": "Δ15 dubbel commit-destination (sekventiella commits utan akt-sammanslagning)",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "postCommitHook 'arkivera_fgs' som gör andra commit mot EdiariumPort med egen kvitto-rad (aktena slås aldrig ihop — separata dnr-fält); kräver dnr-modell för multipla kvitton per case (M)",
+  "motivering": "Sekventiella commits (diarium → e-arkiv) och tvillingcommits (PBL↔MB) stöds inte. Byggklossen finns dock: dispatchHook/postCommitHook-mekanismen är exakt rätt fäste för en 'arkivera_fgs'-kedja."
+ },
+ {
+  "k": 8,
+  "id": "K-8.54",
+  "rubrik": "Δ16 sorFallback: datadriven fallback-SoR med exit-krav",
+  "status": "SAKNAS",
+  "prio": "P2_senare",
+  "forbattring": "Lägg sorFallback-struct {aktiv, mal, exitKrav, granskadDatum} på ArendeTyp + synlig flagga i status/aggregat; innehåll per kommun = beslut (S kod + BESLUT innehåll)",
+  "motivering": "Mekanismen är inte byggd. Innehållet (vilken fallback per kategori per kommun) är dessutom T-SOR-1/B-SOR-1 — per-kommun-beslut som inte kan kodas ensidigt. Det som KAN byggas ensidigt är flaggan+exit-kravet i datamodellen."
+ },
+ {
+  "k": 8,
+  "id": "K-8.55",
+  "rubrik": "Δ17 PuB/RoPA + leverantorskontroll-hook",
+  "status": "SAKNAS",
+  "prio": "P1_viktig",
+  "forbattring": "Lägg de fyra PuB-fälten på ArendeTyp + migration + seed med null/default (S — schemat är ensidigt byggbart; innehåll per kund = beslut); leverantörskontroll-hook som preSagaHook-värde när upphandlingsrollen närmar sig (M)",
+  "motivering": "PuB-config-fälten (lagligGrund, personuppgiftsansvarig, andamaalsbegransning, gdpr_art9) är beslutade som dag-1-schema men finns inte i ArendeTyp; ingen preSagaHook för leverantörskontroll. KOMMUNROLLER P2 kallar PuB-/laglig-grund-kartan 'juridiskt osäljbart utan den' — själva schemafälten är ett litet ensidigt byggbart steg (innehållet ägs av nämnd+DSO per kund)."
+ }
+]

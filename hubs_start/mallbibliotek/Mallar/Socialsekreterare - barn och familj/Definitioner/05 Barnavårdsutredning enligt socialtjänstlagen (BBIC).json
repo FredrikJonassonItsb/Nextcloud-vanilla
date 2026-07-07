@@ -1,0 +1,149 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/05 Barnavårdsutredning enligt socialtjänstlagen (BBIC).docx",
+    "titel": "05 Barnavårdsutredning enligt socialtjänstlagen (BBIC)",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[Anges vid behov]",
+        "[Var och hos vem barnet bor]",
+        "[hubsCaseId / Treserva-dnr]",
+        "[Barn och familj / utredningsgrupp]",
+        "[Namn, personnummer, kontaktuppgifter]",
+        "[Namn, personnummer, kontaktuppgifter — eller \"ej aktuell\"]",
+        "[Gemensam / ensam / särskilt förordnad — ange vem]",
+        "[Namn, titel]",
+        "[Namn, titel — utredningar görs ofta av två handläggare]",
+        "[ÅÅÅÅ-MM-DD, dagen utredning inleddes]",
+        "[Datum och skäl om utredningstiden förlängts]",
+        "[från vem/funktion, datum]",
+        "[vad ansökan avser]",
+        "[beskriv]",
+        "[Sammanfatta kort vad anmälan/ansökan rörde och vad förhandsbedömningen kom fram till (varför utredning inleddes). Hänvisa till aktualiseringen i personakten.]",
+        "[Formulera vad utredningen ska besvara, t.ex. barnets behov av skydd och/eller stöd och om det finns behov av insats. Utgå från utredningsplanen.]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Barnet]",
+        "[Enskilt samtal / observation]",
+        "[t.ex. \"barnets egna ord om hemsituationen\"]",
+        "[Vårdnadshavare]",
+        "[Möte]",
+        "[notering]",
+        "[Skola/förskola]",
+        "[Telefon]",
+        "[Hälso- och sjukvård/BUP]",
+        "[Form]",
+        "[Ange vilka källor utredningen bygger på, t.ex. samtal, egna observationer, tidigare journal, uppgifter från skola/hälso- och sjukvård. Ange för varje uppgift varifrån den kommer.]",
+        "[ange aktörer]",
+        "[språk]",
+        "[datum]",
+        "[Fysisk och psykisk hälsa, funktionsnedsättning, kontakt med hälso- och sjukvård/BUP/tandvård, mediciner, vaccinationer.]",
+        "[Förskola/skola, närvaro, kunskapsutveckling, ev. anpassningar eller särskilt stöd, skolans bild av barnet.]",
+        "[Hur barnet mår känslomässigt, anknytning, reglering, ev. oro/nedstämdhet/utagerande, förändringar över tid.]",
+        "[Självbild, självkänsla, tillhörighet, kultur, språk, religion, ev. frågor om ursprung eller könsidentitet.]",
+        "[Relationer till vårdnadshavare, syskon, släkt och viktiga andra vuxna; kamratrelationer.]",
+        "[Hur barnet fungerar socialt, förståelse för normer och gränser, ev. risktecken (t.ex. bruk av alkohol/droger, kriminalitet, utsatthet).]",
+        "[Åldersadekvat självständighet, vardagsfärdigheter, ansvar barnet bär (över- eller underansvar i förhållande till ålder).]",
+        "[Mat, kläder, hygien, rutiner, hälsa och att barnets basbehov tillgodoses.]",
+        "[Skydd mot skada och fara i och utanför hemmet, tillsyn anpassad efter ålder, skydd mot våld/övergrepp.]",
+        "[Förmåga att ge barnet värme, tröst, bekräftelse och känslomässig närvaro.]",
+        "[Stöd i lek, lärande och utveckling; hjälp att förstå omvärlden.]",
+        "[Åldersadekvata och förutsägbara gränser, förmåga att sätta och hålla gränser utan att skada barnet.]",
+        "[Trygg och förutsägbar tillvaro, kontinuitet i relationer, boende och omsorg.]",
+        "[Hushållets sammansättning, relationer, separationer, viktiga händelser i familjens historia som är relevanta för barnet.]",
+        "[Släkt, vänner, andra viktiga vuxna som är eller kan bli ett stöd för barnet.]",
+        "[Boendeform och boendets lämplighet, bostadsområde, närmiljöns betydelse för barnet.]",
+        "[Försörjning, arbete/sysselsättning, ekonomi i den mån det påverkar barnets situation.]",
+        "[Vilka samtal som hållits med barnet, i vilken form och anpassat hur.]",
+        "[Sammanfatta vad barnet uttryckt om sin situation och om det som utreds.]",
+        "[ange skäl]",
+        "[Analysera hur väl barnets behov tillgodoses utifrån det som framkommit.]",
+        "[Vad talar för respektive emot en gynnsam utveckling för barnet? Väg samman.]",
+        "[Redovisa vad som bedöms vara barnets bästa i det aktuella läget och hur barnets egen inställning vägts in (Barnkonventionen art. 3 och 12).]",
+        "[Din samlade bedömning som svar på frågeställningen i avsnitt 2.]",
+        "[motivering]",
+        "[beskriv, t.ex. fortsatt aktualisering, hänvisning till öppna insatser]",
+        "[Koppla förslaget till analysen i avsnitt 8. Ange vad insatsen ska tillgodose.]",
+        "[Vårdnadshavare / barn (utifrån ålder och mognad)]",
+        "[Sammanfatta parternas synpunkter på utredningen och ange om de föranlett ändringar.]",
+        "[Namn, titel — den som fattar beslut i ärendet]",
+        "[Delegationspunkt och datum, om beslut fattas]",
+        "[Personakt / Treserva dnr]"
+    ],
+    "falt": [
+        {
+            "id": "koppling-till-aktualisering-och-forhandsbedomning",
+            "etikett": "Koppling till aktualisering och förhandsbedömning",
+            "token": "[Sammanfatta kort vad anmälan/ansökan rörde och vad förhandsbedömningen kom fram till (varför utredning inleddes). Hänvisa till aktualiseringen i personakten.]"
+        },
+        {
+            "id": "utredningens-fragestallning-ar",
+            "etikett": "Utredningens frågeställning(ar)",
+            "token": "[Formulera vad utredningen ska besvara, t.ex. barnets behov av skydd och/eller stöd och om det finns behov av insats. Utgå från utredningsplanen.]"
+        },
+        {
+            "id": "anvanda-kallor",
+            "etikett": "Använda källor",
+            "token": "[Ange vilka källor utredningen bygger på, t.ex. samtal, egna observationer, tidigare journal, uppgifter från skola/hälso- och sjukvård. Ange för varje uppgift varifrån den kommer.]"
+        },
+        {
+            "id": "familjebakgrund-och-nuvarande-sammansattning",
+            "etikett": "Familjebakgrund och nuvarande sammansättning",
+            "token": "[Hushållets sammansättning, relationer, separationer, viktiga händelser i familjens historia som är relevanta för barnet.]"
+        },
+        {
+            "id": "natverk",
+            "etikett": "Nätverk",
+            "token": "[Släkt, vänner, andra viktiga vuxna som är eller kan bli ett stöd för barnet.]"
+        },
+        {
+            "id": "boende-och-narmiljo",
+            "etikett": "Boende och närmiljö",
+            "token": "[Boendeform och boendets lämplighet, bostadsområde, närmiljöns betydelse för barnet.]"
+        },
+        {
+            "id": "socioekonomiska-forhallanden",
+            "etikett": "Socioekonomiska förhållanden",
+            "token": "[Försörjning, arbete/sysselsättning, ekonomi i den mån det påverkar barnets situation.]"
+        },
+        {
+            "id": "hur-barnet-har-informerats-och-gjorts-delaktigt",
+            "etikett": "Hur barnet har informerats och gjorts delaktigt",
+            "token": "[Vilka samtal som hållits med barnet, i vilken form och anpassat hur.]"
+        },
+        {
+            "id": "barnets-installning-och-synpunkter",
+            "etikett": "Barnets inställning och synpunkter",
+            "token": "[Sammanfatta vad barnet uttryckt om sin situation och om det som utreds.]"
+        },
+        {
+            "id": "sammanvagning-av-barnets-behov-och-vardnadshavarnas-formaga",
+            "etikett": "Sammanvägning av barnets behov och vårdnadshavarnas förmåga",
+            "token": "[Analysera hur väl barnets behov tillgodoses utifrån det som framkommit.]"
+        },
+        {
+            "id": "risk-och-skyddsfaktorer",
+            "etikett": "Risk- och skyddsfaktorer",
+            "token": "[Vad talar för respektive emot en gynnsam utveckling för barnet? Väg samman.]"
+        },
+        {
+            "id": "barnets-basta",
+            "etikett": "Barnets bästa",
+            "token": "[Redovisa vad som bedöms vara barnets bästa i det aktuella läget och hur barnets egen inställning vägts in (Barnkonventionen art. 3 och 12).]"
+        },
+        {
+            "id": "sammanfattande-bedomning",
+            "etikett": "Sammanfattande bedömning",
+            "token": "[Din samlade bedömning som svar på frågeställningen i avsnitt 2.]"
+        },
+        {
+            "id": "motivering-till-forslaget",
+            "etikett": "Motivering till förslaget",
+            "token": "[Koppla förslaget till analysen i avsnitt 8. Ange vad insatsen ska tillgodose.]"
+        },
+        {
+            "id": "inkomna-synpunkter",
+            "etikett": "Inkomna synpunkter",
+            "token": "[Sammanfatta parternas synpunkter på utredningen och ange om de föranlett ändringar.]"
+        }
+    ]
+}

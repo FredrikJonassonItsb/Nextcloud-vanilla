@@ -146,6 +146,90 @@ class MeetingService {
         return ['waiting' => $waiting, 'verifiedCount' => $verifiedCount];
     }
 
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ möten per ärende ──────────────
+    /**
+     * ÄRENDETS MÖTEN — kortets "Möten"-flik: alla bokade säkra möten (kommande
+     * OCH genomförda) som är knutna till ärendet via bokningens dnr-märkning
+     * (X-HUBS-DNR / CATEGORIES hubs-dnr-*, skrivna av SecureMeetingService).
+     *
+     * Söker anroparens EGNA kalendrar (CalDAV — samma synlighet som kalender-
+     * appen ger användaren; ingen behörighetsbreddning). Tidsfönster: 90 dagar
+     * bakåt (genomförda) till 365 framåt (kommande).
+     *
+     * @param string       $userId Den inloggade användaren.
+     * @param list<string> $refs   Ärendets referenser (dnr + hubsCaseId).
+     * @return array{kommande: list<array<string,mixed>>, genomforda: list<array<string,mixed>>}
+     */
+    public function getCaseMeetings(string $userId, array $refs): array {
+        $empty = ['kommande' => [], 'genomforda' => []];
+        if (!$this->calendarManager instanceof ICalendarManager || $refs === []) {
+            return $empty;
+        }
+        $normRefs = [];
+        foreach ($refs as $ref) {
+            $r = strtolower(trim((string)$ref));
+            if ($r !== '') {
+                $normRefs[$r] = true;
+            }
+        }
+        if ($normRefs === []) {
+            return $empty;
+        }
+
+        try {
+            $tz = new \DateTimeZone(date_default_timezone_get());
+            $start = new \DateTimeImmutable('-90 days', $tz);
+            $end = new \DateTimeImmutable('+365 days', $tz);
+            $nu = new \DateTimeImmutable('now', $tz);
+
+            $calendars = $this->calendarManager->getCalendarsForPrincipal('principals/users/' . $userId);
+            $options = ['timerange' => ['start' => $start, 'end' => $end]];
+
+            $kommande = [];
+            $genomforda = [];
+            foreach ($calendars as $calendar) {
+                foreach ($calendar->search('/call/', ['LOCATION'], $options) as $row) {
+                    $event = $this->normaliseCalendarRow($row);
+                    if ($event === null) {
+                        continue;
+                    }
+                    $dnr = strtolower(trim((string)($event['dnr'] ?? '')));
+                    if ($dnr === '' || !isset($normRefs[$dnr])) {
+                        continue;
+                    }
+                    $token = null;
+                    if (preg_match('#/call/([A-Za-z0-9]+)#', $event['location'], $m) === 1) {
+                        $token = $m[1];
+                    }
+                    $mote = [
+                        'titel' => $event['title'],
+                        'start' => $event['start'],
+                        'slut' => $event['end'],
+                        'callUrl' => $event['location'],
+                        'token' => $token,
+                        'dnr' => $event['dnr'],
+                    ];
+                    $ar = ($event['end'] ?? $event['start'] ?? '');
+                    $arGenomford = $ar !== '' && $ar < $nu->format('c');
+                    if ($arGenomford) {
+                        $genomforda[] = $mote;
+                    } else {
+                        $kommande[] = $mote;
+                    }
+                }
+            }
+
+            usort($kommande, static fn (array $a, array $b): int => ($a['start'] ?? '~') <=> ($b['start'] ?? '~'));
+            usort($genomforda, static fn (array $a, array $b): int => ($b['start'] ?? '') <=> ($a['start'] ?? ''));
+
+            return ['kommande' => $kommande, 'genomforda' => $genomforda];
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs-start: case-meetings lookup failed', ['exception' => $e]);
+            return $empty;
+        }
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
+
     // -----------------------------------------------------------------------
     // CalDAV
     // -----------------------------------------------------------------------

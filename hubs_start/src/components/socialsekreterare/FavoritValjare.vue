@@ -8,7 +8,8 @@
   - intern användare. Varje rad bär kanalikon + namn + identitets-/klass-badge + en
   - diskret proveniens-rad. TOMBSTONE: en borttagen DIGG-post (removed) visas
   - överstruken och är ALDRIG väljbar — en adress som inte längre finns i sanningen
-  - får inte användas som mottagare. Fri sökning finns vid sidan av via "Kontakter".
+  - får inte användas som mottagare. Fri sökning finns vid sidan av via "Kontakter"
+  - — den öppnas i NY FLIK så att pågående flöde (modalen) aldrig navigeras bort.
 -->
 <template>
 	<NcModal
@@ -29,7 +30,10 @@
 					v-for="f in filter"
 					:key="f.id"
 					class="favorit-valjare__pill hs-target"
-					:class="{ 'favorit-valjare__pill--aktiv': aktivtFilter === f.id }"
+					:class="{
+						'favorit-valjare__pill--aktiv': aktivtFilter === f.id,
+						'favorit-valjare__pill--aggregat': f.aggregat,
+					}"
 					type="button"
 					:aria-pressed="String(aktivtFilter === f.id)"
 					@click="aktivtFilter = f.id">
@@ -124,11 +128,15 @@
 		</div>
 
 		<div class="favorit-valjare__footer">
-			<!-- Fri sökning vid sidan av favoriterna (stub) -->
+			<!-- Fri sökning vid sidan av favoriterna — öppnas i NY FLIK så att
+			     vidarebefordra-flödet (modalen) inte navigeras bort. -->
 			<NcButton
 				class="favorit-valjare__sok"
 				type="tertiary"
-				@click="onSok">
+				:href="kontakterUrl"
+				target="_blank"
+				rel="noopener"
+				:aria-label="t('hubs_start', 'Sök i Kontakter — öppnas i ny flik')">
 				<template #icon>
 					<MagnifyIcon :size="20" />
 				</template>
@@ -158,6 +166,7 @@ import MagnifyIcon from 'vue-material-design-icons/Magnify.vue'
 import OfficeBuildingIcon from 'vue-material-design-icons/OfficeBuilding.vue'
 import ShieldAccountIcon from 'vue-material-design-icons/ShieldAccount.vue'
 
+import { generateUrl } from '@nextcloud/router'
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 
 export default {
@@ -209,13 +218,20 @@ export default {
 			return this.titel || this.t('hubs_start', 'Välj mottagare')
 		},
 
-		/** Filterpiller: ikon + text. Mappar mot favoritens listor[]. */
+		/** Filterpiller: ikon + text. Mappar mot favoritens listor[].
+		 *  'alla' är ett AGGREGAT (summan av de andra listorna) och bär
+		 *  --aggregat-gråtonen — samma mönster som KorgValjare. */
 		filter() {
 			return [
-				{ id: 'alla', text: this.t('hubs_start', 'Alla'), ikon: 'AccountStarIcon' },
+				{ id: 'alla', text: this.t('hubs_start', 'Alla'), ikon: 'AccountStarIcon', aggregat: true },
 				{ id: 'personlig', text: this.t('hubs_start', 'Mina (personlig)'), ikon: 'AccountIcon' },
 				{ id: 'mottagningen@', text: this.t('hubs_start', 'mottagningen@'), ikon: 'OfficeBuildingIcon' },
 			]
+		},
+
+		/** Länk till Kontakter-appen — öppnas i ny flik så modalen lever kvar. */
+		kontakterUrl() {
+			return generateUrl('/apps/contacts/')
 		},
 
 		/** Favoriter efter aktivt filter — tombstones visas kvar (men icke-väljbara). */
@@ -294,10 +310,6 @@ export default {
 			this.$emit('valj', fav)
 		},
 
-		onSok() {
-			this.$emit('sok')
-		},
-
 		onClose() {
 			this.$emit('close')
 		},
@@ -353,6 +365,22 @@ export default {
 			border-color: var(--color-primary-element);
 			background: var(--color-primary-element-light, color-mix(in srgb, var(--color-primary-element) 12%, var(--color-main-background)));
 			color: var(--color-primary-element);
+		}
+
+		// AGGREGAT-pillret (Alla): egen gråton + streckad ram som signalerar
+		// "summan av de andra listorna", inte ett eget listval (jfr KorgValjare).
+		&--aggregat:not(&--aktiv) {
+			background: var(--color-background-dark);
+			border-style: dashed;
+			font-weight: 500;
+
+			&:hover {
+				background: var(--color-background-hover);
+			}
+		}
+
+		&--aggregat#{&}--aktiv {
+			border-style: dashed;
 		}
 	}
 

@@ -16,12 +16,15 @@ use OCP\AppFramework\Db\Entity;
  *
  * Maps to table `hubs_arende_pekare` (NC adds the `oc_` prefix).
  *
- * The case-engine SAGA (R3–R9) creates side effects in apps that have no
+ * The case-engine SAGA (R3–R9 + T) creates side effects in apps that have no
  * case:-tag of their own (a Groupfolder folder id, a Deck card id, a Spreed
- * talkToken, a CalDAV object uri, a sdkmc case:-tag). Those objects cannot be
- * found from the hubsCaseId by tag, so each forward step records a pekare here;
- * the compensating step (and later lookups) resolve the external object id
- * through {@see PekareMapper::findByCaseId()}.
+ * talkToken, a CalDAV object uri, a sdkmc case:-tag, a Team/circle singleId).
+ * Those objects cannot be found from the hubsCaseId by tag, so each forward
+ * step records a pekare here; the compensating step (and later lookups) resolve
+ * the external object id through {@see PekareMapper::findByCaseId()}.
+ *
+ * objekt_typ values: case_tag | groupfolder | deck_card | talk_room | calendar |
+ * conversation | groupfolder_ref | team.
  *
  * Carries ONLY coordination state (object type + external id), never
  * verksamhetsdata.

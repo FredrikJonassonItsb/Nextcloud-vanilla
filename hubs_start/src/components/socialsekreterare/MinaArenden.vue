@@ -5,9 +5,11 @@
 			:seen="prefs.onboardingSeen"
 			@finish="onTourFinish" />
 
-		<!-- Demo: persona-växlare (i en riktig install härleds personan ur roll/grupp) -->
-		<div v-if="state.demoMode" class="mina-arenden__personbar">
-			<!-- Roll-läge: handläggare vs gruppledare (i prod styrt av fördelarroll i korgens team) -->
+		<!-- Persona-växlare (demo) + roll-läge (rollstyrt: fördelare/förvaltare — inte demo-gated) -->
+		<div v-if="state.demoMode || arFordelare" class="mina-arenden__personbar">
+			<!-- Roll-läge: handläggare vs gruppledare. Visas för fördelarrollen
+			     (profil 'forvaltare') även i skarpt läge — tidigare demo-gated,
+			     vilket gjorde fördelningsvyn onåbar i drift. -->
 			<div class="mina-arenden__lagevaxel" role="group" :aria-label="t('hubs_start', 'Växla arbetsläge')">
 				<button
 					type="button"
@@ -27,18 +29,30 @@
 				</button>
 			</div>
 			<PersonaSwitcher
+				v-if="state.demoMode"
 				:personas="personas"
 				:active="state.activePersona"
 				@change="store.setPersona" />
 		</div>
 
-		<!-- Zon 0: sidhuvud + Dagspulsen (sticky) -->
+		<!-- Fel-banner: backend-fel får ALDRIG sväljas tyst (audit 2026-07-07) —
+		     en tom vy utan förklaring ser ut som "inget att göra". -->
+		<div v-if="state.error" class="mina-arenden__fel" role="alert">
+			<AlertOctagonIcon :size="18" />
+			<span>{{ t('hubs_start', 'Allt innehåll kunde inte hämtas — vyn kan vara ofullständig.') }}</span>
+			<NcButton type="secondary" @click="onForsokIgen">
+				{{ t('hubs_start', 'Försök igen') }}
+			</NcButton>
+		</div>
+
+		<!-- Zon 0: sidhuvud + Dagspulsen (sticky). Pulsen är HÄRLEDD ur riktig
+		     laddad data (möten/beslut/inflöde/omnämnanden) — aldrig döda nollor. -->
 		<MinDagHeader
 			:loa="state.loa"
 			:profile="state.profile"
-			:puls="A.puls"
+			:puls="pulsBeriknad"
 			:aktivt-filter="A.pulsFilter"
-			@filter="store.setPulsFilter"
+			@filter="onPulsFilter"
 			@open-palette="commandPaletteOpen = true"
 			@upgrade-loa="onUpgradeLoa"
 			@open-help="onOpenHelp" />
@@ -72,6 +86,7 @@
 			<AttTaEmotSektion
 				:items="taEmotItems"
 				:aktivt-filter="A.pulsFilter"
+				:pending-ids="taEmotPending"
 				@triage="onTriage"
 				@open="onOpenTriage" />
 
@@ -97,34 +112,32 @@
 				@besvara="onInflode('besvara', $event)"
 				@vidarebefordra="onVidarebefordra"
 				@gallra="onInflode('gallra', $event)"
-				@registrera="onInflode('registrera', $event)" />
+				@registrera="onInflode('registrera', $event)"
+				@avvisa-forslag="onAvvisaForslag" />
 
-			<!-- Zon 2: kräver åtgärd nu (heta, pinnade) -->
-			<ArendeZon
-				:arenden="hetaArenden"
-				:pinned="true"
-				:title="t('hubs_start', 'Kräver åtgärd nu')"
-				:keyboard-mode="prefs.keyboardMode"
-				@nasta-atgard="onNastaAtgard"
-				@open-rum="onOpenRum"
-				@skicka="onSkicka"
-				@boka-mote="openMeetingWizard"
-				@signera="onSignera"
-				@commit="onCommit"
-				@bevakning="onBevakning"
-				@godkann="onGodkann"
-				@expand="onExpand" />
+			<!-- Zon 2: KRÄVER ÅTGÄRD NU — varsel-LISTA som länkar NER till kortet.
+			     Ett ärende = ett kort = en arbetsyta; kortet flyttas aldrig hit. -->
+			<VarselLista
+				:varsel="varsel"
+				@ga-till="gaTillArende" />
 
-			<!-- Zon 3: mina ärenden (alla aktiva, filtrerbar) -->
+			<!-- Zon 3: MINA ÄRENDEN — ALLA ärenden jag är ansluten till
+			     (medlemsbaserad summary, frist-sorterad: närmast brinner överst). -->
 			<ArendeZon
 				:arenden="aktivaArenden"
 				:pinned="false"
 				:title="t('hubs_start', 'Mina ärenden')"
 				:filter-steg="A.stegFilter"
 				:keyboard-mode="prefs.keyboardMode"
+				:markerad-ref="markeradRef"
+				:varslade-refs="varsladeRefs"
 				@filter-steg="store.setStegFilter"
 				@nasta-atgard="onNastaAtgard"
 				@open-rum="onOpenRum"
+				@open-team="onOpenTeam"
+				@ny-chatt="onNyChatt"
+				@skapa-handling="onSkapaHandling"
+				@omfordela-kollega="onOmfordelaKollega"
 				@skicka="onSkicka"
 				@boka-mote="openMeetingWizard"
 				@signera="onSignera"
@@ -133,13 +146,24 @@
 				@godkann="onGodkann"
 				@expand="onExpand" />
 
-			<!-- Zon 4: mina möten idag (mötesanteckning-godkännande sker i ärendekortet) -->
+			<!-- Zon 4: mina möten idag — TOM panel kollapsas till en rad -->
+			<button
+				v-if="!meetings.length && !motenVisas"
+				class="mina-arenden__kollapsad hs-card hs-target"
+				type="button"
+				:aria-expanded="'false'"
+				@click="motenVisas = true">
+				<ChevronRightIcon :size="16" /> {{ t('hubs_start', 'Mina möten idag') }}
+				<span class="mina-arenden__kollapsad-antal">0</span>
+			</button>
 			<MotesRemsa
+				v-else
 				:meetings="meetings"
 				@join="onJoin" />
 
-			<!-- Zon 4.5: kvittenser & gallring (Treserva = slutlagring; Hubs = mellanlagring) -->
-			<TreservaKvittens :receipts="A.receipts" />
+			<!-- Kvittenser & gallring BORTTAGEN ur Min dag (Fredrik 2026-07-07):
+			     registrerings-/gallringskvitton är fördelnings-/uppföljningsdata,
+			     inte handläggarens dagsflöde — de bor i Fördelningsvyn. -->
 
 			<!-- Zon 5: foten -->
 			<footer class="mina-arenden__foten hs-card">
@@ -153,16 +177,10 @@
 					<span v-else-if="enhetschattOlasta" class="mina-arenden__chatt-olasta">{{ enhetschattOlasta }}</span>
 					<ChevronRightIcon :size="16" />
 				</button>
-				<!-- #3 — Egna anteckningar är PERSONLIGA (per handläggare), hör inte till
-				     något ärende. Därför en egen plats i foten, inte en kort-åtgärd. -->
-				<button type="button" class="mina-arenden__lank hs-target" @click="onAnteckningar()">
-					<TextBoxOutlineIcon :size="18" /> {{ t('hubs_start', 'Egna anteckningar') }}
-				</button>
+				<!-- Egna anteckningar + Senaste säkra filer BORTTAGNA ur foten
+				     (Fredrik 2026-07-07): hör inte hemma i Min dag. -->
 				<a class="mina-arenden__lank" :href="link('/apps/collectives/')">
 					<BookOpenIcon :size="18" /> {{ t('hubs_start', 'Kunskapsbank & mallar') }}
-				</a>
-				<a class="mina-arenden__lank" :href="link('/apps/files/?dir=/Ärenderum')">
-					<FolderLockIcon :size="18" /> {{ t('hubs_start', 'Senaste säkra filer') }}
 				</a>
 				<!-- #1 — förhandsvisa hela UI:t i demoläge (fixtures) utan att röra serverns
 				     config. Default är demoläge AV på en skarp instans. -->
@@ -186,14 +204,31 @@
 			:is-running="avslutaRunning"
 			@avsluta="onAvslutaConfirmed"
 			@close="avslutaOpen = false" />
-		<!-- #12 — privata anteckningar (per-användare, aldrig delade) -->
-		<MinaAnteckningar
-			v-if="anteckningarOpen"
-			:arende="anteckningarArende"
-			@close="anteckningarOpen = false" />
+		<!-- Ny chatt i ärenderummet (1:n — motorn kopplar team + åtkomstlista) -->
+		<NyChattModal
+			v-if="nyChattOpen"
+			:arende="nyChattArende"
+			:is-running="nyChattRunning"
+			@skapa="onNyChattSkapa"
+			@close="nyChattOpen = false" />
+		<!-- Skapa handling från mall: mallbibliotek + förifyllda fält (skyddsgrindade) -->
+		<HandlingModal
+			v-if="handlingOpen"
+			:arende="handlingArende"
+			:is-running="handlingRunning"
+			@skapa="onHandlingSkapa"
+			@close="handlingOpen = false" />
+		<!-- Omfördela ett ägt ärende till en namngiven kollega (menyval på kortet) -->
+		<OmfordelaModal
+			v-if="omfordelaArende"
+			:arende="omfordelaArende"
+			:is-running="omfordelaRunning"
+			@omfordela="onOmfordelaSkapa"
+			@close="omfordelaArende = null" />
 		<MeetingWizard
 			v-if="meetingWizardOpen"
 			:start-now="false"
+			:arende="wizardArende"
 			@close="meetingWizardOpen = false"
 			@booked="onMeetingBooked" />
 		<CommandPalette
@@ -219,7 +254,6 @@
 			:open="favoritOpen"
 			:titel="t('hubs_start', 'Vidarebefordra till…')"
 			@valj="onFavoritValj"
-			@sok="onFavoritSok"
 			@close="favoritOpen = false" />
 
 		<!-- Fas F3: koppla-väljare — välj målärende för ett inflöde-meddelande -->
@@ -237,12 +271,10 @@ import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcCounterBubble from '@nextcloud/vue/dist/Components/NcCounterBubble.js'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import BookOpenIcon from 'vue-material-design-icons/BookOpenVariant.vue'
-import FolderLockIcon from 'vue-material-design-icons/FolderLock.vue'
 import ForumIcon from 'vue-material-design-icons/Forum.vue'
 import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import AccountSupervisorIcon from 'vue-material-design-icons/AccountSupervisor.vue'
-import TextBoxOutlineIcon from 'vue-material-design-icons/TextBoxOutline.vue'
 import FlaskOutlineIcon from 'vue-material-design-icons/FlaskOutline.vue'
 import { showSuccess, showInfo, showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
@@ -250,7 +282,15 @@ import { generateUrl } from '@nextcloud/router'
 
 import store from '../../store/index.js'
 import deepLinks from '../../services/deepLinks.js'
+import { skapaArendeChatt, skapaHandling, tilldela } from '../../services/api.js'
 import { NASTA_ATGARD, PROCESS_STEG } from '../../services/arendeFlow.js'
+import { typLabel } from '../../services/messageTypes.js'
+
+/** Processtegets svenska etikett (aldrig rå steg-token i UI). */
+function stegEtikett(steg) {
+	const traff = PROCESS_STEG.find((s) => s.id === steg)
+	return traff ? traff.label : ''
+}
 import { listPersonas } from '../../services/personas.js'
 import PersonaSwitcher from '../PersonaSwitcher.vue'
 
@@ -265,12 +305,14 @@ import KorgValjare from './KorgValjare.vue'
 import EnhetschattPanel from './EnhetschattPanel.vue'
 import FordelningsVy from './FordelningsVy.vue'
 import FavoritValjare from './FavoritValjare.vue'
-import TreservaKvittens from './TreservaKvittens.vue'
 import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
+import VarselLista from './VarselLista.vue'
 import CommitGrind from './CommitGrind.vue'
 import AvslutaGrind from './AvslutaGrind.vue'
-import MinaAnteckningar from './MinaAnteckningar.vue'
+import NyChattModal from './NyChattModal.vue'
+import HandlingModal from './HandlingModal.vue'
+import OmfordelaModal from './OmfordelaModal.vue'
 import OnboardingTour from './OnboardingTour.vue'
 import MeetingWizard from '../MeetingWizard.vue'
 import CommandPalette from '../CommandPalette.vue'
@@ -279,12 +321,12 @@ export default {
 	name: 'MinaArenden',
 
 	components: {
-		NcLoadingIcon, NcCounterBubble, CheckAllIcon, BookOpenIcon, FolderLockIcon, ForumIcon, ChevronRightIcon,
-		AccountIcon, AccountSupervisorIcon, TextBoxOutlineIcon, FlaskOutlineIcon,
+		NcLoadingIcon, NcCounterBubble, CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
+		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon,
 		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
-		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, TreservaKvittens, ArendeZon,
-		MotesRemsa, CommitGrind, AvslutaGrind, MinaAnteckningar, OnboardingTour, MeetingWizard, CommandPalette,
+		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, ArendeZon,
+		MotesRemsa, VarselLista, CommitGrind, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -294,6 +336,12 @@ export default {
 			state: store.state,
 			commandPaletteOpen: false,
 			meetingWizardOpen: false,
+			wizardArende: null,
+			markeradRef: null,
+			motenVisas: false,
+			taEmotPending: [],
+			omfordelaArende: null,
+			omfordelaRunning: false,
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
@@ -302,8 +350,13 @@ export default {
 			avslutaOpen: false,
 			avslutaArende: null,
 			avslutaRunning: false,
-			anteckningarOpen: false,
-			anteckningarArende: null,
+			nyChattOpen: false,
+			nyChattArende: null,
+			nyChattRunning: false,
+			// Handling-från-mall (mallbibliotek + förifyllda fält).
+			handlingOpen: false,
+			handlingArende: null,
+			handlingRunning: false,
 			attHanteraGruppering: 'arende',
 			favoritOpen: false,
 			favoritRad: null,
@@ -330,6 +383,8 @@ export default {
 		},
 
 		/** Pure zonOf selector (mindag architecture). */
+		/** Heta ärenden — numera underlag för VARSEL-listan (korten flyttas ALDRIG
+		 * ut ur Mina ärenden; ett ärende = ett kort = en arbetsyta). */
 		hetaArenden() {
 			const heta = this.A.arenden.filter((a) => this.zonOf(a) === 'het')
 			// gap33 — Dagspulse 'frist' narrows the hot zone to burning frister.
@@ -338,16 +393,76 @@ export default {
 			}
 			return heta
 		},
+		/** Varsel-raderna: VAD som ska göras + länk ner till kortet. */
+		varsel() {
+			return this.hetaArenden.map((a) => {
+				let sym = '🔥'
+				let rubrik = (a.nastaAtgard && a.nastaAtgard.label) || this.t('hubs_start', 'Ärendet väntar på dig')
+				if (a.frist && (a.frist.tone === 'error' || a.frist.tone === 'warning')) {
+					sym = '⏰'
+					rubrik = this.t('hubs_start', '{frist} — {atgard}', {
+						frist: a.frist.label || this.t('hubs_start', 'Fristen brinner'),
+						atgard: (a.nastaAtgard && a.nastaAtgard.label) || this.t('hubs_start', 'åtgärd krävs'),
+					})
+				} else if (a.plikt && !a.plikt.kvitterad) {
+					sym = '⛔'
+					rubrik = a.plikt.label || this.t('hubs_start', 'Plikt att kvittera')
+				} else if (a.diskussion && a.diskussion.omnamnandeTillMig) {
+					sym = '@'
+					rubrik = this.t('hubs_start', 'Du är omnämnd i ärendets diskussion')
+				}
+				return {
+					sym,
+					rubrik,
+					// Kort referens i st.f. rå UUID: dnr → barnRef → 6-siffrigt kort-id.
+					// Etiketter, aldrig råa maskintokens (audit 2026-07-07): typ via
+				// kanon-mappen, steg via processtegens svenska label.
+				under: (a.dnr ? 'dnr ' + a.dnr : a.barnRef || this.t('hubs_start', 'Ärende {ref}', { ref: a.kortRef || String(a.triageRef || '').slice(0, 6) }))
+					+ (typLabel(a.arendeTyp) ? ' · ' + typLabel(a.arendeTyp) : '')
+					+ (stegEtikett(a.steg) ? ' · ' + stegEtikett(a.steg) : ''),
+					ref: a.triageRef,
+				}
+			})
+		},
+		varsladeRefs() {
+			return this.hetaArenden.map((a) => a.triageRef)
+		},
+		/** ALLA mina ärenden (medlemsbaserad summary), frist-sorterade — det som
+		 * brinner ligger överst I listan i stället för i en egen container. */
 		aktivaArenden() {
-			let aktiva = this.A.arenden.filter((a) => this.zonOf(a) !== 'het')
+			let aktiva = this.A.arenden.slice()
 			if (this.A.stegFilter) {
 				aktiva = aktiva.filter((a) => a.steg === this.A.stegFilter)
 			}
 			// gap33 — Dagspulse 'signera' narrows to ärenden waiting for signature (beslut-steget).
 			if (this.A.pulsFilter === 'signera') {
-				return aktiva.filter((a) => a.steg === 'beslut')
+				aktiva = aktiva.filter((a) => a.steg === 'beslut')
 			}
-			return aktiva
+			const vikt = { error: 0, warning: 1 }
+			return aktiva.sort((x, y) => {
+				const vx = (x.frist && vikt[x.frist.tone] !== undefined) ? vikt[x.frist.tone] : 2
+				const vy = (y.frist && vikt[y.frist.tone] !== undefined) ? vikt[y.frist.tone] : 2
+				if (vx !== vy) {
+					return vx - vy
+				}
+				return String(x.frist && x.frist.due || '~') < String(y.frist && y.frist.due || '~') ? -1 : 1
+			})
+		},
+		/** Fördelarrollen (gruppledare/förvaltare) får läge-växeln även i skarpt läge. */
+		arFordelare() {
+			return this.state.profile === 'forvaltare'
+		},
+		/** Dagspuls HÄRLEDD ur laddad data — döda motor-nollor visas aldrig som sanning. */
+		pulsBeriknad() {
+			const p = this.A.puls || {}
+			const omn = this.A.arenden.filter((a) => a.diskussion && a.diskussion.omnamnandeTillMig).length
+			return {
+				fristerBrinner: p.fristerBrinner || 0,
+				motenIdag: (this.meetings && this.meetings.length) || 0,
+				attSignera: this.A.arenden.filter((a) => a.steg === 'beslut').length,
+				nyaInflode: (this.taEmotItems && this.taEmotItems.length) || 0,
+				omnamnanden: omn,
+			}
 		},
 		triageFiltered() {
 			// Dagspulse 'inflode' filter narrows to triage; other filters leave it.
@@ -357,8 +472,19 @@ export default {
 		/** Korg ∩ typ-filtrerat inflöde (delas av de tre banden 1a/1b/1c). */
 		filteredInflode() {
 			const { aktivKorg, aktivTyp } = this.A
+			// '@alla-grupper' = KorgValjarens aggregat-sentinel: alla
+			// funktionsbrevlådor (scope !== 'personlig') i ett val.
+			let korgTraff = (r) => !aktivKorg || (r.korg && r.korg.addr === aktivKorg)
+			if (aktivKorg === '@alla-grupper') {
+				const gruppAddrs = new Set(
+					(this.A.korgar || [])
+						.filter((k) => k.scope !== 'personlig')
+						.map((k) => k.addr),
+				)
+				korgTraff = (r) => !!(r.korg && gruppAddrs.has(r.korg.addr))
+			}
 			return this.A.inflode.filter((r) =>
-				(!aktivKorg || (r.korg && r.korg.addr === aktivKorg))
+				korgTraff(r)
 				&& (!aktivTyp || r.messageType === aktivTyp))
 		},
 		/** 1a — nytt ärende (orosanmälningar): triage-känslan, oförändrad. */
@@ -510,6 +636,12 @@ export default {
 		 * verkligt ärende, annars ett ärligt felmeddelande med motorns orsak.
 		 */
 		async skapaArendeFromRad(rad) {
+			// DUBBELKLICKSGARD: ett meddelande får bara ha ETT skapa-anrop i luften.
+			// (Motorn är dessutom idempotent på conversationId — bältet + hängslen.)
+			if (this.taEmotPending.includes(rad.id)) {
+				return
+			}
+			this.taEmotPending = this.taEmotPending.concat([rad.id])
 			try {
 				const r = await store.inflodeAction('skapa', { id: rad.id, rad })
 				if (r && r.ok && r.arende) {
@@ -519,6 +651,8 @@ export default {
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte starta ärendet. Kontrollera ärendetyp och försök igen.'))
+			} finally {
+				this.taEmotPending = this.taEmotPending.filter((id) => id !== rad.id)
 			}
 		},
 
@@ -526,6 +660,10 @@ export default {
 		/** Generisk inflöde-/ej-kopplat-åtgärd → store-orkestrering (demo: optimistisk). */
 		async onInflode(action, rad) {
 			const r = rad && (rad.rad || rad)
+			// Gallringsgrindens juridiska stöd (handlingstyp + gallringsbeslut)
+			// följer med i payloaden — det VAR det som journalfördes-löftet lovade
+			// men som tidigare tappades på vägen (audit 2026-07-07).
+			const handlingstyp = (rad && rad.handlingstyp) || null
 			// Fas F3 — "koppla" går ALDRIG direkt: öppna väljaren så handläggaren VÄLJER
 			// målärende (felkoppling = sekretessincident → människo-bekräftelse krävs).
 			if (action === 'koppla') {
@@ -544,7 +682,7 @@ export default {
 			// Ett uttryckligt fel (ok:false/error/avvisad) eller kastat fel ger ett
 			// ärligt felmeddelande i stället för en falsk "klart"-bekräftelse.
 			try {
-				const res = await store.inflodeAction(action, { id: r && r.id, rad: r })
+				const res = await store.inflodeAction(action, { id: r && r.id, rad: r, ...(handlingstyp ? { handlingstyp } : {}) })
 				if (res && (res.ok === false || res.error || res.avvisad)) {
 					showError(this.t('hubs_start', 'Åtgärden kunde inte slutföras: {orsak}', { orsak: res.error || res.reason || this.t('hubs_start', 'okänt fel') }))
 				} else if (msg[action]) {
@@ -579,8 +717,19 @@ export default {
 			}
 		},
 		onOpenKoppling(payload) {
-			const ref = payload && (payload.dnr || payload.barnRef || (payload.koppling && payload.koppling.dnr) || (payload.rad && payload.rad.koppling && payload.rad.koppling.dnr))
-			showInfo(this.t('hubs_start', 'Öppnar kopplat ärende: {ref}', { ref: ref || '—' }))
+			// ÖPPNA kortet på riktigt (audit 2026-07-07: tidigare bara en toast).
+			// Resolva raden → matchande ärendekort i listan → scroll + markering
+			// (samma landningsmekanik som varsel-länkarna).
+			const koppling = payload && (payload.koppling || (payload.rad && payload.rad.koppling)) || {}
+			const dnr = koppling.dnr || (payload && payload.dnr)
+			const hubsCaseId = koppling.hubsCaseId || (payload && payload.hubsCaseId)
+			const kort = (this.A.arenden || []).find((a) =>
+				(hubsCaseId && a.hubsCaseId === hubsCaseId) || (dnr && a.dnr === dnr))
+			if (kort) {
+				this.gaTillArende(kort.triageRef || kort.hubsCaseId)
+			} else {
+				showInfo(this.t('hubs_start', 'Ärendet {ref} finns inte i din lista — det kan tillhöra en annan handläggare.', { ref: dnr || hubsCaseId || '—' }))
+			}
 		},
 
 		// --- Vidarebefordra via Kontakter-favorit (mottagar-väljaren) -------
@@ -603,9 +752,17 @@ export default {
 				showError(this.t('hubs_start', 'Kunde inte vidarebefordra meddelandet. Försök igen.'))
 			}
 		},
-		onFavoritSok() {
-			this.favoritOpen = false
-			window.location.href = generateUrl('/apps/contacts/')
+		/**
+		 * Avvisa ett kopplingsförslag (audit 2026-07-07: avvisa startade tidigare
+		 * "skapa nytt ärende"!). Förslaget rensas lokalt — raden ligger kvar i
+		 * hinken för fortsatt triage; ingen durabel åtgärd sker.
+		 */
+		onAvvisaForslag(rad) {
+			const r = rad && (rad.rad || rad)
+			if (r && r.koppling) {
+				r.koppling = null
+			}
+			showInfo(this.t('hubs_start', 'Kopplingsförslaget avvisat — raden ligger kvar för triage.'))
 		},
 
 		// --- Fördelningsläge (gruppledare) ----------------------------------
@@ -656,6 +813,116 @@ export default {
 			// inte den statiska /Ärenderum-roten.
 			window.location.href = deepLinks.arenderumLink(arende && arende.hubsCaseId)
 		},
+		onOpenTeam(arende) {
+			// T — öppna ärendets team (den samlade rums-vyn: medlemmar, akt,
+			// diskussion). teamId ur motorns pekare-block; kollapsad fallback via
+			// kortets teamId-fält. Ärlig frånvaro: utan team → info, aldrig 404.
+			const ref = arende && (arende.triageRef || arende.dnr)
+			const full = (ref && store.state.arende.full[ref]) || arende || {}
+			const teamId = (full.pekare && full.pekare.teamId) || full.teamId || (arende && arende.teamId) || null
+			const url = deepLinks.teamLink(teamId)
+			if (!url) {
+				showInfo(this.t('hubs_start', 'Ärendet saknar team ännu.'))
+				return
+			}
+			window.location.href = url
+		},
+		/** Ny chatt i ärenderummet (1:n) — öppna namn-modalen. */
+		onNyChatt(arende) {
+			this.nyChattArende = arende
+			this.nyChattOpen = true
+		},
+		async onNyChattSkapa(arende, namn) {
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref) {
+				this.nyChattOpen = false
+				return
+			}
+			this.nyChattRunning = true
+			try {
+				const r = await skapaArendeChatt(ref, namn)
+				if (r && r.ok && r.talkToken) {
+					// Rakt in i den nya chatten (teamet + åtkomstlistan är redan deltagare).
+					window.location.href = deepLinks.spreedRoomLink(r.talkToken)
+				} else if (r && r.ok) {
+					showSuccess(this.t('hubs_start', 'Chatten är skapad och kopplad till ärendet.'))
+					this.nyChattOpen = false
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte skapa chatten: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.t('hubs_start', 'Kunde inte skapa chatten. Försök igen.'))
+			} finally {
+				this.nyChattRunning = false
+			}
+		},
+		/** Skapa handling från mall (menyval på kortet) — öppna mall-modalen. */
+		onSkapaHandling(arende) {
+			this.handlingArende = arende
+			this.handlingOpen = true
+		},
+		async onHandlingSkapa(payload) {
+			// OBS: HandlingModal emittar ETT payload-objekt {mallId, falt, mallNamn}
+			// (inte NyChattModal-mönstrets (arende, värde)) — ärendet hämtas ur state.
+			const arende = this.handlingArende
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref || !payload || !payload.mallId) {
+				showError(this.t('hubs_start', 'Kunde inte skapa handlingen — ärendereferens eller mall saknas.'))
+				this.handlingOpen = false
+				return
+			}
+			this.handlingRunning = true
+			try {
+				const r = await skapaHandling(ref, { mallId: payload.mallId, falt: payload.falt || {} })
+				if (r && r.ok && r.filnamn) {
+					showSuccess(this.t('hubs_start', 'Handlingen {fil} är skapad i akten.', { fil: r.filnamn }))
+					this.handlingOpen = false
+					// Öppna dokumentet i akten (Filer → dubbelklick öppnar redigeraren).
+					window.location.href = deepLinks.fileLink('/' + (arende.hubsCaseId || '') + '/' + r.filnamn)
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte skapa handlingen: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				const orsak = e && e.response && e.response.data && e.response.data.ocs && e.response.data.ocs.data && e.response.data.ocs.data.error
+				showError(this.t('hubs_start', 'Kunde inte skapa handlingen: {orsak}', { orsak: orsak || this.t('hubs_start', 'okänt fel') }))
+			} finally {
+				this.handlingRunning = false
+			}
+		},
+		/** Omfördela (menyval på kortet) — öppna kollega-modalen. */
+		onOmfordelaKollega(arende) {
+			this.omfordelaArende = arende
+		},
+		async onOmfordelaSkapa(arende, uid) {
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref || !uid) {
+				this.omfordelaArende = null
+				return
+			}
+			this.omfordelaRunning = true
+			try {
+				const r = await tilldela(ref, uid)
+				if (r && r.ok !== false) {
+					showSuccess(this.t('hubs_start', 'Omfördelat till {uid} — hen är nu handläggare och har notifierats.', { uid }))
+					this.omfordelaArende = null
+					// Ägarbytet ändrar tilldelning + ev. min åtkomst — läs om summaryn.
+					try {
+						await store.loadArendeSummary()
+					} catch (e) { /* omfördelningen är redan genomförd */ }
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				// Motorns 400 (t.ex. okänd användare) bär orsaken i OCS-kroppen.
+				const orsak = e && e.response && e.response.data && e.response.data.ocs
+					&& e.response.data.ocs.data && e.response.data.ocs.data.error
+				showError(orsak
+					? this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak })
+					: this.t('hubs_start', 'Kunde inte omfördela ärendet. Försök igen.'))
+			} finally {
+				this.omfordelaRunning = false
+			}
+		},
 		onSkicka(arende) {
 			// #9 — öppna säker compose med ärende-kontext (dnr/hubsCaseId) så det sända
 			// meddelandet pre-taggas case: på ärendet direkt (kräver mail-routerhook honorerar
@@ -670,11 +937,6 @@ export default {
 			// samma tick och deadlockade focus-trap/scroll-lock (UI:t "hängde"). "För
 			// över" gateas tills handläggaren kryssat "Jag har signerat dokumentet".
 			this.onCommit(arende, { typ: 'signerat-beslut', arende, kraverSignering: true })
-		},
-		/** #12 — öppna privata anteckningar (per-användare, ej ärende-bundna). */
-		onAnteckningar(arende) {
-			this.anteckningarArende = arende || null
-			this.anteckningarOpen = true
 		},
 		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse). */
 		onAvsluta(arende) {
@@ -782,9 +1044,57 @@ export default {
 		},
 
 		// --- Möten ----------------------------------------------------------
-		openMeetingWizard() {
+		openMeetingWizard(arende = null) {
 			this.commandPaletteOpen = false
+			// gap17 — kortets "Boka möte" bär ärendet in i wizarden så bokningen
+			// dnr-märks och landar i kortets Möten-flik.
+			this.wizardArende = (arende && (arende.dnr || arende.hubsCaseId)) ? arende : null
 			this.meetingWizardOpen = true
+		},
+		/** Varsel-länken: scrolla till + markera kortet i Mina ärenden. */
+		/**
+		 * Dagspulsens filter — 'mote' och 'omnamnanden' var tidigare DÖDA
+		 * (audit 2026-07-07): inget lyssnade på dem. Ärlig wiring: mote-pulsen
+		 * tar handläggaren till Mötesremsan, omnämnanden öppnar enhetschatten;
+		 * övriga är riktiga listfilter (frist/signera/inflode) som förut.
+		 */
+		/** Fel-bannern: nollställ och hämta om grunddatat. */
+		async onForsokIgen() {
+			state.error = null
+			await store.loadArendeSummary()
+		},
+
+		onPulsFilter(f) {
+			if (f === 'mote') {
+				this.motenVisas = true
+				this.$nextTick(() => {
+					const el = this.$el.querySelector('.motes-remsa, .mina-arenden__kollapsad')
+					el && el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+				})
+				return
+			}
+			if (f === 'omnamnanden') {
+				store.toggleEnhetschatt(true)
+				return
+			}
+			store.setPulsFilter(f)
+		},
+
+		gaTillArende(ref) {
+			this.markeradRef = ref
+			this.$nextTick(() => {
+				const el = document.getElementById('arende-' + ref)
+				if (el) {
+					el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+					el.focus && el.focus({ preventScroll: true })
+				}
+			})
+			// Markeringen är en landningshjälp, inte ett permanent tillstånd.
+			window.setTimeout(() => {
+				if (this.markeradRef === ref) {
+					this.markeradRef = null
+				}
+			}, 4000)
 		},
 		async onMeetingBooked() {
 			this.meetingWizardOpen = false
@@ -902,6 +1212,39 @@ export default {
 		align-items: center;
 		gap: 20px;
 		font-size: 0.9rem;
+	}
+
+	// Fel-bannern: synligt men lugnt — varningston, aldrig blockerande.
+	&__fel {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 14px;
+		margin-bottom: 12px;
+		border: 1px solid var(--color-warning, #b07c00);
+		border-radius: var(--border-radius-large, 10px);
+		background: var(--color-background-hover);
+		color: var(--color-main-text);
+		font-size: 0.9rem;
+	}
+
+	&__kollapsad {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		text-align: left;
+		font: inherit;
+		font-weight: 600;
+		color: var(--color-text-maxcontrast);
+		cursor: pointer;
+		border: 1px solid var(--color-border);
+	}
+	&__kollapsad-antal {
+		padding: 0 8px;
+		border-radius: var(--border-radius-pill, 16px);
+		background: var(--color-background-dark);
+		font-variant-numeric: tabular-nums;
 	}
 
 	&__klart {

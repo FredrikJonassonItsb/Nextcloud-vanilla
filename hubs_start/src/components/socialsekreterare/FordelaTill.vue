@@ -8,7 +8,24 @@
   - aldrig bara färg). Knapp/tangentbord, ingen drag-only (WCAG 2.5.7).
 -->
 <template>
+	<!-- Tomt läge: ingen utredare att välja ⇒ knappen visas men är avstängd,
+	     med en text som förklarar varför (aldrig en tom, död meny). -->
+	<div v-if="!utredare.length" class="fordela-till fordela-till--tom">
+		<NcButton
+			type="primary"
+			:disabled="true"
+			:aria-label="ariaLabel">
+			<template #icon>
+				<AccountArrowRightIcon :size="20" />
+			</template>
+			{{ t('hubs_start', 'Fördela till …') }}
+		</NcButton>
+		<p class="fordela-till__tom-text">
+			{{ t('hubs_start', 'Inga utredare i enheten kunde hämtas.') }}
+		</p>
+	</div>
 	<NcActions
+		v-else
 		class="fordela-till"
 		type="primary"
 		:menu-name="t('hubs_start', 'Fördela till …')"
@@ -33,6 +50,7 @@
 <script>
 import NcActions from '@nextcloud/vue/dist/Components/NcActions.js'
 import NcActionButton from '@nextcloud/vue/dist/Components/NcActionButton.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
 import AccountArrowRightIcon from 'vue-material-design-icons/AccountArrowRight.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
@@ -42,10 +60,10 @@ import { translate as t } from '@nextcloud/l10n'
 
 export default {
 	name: 'FordelaTill',
-	components: { NcActions, NcActionButton, AccountArrowRightIcon, AccountIcon, AlertOutlineIcon },
+	components: { NcActions, NcActionButton, NcButton, AccountArrowRightIcon, AccountIcon, AlertOutlineIcon },
 	props: {
 		arende: { type: Object, required: true },
-		/** [{ namn, aktiva:Number, roda:Number, naraTak:Boolean }] */
+		/** [{ namn, aktiva:Number, roda:Number, naraTak:Boolean, uid?:String }] — uid föredras vid emit. */
 		utredare: { type: Array, default: () => [] },
 	},
 	computed: {
@@ -64,8 +82,11 @@ export default {
 				: bas
 		},
 		onValj(u) {
-			// utredareUid = namn (sdkmc löser namn→uid serverside; klienten har bara aggregat).
-			this.$emit('fordela', { arende: this.arende, utredareUid: u.namn })
+			// utredareUid MÅSTE bära ett användar-id, inte ett visningsnamn — annars
+			// träffar tilldelningen fel/ingen användare. Motorn (ArendeService) sätter
+			// idag 'namn' = uid i live-svaret, så namn är sista fallback när objektet
+			// saknar uid/id-fält.
+			this.$emit('fordela', { arende: this.arende, utredareUid: u.uid ?? u.id ?? u.namn })
 		},
 	},
 }
@@ -75,6 +96,18 @@ export default {
 .fordela-till {
 	&__tak-ikon {
 		color: var(--hs-status-warning);
+	}
+
+	&--tom {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	&__tom-text {
+		margin: 0;
+		color: var(--color-text-maxcontrast);
+		font-size: 13px;
 	}
 }
 </style>

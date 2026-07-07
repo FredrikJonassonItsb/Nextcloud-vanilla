@@ -1,0 +1,878 @@
+[
+ {
+  "dim": "sekretess",
+  "titel": "OCS-läsytan i hubs_arende är enhets-grindad, inte per-ärende — handoff-avsmalningen (GAP-057) gäller inte reads",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "show()/mapToFullCard, historik, medlemmar, bevakningar auktoriseras ENBART av det enhets-breda predikatet enhetTillaten() (matchar användarens NC-gruppers id mot ärendets enhet). När ett ärende tilldelats (mottagningskretsen revokeras ur per-case-gruppen + foldern, atkomstUids handoff-narrowing) fortsätter varje kollega som är kvar i enhetsgruppen att kunna GET /arende/{ref} och läsa: medlemslistans uid:n, koordinationspekare (talkToken/groupfolderId/calendarUri/deckCardId/conversationId) samt HELA händelsejournalen — trots att de tappat rums-/folder-åtkomst. Värre: arenderumDokument() enumererar ärenderummets dokumentnamn via IRootFolder ('__groupfolders/{id}'), dvs SYSTEM-scope som går FÖRBI folderns per-user-ACL, så filnamn (som kan bära PII, t.ex. 'Utredning <namn>.pdf') läcker till enhetskollega utan folderåtkomst. Foldern/gruppen smalnar av vid handoff men läs-API:t gör det inte ⇒ ledger/grupp och läs-authz divergerar (OSL 26 kap inre sekretess).",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:796-800 (show → assertEnhetAtkomst enbart); :2003-2011 assertEnhetAtkomst; :2047-2072 enhetTillaten (grupp-id-match, ingen MemberMapper-koll); :2378-2411 arenderumDokument läser '$this->rootFolder->get(\"__groupfolders/\".$folderId)' (IRootFolder, ctor :157); :1112-1122 mapToFullCard returnerar medlemmar+pekare+rum.dokument; :2702-2719 atkomstUids revokerar kretsen vid handoff (som reads ignorerar)",
+  "forslag": "Inför per-ärende-medlemsgrind på läsytorna: efter att ett ärende fått en handläggare ska show/historik/medlemmar/bevakningar/dokumentlistan kräva att anroparen finns i member-ledgern (MemberMapper::findCaseIdsByUid) ELLER har gruppledarroll — inte bara enhetstillhörighet. Otilldelade ärenden får fortsatt vara enhets-synliga (mottagningskrets). Storlek M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Kontrollerat all citerad kod plus kompenserande mekanismer — fyndet håller. (1) Läsytan är enbart enhets-grindad: show() → assertEnhetAtkomst (ArendeService.php:796-800, :2003-2011) som enbart anropar enhetTillaten (:2047-2072, ren grupp-id-matchning mot ärendets enhet, ingen MemberMapper-koll); historik/medlemmar/bevakningar går alla via show() utan egen grind (:1578-1596, :1559-1568, :1608-1630) och controllern lägger ingen extra authz (ArendeController.php:87-104, :241-298, NoAdminRequired). (2) Handoff-avsmalningen finns men gäller bara grupp/folder: atkomstUids (:2702-2720) revokerar mottagningskretsen när handläggare finns, synkas endast till per-case-gruppen via syncArenderumGrupp (:2689-2691) — enhetsgruppen som enhetTillaten matchar mot röras aldrig, så divergensen är strukturell, inte hypotetisk. (3) arenderumDokument (:2378-2411) läser rootFolder->get('__groupfolders/'.$folderId) — server-root-scope (ctor :157), inte anroparens usermount, så groupfolderns per-user-ACL tillämpas inte; dokumentnamn+fileid returneras i mapToFullCard (:1096-1122) till varje enhetskollega. Samma mönster i bevakningar: Deck-kortet läses via service-konto (:1598-1630, dokumenterat 'handläggaren saknar i regel Deck-board-behörighet') med bara enhets-grinden framför. (4) Kompenserande mekanismer saknas: dashboardArenden har visserligen medlemsfilter men bara som opt-in mineOnly (:948-972) — show() per ref är fritt anropbart; frontend-filtrering är ingen säkerhetsgräns. (5) Detta är inte 'PII till behörig handläggare': systemets EGEN deklarerade gräns efter handoff är per-ärende (atkomstUids-docblocken :2693-2698 citerar uttryckligen OSL 26 kap inre sekretess + GAP-057), och läs-API:t korsar den gränsen. Baslinjen dokumenterar enhets-authz som H1-design och GAP-057 som fördelnings-atomicitet, men INTE att läsytan divergerar från handoff-avsmalningen och INTE __groupfolders-ACL-förbigåendet (grep i baslinje/krav: inga träffar på gap19/arenderumDokument/__groupfolders) — KANT_ESKALERAT är rätt märkning. Allvar P1 bekräftas (ej P0: exponeringen når endast autentiserade kollegor i samma enhetsgrupp, kortet är i övrigt tunt/pseudonymiserat — barnRef är pseudonym, journalen bär koordinationsvärden; PII-läckan hänger på dokumentnamn, som dock realistiskt bär klientnamn)."
+  }
+ },
+ {
+  "dim": "sekretess",
+  "titel": "laggTillMedlem tillåter självupphöjning: valfri enhetsmedlem kan lägga till SIG SJÄLV på vilket ärende som helst och återta full åtkomst",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "POST /arende/{ref}/medlem auktoriseras bara av show() (enhets-grind). Det finns ingen kontroll att anroparen redan är handläggare/medlem/gruppledare på ärendet. En kollega i samma enhet — som medvetet aldrig kopplats in på, eller handoff-avsmalnats bort från, ett känsligt ärende — kan POST:a {uid: sig själv, roll: co_handlaggare} och koden kör memberMapper->record + syncArenderumGrupp (som lägger in uid:t i per-case-gruppen ⇒ folder-åtkomst) + spreedClient->addParticipant (chatt-åtkomst). Därmed är hela inre-sekretess-narrowingen mjuk: den som vill in återger sig själv full åtkomst till akt, chatt och dokument. Notisen SUBJECT_MEDLEM skickas dessutom till uid:t (bekräftar att self-add lyckades).",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1477-1509 (laggTillMedlem: enda authz = show() rad 1484; ingen koll att anroparen är på ärendet; :1487-1489 record+sync ⇒ folder-åtkomst; :1494 addParticipant); rutt hubs_arende/appinfo/routes.php:71-75; ingen gruppledare/roll-grind finns (grep 'gruppledare' 0 träffar i ArendeService)",
+  "forslag": "Kräv att anroparen själv är medlem/handläggare/gruppledare på ärendet innan laggTillMedlem får lägga till någon (särskilt sig själv). Alternativt begränsa self-add helt och kräv gruppledarroll för att bredda kretsen. Samma grind bör återanvändas i taBortMedlem. Storlek S-M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Verifierat i kod. laggTillMedlem (hubs_arende/lib/Service/ArendeService.php:1477-1509) har enda authz = show($ref) på :1484, vilket via assertEnhetAtkomst→enhetTillaten (:2003-2011, :2047-2072) endast kontrollerar att ANROPAREN är i ärendets enhetsgrupp (eller admin) — INGEN kontroll att anroparen redan är medlem/handläggare/gruppledare på ärendet. record+syncArenderumGrupp (:1487-1489) → atkomstUids (:2702-2720, inkluderar co_handlaggare/observator) → ArenderumGroupService::sync lägger uid i per-case-gruppen som R4 grantar på groupfoldern (:549-557) ⇒ folder-åtkomst; addParticipant (:1494) ⇒ chatt. Handoff-narrowingen (GAP-057) är därmed mjuk: en enhetskollega som narrowats bort kan self-adda tillbaka. Bekräftat=true. TVÅ nyanser: (1) self-notisen supprimeras när aktör==mottagare (:214-222), så en ren self-add ger INGEN notis — fyndets 'notisen bekräftar self-add' är fel för self-fallet (fast handelsejournalen loggar medlem-in, auditbart). (2) Viktigare för allvarsgraden: till skillnad från tilldela (assertAssigneeBehorig :2638-2646) saknar laggTillMedlem HELT enhets-grind på mål-$uid — bara assertRiktigAnvandare/userExists (:1483). Alltså kan en behörig enhetsmedlem lägga till en GODTYCKLIG användare från ANNAN enhet som observatör → folder+chatt = äkta tvär-enhets-läcka över auktoriseringsgräns. Self-add-scenariot ensamt är inom-enhet/auditbart (P2-smak), men samma oskyddade endpoint möjliggör tvär-enhets-läckan → P1 kvarstår; samma fix (kräv att anroparen är medlem/gruppledare + enhets-grinda mål-uid) täcker båda. Inte i baslinjen (kodkarta-baslinje: rad 30 nämner bara assertRiktigAnvandare+enhets-grind, inte den saknade medlems-/self-add-grinden) ⇒ NYTT."
+  }
+ },
+ {
+  "dim": "sekretess",
+  "titel": "SummaryController::receipts returnerar leveranskvittenser INSTANSBREDT utan användar-/korg-scoping (cross-boundary PII)",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "GET /ocs/.../sdkmc/api/v1/receipts kräver bara inloggning (#[NoAdminRequired]) och läser listRecentReceipts() = 'SELECT * FROM sdkmc_message_receipt ORDER BY id DESC LIMIT N' UTAN något WHERE på användare/korg/enhet. Varje autentiserad handläggare får därmed de senaste N utgående leveranskvittenserna för HELA instansen — inklusive recipientOf() (mottagaradress, dvs medborgares e-post/mobil, som recipient läses ur receipt_data), messageId och en deepLink till den utgående tråden. En handläggare i enhet A ser alltså mottagaradresser för enhet B:s utgående medborgarutskick. summary()-vägen är korrekt användar-scopad (SummaryService::getSummary($userId)) men receipts() är helt oscopad — invarianten 'läck aldrig över behörighetsgräns' bryts.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Controller/OCS/SummaryController.php:151-199 (receipts, ingen $userId-filtrering på datan); :208-223 listRecentReceipts (from('sdkmc_message_receipt')->orderBy('id','DESC') utan where); :270-280 recipientOf läser mottagaradress ur receipt_data",
+  "forslag": "Scopa receipts() till anroparens behöriga korgar med samma modell som SummaryService/InflodeFeedService (AccountItslMailboxMapper direkt+grupp-tilldelning) — joina kvittensen mot den utgående tråden/kontot och filtrera på användarens mailboxes innan raderna returneras. Storlek M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Bekräftat genom kodläsning: SummaryController.php:151-158 (#[NoAdminRequired], $user endast null-check), :208-223 (SELECT * FROM sdkmc_message_receipt utan WHERE, inkl. receipt_data), :270-280 (recipientOf exponerar mottagaradress ur receipt_data). Ingen kompenserande gard: InternalAPIMiddleware.php:35-47 gäller bara @InternalAPIAuth som receipts() saknar; behörighetsmodellen finns (SummaryService::getAccessibleMailboxes, SummaryService.php:145-152) men tillämpas inte på kvittensraderna — fetchReceiptRows (:658-669) är också oscopad ('not user-scoped' i egen kommentar). Deployat och nåbart: routes-ocs-snippet.php:26 + MANIFEST.md:14-17 (verifierat på dev15) + api.js:133-136 (skarpt frontend-anrop). Nyanser: recipient-fältet beror på vad MW lägger i receipt_data (lagras ordagrant, MessageReceiptController.php:62-64, TODO :266-268 medger osäkerhet), men messageId/status/deepLink till andra enheters utgående trådar läcker ovillkorligen; dessutom är fyndets påstående att summary()-vägen är korrekt scopad för generöst — samma oscopade tabell matar summaryns kvittensdel (utan receipt_data). Baslinjen känner inte till luckan; fas 1-kodkartan (sdkmc rad 169) flaggade samma sak i natt = korroboration, ej dublett mot baslinje. P1 rätt nivå: kräver autentisering (ej P0), men bryter invarianten genom att röja medborgares socialtjänstkontakt + kontaktadress över enhetsgräns till obehörig personal."
+  }
+ },
+ {
+  "dim": "sekretess",
+  "titel": "MeetingController::lobby är en IDOR — väntrummets gästlista (medborgarnamn) läcker för godtyckligt mötestoken",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "GET /api/v1/arende.../lobby?token=... (MeetingController::lobby) kräver bara inloggning och anropar MeetingService::getLobby($token) för det klient-angivna tokenet UTAN att kontrollera att anroparen är deltagare/moderator i mötet. getLobby resolvar rummet via talkManager->getRoomByToken och returnerar varje väntande gäst med actorId, displayName och verified-status. I ett säkert socialtjänstmöte är gästernas displayName medborgarnamn (den familj/klient som bjudits in). Vilken inloggad användare som helst som känner till/gissar ett token får därmed ut vem som sitter i väntrummet för ett säkert möte — en tvärgränsläcka av känsliga personuppgifter (att en namngiven person är i ett socialtjänstmöte).",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Controller/OCS/MeetingController.php:59-66 (lobby: enda koll = inloggad, sedan getLobby($token)); hubs_start/backend-additions/sdkmc/lib/Service/MeetingService.php:117-147 getLobby (ingen deltagarkoll); :485-515 resolveLobbyGuests returnerar displayName per gäst",
+  "forslag": "Verifiera i getLobby/lobby att anroparen är deltagare (helst moderator) i rummet innan gästlistan returneras — t.ex. participantService->getParticipant($room, $userId) eller att tokenet finns i anroparens egna kalendrar (som today()-vägen redan begränsar sig till). Vid icke-deltagare returnera tomt/403. Storlek S-M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Verifierat via kodläsning. MeetingController::lobby (hubs_start/backend-additions/sdkmc/lib/Controller/OCS/MeetingController.php:59-66) har enda kontrollen att anroparen är inloggad ($user instanceof IUser) och skickar sedan det klient-angivna tokenet till getLobby($token) utan deltagar-/moderatorkontroll. getLobby (MeetingService.php:117-147) saknar behörighetskontroll och delegerar till resolveLobbyGuests (MeetingService.php:485-515), som resolvar rummet via talkManager->getRoomByToken($token) — den OSKYDDADE lookupen (inte den deltagarskoppade getRoomForUserByToken) — och returnerar actorId + displayName per väntande gäst. Route (routes-ocs-snippet.php:31) är #[NoAdminRequired], dvs valfri inloggad användare. Ingen kompenserande gard i backend; frontend-begränsningen (endast egna möten via today()) kringgås av direktanrop. Realistiskt via insider som håller ett token (bokat mötet, sett /call/{token}-URL, delad kalender) för ett ärende hen inte är part i — en tvärgränsläcka av att namngiven medborgare väntar i ett säkert socialtjänstmöte. Enda dämparen: token kan inte enumereras via appen och läckan gäller live-lobbygäster, men P1 kvarstår givet OSL-sekretessen och att fixen (verifiera deltagare innan gästlistan returneras) är liten."
+  }
+ },
+ {
+  "dim": "sekretess",
+  "titel": "SecureMeetingService loggar medborgarens e-post/kontaktuppgift på INFO-nivå (PII i loggrader)",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Vid bokning av säkert möte loggas den inbjudna MEDBORGARENS kontaktadress i klartext på INFO: registerSmsIntent (['email'=>$email]), registerSecuremailIntent (['email'=>$email]) och addEmailParticipant (['token'=>..., 'email'=>$email]). $email/$phone kommer ur citizen-blocket i bokningsrequesten. nextcloud.log läses av drift/sysadmin och skeppas typiskt till loggaggregation — dvs personer UTANFÖR ärendets behörighetskrets. Att en namngiven medborgares e-post/mobil kopplas till ett säkert socialtjänstmöte i loggen är en tvärgränsläcka av personuppgift (avslöjar en vård-/utredningsrelation), stick i stäv med invarianten om att inget ska läcka över behörighetsgränsen.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/SecureMeetingService.php:433 (registerSmsIntent logger->info ['email'=>$email]); :459 (registerSecuremailIntent samma); :517 (addEmailParticipant logger->info ['token'=>$token,'email'=>$email]); $email härrör ur citizen-request (SecureMeetingController.php:59-90)",
+  "forslag": "Ersätt råadressen i loggraderna med ett PII-säkert digest (som GroupfolderClient::safeRef gör: 'len:N:sha256-prefix') eller enbart eventUid/token. Behåll korrelerbarhet utan klartext-PII. Storlek S.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P2",
+   "skal": "Bekräftat i kod: SecureMeetingService.php:433, :459 och :517 loggar medborgarens e-post ($email = citizen.secureEmail ur bokningsrequesten, :97 via SecureMeetingController.php:59-90) i klartext på INFO — plus en FJÄRDE instans fyndet missade: :399-404 ([BANKID] Intent persisted med 'email' => $email). Loggmekaniken bekräftad i NC-core: oanvända context-nycklar behålls (nextcloud/lib/private/Log.php:419-429) och skrivs som data-fält i JSON-loggraden (nextcloud/lib/private/Log/LogDetails.php:68-79) — ingen scrubbing. Detta bryter husets egen safeRef-disciplin (hubs_arende/lib/Integration/Client/SdkmcClient.php:125,145,328 loggar emailRef som digest), så inget medvetet undantag. TVÅ justeringar dock: (1) mobilnumret loggas INTE (rad 433 loggar bara email+eventUid), fyndets 'e-post/mobil' är delvis överdrivet; (2) allvar sänks P1→P2 eftersom INFO-rader inte skrivs i normal drift: default loglevel är WARN=2 (Log.php:272, tidig return :155-159) och husets deploy-configar sätter uttryckligen loglevel=2 (hubs-code/hubs-apps/hubs-apps-main/docker/nextcloud/config.php:31; hubs-code/sdkmc/sdkmc-main/docker/nextcloud/config.php:38). Läckan aktiveras först vid förhöjd loggnivå (loglevel 0/1 eller log.condition) — realistiskt vid felsökning (då loggen dessutom läses/delas), men inte default. Ej känt i baslinjen (kodkarta-sdkmc rad 159-171 täcker intents/loopback, ej PII-loggning) — korrekt märkt NYTT. Föreslagen S-fix (safeRef-digest/eventUid i stället för råadress) är rimlig och konsistent med husmönstret."
+  }
+ },
+ {
+  "dim": "sekretess",
+  "titel": "ArendeEnrichmentController::show — diskussion-enrichment läser valfritt Talk-rum via token utan medlemskoll (IDOR-metadataläcka)",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "GET /api/v1/arende-enrichment?talkToken=... kräver bara inloggning och anropar diskussionForToken($talkToken) som resolvar rummet via Talk\\Manager::getRoomByToken och läser 30 chattrader UTAN att kontrollera att anroparen är deltagare i rummet. Ut ur tjänsten läcker: de 2 senaste distinkta actorId:n (för ett ärenderum = uid:n för de handläggare som arbetar med ärendet) samt en boolean om anroparen är @-omnämnd, plus bekräftelse att tokenet existerar. En autentiserad användare som fått tag i ett talkToken (t.ex. en tidigare deltagare som avlägsnats, eller ett token som exponerats i en full-card till enhetskollegor per fynd 1) kan enumerera vilka som arbetar med ärendet. Exploaterbarheten dämpas av att token är slumpmässigt (därav P2), men koppla ihop med fynd 1 (full-card exponerar talkToken enhets-brett) blir den reell.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Controller/OCS/ArendeEnrichmentController.php:60-80 (show, enda koll = inloggad); hubs_start/backend-additions/sdkmc/lib/Service/ArendeEnrichmentService.php:74-140 diskussionForToken (getRoomByToken rad 82, ingen medlemskoll; deltagare/actorId samlas :113-116)",
+  "forslag": "Lägg deltagarkontroll före chattläsningen: hämta anroparens Participant i rummet (Talk ParticipantService) och returnera honest-empty/403 om hen inte är medlem. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "sekretess",
+  "titel": "tilldela/omfördela saknar gruppledar-/rollgrind — valfri enhetsmedlem kan rycka ett ärende från sittande handläggare",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "POST /arende/{ref}/tilldela auktoriseras bara av show() (enhets-grind). Det finns ingen roll-/gruppledarkontroll och ingen kontroll att ärendet är otilldelat. Vilken enhetsmedlem som helst kan alltså omtilldela ett REDAN tilldelat ärende: koden sätter agareUid/status, skriver om folder-ACL, flyttar ärendets kalenderobjekt till den nya ägarens kalender och lägger till ny handläggar-medlemsrad. assertAssigneeBehorig garanterar bara att den nya ägaren tillhör enheten — inte att ANROPAREN får omfördela. En kollega kan därmed tysta/överta ett känsligt ärende från dess ansvariga handläggare utan att vara gruppledare. Fördelning är rimligen en gruppledaruppgift; idag är den enhets-platt.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1368-1442 (tilldela: enda authz = show() rad 1369; ingen roll-/otilldelat-koll; ACL-rewrite :1393, kalender-re-home :1427, agareUid :1440); assertAssigneeBehorig :2638-2646 gäller bara assignee, inte anroparen; rutt appinfo/routes.php:38-43",
+  "forslag": "Kräv gruppledarroll (eller att anroparen är nuvarande ägare/otilldelat-läge) för omtilldelning av ett redan tilldelat ärende; behåll fri tilldelning för otilldelade. Återanvänd samma rollgrind som föreslås för laggTillMedlem (fynd 2). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "R2-race hoppar över kompenseringen — dubbel diarieföring för kat6 (diariefor_direkt) utan spår",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Pre-saga-hooken 'diariefor_direkt' (kat6/rättsligt tvång) kör formell diarieföring FÖRE register-INSERT. Vid dubbel leverans av samma conversationId (t.ex. dubblerad webhook/retry — vanligt i integrationsflöden) passerar BÅDA anropen idempotens-pre-checken (raden finns ännu inte), båda diarieför (två diarienummer mintas i e-diariet), och förloraren av R2-UNIQUE-racen returnerar vinnarraden via `return $winner;` UTAN att kompensationsstacken körs. PRE-kompensationen (critical-logg om kvarstående diarienummer) är pushad men exekveras aldrig — det orphana diarienumret i e-diariet lämnas helt utan logg, kvitto eller rättelse-spår. Idag stub, men mönstret går live med FGS-porten: dubbelregistrerad allmän handling utan spårbarhet är juridiskt problematiskt (OSL 5:1-registret).",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:373 (pre-hook före INSERT), :375-391 (PRE-kompensation = critical-logg), :404-419 (catch UNIQUE-violation → `return $winner;` på rad 416 — compensate() anropas aldrig; jfr :776-778 där catch-grenen kör `$this->compensate(...)`)",
+  "forslag": "Anropa `$this->compensate($compensations, $hubsCaseId, $e)` (eller minst PRE-closuren) före `return $winner;` i race-grenen i ArendeService::createCase så det orphana diarienumret alltid critical-loggas; på sikt: flytta idempotens-re-check till EFTER pre-hooken eller gör diarieföringen idempotent på conversationId i porten. Storlek S.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P2",
+   "skal": "Alla citat verifierade: pre-hooken diariefor_direkt körs FÖRE R2-INSERT (ArendeService.php:373 resp :403) och anropar extern port (:2137); race-grenen returnerar vinnaren utan compensate() (:404-419, return på :416; jfr normal-catch :776-778 som kör compensate). PRE-kompensationens critical-logg (:375-391) körs aldrig i race-fallet och förlorarens diarienummer loggas ingenstans — race-loggen :411-415 loggar bara vinnarens hubsCaseId, hook-handlern (:2131-2145) och EdiariumStub loggar inget. Ingen kompenserande mekanism: idempotens-pre-checken (:310-320) fångar bara sekventiella dubbletter; porten är inte idempotent (EdiariumStub.php:66,127-129 mintar nytt dnr varje anrop; kontraktet EdiariumPort.php:43 kräver ingen dedup) och varje racer mintar eget UUID (:362). UNIQUE-indexet finns (Version000100Date20260617120000.php:61) och kat6-typen rattsligt_tvang har hooken (ArendeTypRegistry.php:305). M6-kommentaren \":399-400 'no orphaned side effect'\" är bevisligen fel för kat6. ALLVAR JUSTERAT P1→P2: skarp ediarium-port existerar inte i kodbasen — mode-mappen i Application.php:87-94 innehåller endast MODE_STUB=>EdiariumStub, som är in-memory per request, så i dag uppstår inget bestående orphan-spår alls; felet är latent tills FGS-porten går skarp (då P1), trigger kräver samtidig dubbelleverans i race-fönstret, och fixen är trivial (anropa compensate/PRE-closuren före return $winner)."
+  }
+ },
+ {
+  "dim": "saga",
+  "titel": "Misslyckad kompensering lämnar en spökrad som ser ut som ett komplett ärende och fångar idempotensankaret för alltid",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "buildEntity INSERT:ar R2-raden redan i slut-utseende (status='otilldelat', steg='forhandsbedomning' — R10 sätter bara om samma värden). Det finns ingen 'skapas pågår'-markör. Om ett saga-steg faller pga DB-störning faller även kompensationerna (alla är DB-baserade: deleteByCaseAndTyp, deleteByCaseId, arendeMapper->delete) — compensate() är best-effort och logCompensationFailure bara critical-loggar. Kvar blir en registerrad som är OMÖJLIG att skilja från ett riktigt ärende, med partiella pekare/rum, och som bär conversationId: varje senare omleverans/retry av samma inflödesrad idempotent-hittar det trasiga ärendet (rad 309-319) och returnerar det som 'skapat'. Ingen sweep, inget occ-kommando och ingen dead-letter hittar dessa rader — enda spåret är loggraden 'KOMPENSERING MISSLYCKADES'.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:2434-2439 (buildEntity: setStatus('otilldelat') + setSteg(fodelseSteg) redan vid INSERT), :745-750 (R10 'sätter samma värde (idempotent)'), :2554-2572 (compensate best-effort), :2744-2750 (logCompensationFailure = endast critical-logg), :309-319 (idempotent hit returnerar spökraden)",
+  "forslag": "INSERT:a R2-raden i explicit saga-state (t.ex. status='skapas') och flippa till 'otilldelat' först i R10; låt en sweep (utbyggnad av GallringJob eller det beslutade ArendeReconciliationJob) hitta strandade 'skapas'-rader äldre än N minuter och antingen färdigställa eller kompensera dem. Storlek M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Alla citat verifierade: buildEntity sätter status='otilldelat'+steg=fodelseSteg redan vid R2-INSERT (ArendeService.php:2434-2439, INSERT :403) och R10 sätter samma värden (:745-750) — ingen 'skapas pågår'-markör finns (grep 'skapas' i lib/ = 0 träffar); compensate() är best-effort (:2554-2572) och logCompensationFailure enbart critical-logg (:2744-2750); R2-kompensationen är arendeMapper->delete (:421-430) som faller vid samma DB-störning som fällde sagan (externa klientfel sväljs by design, så realistiska saga-fall efter R2 är just DB-baserade); findByConversationId filtrerar inte på state (ArendeMapper.php:58-72) så retry idempotent-returnerar spökraden som 'skapat' (:309-319) och maskerar felet uppströms; ingen sweep/occ/reconciliation finns (info.xml:50-52 bara Smoke/Status/SeedDemo; GallringService sveper endast gallrasDatum). Starkare variant: processdöd mid-saga kör inga kompensationer alls och lämnar inget loggspår. Två justeringar: (1) 'alla kompensationer DB-baserade' är lätt överdrivet (R3-R7 gör även externa anrop) men den avgörande R2-deleten är DB-baserad; (2) nyhetsmärkning bör vara KÄNT-ESKALERAT, inte NYTT — baslinjen (kodkarta-baslinje:122) känner redan 'ArendeReconciliationJob beslutad men OBYGGD'; det nya är att idempotensfångsten besegrar även omleverans-läkning och att raden saknar diskriminator. P1 står sig: orosanmälan med lagfrist kan strandas utan fristDue (inget FristVarsel) medan uppström får OK; ej P0 då scenariot kräver dubbel-fel/processdöd, raden är GUI-synlig och ingen behörighetsgräns bryts."
+  }
+ },
+ {
+  "dim": "saga",
+  "titel": "Klientfel (inte bara saknad granne) är fail-open i R3–R9 + idempotensankaret gör degraderingen permanent — ärenden föds utan akt/chatt och kan aldrig läkas",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Alla integrationsklienter sväljer HTTP-/auth-fel och returnerar null (SpreedClient::ocsRequest catch→null; DeckClient dokumenterar 'any sub-step failing / unauthenticated ⇒ NO-OP'). Sagan behandlar null identiskt med 'app saknas': steget hoppas, ingen pekare skrivs, kompensering triggas INTE, och createCase loggar 'OK'. Vid transient Talk-/groupfolders-nertid eller felkonfigurerad ServiceAccountAuth (TODO[auth] i SpreedClient) föds ärendet utan akt, chattrum, kort och kalender — handläggaren får ett skal. Eftersom conversationId-idempotensen returnerar den befintliga raden kan ett nytt 'Ta emot'-försök ALDRIG läka de saknade resurserna, och ArendeReconciliationJob (BESLUT-19/GAP-056) är obyggd. Eskalering av känt gap: baslinjen listar graceful-skip och den obyggda reconciliation-jobben separat, men kombinationen gör degraderingen både tyst och PERMANENT — fel val av fail-riktning för R4/R6 där akten/chatten är kärnan i sekretessflödet.",
+  "evidens": "hubs_arende/lib/Integration/Client/SpreedClient.php:298-333 (ocsRequest: catch \\Throwable → warning + null; :288-293 TODO[auth] 'Failures are swallowed + logged so the SAGA continues'); hubs_arende/lib/Integration/Client/DeckClient.php:39-40; hubs_arende/lib/Service/ArendeService.php:635 (talkToken null ⇒ ingen pekare, ingen kompensering), :311-319 (idempotent hit blockerar omskapande), :765-770 ('createCase OK' loggas även degraderat)",
+  "forslag": "Skilj 'app ej installerad' (isAvailable=false ⇒ skip, som idag) från 'anrop misslyckades' (kasta typad IntegrationException ⇒ saga-kompensering ⇒ 500 ⇒ retry återskapar allt) för de resursbärande stegen R4/R6; alternativt persistera en 'degraderad'-flagga per missat steg och bygg den beslutade ArendeReconciliationJob som återskapar saknade pekare-objekt. Storlek M–L.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "Omfördelning är ingen handoff: förra handläggaren behåller medlemskap, folderåtkomst och ärendet i 'Mina ärenden'",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "tilldela() registrerar bara den NYA handläggaren (memberMapper->record) och raderar aldrig den tidigare ROLL_HANDLAGGARE-raden. atkomstUids() räknar ALLA handlaggare-/co-/observatörsrader som aktiv åtkomst, så efter omfördelning A→B (OmfordelaModal → api.tilldela, GUI-verifierad väg) synkas per-case-gruppen till {A, B}: A behåller full folder-åtkomst, ligger kvar i åtkomstlistan och ser ärendet i medlemsbaserade 'Mina ärenden' (findCaseIdsByUid). Detta motsäger direkt tilldela-docblockens löfte ('the mottagning krets is revoked... GAP-057') och handoff-avsmalningens OSL 26-design: motorn revokar mottagningskretsen vid tilldelning men aldrig en ersatt handläggare. Varje omfördelning ackumulerar därmed åtkomst i stället för att flytta den — vid personalrotation läser tidigare handläggare fortsatt akten utan att någon ser det i UI:t (medlemspanelen visar dem dock som 'handläggare').",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1440-1451 (setAgareUid + record(ny uid) — ingen delete av tidigare handläggarrad; jfr :1361-1363 docblock 'the mottagning krets is revoked (atomic, no sekretess window — GAP-057)'), :2702-2719 (atkomstUids inkluderar alla handlaggare-roller); hubs_arende/lib/Db/MemberMapper.php:126-139 (findCaseIdsByUid driver 'Mina ärenden')",
+  "forslag": "I tilldela(): när agareUid byts, radera tidigare ägares ROLL_HANDLAGGARE-rad (deleteByCaseUidRoll) innan record av den nya, och journalför bytet ('tilldelad' med franUid/tillUid); produktbeslut om ex-handläggaren i stället ska degraderas till observator explicit. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "Talk-deltagarmängden synkas aldrig mot åtkomstlistan — handoff-avsmalningen (GAP-057) verkställs för foldern men inte för ärendets chatt",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "R6 lägger till hela mottagningskretsen som DIREKTA användar-deltagare i ärendets Talk-rum. Vid tilldelning körs syncArenderumGrupp som avsmalnar per-case-GRUPPEN (folderåtkomsten) till enbart handläggaren, men tilldela() rör aldrig Spreed: hela mottagningskretsen förblir deltagare i 'Ärende X – diskussion' och läser all fortsatt ärendediskussion (all chatt SKA ske där per R6-designen) efter att inre-sekretess-avsmalningen formellt skett. Omvänt läcker det åt andra hållet: laggTillMedlems addParticipant är best-effort (svalt HTTP-fel ⇒ medlem med folder- men utan chatt-åtkomst, ingen retry-mekanism). Baslinjen noterar att grupp-ändringar inte propagerar till Talk på team-lagret — eskaleringen är att detta inträffar vid VARJE tilldelning på huvudrummets direkta deltagarlista och gör den dokumenterade avsmalningen ('atomic, no sekretess window') osann för chattdelen av ärenderummet.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:631-634 (R6: kretsUids som direkta deltagare), :1386-1451 (tilldela: inga Spreed-anrop; endast groupfolder/sdkmc/deck/kalender + gruppsynk), :2689-2691 (syncArenderumGrupp rör bara NC-gruppen), :2693-2698 (atkomstUids-docblock: 'mottagningskretsen REVOKAS'); hubs_arende/lib/Integration/Client/SpreedClient.php:106-126 (addParticipant best-effort)",
+  "forslag": "Inför syncTalkDeltagare(hubsCaseId) som speglar atkomstUids() mot varje talk_room-pekares deltagarlista (add saknade, removeParticipant övertaliga) och anropa den bredvid syncArenderumGrupp i tilldela/laggTillMedlem/taBortMedlem; alternativt byt R6 till att enbart bjuda in per-case-gruppen/teamet som deltagarkälla så Talk följer gruppen. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "Gallringssvepet saknar per-rad-felisolering: en poison-pill-rad stoppar all GDPR-gallring tyst och för alltid",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "GallringService::gallra() itererar kandidaterna utan try/catch per rad — pekareMapper->delete, memberMapper/handelseMapper->deleteByCaseId, group->delete() och arendeMapper->delete kan alla kasta. Första kastet propagerar ut ur loopen; GallringJob fångar på jobbnivå och loggar 'GallringJob fel', men ALLA kandidater efter den felande raden hoppar över sin gallring. Vid ett deterministiskt per-rad-fel (t.ex. en grupp NC vägrar radera, korrupt pekar-rad, DB-constraint) blir samma rad först i batchen varje dygn ⇒ gallringen står stilla permanent medan förfallna gallras-deadlines ackumuleras — ett tyst brott mot lagringsminimeringen (GDPR art. 5.1.e) som bara syns som en error-loggrad. Jobbet rapporterar dessutom inget 'antal kvar/failade', så driften har ingen signal.",
+  "evidens": "hubs_arende/lib/Service/GallringService.php:98-149 (foreach utan try/catch; :130-131 pekare-delete, :136 member-delete, :142 group-delete, :145 register-delete — alla kan kasta); hubs_arende/lib/BackgroundJob/GallringJob.php:47-61 (catch på hela sweepen: 'Nästa dygns körning tar samma (idempotenta) batch igen' — sant bara för transienta fel)",
+  "forslag": "try/catch runt varje iteration i gallra() (logga felet med hubsCaseId, continue), returnera {antal, misslyckade} och låt GallringJob error-logga när misslyckade>0; överväg en failure-räknare per rad så en kroniskt ogallringsbar rad larmas separat. Storlek S.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "BEKRÄFTAT genom kodläsning, med en nyansering av felytan. (a) Citerad kod stämmer: GallringService.php:98-149 itererar kandidaterna utan per-rad try/catch; raderna :130-131 (pekareMapper->delete), :136 (memberMapper->deleteByCaseId), :139 (handelseMapper->deleteByCaseId), :142 (arenderumGroupService->delete), :145 (arendeMapper->delete) ligger alla oskyddade i loopen. GallringJob.php:47-61 fångar på sweep-nivå och loggar bara 'GallringJob fel' — kommentaren på :55-56 ('Nästa dygns körning tar samma (idempotenta) batch igen') antar uttryckligen transienta fel och är falsk för deterministiska per-rad-fel. (b) Fyndet är dessutom STARKARE än formulerat på en punkt: ArendeMapper.php:134-156 (findGallringsbara) sorterar orderBy('gallras_datum','ASC') med limit 500 — en poison-rad har per definition äldst deadline av de ohanterade och hamnar därmed FÖRST i varje dygns batch, så ALLA senare deadlines blockeras permanent, inte bara 'resten av dagens batch'. Ingen kvar/misslyckade-signal finns (gallra() returnerar bara antal+hubsCaseIds, och vid kast nås aldrig ens slutloggen på :151); inget occ-kommando för manuell per-rad-gallring existerar (lib/Command/ har bara SeedDemo/Status/Smoke). (c) Kompenserande mekanismer finns men täcker INTE hela loopen: TeamClient sväljer alla Throwables internt (TeamClient.php:207-213, graceful) och ReferensFilService har try/catch per fil (ReferensFilService.php:113-119) — dessa steg kan i praktiken inte kasta. Kvarvarande realistisk deterministisk kastyta är främst $group->delete() i ArenderumGroupService.php:140 (NC:s Group::delete dispatchar gruppdeletion-events vars lyssnare i andra appar, t.ex. groupfolders ACL-städ, propagerar exceptions) samt DB-exceptions från mapper-deletes (dock oftast transienta — 'korrupt pekar-rad/DB-constraint' i fyndet är mindre sannolikt eftersom tabellerna saknar FK-constraints). (d) Allvar P1 kvarstår: felytan är smalare än fyndet målar upp, men konsekvensen — tyst, permanent stopp av GDPR-gallringen (art. 5.1.e) av rader med personal-PII (member-uid+roll, aktor_uid i händelsejournalen) med enda signal en error-loggrad per dygn och ingen manuell utväg — träffar en kärngaranti i en compliance-kritisk produkt. Ej känt i baslinjen (kodkarta-baslinje nämner andra gallringsgap: externa rum rivs ej, gap8/29/30 — inte felisolering). Föreslagen fix (per-rad try/catch + misslyckade-räknare i returvärdet) är korrekt och liten."
+  }
+ },
+ {
+  "dim": "saga",
+  "titel": "Commit-idempotensen (H3) håller inte vid samtidiga anrop eller retry efter registerfel — dubbelregistrering i facksystemet",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "H3-vakten läser provenanceState i minnet FÖRE port-anropet, och flippen till 'registrerad' persisteras först EFTER kvittot. Två fönster: (a) Samtidighet — två commit-POST för samma ärende (två flikar/klienter; frontendens grind skyddar bara egna klienten) läser båda 'ej_registrerad' och anropar porten två gånger. (b) Retry efter L3-fel — om arendeMapper->update kastar efter ett verifierat kvitto returneras kvittot med registerPersisted=false men raden förblir 'ej_registrerad'; nästa POST anropar porten IGEN. Stubben bevisar att correlationId INTE deduplicerar: register/pending är in-memory per request och mintDnr() räknar upp den persistenta sekvensen vid varje anrop ⇒ två olika dnr för samma handling (registret behåller sist skrivna). Mot live-Treserva (seam D) betyder samma mönster dubbelregistrerad handling i System of Record — dyr manuell rättelse och dnr-förvirring nedströms (dnr saknar dessutom unik-constraint, känt).",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1830-1837 (H3-läsning före port), :1850 (port-anrop), :1878-1887 (L3: update-fel ⇒ raden förblir ej_registrerad men kvittot returneras); hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php:45 (in-memory register per request), :115-119 + :279-295 (nytt dnr per anrop ur persistent sekvens), :133-134 (correlationId används bara för callback-token, inte dedup)",
+  "forslag": "CAS-grind i registret före port-anropet: villkorad UPDATE provenance_state='commit_pagar' WHERE provenance_state='ej_registrerad' (0 rader ⇒ 409/idempotent-svar); vid L3-fel behåll 'commit_pagar' + persistera kvittot i en retry-tabell så en re-POST läker registret utan nytt port-anrop; skriv in correlationId-dedup som KRAV i seam D-portkontraktet. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "Sidoeffekt och pekare-bokföring är inte atomära inom saga-stegen — DB-fel mellan dem ger ospårbara externa orphans",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Mönstret i R3/T/R4/R6 (och medlemsloopen M) är: skapa externt objekt → pekareMapper->record → (senare) pusha kompensation. Kastar record() (deadlock/anslutningsfel) har det externa objektet redan skapats, men (a) stegets kompensation är ännu inte pushad och (b) alla kompensationer är pekare-drivna (findByCaseAndTyp) och kan ändå inte hitta objektet. Konkret: DB-hicka direkt efter spreedClient->createRoom → kretsens användare är redan tillagda som deltagare och ser ett föräldralöst rum 'Ärende abc123 – diskussion' i Talk utan ärende bakom; en orphan groupfolder/team blir osynligt kvar och nås aldrig av gallring (ingen pekare). M-varianten: kastar record() mitt i kretsloopen raderas registerraden av R2-kompensationen men member-raderna (uid+case = personuppgift) blir kvar för evigt — gallringen utgår från registerrader som inte längre finns.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:439-441 (R3 createCaseTag→record), :516-518 (T createTeam→record), :553-559 (R4 createArenderum→record), :631-636 (R6 createRoom→record; deltagare tillagda i SpreedClient::createRoom innan record), :471-477 (M record-loop före M-kompensationens push på :487); kompensationerna är pekare-drivna, t.ex. :571 `findByCaseAndTyp($hubsCaseId, 'groupfolder')`",
+  "forslag": "Wrappa varje forward-stegs record()-anrop i try/catch som vid fel omedelbart river det just skapade objektet (id:t finns i lokal variabel) innan undantaget re-throwas; alternativt pusha stegets kompensation FÖRE det externa anropet och låt closuren fånga objekt-id via referens. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "tilldela saknar compare-and-set: två samtidiga 'Ta ärendet' ger två 'lyckade' tilldelningar med split-brain i alla fyra lager",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "tilldela() har ingen förutsättning på nuvarande status/agareUid (ingen 'WHERE agare_uid IS NULL'). Två handläggare som klickar 'Ta ärendet' samtidigt på samma otilldelade ärende passerar båda show()+behörighetskontrollen, båda får 200 OK och notis-flöde, båda skrivs som ROLL_HANDLAGGARE-medlemmar, Deck-kortet får både 'assignee:A' och 'assignee:B', kalenderobjektet re-homas två gånger (riktning = sist skrivna), och registrets agareUid blir den som råkar skriva sist. Förloraren tror sig äga ärendet (UI bekräftade), börjar arbeta, och upptäcker först senare att kortet visar en annan ägare. Frontendens dubbelklicksskydd (store-dedup) skyddar bara samma klient, inte två användare.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1368-1381 (ingen status-/ägar-precondition), :1424-1432 (kalender-re-home per anrop), :1407-1414 (additiv assignee-label), :1440-1442 (last-write-wins på agareUid), :1454-1456 (notis till 'vinnaren' i båda anropen)",
+  "forslag": "Villkorad UPDATE i ArendeMapper (SET agare_uid=:uid, status='tilldelat' WHERE hubs_case_id=:id AND agare_uid IS NULL — eller AND agare_uid=:vantadAgare för omfördelning); 0 påverkade rader ⇒ 409 till klienten FÖRE de fyra externa lagren körs. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "createCase utan conversationId saknar all idempotens — dubbelt komplett ärenderum vid retry/dubbelklick från andra konsumenter",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Idempotens-pre-checken och R2-UNIQUE-racehanteringen gäller bara när conversationId !== '' ; en rad utan ankare INSERT:as med conversation_id=NULL (UNIQUE-indexet tillåter flera NULL). En nätverks-retry eller dubbel POST mot /api/v1/arende utan conversationId skapar två kompletta ärenderum (folder+Talk+Deck+kalender+team+medlemmar) för samma sak — dubbla frister, dubbla bevakningskort, delad förvirring om vilken akt som gäller. hubs_start-frontenden härleder alltid ett ankare (conversationId eller messageId), men motor-API:t är öppet för andra klienter (kommande wizard-/integrationflöden, curl-driven drift) och skyddet ligger idag alltså i konventionen, inte i motorn. Angränsar till känd M6-NULL-notering men är ett eget hål: det finns ingen mekanism alls, inte bara en DB-beroende.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:309-320 (pre-check gated på tomt conversationId), :406-408 (race-hantering kräver conversationId !== ''); hubs_arende/lib/Controller/ArendeController.php:56-59 (rad tas rakt från request); hubs_start/src/services/api.js:529-533 (frontendens ankar-fallback — enda skyddet)",
+  "forslag": "Kräv ett idempotensankare på create-vägen: avvisa rader utan conversationId med 400 i controllern, eller acceptera en klient-genererad idempotencyKey som lagras i conversation_id-kolumnen; minst: dokumentera kravet i API-kontraktet. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "saga",
+  "titel": "Steg-övergångar är read-modify-write utan versionering — samtidiga motsatta beslut skriver över varandra tyst och kan lämna motstridig journal",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "transitionera() läser franSteg, validerar kanten mot det lästa värdet och persisterar sedan — utan optimistisk låsning. Två samtidiga, var för sig lagliga övergångar från samma steg (handläggare A: förhandsbedömning→utredning 'inleda'; gruppledare B: förhandsbedömning→avslutat 'inte inleda') passerar båda grafvalideringen; slutsteget avgörs av vem som skriver sist, och journalen får BÅDA raderna (fran:forhandsbedomning→utredning OCH →avslutat) — 'Historik & beslut'-tidslinjen visar då en övergångssekvens som aldrig var laglig i grafen och som inte förklarar slutläget. Terminal-invarianten (avslutat = inga utgående kanter) kan därmed också kringgås i race-fönstret: ett ärende kan gå 'avslutat' och ändå sluta i 'utredning'.",
+  "evidens": "hubs_arende/lib/Service/ArendeLifecycleService.php:91-92 (läsning av franSteg), :104-110 (validering mot lästa värdet), :133-139 (setSteg + update utan villkor), :142-149 (journal skriver den egna övergången oavsett vad som faktiskt landade)",
+  "forslag": "Villkorad UPDATE i ArendeMapper: SET steg=:till WHERE hubs_case_id=:id AND steg=:fran; 0 påverkade rader ⇒ 409 ('ärendet ändrades av någon annan — ladda om') och ingen journalrad. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "GDPR-gallringen river inte de PII-bärande externa objekten men raderar kartan (pekarna) till dem först — teardown-koden finns redan men används bara av demo-purge",
+  "allvar": "P0",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "När GallringJob purgar ett förfallet ärende raderas ENDAST referensfiler, team, pekare, member-rader, journal, per-case-grupp och registerraden. Talk-rummet (hela chatthistoriken om barnet), groupfoldern med alla uppladdade dokument, Deck-kortet, kalenderobjekten och case:-taggen (sdkmc + mail-spegel) lämnas kvar för evigt. Eftersom pekarna raderas FÖRST och per-case-gruppen (enda åtkomstvägen) raderas, blir groupfoldern en åtkomstlös, ospårbar PII-grav som inte ens en senare städjobb kan hitta — motorn raderar sin egen karta till innehållet. Given: ärende gallras efter 90d → utfall: känsligt verksamhetsinnehåll (OSL 26 kap) ligger kvar obegränsat i NC medan art. 5.1.e-raderingen på pappret är 'klar'. Eskalering mot baslinjen: (a) ospårbarheten (pekare bort före teardown), (b) ReferensFilService antar uttryckligen att groupfoldern rivs vid gallring ('filen försvinner ändå när groupfoldern rivs (R4-compensation / gallring / purge)') — antagandet är falskt, (c) den kompletta teardown-mappningen finns redan i DemoSeedService::tearDownExternal men anropas inte av gallringen.",
+  "evidens": "GallringService.php:114-145 (river endast referensfiler/team/pekare/member/journal/grupp/registerrad; ingen sdkmcClient/spreedClient/groupfolderClient/deckClient/calendarClient injiceras alls, rad 47-71); DemoSeedService.php:192-228 (tearDownExternal: groupfolder→removeFolder, talk_room→deleteRoom, deck_card→deleteCard, calendar→removeCalendar, case_tag→deleteCaseTag, team→destroyTeam); ReferensFilService.php:32-34 (felaktigt antagande om gallring); dev15-reset.sh:32-34 dokumenterar samma hål för reset ('LÄMNAR KVAR: föräldralösa Talk-diskussionsrum, Deck-kort och kalenderobjekt')",
+  "forslag": "Bryt ut tearDownExternal-mappningen ur DemoSeedService till en delad ArenderumTeardownService och låt GallringService::gallra() anropa den per pekare FÖRE pekare-raderingen (samma ordning som demo-purge: externt objekt först, sedan pekaren). Kräver även produktbeslut om ev. undantag (t.ex. karantän-ärenden där groupfoldern ska bevaras som bevis — SakerhetsskyddGrind låser i stället för raderar). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Retention-flippen sker ENBART i commit()-vägen — kat6 diariefor_direkt, triage_forward, karantan och avslutade-utan-registrering blir aldrig gallringsbara",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "findGallringsbara kräver provenance='registrerad' AND retention='gallras_efter_commit' AND gallras_datum satt. Enda skrivpunkten för den kombinationen är ArendeService::commit() vid verifierat kvitto. Ett kat6-ärende (diariefor_direkt) FÖDS registrerat via pre-saga-hooken men buildEntity sätter retention='aktiv' och gallras_datum=NULL, och en senare POST /commit kortsluts av H3-idempotensen (receiptFromRegistered) INNAN flippen — raden kan alltså aldrig nå gallringsvillkoret. Samma öde för triage_forward/karantan-destinationer (avvisas av assertCommittable) och ärenden som avslutas utan registrering: ingen som helst retention-policy existerar för dem. Given: 1 år drift med rättsligt tvång/kat6-ärenden → utfall: eviga registerrader med agare_uid, member-uid:n och händelsejournal (personuppgifter) som aldrig lagringsminimeras — art. 5.1.e bryts strukturellt för alla icke-kat1-utfall.",
+  "evidens": "ArendeService.php:2443 ($arende->setRetentionState('aktiv') i buildEntity), :2450-2458 (preHookKvitto sätter ENDAST provenance+dnr, ej retention/gallrasDatum), :1830-1837 (idempotent short-circuit före flippen), :1854-1864 (enda flip-/setGallrasDatum-punkten); ArendeMapper.php:134-157 (findGallringsbara-gaterna); grep setGallrasDatum = 1 träff i hela lib/",
+  "forslag": "(a) I createCase: när preHookKvitto flippar provenance till 'registrerad', sätt även retention='gallras_efter_commit' + gallras_datum ur kvittot (EdiariumStub måste då leverera gallrasDatum). (b) Definiera och implementera retention-policy för triage_forward/karantan/avslutat-utan-commit (t.ex. gallras_datum = avslutsdatum + N dagar via lifecycle-vägen). Plats: ArendeService::buildEntity + ArendeLifecycleService::transitionera('avslutat'). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "dnr saknar UNIQUE-constraint samtidigt som EdiariumStub-sekvensen är processlokal — dubblett-dnr uppstår faktiskt och ref-resolutionen träffar godtyckligt ärende",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Kolumnen dnr har inget unikt index, och resolveByRef faller tillbaka på findByDnr med setMaxResults(1) — vid dubblett returneras ett godtyckligt ärende. Dubbletter är inte hypotetiska: EdiariumStub::mintDiarienummer räknar upp en ren instansvariabel (diarieSeq=100) utan app-config-persistens, så VARJE kat6-create i en egen HTTP-request myntar SAMMA 'SN-2026-0101' (exakt dubblett-dnr-buggen som fixades för FacksystemCommitStub i session 5b via stub_dnr_seq — men bara där). Given: två kat6-ärenden skapade i olika requests → båda får dnr SN-2026-0101 → show/commit/tilldela/transitionera via dnr-ref, sdkmc MeetingService:s dnr-matchade möten och frontendens dnr-nycklade ytor träffar/blandar fel ärende — ett möte bokat i ärende A visas på ärende B:s kort (fel-ärende-koppling inom enheten).",
+  "evidens": "Version000000Date20260616000000.php:102-105 (dnr-kolumn utan unikt index; jfr :142 där hubs_case_id får UNIQUE); ArendeMapper.php:79-93 (findByDnr med setMaxResults(1)); ArendeService.php:809-819 (resolveByRef dnr-fallback); EdiariumStub.php:41 (private int $diarieSeq = 100), :49-55 (ingen IAppConfig-parameter), :127-129 (mintDiarienummer ++diarieSeq); kontrast FacksystemCommitStub.php:287-289 (appConfig-persistad stub_dnr_seq)",
+  "forslag": "(a) Persistera EdiariumStub-sekvensen via IAppConfig ('ediarium_dnr_seq') på samma sätt som FacksystemCommitStub (S). (b) Lägg additiv migration med UNIQUE-index på dnr (NULL:ar förblir tillåtna på Postgres) efter dubblett-sanering, så DB:n stänger klassen av fel även för framtida live-portar. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Klienten kan skriva över commit_destination/frends_modul i commit-payloaden — kringgår karantän-invarianten och retention-pausen, och kan felrouta till fel facksystem-modul",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "ArendeService::commit() låter payloaden vinna över registret: $payload['commit_destination'] ?? $arende->getCommitDestination() (samma för frends_modul), och FacksystemCommitService::assertCommittable validerar PAYLOAD-värdet, inte registerraden. Given: SakerhetsskyddGrind har retroaktivt karantänerat ett ärende (commit_destination='karantan', retention='pausad') → en autentiserad handläggare POSTar /commit med {commit_destination:'facksystem', frends_modul:'ifo_barn'} → assertCommittable passerar, stub/live-porten committar, och rad 1859 flippar retention OVILLKORLIGT pausad→'gallras_efter_commit' → det karantänerade ärendet både registreras i facksystem OCH gallras senare, trots att karantänen skulle frysa det. frends_modul-övermanningen ger dessutom exakt den felrouting ('LSS-uppföljning in i fel Treserva-modul = sekretessincident') som resolveModuls fail-closed-design uttryckligen byggdes för att förhindra.",
+  "evidens": "ArendeService.php:1840-1843 (payload ?? register för båda fälten), :1859 (setRetentionState('gallras_efter_commit') utan hänsyn till 'pausad'); ArendeController.php:174 (public function commit(string $hubsCaseId, array $payload = []) — rå klientpayload); FacksystemCommitService.php:84-85 (läser destination ur payload), :146-158 (assertCommittable på payload-värdet), :160-181 (resolveModuls sekretessmotivering); SakerhetsskyddGrind.php:326-333 (karantän sätter destination+pausad)",
+  "forslag": "Vänd prioriteten i ArendeService::commit: registret + typregistret är sanningen — ignorera payload för commit_destination/frends_modul (eller kasta 400 vid avvikelse), och gör retention-flippen villkorad (flippa aldrig FRÅN 'pausad'). Plats: ArendeService.php:1840-1843+1859. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Ingen UserDeletedEvent-lyssnare: raderas en handläggares NC-konto strandas dess tilldelade ärenden tyst (död agare_uid, osynliga i alla vyer)",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "agare_uid och member.uid är FK-by-convention utan städ- eller reparationsväg — grep visar 0 lyssnare på UserDeletedEvent/GroupDeletedEvent i hela hubs_arende. Given: en handläggare slutar och kontot raderas (normal offboarding i en kommun) → ärendet förblir status='tilldelat' med död agare_uid: det dyker INTE upp i fördelningsvyn (findOtilldelade kräver status='otilldelat'), 'Mina ärenden' (member-baserad) visar det för ingen levande användare, och FristVarselJob skickar frist-varsel till den raderade uid:n i stället för till någon som kan agera. Ett barnavårdsärende med löpande frist kan därmed bli osynligt för hela organisationen tills någon manuellt söker i enhetens totallista — verklig verksamhetsrisk med juridisk frist-konsekvens.",
+  "evidens": "grep 'UserDeletedEvent|GroupDeletedEvent' i hubs_arende = 0 träffar; ArendeMapper.php:237-248 (findOtilldelade filtrerar på status='otilldelat'); FristVarselJob.php:100-104 (mottagare = enbart agare_uid när satt); MemberMapper.php:126-139 (findCaseIdsByUid — död uid ⇒ ärendet i ingens lista); Version000000Date20260616000000.php:85-88 (agare_uid fri sträng utan koppling)",
+  "forslag": "Registrera en IEventListener för UserDeletedEvent i Application::register som: (1) för varje ärende med agare_uid=raderad uid → status='otilldelat', agare_uid=null, journalpost, notis till mottagningskretsen; (2) deleteByCaseUidRoll för alla member-rader med uid:n + syncArenderumGrupp. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Pliktgrindens skyddsbedömnings-kvittens persisteras aldrig — och hubs_arende_flagga, tabellen byggd för exakt detta, är dött schema utan mapper/entity",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Grinden forhandsbedomning→utredning släpper igenom på en transient boolean i request-payloaden ($kontext['skyddsbedomningKvitterad']) — inget skrivs någonsin ned om VEM som kvitterade skyddsbedömningen, NÄR, eller att den skett. Samtidigt skapade grundmigrationen hubs_arende_flagga ('Pliktmarkörer/flaggor på ett ärende' per README) som saknar Entity, Mapper och varje läs-/skrivpunkt i lib/ — tabellen är död vikt som bara dev15-reset DELETE:ar ur. Given: IVO-tillsyn av en orosanmälan 6 månader senare → utfall: motorn kan inte styrka att skyddsbedömningen kvitterades före utredningsstart (journalen loggar steg-bytet men inte kvittensen/aktören), och grinden kan passeras av vilken klient som helst som skickar flaggan utan att någon bedömning materialiserats. Eskalering av kända gap7/13 (skyddsbedömnings-materialisering): schemat för lösningen finns redan men är okopplat.",
+  "evidens": "ArendeLifecycleService.php:112-126 (grinden läser ($kontext['skyddsbedomningKvitterad'] ?? false) — transient, ingen persistens); Version000000Date20260616000000.php:225-254 (flagga-tabellen: hubs_case_id, flagga, satt_av, satt_at); grep 'Flagga|hubs_arende_flagga' i lib/ = endast migrationen (ingen mapper/entity/service); hubs_arende/README.md:48 (tabellens deklarerade syfte); dev15-reset.sh:74 (DELETE FROM oc_hubs_arende_flagga — enda konsumenten)",
+  "forslag": "Bygg FlaggaMapper + skriv en flagga-rad ('skyddsbedomning_kvitterad', satt_av=uid, satt_at=now) när kvittensen tas emot, och låt pliktgrinden kräva RADEN (inte payload-flaggan). Gallra flagga-raderna i GallringService/DemoSeedService (satt_av är personuppgift). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Mail-speglade taggarna (oc_mail_tags/oc_mail_message_tags) saknar varje raderingsväg — överlever dev15-reset, gallring OCH retroaktiv karantän",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "F2b-speglingen dubbelskriver case:{uuid}- och behandlad-taggar till mail-appens egna tabeller så de syns i trådvyn, men ingen kod raderar spegeln: sdkmc:s deleteTag soft-deletar bara ItslTag (+IMAP-städjobb), dev15-reset.sh DELETE:ar enbart oc_sdkmc_itsl_message_tag/oc_sdkmc_itsl_tag, och GallringService rör inte taggar alls. Tre konsekvenser: (1) efter reset visar Mail-trådvyn fortfarande gamla 'Ärende xxxxxx'-taggar på de två orosanmälningarna och spegelrader ackumuleras för varje testrunda — det 'kända testläget' är inte rent; (2) efter gallring bär meddelandet kvar kopplingen meddelande↔hubsCaseId i mail-DB:n; (3) allvarligast: R-retro-4:s uttalade syfte ('Remove the case:-tag carrier so the token stops propagating') uppnås inte — vid retroaktiv säkerhetsskydds-karantän fortsätter spegel-taggen exponera case-token i mailklienten för alla som ser tråden. (Osäkerhet: mail-appens egen IMAP-resync KAN så småningom rensa message_tags-mappningen när IMAP-etiketten tas bort av DeleteTagsJob, men tagg-definitionsraden består och ingen kod i repot garanterar det.)",
+  "evidens": "ItslTagService.php:85-106 (mirrorTagToMailApp: insert i oc_mail_tags + tagMessage — enbart skrivväg), :207-232 (deleteTag: soft-delete av ItslTag, ingen mailTagMapper-radering); dev15-reset.sh:77-84 (rensar endast oc_sdkmc_itsl_*-tabellerna); GallringService.php:114-145 (inga tagg-anrop); SakerhetsskyddGrind.php:308-320 (R-retro-4:s syfte + deleteCaseTag som inte når spegeln)",
+  "forslag": "Lägg spegel-radering i sdkmc: när en Hubs-tagg tas bort (deleteTag/DeleteTagsJob), radera motsvarande oc_mail_tags-rad + oc_mail_message_tags-mappningar per userId; komplettera dev15-reset.sh med DELETE mot oc_mail_tags/oc_mail_message_tags för imap_label LIKE 'case:%'. Storlek M (S för reset-raden).",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Version000100:s UNIQUE-index på conversation_id saknar dubblett-sanering (upgrade-krasch på instans med TOCTOU-dubbletter) och det gamla redundanta indexet droppas aldrig",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Migrationen lägger hubs_arende_conv_uq direkt med addUniqueIndex. Given: en instans som körde 0.1-eran och hann få just de TOCTOU-dubbel-ärenden som M6 skulle stänga (två rader med samma conversation_id) → occ upgrade misslyckas med constraint-fel mitt i migrationssteget och instansen står i maintenance tills någon manuellt sanerar raderna. Dessutom behålls det ursprungliga icke-unika indexet hubs_arende_case_conv parallellt med det nya unika — dubbla index på samma kolumn kostar skrivprestanda och skapar förvirring om vilket som är normativt.",
+  "evidens": "Version000100Date20260617120000.php:60-62 (addUniqueIndex utan föregående dedup-steg, ingen dropIndex); Version000000Date20260616000000.php:146 (det kvarlämnade addIndex(['conversation_id'],'hubs_arende_case_conv'))",
+  "forslag": "Ny additiv migration: (1) postSchemaChange/SQL-steg som först konsoliderar dubbletter (behåll äldsta raden per conversation_id, logga resten), (2) hasIndex-gated dropIndex('hubs_arende_case_conv'). Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "NC-notiser överlever gallring/purge/reset — markProcessed anropas aldrig, så uid↔ärende-kopplingen ligger kvar i oc_notifications och klick leder till 404",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Motorn skapar notiser (tilldelad/medlem/frist) med objekt 'arende-frist'/hubsCaseId och ref=dnr eller hubsCaseId, men varken GallringService, DemoSeedService::purge eller dev15-reset rensar dem — grep visar att INotificationManager::markProcessed inte förekommer någonstans i hubs_arende. Given: ett ärende gallras (eller dev15 resettas) → utfall: (1) handläggarens notis-klocka innehåller fortfarande 'frist närmar sig för SN-2026-0101' vars klick ger 404; (2) kopplingen uid↔dnr/hubsCaseId (personuppgift-rest av exakt den sort gallringen ska eliminera) överlever koordinationsraden obegränsat i oc_notifications.",
+  "evidens": "FristVarselJob.php:114-125 (setObject('arende-frist', hubsCaseId) + setSubject med dnr/hubsCaseId); ArendeService.php:224-230 (notify för tilldelad/medlem); grep 'markProcessed' i hubs_arende/lib = 0 träffar; GallringService.php:47-71 (ingen INotificationManager i konstruktorn)",
+  "forslag": "Injicera INotificationManager (trailing optional) i GallringService + DemoSeedService och kör markProcessed på notification-prototyp med app=hubs_arende + object(hubsCaseId) per purgad rad; lägg motsvarande DELETE i dev15-reset.sh. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "data",
+  "titel": "Pekare-kolumnen riktning är semantiskt överlagrad (boardId/ägar-uid/rumsnamn) medan entity-dokumentationen påstår 'forward|reverse' — latent teardown-korruption för nästa skrivare",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Schemat/entityn beskriver riktning som 'Optional relation hint, e.g. forward|reverse|in|out', men i praktiken bär kolumnen tre inbördes oförenliga betydelser: boardId för deck_card (kastas till int i bevakningar och deck-teardown), kalenderägarens uid för calendar, och rumsnamnet för extra talk_room. Given: en framtida skrivare följer entity-dokumentationen och sätter riktning='forward' på en deck_card-pekare → (int)'forward'=0 → bevakningar() slår upp kortet på board 0 (tom projektion) och demo-purge/teardown anropar deleteCard(0, cardId) som tyst misslyckas → föräldralöst Deck-kort. Typiskt FK-by-convention-förfall: invarianten finns bara i huvudet på den som skrev R5.",
+  "evidens": "Pekare.php:52-53 ('Optional relation hint, e.g. forward | reverse | in | out'); ArendeService.php:597-602 (R5 stashar boardId i riktning), :675 (calendar: riktning=kalenderAgare), :1656-1658 (talk_room: riktning=rumNamn), :1617 (bevakningar: (int)$p->getRiktning() som boardId); DemoSeedService.php:203-204 (deleteCard((int)$pekare->getRiktning(), ...))",
+  "forslag": "Minst: rätta doc-blocket i Pekare.php till en per-objekt_typ-tabell över riktning-semantiken (S). Bättre: additiv migration med explicit meta-kolumn (t.ex. 'kontext' TEXT/JSON) och migrera deck/calendar/talk-värdena dit. Storlek S/M.",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Backendfel visas som lugnande tomtillstånd — 'allt inkommande är omhändertaget' när motorn i själva verket felade",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Om hubs_arende/sdkmc svarar 500 eller nätet felar vid load sätts state.error men INGEN komponent renderar det — vyn visar i stället tomma zoner med aktivt lugnande texter: 'Inget otriagerat just nu — allt inkommande är omhändertaget' (1a) och 'Inga aktiva ärenden' (zon 3). loadInflodeSummary/loadTeam/loadReceipts sväljer fel helt tyst. Konkret: motorn nere en morgon → handläggaren ser en tom, grön dashboard, tror kön är tom, missar brinnande frister och nya orosanmälningar. Fel och äkta tomt är oskiljbara. Samma mönster i kortets flikar: fetch-fel → 'Inga kopplade meddelanden än.' (ArendeKort catch → honest-empty utan felindikation).",
+  "evidens": "hubs_start/src/store/index.js:184-188 ('catch (e) { state.error = e }' — grep över alla .vue ger noll träffar på state.error); store/index.js:316-321,335-337 (tysta catch); hubs_start/src/components/socialsekreterare/AttTaEmotSektion.vue:114 ('Inget otriagerat just nu — allt inkommande är omhändertaget…'); ArendeZon.vue:100 ('Inga aktiva ärenden.'); ArendeKort.vue:494-497 (catch → 'Ärligt tom flik')",
+  "forslag": "Rendera ett felband i MinaArenden när state.error är satt ('Kunde inte hämta ärenden — visar senast kända läge') och ge varje sektion ett distinkt felstate skiljt från tomstate; lägg retry-knapp. Plats: MinaArenden.vue template + store/index.js (per-yta error-flaggor). Storlek: M",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Gruppledarens fördelningsvy är bruten i live — 'Fördela' postar till en sdkmc-endpoint som svarar 400 okand_atgard",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "onFordela/onOmfordela kör store.inflodeAction('tilldela'/'omfordela'), och api.inflodeAction boundary-routar bara ['skapa','koppla','registrera','gallra'] till hubs_arende — 'tilldela'/'omfordela' går till sdkmc POST /inflode/{action}. sdkmc-controllerns whitelist är exakt ['besvara','vidarebefordra'] → 400 {error:'okand_atgard'} → axios kastar → generisk toast 'Kunde inte fördela ärendet. Försök igen.' VARJE gång. Konkret: gruppledare (profile=forvaltare, roll-styrd, EJ demo-gated) öppnar 'Fördela (gruppledare)', klickar Fördela på ett otilldelat ärende → alltid fel; hela fördelningsflödet i skarpt läge är dött. HANDOVER kallar detta 'kvarvarande skönhetsfel' — det är en bruten kärnfunktion, inte kosmetik.",
+  "evidens": "hubs_start/src/components/socialsekreterare/MinaArenden.vue:727-750 (onFordela/onOmfordela → store.inflodeAction('tilldela'/'omfordela')); hubs_start/src/services/api.js:739-741 (ARENDE_VERB = ['skapa','koppla','registrera','gallra'] → allt annat till SDKMC_OCS); hubs_start/backend-additions/sdkmc/lib/Controller/OCS/InflodeFeedController.php:50 (MESSAGE_ACTIONS = ['besvara','vidarebefordra']) och :125-129 (400 okand_atgard)",
+  "forslag": "Byt onFordela/onOmfordela till att anropa api.tilldela(ref, uid) (hubs_arende POST /arende/{ref}/tilldela — redan byggd, GUI-verifierad via kortets omfördelning). Plats: MinaArenden.vue onFordela/onOmfordela. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "'Gallra' ger falsk juridisk kvittens ('Gallrat med dokumenterat stöd — loggat') på en backend-no-op; 'Registrera utan ärende' kör createCase",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Zon 1c:s juridiska verb är sken-implementerade i motorn: hubs_arende InfodeController ack:ar 'gallra' deterministiskt med {ok:true} UTAN någon register-write, gallring eller loggning, medan 'registrera' mappas till doSkapa→createCase (hela sagan: rum+Talk+Deck+team). Frontend visar då 'Gallrat med dokumenterat stöd — loggat.' och tar bort raden ur bandet — men meddelandet ligger kvar i brevlådan och raden ÅTERUPPSTÅR vid nästa sidladdning. GallringsGrindens hela OSL/arkivlags-ceremoni (handlingstyp, ringa-betydelse-spärr) mynnar i ett falskt kvitto. 'Registrera utan ärende' (den tvingande vägen för ej-ringa handlingar) skulle antingen 400:a på saknad arendeTyp eller minta ett spök-ärende — aldrig 'fört till diarium' som toasten påstår. Nåbart i demo idag (flödet demonstreras som färdigt) och bryter juridiskt den dag 1c wiras mot riktig feed.",
+  "evidens": "hubs_arende/lib/Controller/InfodeController.php:173-182 ('skapa','registrera' => doSkapa; default (besvara|vidarebefordra|gallra) => DataResponse(['ok'=>true,…]) med kommentaren 'carry no register write'); hubs_start/src/components/socialsekreterare/MinaArenden.vue:655-656 (toast 'Gallrat med dokumenterat stöd — loggat.' / 'Registrerat utan ärende — fört till diarium.'); hubs_start/src/store/index.js:389-393 (raden tas bort ur inflödet på ok-svar); GallringsGrind.vue:5-9 (headerkontraktet)",
+  "forslag": "Kortsiktigt: låt InfodeController svara ok:false/'ej_implementerad' för gallra/registrera och visa ärligt 'funktionen är inte driftsatt' i UI (S). Långsiktigt: implementera gallra (behandlad-tagg + journalpost + ev. radering enligt DHP) och en riktig diarieföringsväg skild från createCase (L). Plats: InfodeController.php + MinaArenden.onInflode",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Mötesbokningens bekräftelsevy är död kod — SMS-fel till medborgaren sväljs av en generisk 'Säkert möte bokat'-toast",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "MeetingWizard bygger en hel bekräftelsevy (tid, deltagare, skyddsnivå, SMS-status inkl. 'SMS kunde inte skickas') och emittar 'booked' efter att result satts — men BÅDA föräldrarna stänger modalen omedelbart på @booked (v-if bort → komponenten förstörs) och visar bara toasten 'Säkert möte bokat'. Konkret: bokningen lyckas men SMS-utskicket till medborgaren felar (smsStatus:'failed') → handläggaren ser aldrig felet, medborgaren får ingen inbjudan, mötet uteblir. Dessutom defaultar confirmSmsStatus till 'SMS skickat' när servern inte returnerar status alls (optimistisk lögn även om vyn visades).",
+  "evidens": "hubs_start/src/components/MeetingWizard.vue:604-607 (this.result = result; $emit('booked')); :423-441 (confirmSmsStatus — case 'failed' = 'SMS kunde inte skickas'; undefined + form.sendSms → 'SMS skickat'); hubs_start/src/components/socialsekreterare/MinaArenden.vue:1001-1003 (onMeetingBooked → meetingWizardOpen = false + showSuccess); hubs_start/src/views/Start.vue:271-275 (samma mönster)",
+  "forslag": "Låt föräldrarna INTE stänga wizarden på @booked (behåll modalen så bekräftelsevyn med SMS-status visas; stäng först på 'Klar'), och ta bort den optimistiska 'SMS skickat'-defaulten (visa 'SMS-status okänd' i stället). Plats: MinaArenden.onMeetingBooked, Start.onMeetingBooked, MeetingWizard.confirmSmsStatus. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "KopplaValjare listar råa 36-teckens UUID:n som ärendereferens — felkopplingsrisk i vyns mest sekretesskritiska val",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Väljarens rader visar 'a.triageRef || a.barnRef || a.hubsCaseId' — och motorns mapToCard sätter triageRef = hubsCaseId (rå UUID), så i live blir hela listan identiskt utseende UUID-strängar utan dnr, kortRef, ägare eller frist. Komponentens eget kontrakt säger 'felkoppling = sekretessincident' och resten av vyn har regeln 'aldrig rå UUID' (kortrubriker använder kortRef 'Ärende 353730', KopplingBadge 'pseudonym, aldrig rå UUID'). Konkret: handläggaren ska koppla en komplettering till rätt barn-ärende bland 8 ärenden som alla ser ut som 'f3a9c2e1-…' → gissning → meddelande om barn A hamnar i barn B:s akt = sekretessincident enligt produktens egen definition.",
+  "evidens": "hubs_start/src/components/socialsekreterare/KopplaValjare.vue:36 ('{{ a.triageRef || a.barnRef || a.hubsCaseId }}') och :9-10 ('felkoppling är en sekretessincident'); hubs_arende/lib/Service/ArendeService.php:983-992 ('triageRef' => hubsCaseId; 'kortRef' => self::kortRef(...) finns i samma shape men används inte av väljaren)",
+  "forslag": "Visa kortRef + dnr + barnRef + typ/steg/ägare per rad (allt finns redan i mapToCard-shapen) och lyft senast aktiva ärenden överst; behåll UUID enbart som title-tooltip. Plats: KopplaValjare.vue template + filtrerade. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "I skarpt läge landar ALLT inflöde i 1a 'Att ta emot' med 'Ta emot & starta förhandsbedömning' som primärknapp — även kompletteringar och felsänd post",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "sdkmc-feedens rader utelämnar medvetet arendekoppling/klassning ('deliberately omitted') och zonOf() defaultar då varje rad till 'attTaEmot'. Konsekvens i live: zon 1b (Att hantera) och 1c (Ej kopplat) är permanent tomma, och varje inkommande meddelande — inklusive kompletteringar till pågående ärenden, remisser och skräp — presenteras med en primärknapp som MINTAR ETT NYTT ÄRENDE (fullt rum+team+Talk+Deck). Motorns idempotens skyddar bara mot dubbelklick på samma meddelande, inte mot att en komplettering (nytt conversationId) blir ett dubblettärende. Gallrings-/registreringsvägarna och 1c-hinkens SLA-vakt är onåbara i drift. Baslinjen känner till att cross-app-enrichmenten är obyggd, men UX-konsekvensen — fel primärknapp på fel meddelanden i det skarpa huvudflödet — är allvarligare än 'feed-enrichment saknas'.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/InflodeFeedService.php:27-28 ('arendekoppling, koppling, klassning … deliberately omitted') och :446-507 (toFeedRow — inget arendekoppling-fält); hubs_start/src/components/socialsekreterare/MinaArenden.vue:524-533 (zonOf: utan arendekoppling → 'attTaEmot'); AttTaEmotRad.vue:47-56 (primärknapp 'Ta emot & starta förhandsbedömning'); api.js:692-699 (dokumenterat gap)",
+  "forslag": "Tills enrichmenten byggs: låt 1a-raden defensivt sänka 'Ta emot & starta' till sekundär och lyfta 'Koppla till befintligt ärende' som primär när messageType är komplettering/fråga/remiss (klientkänd typ finns redan i raden), alternativt visa en varningsrad 'kan höra till pågående ärende'. Plats: AttTaEmotRad.vue + zonOf. Storlek: M (riktig fix = server-side enrichment, L, redan känd)",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Inflödesverben 'besvara'/'vidarebefordra' kan aldrig lyckas i live (parameter-mismatch) och skulle vid 'lyckat' svar ändå ljuga — deepLinken öppnas aldrig",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Dubbel defekt, idag latent (zon 1b/1c tomma i live) men detonerar samma dag feeden wiras: (a) SPA:n postar {id:'inf:…', rad} men sdkmc-controllern kräver body-param messageId → 400 messageId_saknas → alltid 'Åtgärden kunde inte slutföras. Försök igen.' (b) Även med rätt param returnerar endpointen bara {ok, deepLink} — 'the actual send/forward is performed by the … composer the SPA opens via the returned deepLink' — men SPA:n öppnar ALDRIG deepLinken; den visar success-toasten 'Besvarat — hålls ordnat.' resp. 'Vidarebefordrat till {namn} — säker överlämning loggad.' och tar bort raden. Inget svar komponeras, ingen överlämning loggas — falsk success med explicit loggnings-claim. Samma gäller 1b-verben 'spara-i-rum'/'skapa-bevakning' som saknas helt i båda backends whitelists → alltid 400.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Controller/OCS/InflodeFeedController.php:107,132-137 (action(string $action, ?string $messageId) → 'messageId_saknas'); :97-100 (kontraktet att SPA:n ska öppna deepLink); hubs_start/src/components/socialsekreterare/MinaArenden.vue:650-670 (onInflode: toast-map, ingen navigation på res.deepLink); :90-91 (spara-i-rum/skapa-bevakning emitteras); api.js:734-743 (payload {id, rad} skickas rakt igenom)",
+  "forslag": "Rätta payloaden (skicka messageId), och låt onInflode för besvara/vidarebefordra NAVIGERA till res.deepLink i stället för att visa success-toast (svaret/vidarebefordran sker i composern; toast först vid retur). Ta bort/inaktivera spara-i-rum/skapa-bevakning-knapparna tills endpoints finns. Plats: MinaArenden.onInflode + api.inflodeAction. Storlek: M",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "CommitGrind visar 'Registrerat · Klart' + gallringsdatum på o-verifierat kvitto — modalen och förälderns feltoast säger emot varandra",
+  "allvar": "P2",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "CommitGrind sätter committed=true och driver alla tre stegen till gröna bockar så fort r.ok är sant — utan att kontrollera r.verifierad — och renderar då även konsekvenstexten 'Hubs-rummet gallras {datum} efter bekräftad överföring'. Föräldern (onCommitted) kräver r.ok && r.verifierad och visar annars 'Treserva bekräftade inte registreringen — inget kvitto skapades. Försök igen.' Med en riktig asynkron Frends-callback (ok:true, verifierad:false — normalfallet i produktion, stubben är synkront verifierad) ser handläggaren SAMTIDIGT 'Registrerat Klart' i modalen och ett felmeddelande i toasten. Baslinjen vet att 3-stegsindikatorn är setTimeout-animation; den direkta ok/verifierad-motsägelsen är en eskalering.",
+  "evidens": "hubs_start/src/components/socialsekreterare/CommitGrind.vue:380-396 (throw endast på '!r || r.ok === false'; committed=true + emit på r.ok) och :132-140 (gallras-text på committed); hubs_start/src/components/socialsekreterare/MinaArenden.vue:936-953 (kräver r.ok && r.verifierad, annars showError)",
+  "forslag": "Låt CommitGrind gate:a 'Registrerat'-steget på r.verifierad: vid ok&&!verifierad stanna på 'Bekräftat (API-svar)' med status 'Väntar på verifierad registrering' och ingen gallringsmening. Plats: CommitGrind.onCommit/stepState. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Pulsfiltren 'möten' och 'omnämnanden' gör ingenting utom att dölja inflödet; 'nya'-filtret smalnar inte triagen (död kod)",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "taEmotItems nollställs för VARJE aktivt pulsfilter ≠ 'inflode', men 'mote' och 'omnamnanden' filtrerar ingen annan yta alls (hetaArenden hanterar bara 'frist', aktivaArenden bara 'signera'), och triageFiltered returnerar alltid A.triage ofiltrerat trots kommentaren. Konkret: handläggaren klickar pillret '5 möten idag' i förväntan att se sina möten → enda synliga effekten är att 'Att ta emot' töms och auto-kollapsar (watch:items → kollapsad när tomt) medan korg-pillren fortfarande visar otriagerat-antal → det ser ut som att nya orosanmälningar försvunnit. Kort/rader 'försvinner' alltså för användaren utan att något filter-resultat visas.",
+  "evidens": "hubs_start/src/components/socialsekreterare/MinaArenden.vue:474-479 (taEmotItems: 'if (this.A.pulsFilter && this.A.pulsFilter !== \"inflode\") return []'); :385-391 (hetaArenden: bara 'frist'); :429-432 (aktivaArenden: bara 'signera'); :459-462 (triageFiltered: 'return this.A.triage' — död kommentar); AttTaEmotSektion.vue:103-109 (auto-kollaps på tom items)",
+  "forslag": "Implementera 'mote' (scrolla/highlighta MotesRemsa) och 'omnamnanden' (filtrera aktivaArenden på diskussion.omnamnandeTillMig) eller gör de två pillren till rena räknare utan toggle; ta bort döda triageFiltered-grenen; visa en synlig 'Filter aktivt — rensa'-chip när pulsFilter ≠ null. Plats: MinaArenden computed + Dagspulsen. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Varsel-länken 'Gå till ärendet' är en tyst no-op när målkortet är bortfiltrerat",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "gaTillArende scrollar till DOM-id 'arende-{ref}', men varsel-listan byggs ur hetaArenden (ofiltrerad) medan kortlistan (aktivaArenden) kan ha filtrerat bort kortet via stegFilter eller pulsFilter='signera'. Konkret: användaren klickar verbet 'Signera' (setStegFilter('beslut')), ser sedan i 'Kräver åtgärd nu' en brinnande frist på ett förhandsbedömnings-ärende och klickar 'Gå till ärendet' → getElementById ger null → ingen scroll, ingen markering, ingen feedback — knappen verkar trasig och det brådskande ärendet nås inte.",
+  "evidens": "hubs_start/src/components/socialsekreterare/MinaArenden.vue:984-999 (gaTillArende: 'const el = document.getElementById(…); if (el) {…}' — ingen else-gren); :424-432 (aktivaArenden filtrerar på stegFilter + pulsFilter 'signera'); :393-418 (varsel ur hetaArenden, ofiltrerad); ArendeKort.vue:11 (id='arende-'+triageRef)",
+  "forslag": "Rensa stegFilter/pulsFilter innan scroll i gaTillArende (store.setStegFilter(null); store.setPulsFilter(null); $nextTick → scroll), eller fall tillbaka till en toast om elementet saknas. Plats: MinaArenden.gaTillArende. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "'Öppna kopplat ärende' i zon 1b navigerar inte — visar bara en toast som påstår att den öppnar",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "onOpenKoppling visar showInfo('Öppnar kopplat ärende: {ref}') och gör sedan ingenting — ingen scroll/expand till kortet, ingen deep link. Konkret (när 1b får data): handläggaren ser 'hör till Ärende X', klickar för att öppna ärendet, får en toast som lovar öppning, och blir kvar där hen står. Dead end i koppla→arbeta-vidare-flödet, med en text som dessutom påstår en handling som inte sker.",
+  "evidens": "hubs_start/src/components/socialsekreterare/MinaArenden.vue:696-699 ('onOpenKoppling(payload) { … showInfo(this.t(…, \"Öppnar kopplat ärende: {ref}\" …)) }' — ingen navigation)",
+  "forslag": "Återanvänd gaTillArende(ref) när ärendet finns i A.arenden (matcha på dnr/hubsCaseId), annars store.loadArende + expandera; ändra toast till fel först om referensen inte kan lösas. Plats: MinaArenden.onOpenKoppling. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Demoläge saknar persistent markör — en handläggare i skarpt läge kan fastna i fixture-data som ser äkta ut",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Footer-länken 'Visa i demoläge' är alltid synlig i live, och ?demo=1 persisteras i sessionStorage så demoläget överlever navigering i fliken. Väl inne är de enda indikatorerna persona-baren och footer-texten 'Lämna demoläge' — ingen banner, ingen färgmarkering. De ~22 fixture-ärendena renderas exakt som riktiga (namnliknande pseudonymer, frister, orosanmälningar). Konkret: en handläggare klickar länken av misstag/nyfikenhet, ser 'nya orosanmälningar' som inte finns eller tror att hens riktiga ärenden försvunnit, och kan börja agera på fiktiv data (inflödesverben ger dessutom optimistiska success-svar i demo).",
+  "evidens": "hubs_start/src/components/socialsekreterare/MinaArenden.vue:187-191 (footer-länken, alltid renderad) och :496-500 (demoLank ?demo=1); store/index.js:93-95 ('isDemo() honours the ?demo= URL override (sessionStorage-persisted)'); api.js:735 (demo-inflodeAction → {ok:true})",
+  "forslag": "Rendera en persistent, tydlig banner i demoläge ('DEMOLÄGE — fiktiva data, inga åtgärder utförs' med Lämna-knapp) överst i MinaArenden/Start; överväg att gate:a footer-länken bakom admin/inställning i skarpt läge. Plats: MinaArenden.vue + Start.vue. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "State-machinens 'Delge beslut' (vantar='signaturkvittens') routar till action 'commit' som saknar case i åtgärdsswitchen — knappen expanderar bara kortet",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "NASTA_ATGARD.overrides.signaturkvittens = {label:'Delge beslut', action:'commit'} men MinaArenden.onNastaAtgard hanterar bara signera/commit-utredning/beslut-inleda/skyddsbedomning/godkann-anteckning/bevakning/avsluta/open-rum — 'commit' faller till default → onExpand (och flik-hinten 'beslut' finns inte ens som flik-id). Idag latent (motorn sätter alltid vantar:null), men den dag signeringsflödet börjar sätta vantar='signaturkvittens' får handläggaren en lysande primärknapp 'Delge beslut' vars enda effekt är att kortet fälls ut — delgivningen (commit) sker aldrig. En primäråtgärd i state-machinen som UI-routern inte kan utföra är en tickande dead end.",
+  "evidens": "hubs_start/src/services/arendeFlow.js:23 (override action 'commit'); hubs_start/src/components/socialsekreterare/MinaArenden.vue:563-586 (switch utan 'commit'-case, default → onExpand); hubs_arende/lib/Service/ArendeService.php:1012 ('vantar' => null — därför latent)",
+  "forslag": "Lägg till 'case \"commit\": return this.onCommit(arende, { typ: \"beslut\", arende })' i onNastaAtgard (samt enhetstest som itererar ALLA actions i NASTA_ATGARD/overrides mot switchens täckning). Plats: MinaArenden.onNastaAtgard + tests/unit. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Tillgänglighet: role='tab'/'tablist' utan tabs-semantik i kortflikar och stegfilter; rå emoji i rubriker och varselsymboler",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "ArendeKorts flikrad och ArendeZons stegfilter använder role='tablist'/role='tab' + aria-selected men saknar allt som ARIA-mönstret kräver: inga aria-controls/id-kopplade tabpanels, ingen piltangentsnavigering, alla 'tabs' ligger i tabbordning. Skärmläsare annonserar 'flik 1 av 6' och utlovar ett interaktionsmönster som inte finns; för tangentbordsanvändare beter de sig som knappar. Dessutom läses råa emojin upp: VarselLista-rubriken '🔥 Kräver åtgärd nu' (emoji utanför aria-hidden) och varsel-symbolerna 🔥/⏰/⛔/@ bär betydelse ('plikt' vs 'frist') men är aria-hidden utan textalternativ — informationen försvinner för skärmläsare. (Positivt kontrastmönster i övrigt: Dagspulsen och FristChip följer ikon+tal+ord, aldrig bara färg.)",
+  "evidens": "hubs_start/src/components/socialsekreterare/ArendeKort.vue:91-102 (role='tablist'/'tab', ingen tabpanel/keyboard-hantering); ArendeZon.vue:19-31 (samma mönster för filterpiller); VarselLista.vue:17 ('🔥 {{ t(…\"Kräver åtgärd nu\") }}' i h2) och :22 (sym aria-hidden utan sr-textekvivalent)",
+  "forslag": "Byt filter-/flikknapparna till vanliga button-grupper med aria-pressed (som lägeväxeln gör korrekt) ELLER implementera fullt tabs-mönster (roving tabindex + piltangenter + tabpanel); ersätt emoji-symbolerna med ikonkomponenter + sr-only-text ('Frist', 'Plikt', 'Omnämnd'). Plats: ArendeKort.vue, ArendeZon.vue, VarselLista.vue. Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "ux",
+  "titel": "Brand-regeln läcker i widget-ytorna: 'Öppna i Deck'-knappetiketter och widgetnamn 'Kunskapsbank (Collectives)' är användarsynliga",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Soc-vyns t()-strängar är rena (grep på Nextcloud/Talk/Circles/Deck i .vue-templates ger endast kommentar-träffar — regeln hålls där), men persona-dashboardens descriptors bär appnamn rakt i användarsynliga etiketter: fyra 'Öppna i Deck'-primärknappar i todolista-widgeten och widgetnamnet 'Kunskapsbank (Collectives)' som renderas som widget-titel via WidgetRenderer (meta.title/name). Eftersom widget-descriptors renderas utan demoMode-koll (känt baslinjegap) kan dessa etiketter dyka upp även i skarpt läge för persona-dashboards. Konkret: i en kunddemo/skarp registrator-vy står 'Öppna i Deck' i stället för produktens vokabulär ('Öppna bevakningslistan') — bryter varumärkesregeln som resten av koden aktivt upprätthåller (queues-a.js:10: 'never the words Nextcloud or Talk').",
+  "evidens": "hubs_start/src/services/demo/newcases.js:25,33,42,50 (primaryAction: { label: 'Öppna i Deck' }); hubs_start/src/services/personaConfig.js:580 ('name': 'Kunskapsbank (Collectives)'); jämför regeldeklaration i demo/queues-a.js:10; WidgetRenderer.vue:102,113 (meta.title vidare till widget-props)",
+  "forslag": "Byt etiketterna till produktvokabulär ('Öppna bevakningslistan', 'Kunskapsbank & mallar') i newcases.js och personaConfig-generatorn; lägg en jest-regel som grep:ar descriptors/t()-strängar mot förbjudna ord (Nextcloud|Talk|Circles|Deck|Collectives). Storlek: S",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Wipe-återställningskällan är inte versionshanterad — hela session 4–5c-lagret ligger okommittat i arbetsytan",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Senaste commit är 5a8551c7 (session 3-handover). ALLT som byggts/deployats i session 4–5c ligger som modified/untracked i den lokala Windows-arbetsytan: sdkmc-återställningskällorna routes-ocs-snippet.php (?? hubs_start/backend-additions/sdkmc/appinfo/), ItslTagService.php (F2/F2b-recoveryfilen), CaseMessagesService/-Controller, hubs_arende-migrationen för handelse-tabellen, FristVarselJob, Notification/, Teams/, TeamClient samt 38 modifierade filer (2114 insertions). Scenario: en 'git clean -fd', en checkout, eller ett diskhaveri på den enda utvecklarmaskinen raderar ENDA kopian av det som är live på dev15 — och exakt de filer som är wipe-recoverykällan för apps/sdkmc. Nästa container-recreate blir då oåterställbar (live-containern är samtidigt det enda andra exemplaret, och det är det som wipas).",
+  "evidens": "git status: '?? hubs_start/backend-additions/sdkmc/appinfo/' (routes-ocs-snippet.php), '?? hubs_start/backend-additions/sdkmc/lib/Service/ItslTagService.php', '?? hubs_arende/lib/Migration/Version000300Date20260703000000.php', '?? hubs_arende/lib/BackgroundJob/FristVarselJob.php', '?? hubs_arende/lib/Notification/', '?? hubs_arende/lib/Teams/', 'M scripts/dev15-reset.sh' m.fl.; git log: senaste commit 5a8551c7 'docs: Session 3 handover'; diffstat 38 filer +2114/-152",
+  "forslag": "Committa hela arbetsläget (hubs_arende 0.8.2 + hubs_start 1.3.4 + backend-additions + scripts) i en eller flera commits NU — det är ren versionshantering av redan deployad, GUI-verifierad kod. Storlek S (kräver dock användarens klartecken enligt regeln 'ingen push utan instruktion').",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "sdkmc-wipe-recovery är helt manuell, utanför provisioneringsramverket — och .hubsbak-backupen bor i samma efemära container den ska skydda",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Provisioneringsramverket utger sig för att återställa 'ALLT vi lägger till ovanpå en ren Hubs/Nextcloud-instans' (provision/README.md:8-9), men bootstrap.sh (stegen a–i) och manifest.yaml:s survives_summary innehåller inte ett enda steg för apps/sdkmc-additionerna eller hubs_start — det mest efemära lagret (wipas vid varje container-recreate/docker restart, har inträffat minst två gånger; F2-regressionen i session 5b bevisade att den manuella recoveryn missade en fil). scripts/ innehåller bara dev15-reset.sh; recovery = handrecept per fil i HANDOVER §3 + manuell merge av routes-snippet in i live routes.php. Dessutom: backupen av routes.php/Application.php togs som .hubsbak-filer INNE i apps/sdkmc i containern — dvs. de raderas av exakt den wipe de är backup mot. Scenario: nästa oplanerade container-recreate → operatör utan session-kontext ska manuellt tar:a ~25 filer + merga route-block; ett missat steg ger tyst trasiga OCS-ytor (som F2-regressionen).",
+  "evidens": "provision/README.md:8-9 ('återställer ALLT'); provision/bootstrap.sh:492-517 (main: steg a–i, inga sdkmc-/hubs_start-steg); provision/manifest.yaml:312-327 (survives_summary utan sdkmc/hubs_start); scripts/ = endast dev15-reset.sh (ls); hubs_start/backend-additions/MANIFEST.md:16-17 ('Backup togs på appinfo/routes.php + lib/AppInfo/Application.php (.hubsbak)' — i containern); HANDOVER-FORTSATTNING.md:188 (wipe inträffad, manuellt recept), :324-328 (F2-regressionen: recoveryn missade ItslTagService)",
+  "forslag": "Skriv scripts/deploy-sdkmc-additions.sh: tar:ar hela backend-additions/sdkmc/lib → apps/sdkmc, verifierar/appendar ocs-blocket ur routes-ocs-snippet.php i live routes.php, kör 401-probe på alla 16 rutter, och lägg det som steg (j) i bootstrap.sh + rad i manifest.yaml. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Service-kontot (sa_user/sa_token) är en hård prereq utan provisioneringssteg — och koden hänvisar till en doc som inte finns",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "ServiceAccountAuth kräver app-config sa_user + sa_token för att sagan ska kunna skapa riktiga rum (groupfolder/Talk/Deck/kalender/team). Koden hänvisar till 'provision/service-account.md' — den filen finns inte, och sa_user/sa_token förekommer ingenstans i provision/ (0 grep-träffar). Designen är 'säker degradering': utan credential returneras null och alla klientanrop 401:ar och sväljs tyst. Scenario: ny instans provisioneras exakt enligt provision/-rutinen → occ upgrade grönt, smoke grönt (stubbar), verifiering steg (h) grön — men varje skarpt ärende föds UTAN ärenderum/team/Talk-rum, helt utan felsignal; upptäcks först av handläggare i produktion. Samma lucka gäller övriga instans-prereqs: enhetsgrupper (enhet→grupp-mappningen är TODO[konfig] med fail-closed default — okänd enhet nekas) och funktionskorgar har inga provisioneringssteg.",
+  "evidens": "hubs_arende/lib/Integration/ServiceAccountAuth.php:24 ('see provision/service-account.md' — ls provision/ = README.md, bootstrap.sh, manifest.yaml, reset-restore.md), :28-31 + :46-52 (null ⇒ graceful no-op); grep 'sa_user|sa_token|service.account' i provision/ = 0 träffar; hubs_arende/lib/Service/ArendeService.php:2044-2045 (enhet→grupp TODO[konfig], fail-closed)",
+  "forslag": "Skriv provision/service-account.md (occ user:add hubs-arende-svc, app-password, gruppmedlemskap) + nytt bootstrap-steg som sätter sa_user/sa_token via occ config:app:set --sensitive, + utöka steg (h)-verifieringen med en isConfigured()-koll som VARNAR när motorn kör i degraderat läge. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Ingen verifiering av cron-läge/jobbexekvering + FristVarsel utan catch-up: en missad jobbdag = lagfrist-varsel borta för alltid",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "GallringJob och FristVarselJob registreras via info.xml, men ingenting i provision/bootstrap.sh eller något verifieringssteg kontrollerar att NC:s background-jobs-läge är cron (inte AJAX) eller att jobben faktiskt exekverar (0 grep-träffar på 'cron' i provision/). FristVarselJob varslar dessutom ENDAST vid exakt dagarKvar==3 eller ==0, och redan-förfallna varslas medvetet aldrig — det finns ingen varslad-flagga och ingen catch-up. Scenario: cron nere/felkonfigurerad/containern omstartad den dag ett ärende passerar T-3 eller T-0 → varslet för den lagstadgade 14-dagarsfristen (förhandsbedömning) uteblir permanent och tyst; båda jobben sväljer dessutom alla Throwable och loggar bara, så inte ens upprepade totalfel syns utanför loggfilen.",
+  "evidens": "hubs_arende/lib/BackgroundJob/FristVarselJob.php:72 ('if ($dagarKvar !== 3 && $dagarKvar !== 0) continue;'), :29-31 (kommentar: förfallna varslas inte igen), :85-91 (catch \\Throwable → logger only); GallringJob.php:54-61 (samma mönster); appinfo/info.xml:40-43 (jobbregistrering); grep 'cron' i provision/*.sh/*.yaml = 0 träffar",
+  "forslag": "(a) Byt exakt-match mot fönster+state: varsla vid dagarKvar<=3 respektive <=0 med en flagga/handelse-rad 'varslad_t3/varslad_t0' så missade dagar hämtas ikapp; (b) lägg 'occ config:app:get core backgroundjobs_mode' + last-run-koll i bootstrap steg (h). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Gallringen lämnar PII-bärande externa objekt: Talk-rummen förblir läsbara för deltagarna och akten ligger kvar på disk",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "GallringService river referensfiler, team (circle), pekar-RADER, medlemsledger, journal, per-case-grupp och registerraden — men gör INGEN teardown av de externa objekten: Talk-rummen (huvuddiskussion + extra chattar), groupfolder-akten, Deck-kortet, kalenderobjekten, case-taggarna. Eftersom tilldela/laggTillMedlem lägger användare som INDIVIDUELLA Talk-deltagare (utöver cirkeln) förblir rummet med hela ärendediskussionen läsbart för dem efter gallring — det är inte bara 'osynligt orphan', det är kvarstående åtkomst till gallrat PII-innehåll. Groupfoldern med ärendedokumenten blir kvar på disk (GroupfolderClient folder-delete är TODO). UI:t lovar samtidigt handläggaren 'Registrerad i Treserva … Hubs-rum gallras sep. 2026' — löftet bryts. Baslinjen noterar 'gallringen river inte externa rum'; eskaleringen är att innehållet förblir ÅTKOMLIGT (inte bara oraderat) och att UI:t aktivt utlovar motsatsen = retention-invarianten bruten i skarpt läge.",
+  "evidens": "hubs_arende/lib/Service/GallringService.php:114-145 (teardown-sekvensen: referensfiler/team/pekare-rader/member/handelse/grupp/case-rad — ingen SpreedClient/GroupfolderClient/DeckClient/CalendarClient-radering); :120-124 (endast teamClient->destroyTeam); HANDOVER-FORTSATTNING.md:108-109 (kortet visar 'Hubs-rum gallras sep. 2026'), :386-388 (reset river ej Talk-rum — 'gallringen gör det i drift' stämmer alltså INTE)",
+  "forslag": "Utöka GallringService::gallra() med extern teardown före pekar-raderingen: SpreedClient delete-room för alla talk_room-pekare, GroupfolderClient::deleteFolder (bygg klart TODO:n), DeckClient delete-card, CalendarClient delete-objekt, sdkmc-taggborttag — allt best-effort med logg + kvarstående-räknare i status. Storlek M/L.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "dev15-reset.sh återställer inte känt läge fullt ut: F2b-taggspegeln (oc_mail_tags) och stub_dnr_seq lämnas kvar",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Sedan session 5b dubbelskriver ItslTagService varje case-/behandlad-tagg till mail-appens egna tabeller (oc_mail_tags/oc_mail_message_tags) via mirrorTagToMailApp. Reset-skriptets SQL rensar ENDAST sdkmc:s tabeller — spegelraderna överlever. Scenario: efter varje reset visar mailklientens trådvy spök-taggar ('Ärende 643935', 'Behandlad') på de 2 testmeddelandena för ärenden som inte längre finns, och taggarna ackumuleras för varje testrunda — nästa GUI-verifiering av 'taggarna syns i trådvyn' kan bli falskt grön mot gamla rester. Dessutom nollas inte stub_dnr_seq i skriptet (session 5c raderade den MANUELLT med occ config:app:delete) → nästa rena runda ger dnr 2026-IFO-0503+ i stället för det dokumenterade kända lägets 0501/0502, så protokoll som jämför mot kända dnr spricker.",
+  "evidens": "scripts/dev15-reset.sh:68-86 (SQL rör endast oc_hubs_arende_* + oc_sdkmc_itsl_message_tag/oc_sdkmc_itsl_tag), :118-136 (verifieringen kollar inte oc_mail_tags); hubs_start/backend-additions/sdkmc/lib/Service/ItslTagService.php:85-106 (mirrorTagToMailApp → oc_mail_tags/oc_mail_message_tags); grep 'stub_dnr_seq' i scripts/ = 0 träffar; HANDOVER-FORTSATTNING.md:350-351 (5c: 'dev15-reset kört (inkl. occ config:app:delete hubs_arende stub_dnr_seq)' — manuellt utanför skriptet)",
+  "forslag": "Lägg i SQL-blocket: DELETE FROM oc_mail_message_tags WHERE tag_id IN (SELECT id FROM oc_mail_tags WHERE imap_label LIKE 'case:%' OR imap_label='behandlad'); DELETE FROM oc_mail_tags WHERE imap_label LIKE 'case:%'; plus ett occ-steg 'config:app:delete hubs_arende stub_dnr_seq', och ta med båda i verifierings-queryn. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "HANDOVER-deployreceptet för hubs_arende saknar migrations-/versionssteget — nästa migrationsbärande release går sönder om receptet följs",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "HANDOVER §3 ger hubs_start-receptet komplett med cache-bust (installed_version + occ upgrade), men hubs_arende-raden säger bara 'tar lib/... → custom_apps/hubs_arende' — inget info.xml-bump, inget occ upgrade. hubs_arende har numera migrationer (0.8.0 införde hubs_arende_handelse). Scenario: en operatör (eller framtida session) följer det skrivna receptet vid nästa release med ny migration → koden som läser den nya tabellen deployas men migrationen körs aldrig → 500/journalbortfall; manifest.yaml bär installed_version-läxan ('får ALDRIG överstiga info.xml-version') men bootstrap-verifieringen kollar bara oc_hubs_arende_case + commit_destination — varken member- eller handelse-tabellen, så steg (h) skulle ändå lysa grönt.",
+  "evidens": "hubs_start/docs/HANDOVER-FORTSATTNING.md:73 ('deploy hubs_arende: från hubs_arende, tar lib/... → -C /var/www/html/custom_apps/hubs_arende' — jfr :71 där hubs_start-receptet har bump+occ upgrade); hubs_arende/lib/Migration/Version000300Date20260703000000.php (finns, untracked); provision/manifest.yaml:288-289 ('installed_version får ALDRIG överstiga info.xml-version'); provision/bootstrap.sh:444-456 (tabellkoll = endast oc_hubs_arende_case)",
+  "forslag": "Uppdatera HANDOVER §3-raden till fullt recept (tar appinfo/ + lib/, bump info.xml, occ upgrade, verifiera occ hubs_arende:status) och utöka bootstrap steg (h)-tabellkollen med oc_hubs_arende_member + oc_hubs_arende_handelse. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Provisioneringsramverket har driftat ~18 dagar bakom live-läget: libresign/java-recovery saknas och verifieringsreceptet pekar på fel databas",
+  "allvar": "P2",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "manifest.yaml ('källa-till-sanning') och bootstrap.sh är daterade 2026-06-17 — före team-, journal- och libresign-eran. Konkreta recovery-gap: (a) dev15 kör libresign 11.6.0 + apk-paketen openjdk21/poppler-utils (allt efemärt i containern), men bootstrap defaultar INSTALL_LIBRESIGN=0 och pinnar 11.0.4 märkt OVERIFIERAD — efter en container-recreate återställer INGEN källa signeringsvägen; (b) manifestet anger appversion '0.1.0' och en tabellista utan member/handelse; (c) reset-restore.md:s verifieringsrecept kör 'psql -d nextcloud' fast databasen heter 'hubs' — steget failar för den som följer dokumentet. Scenario: hård reset + bootstrap ger en instans som ser provisionerad ut men saknar signeringskedjan, och operatörens verifieringskommando ger falskt fel.",
+  "evidens": "provision/bootstrap.sh:55 (INSTALL_LIBRESIGN=0 default), :77 ('11.0.4 ... OVERIFIERAD') vs HANDOVER-FORTSATTNING.md:37 (live libresign 11.6.0) + :40-42 (apk-paket efemära); provision/manifest.yaml:275 ('0.1.0'), :248-249 (4 tabeller, saknar member/handelse); provision/reset-restore.md:130 ('psql -d nextcloud') vs bootstrap.sh:441 (härleder dbname=hubs korrekt)",
+  "forslag": "Synka manifest.yaml + bootstrap.sh mot live-läget (versioner, tabeller, libresign 11.6-spec + java-prereq-beslut: in i hubs-php-imagen via itsl, eller dokumentera signeringsvägen som medvetet o-återställd), och rätta DB-namnet i reset-restore.md. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "bootstrap.sh deployar vendor/ med dev-beroenden (phpunit m.fl.) till produktionswebroten",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Steg (g):s tar-pipe exkluderar .git/node_modules/tests/provision/*.zip men INTE vendor/. composer.json:s require är enbart 'php>=8.1' — hela vendor/ (phpunit, php-parser, nextcloud/ocp-stubbar m.m.) är dev-only och behövs inte i runtime. Scenario: varje provisionerad instans får phpunit + kodgenereringsbibliotek liggande i webroten under custom_apps/hubs_arende/vendor — onödig attackyta (kända gadget-kedjor i dev-verktyg), större deploy och risk att NC:s appkod-integritetsskanning flaggar. På en myndighetsinstans är oanvänd exekverbar tredjepartskod i webroot en anmärkning vid säkerhetsgranskning.",
+  "evidens": "provision/bootstrap.sh:392-394 (tar --exclude-listan saknar vendor); hubs_arende/composer.json:12-20 (require = php>=8.1; allt annat require-dev); ls hubs_arende/vendor = phpunit/php-code-coverage, nikic/php-parser m.fl.",
+  "forslag": "Lägg --exclude='vendor' --exclude='composer.*' --exclude='phpunit.xml' i steg (g):s tar-kommando (och i HANDOVER §3-receptet). Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "drift",
+  "titel": "Statuskommandot/admin-sidan saknar jobbhälsa — en stillastående gallring syns bara som en växande siffra ingen tittar på",
+  "allvar": "P2",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Baslinjen vet att monitoring saknas generellt; eskaleringen är att den enda befintliga hälsoytan (occ hubs_arende:status + admin-sidan) inte exponerar det driftkritiska: GallringJob/FristVarselJob har ingen last-run/last-error-rapportering, och båda jobben sväljer alla Throwable med enbart loggrad. Status visar 'väntar på gallring' som ögonblicksvärde men inte köns ÅLDER. Scenario: gallringen slutar fungera (schemaändring, DB-fel, cron-stopp) → gallringsbaraPending växer i månader; GDPR-deadlines (gallrasDatum) passeras löpande utan att någon signal når en människa — upptäcks först vid revision eller utlämnandebegäran. Det gör den redan kända monitoring-luckan juridiskt vass: retentionlöftet är automatiserat men övervakningen av automatiken är noll.",
+  "evidens": "hubs_arende/lib/Command/Status.php:41 (endast 'väntar på gallring'-räknare; ingen job-last-run/ålder); GallringJob.php:54-61 + FristVarselJob.php:85-91 (fel sväljs, endast logger->error); ingen healthcheck-route i appinfo/routes.php (grep) och inga cron-/larmsteg i provision/",
+  "forslag": "Lägg i StatusService: last-run-timestamp per jobb (läs oc_jobs.last_run via IJobList), äldsta passerade gallrasDatum, och röd flagga i admin-sidan + exit-kod != 0 i occ-kommandot när gallringskön har poster äldre än N dagar — då kan ett trivialt externt cron-larm byggas på occ-kommandot. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "CI körs aldrig: workflowen ligger i hubs_arende/.github/ — inte i repo-roten — så de 87+95 testerna gate:ar ingenting",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "GitHub Actions upptäcker enbart workflows i REPO-ROTENS .github/workflows/. Repots rot är Nextcloud-vanilla (remote FredrikJonassonItsb/Nextcloud-vanilla) och där finns ingen .github-katalog — enda Hubs-workflowen ligger i hubs_arende/.github/workflows/ci.yml och exekveras därför ALDRIG. Jest saknar workflow helt. Given en regression i motorn (t.ex. i gallringsvakten) och en push till main: inget rött, ingenting stoppar deploy — upptäckt sker först manuellt/i produktion. tests/README lovar dessutom uttryckligen att 'GitHub Actions-workflowen kör på PHP 8.1/8.2/8.3', vilket är falskt i praktiken.",
+  "evidens": "git ls-files | grep workflows: enda Hubs-träffen är hubs_arende/.github/workflows/ci.yml; ls av repo-roten visar ingen .github/. Workflowens defaults.run.working-directory: hubs_arende (ci.yml:21-22) visar att den är skriven för rot-placering. Falskt löfte: hubs_arende/tests/README.md:30-31 ('Detta är exakt vad GitHub Actions-workflowen ... kör på PHP 8.1/8.2/8.3'). Baslinjen sa bara 'körning mot remote obevisad' (kodkarta-tester rad 38 / baslinje rad 54) — nu bevisat strukturellt omöjlig.",
+  "forslag": "Flytta/kopiera ci.yml till Nextcloud-vanilla/.github/workflows/ (working-directory är redan hubs_arende) och lägg till ett jest-jobb (cd hubs_start && npm ci && npm test). Uppdatera tests/README.md:47 (säger '25 tester', verkligt 87). Storlek S — en filflytt + ett jobb.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Verifierat via git ls-files + ls av repo-roten: ingen .github/ finns i Nextcloud-vanilla-roten; enda Hubs-workflowen är hubs_arende/.github/workflows/ci.yml, och GitHub Actions kör aldrig workflows i underkataloger — alltså strukturellt omöjligt att CI körs. ci.yml:19-21 (defaults.run.working-directory: hubs_arende) bekräftar att den är skriven för rot-placering. tests/README.md:30-31 lovar falskt att workflowen kör på PHP 8.1/8.2/8.3, och README.md:47 säger '25 tester' medan faktisk räkning ger 87 phpunit-testmetoder + 95 jest-it() — fyndets siffror stämmer. Inga kompenserande mekanismer: ingen .gitmodules, inga aktiva git-hooks, inget scripts/-skript kör phpunit/npm test, enda remote är FredrikJonassonItsb/Nextcloud-vanilla. Utveckling sker direkt på main utan grind. P1 rätt satt (frånvarande kvalitetsgrind, ej direkt produktionsdefekt); KÄNT-ESKALERAT korrekt eftersom baslinjen (rad 54) bara sa 'körning mot remote obevisad'."
+  }
+ },
+ {
+  "dim": "test",
+  "titel": "Tilldela-säkerhetsgrindarna (enhet-authz + riktig-användare) är strukturellt oexekverade i hela testsviten",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "assertAssigneeBehorig() hoppas när userSession/groupManager är null, och assertRiktigAnvandare() hoppas när userManager är null — och VARJE test som rör tilldela konstruerar ArendeService utan dem. Enda tilldela-testet (journaltestet) verifierar bara att en journalrad skrivs. Felscenario: en regression i resolveEnhetGroups()/normaliseEnhet() (variant-matchningen 'Barn-Familj@' → 'barn-familj') gör att en handläggare från FEL enhet kan tilldelas → groupfolder-ACL skrivs om, Deck-etikett sätts och ärendets kalenderobjekt re-homas in i en obehörig persons kalender — åtkomst över behörighetsgräns (OSL) — medan alla 87 tester förblir gröna.",
+  "evidens": "Grindarna: hubs_arende/lib/Service/ArendeService.php:2638-2646 (assertAssigneeBehorig, skip vid isSystemContext/groupManager===null), :199-206 (assertRiktigAnvandare, skip vid userManager===null), :1375+:1381 (anropen i tilldela). Enda tilldela-testet: tests/Unit/Service/ArendeServiceJournalTest.php:128-133 (konstruktor utan userSession/groupManager/userManager). ArendeServiceAuthzTest.php:82-161 täcker enbart show()-vägen (testmetodnamnen bekräftade via grep).",
+  "forslag": "Ny fil tests/Unit/Service/ArendeServiceTilldelaAuthzTest.php: (a) inloggad användare + assignee EJ i enhetens grupp ⇒ InvalidArgumentException, INGA anrop till groupfolderClient/calendarClient/arendeMapper->update; (b) assignee i enhetsgruppen ⇒ tillåten; (c) okänd uid ⇒ InvalidArgumentException från assertRiktigAnvandare; (d) gid-variantmatchning ('Barn-Familj@'). Storlek M (~1 dag, mock-mönstret finns i AuthzTest).",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "ACL-handoff-avsmalningen (GAP-057/OSL inre sekretess) — atkomstUids/syncArenderumGrupp asserteras aldrig",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Kärninvarianten 'vid tilldelning ÖVERGÅR åtkomsten till handläggaren och mottagningskretsen REVOKAS' implementeras i atkomstUids() och materialiseras via arenderumGroupService->sync(). Ingen test asserterar sync-argumenten: ArenderumGroupService mockas enbart i team-testet (createCase-vägen). Felscenario: en regression flippar handoff-villkoret (t.ex. union i stället för ersättning i '$aktiva = $handlaggare !== [] ? $handlaggare : $krets') ⇒ hela mottagningskretsen behåller folder-åtkomst till ett tilldelat barnavårdsärende — exakt det läckage över behörighetsgräns som är systemets huvudinvariant — och sviten är grön. Även taBortMedlem-rollspärren (att en operatör INTE kan revoka sittande handläggare/mottagningskrets) är ren, kollaboratörsfri logik men helt otestad.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:2702-2720 (atkomstUids, handoff-raden :2718), :2689-2691 (syncArenderumGrupp), :1449-1451 (anrop i tilldela), :1524-1526 (taBortMedlem-rollspärren). Enda mocken av ArenderumGroupService: tests/Unit/Service/ArendeServiceTeamTest.php:58+:97 — endast createCase. Grep av tests/ på 'tilldela|handoff|medlem': inga assertions på sync-innehåll.",
+  "forslag": "Ny tests/Unit/Service/ArendeServiceHandoffTest.php: seed memberMapper med mottagningskrets(a,b)+handläggare(c); assertera att sync() efter tilldela anropas med EXAKT ['c'] (kretsen borta); efter taBortMedlem av sista co-handläggaren att kretsen INTE återuppstår felaktigt; plus taBortMedlem('handlaggare') ⇒ InvalidArgumentException. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Saga-kompensering vid partiellt fel: compensate() och samtliga kompensations-closures har noll tester — trots att fel-injektionsinfran byggdes för exakt detta",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Uppgiftens invariant 'idempotens vid partiellt fel' är helt otestad: ingen test låter ett saga-steg (R4-R9) kasta och asserterar att kompensationerna körs i omvänd ordning, att register-raden försvinner och att en fallerande kompensation inte stoppar resten. Stubbarna har deterministisk fel-injektion med kommentaren 'så att sagans kompensering kan testas' — oanvänd av alla 87 tester. Felscenario: SpreedClient kastar i R6 efter att R2-registerraden+R4-groupfoldern skapats; en regression som tappar en kompensations-registrering (t.ex. R2-delete) lämnar ett halvfött ärende synligt i dashboarden och/eller ett föräldralöst ärenderum med PII-bärande referensfil — grön svit, upptäcks först som 'spökkort' i produktion.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:2554-2572 (compensate, reverse-order+best-effort), :777-781 (saga-catch), :2744-2750 (logCompensationFailure). Oanvänd injektion: lib/Integration/Stub/FacksystemCommitStub.php:31 ('Fel-/timeout-injektion ... så att sagans kompensering kan testas') + :92; grep av tests/ på 'reject|inject|kompens|compensat' ⇒ 0 träffar i testkod.",
+  "forslag": "Ny tests/Unit/Service/ArendeServiceSagaKompenseringTest.php: mocka deckClient::createCard att kasta ⇒ assertera (a) RuntimeException bubblar, (b) arendeMapper->delete på registerraden, (c) groupfolderClient->deleteFolder + spreedClient hard-delete anropas, (d) memberMapper-teardown, (e) ordningen omvänd, (f) en kastande kompensation stoppar inte efterföljande (critical-logg). Storlek M (~1 dag).",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Gallringens FULLSTÄNDIGHET otestad: testet konstruerar servicen utan member-/handelse-/grupp-/team-/referensfil-kollaboratörerna — PII-purgen är oassertad",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "GallringService raderar (i ordning) referensfiler, team, pekare, MEDLEMSRADER (uid+roll = personuppgift), HÄNDELSEJOURNAL (aktor_uid = personuppgift), per-case-grupp och registerraden. GallringServiceTest instansierar servicen med ENBART de 4 obligatoriska argumenten — alla PII-bärande purge-steg är null-kollaboratörer som tyst hoppar, och asserteras därför aldrig. Felscenario: en refaktor tappar handelseMapper?->deleteByCaseId (rad 139) ⇒ journalrader med aktor_uid överlever gallringen för varje avslutat ärende = kvarlämnad personuppgift i strid med GDPR art. 5.1.e — testet förblir grönt eftersom det aldrig ens skickar in en handelseMapper. Baslinjen listar GallringService som TESTAD (4 tester), vilket ger falsk trygghet.",
+  "evidens": "hubs_arende/lib/Service/GallringService.php:116 (referensfiler), :120-124 (team), :130-132 (pekare), :136 (member: 'MÅSTE gallras ... annars kvarlämnad PII-rest'), :139 (handelse), :142 (grupp) — mot tests/Unit/Service/GallringServiceTest.php:75-80 (konstruktor med endast arendeMapper/pekareMapper/logger/timeFactory; inga mocks av de 5 optionella).",
+  "forslag": "Utöka GallringServiceTest: instansiera med samtliga optionella kollaboratörer mockade och assertera per gallrad rad: memberMapper->deleteByCaseId, handelseMapper->deleteByCaseId, arenderumGroupService->delete, teamClient->destroyTeam (per team-pekare), referensFilService->taBortReferenser — samt att INGEN av dem anropas för raden som säkerhetsvakten hoppar. Storlek S (~2-3 h).",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Frist-varselkedjan exekveras ALDRIG automatiserat — och den otestade logiken bär både en tyst day-skip-miss och en mottagar-mismatch mot handoff-modellen",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "FristVarselJob har noll tester och inget smoke-steg; findMedFristSenast har jobbet som ENDA konsument, så SQL:en körs första gången i produktions-cron. Eskalering 1: trösklarna är EXAKT likhet (dagarKvar !== 3 && !== 0) kombinerat med TIME_INSENSITIVE — om cron-dygnet hoppar (container-omstart, drift; har inträffat på dev15) går dagarKvar 4→2 och T-3-varslet uteblir TYST; för en lagstadgad förhandsbedömningsfrist i socialtjänsten betyder det fristöverskridande utan förvarning. Eskalering 2: mottagare() är INTE samma handoff-logik som atkomstUids trots doc-kommentaren 'samma handoff-logik som åtkomstlistan' — ett otilldelat ärende med co-handläggare varslar hela mottagningskretsen (vars åtkomst handoff:en just revokat) men INTE co-handläggaren som faktiskt har ärendet.",
+  "evidens": "hubs_arende/lib/BackgroundJob/FristVarselJob.php:47 (TIME_INSENSITIVE), :72 (exakt-likhet), :100-112 (mottagare: endast agareUid-else-ROLL_MOTTAGNINGSKRETS; jfr ArendeService.php:2710 där co_handlaggare/observator räknas som handläggare i åtkomstlistan). Enda konsument: lib/Db/ArendeMapper.php:185 + FristVarselJob.php:63. Smoke saknar frist-steg (lib/Command/Smoke.php:49-292). Baslinjen: 'NOLL tester' (kodkarta-tester, kandaBrister) — eskaleringen är de två konkreta felmoderna.",
+  "forslag": "Ny tests/Unit/BackgroundJob/FristVarselJobTest.php: (a) frist om exakt 3 dgr ⇒ notify till agare; (b) frist om 2 dgr ⇒ ingen notis (pinna day-skip-beteendet ELLER ändra till fönster <=3 med varslad-flagga); (c) otilldelat ⇒ kretsens uids; (d) otilldelat MED co-handläggare ⇒ besluta+pinna mottagarparitet med atkomstUids; (e) notify-fel kraschar inte loopen. Överväg att byta exakt-likhet mot intervall + idempotensflagga. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "sdkmc backend-additions: noll tester på de behörighetsbärande läsytorna — kombinerat med efemär deploy där regression redan inträffat och GUI-verifiering är strukturellt blockerad",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "CaseMessagesService::getCaseMessages + getAccessibleMailboxes är det ENDA ACL-filtret mellan ett ärendes mail-innehåll och användaren — en regression där (t.ex. i mailbox-upplösningen) serverar mailämnen/excerpts över behörighetsgränsen. InflodeFeedService (dedup på thread_root_id, behandlad-exkludering) och ItslTagService::mirrorTagToMailApp (F2b-dubbelskrivningen till oc_mail_tags) är också otestade. Eskaleringen mot baslinjens 'noll automatiska tester': (1) filerna är EFEMÄRA på dev15 och återställs för hand ur backend-additions — F2-regressionen i session 5b var exakt en sådan wipe; (2) enda detektionslagret är manuell GUI-klickning som är strukturellt blockerad (BankID-förbudet). Alltså: säkerhetsbärande kod + regression-benägen deploy + inget automatiskt skyddsnät = högsta regressionsrisk i hela kodbasen.",
+  "evidens": "Ingen tests-katalog: glob hubs_start/backend-additions/**/tests/** ⇒ 0 träffar. ACL-ytan: backend-additions/sdkmc/lib/Service/CaseMessagesService.php:68-78 (getCaseMessages), :191-197 (getAccessibleMailboxes), :103-104 ('ACL:en ovan är gränsen, inte maskning'). F2b: lib/Service/ItslTagService.php:85-106 (mirrorTagToMailApp best-effort). Baslinje: 'sdkmc BACKEND-ADDITIONS HAR NOLL AUTOMATISKA TESTER' + F2-wipe (HANDOVER 5b) + GUI-blockern (HANDOVER §2).",
+  "forslag": "Skapa backend-additions/sdkmc/tests/Unit med samma dual-mode-bootstrap-mönster som hubs_arende: (7:e viktigaste testet) CaseMessagesServiceTest — användare utan mailbox-tilldelning får TOM lista för ett ärende vars taggade meddelanden ligger i annans korg (ACL-deny); (8:e) InflodeFeedServiceTest — dedup på thread_root_id + att case:/behandlad-taggade rader exkluderas; ItslTagServiceTest — mirror är best-effort (mail-mapper-fel fäller inte taggningen). Kör i samma (flyttade) CI. Storlek L (~2-3 dagar inkl. mail-app-mockar).",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Smoke körs i system-kontext ⇒ HELA authz-lagret är förbikopplat by design i det enda test som rör riktig DB — och session 5-5c-flödena (tilldela/medlem/talkrum) saknar smoke-steg helt",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "isSystemContext() är true i CLI (ingen userSession), vilket gör att occ hubs_arende:smoke — det enda automatiserade som exekverar riktiga mappers/DB — kör med assertEnhetAtkomst, enhetTillaten, assertAssigneeBehorig ALLA bortkopplade. 'SMOKE OK — motorn kör end-to-end' bevisar alltså motor-mekanik men noll behörighet. Dessutom täcker smoke inte tilldela, laggTillMedlem/taBortMedlem, laggTillTalkrum, koppla, historik eller notiser — dvs. exakt de GUI-flöden som byggdes i session 5-5c har varken unit- (fynd 2-3) eller smoke-täckning; deras enda verifiering var manuell klickning som inte kan repeteras (BankID-blockern).",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:2033-2035 (isSystemContext: userSession===null ⇒ authz-bypass), :2048 (enhetTillaten kortsluter). Smoke-stegen [1]-[9]+per-typ+plikt: lib/Command/Smoke.php:49-292 — grep visar inga anrop till tilldela/laggTillMedlem/laggTillTalkrum/medlemmar/historik. Baslinjen beskriver smoke som 'bevisar motor-logik, inte riktiga integrationer' men nämner inte authz-bortkopplingen.",
+  "forslag": "(9:e viktigaste testet) Utöka Smoke.php med steg [10]: tilldela(demo-uid) → laggTillMedlem → assertera via ArenderumGroupService/gruppmedlemslistan att handoff-avsmalningen slagit igenom → taBortMedlem → gallra → assertera att member-/handelse-rader och per-case-gruppen är borta (gallringsfullständighet mot riktig DB). Notera i output att authz EJ testas i CLI. Städa även smoke-skräpet: purge:n som Smoke.php:290 hänvisar till filtrerar bara demo-% (DemoSeedService PREFIX) — låt smoke gallra sina egna smoke-%-rader. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Inga integrationstester alls: mappers, migrations och OCS-routing exekveras aldrig i automation — och (per fynd 1) körs inte ens de mockade testerna automatiskt",
+  "allvar": "P2",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Hela phpunit-sviten mockar varje mapper; jest mockar hela @nextcloud/*-lagret. Det betyder att SQL-lagret (findGallringsbara-gaterna, findMedFristSenast, MemberMapper-joins, UNIQUE-constraints som bär idempotensen), alla migrations (inkl. never-SoR-constrainten) och controller-routingen (inkl. den kända NC31-gotchan att OCS-{action} inte binder på POST) aldrig exekveras förrän på dev15. Kombinerat med fynd 1 (CI körs aldrig) är den faktiska automatiska täckningen vid en push i praktiken NOLL — allt hänger på manuell disciplin ('npm test' + docker-phpunit + ssh-smoke enligt HANDOVER §3). Felscenario: en migrations-/query-ändring som är grön i den mockade sviten trasar idempotensen (conversation_id-UNIQUE) först i produktion.",
+  "evidens": "Mock-baserat: hubs_arende/tests/README.md:7-8 ('Varje OCP-kollaboratör mockas ... inga riktiga DB-/NC-tjänster krävs'); jest-mockar hubs_start/jest.config.js moduleNameMapper. Aldrig exekverad SQL: lib/Db/ArendeMapper.php:185 (findMedFristSenast — enda konsument är det otestade cron-jobbet). Manuella recept: hubs_start/docs/HANDOVER-FORTSATTNING.md:66-69. Baslinjen konstaterar avsaknaden ('sviten är helt mock-baserad'); eskaleringen är kopplingen till fynd 1 (inte ens mock-sviten körs) och de konkreta aldrig-exekverade ytorna.",
+  "forslag": "Lägg en integration-testsuite i CI: phpunit mot sqlite (NC:s QBMapper fungerar mot sqlite i app-kontext; bootstrap-läge 1 i tests/bootstrap.php finns redan för NC-checkout) som kör migrations + ArendeMapper/MemberMapper/PekareMapper/HandelseMapper round-trips: findGallringsbara-gränser, findMedFristSenast-datumjämförelse, conversation_id-UNIQUE ⇒ idempotens, member-UNIQUE. Alternativ lägre ambition: nightly GitHub-job som kör occ-smoke i en nextcloud:31-container. Storlek L (~3 dagar).",
+  "verdikt": null
+ },
+ {
+  "dim": "test",
+  "titel": "Store-mutationen inflodeAction('skapa') — dubbelkorts-dedup och fel-envelope-hanteringen är regressionsfixar utan pinnande test",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Fix #9 (session 5c, dubbelkort vid 'Ta emot') och fel-envelope-hanteringen ('unshifta aldrig ett error-objekt som kort / rapportera aldrig ok:true vid 400') lever enbart i store-koden utan test — trots att båda pinnar buggar som faktiskt skeppats en gång. Komponent-garden taEmotPending ligger i den otestade MinaArenden.vue. Felscenario: en refaktor av api.skapaArende-returformen (t.ex. wrappar svaret i {data}) gör att villkoret nytt.hubsCaseId||nytt.id blir falskt för LYCKADE svar ⇒ varje 'Ta emot' ser ut att misslyckas; eller inverst att ett fel-envelope unshiftas som trasigt kort och inflöde-raden tappas vid fel — exakt de beteenden fixarna införde skydd mot. Jest-sviten (95 gröna) fångar inget av det.",
+  "evidens": "hubs_start/src/store/index.js:371-377 (fel-envelope: 'do NOT unshift it ... that masked failures behind a success toast'), :378-386 (DEDUP-kommentaren refererar dubbelklicksbuggen). Komponent-gard: src/components/socialsekreterare/MinaArenden.vue:622-636 (taEmotPending). Grep av hubs_start/tests på 'inflodeAction|finnsRedan|unshift' ⇒ 0 träffar; store.spec.js täcker endast applySummary/setActiveChannel/removeItem.",
+  "forslag": "(10:e viktigaste testet) Utöka hubs_start/tests/unit/store.spec.js: mocka api.skapaArende att returnera (a) samma ärende två gånger ⇒ exakt ETT kort i state.arende.arenden + inflöde-raden borttagen; (b) {error:'...'} ⇒ ok:false, INGEN unshift, inflöde-raden KVAR; (c) {avvisad:true, reason} ⇒ samma. Storlek S (~1-2 h).",
+  "verdikt": null
+ },
+ {
+  "dim": "prestanda",
+  "titel": "findAll(200)-taket gör 'Mina ärenden' funktionellt fel (inte bara ofullständig) vid >200 ärenden — frist-ärenden försvinner ur vyn",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "dashboardArenden hämtar de 200 GLOBALT senaste registerraderna och filtrerar därefter i PHP på enhet + medlemskap. Vid 1000 ärenden/20 handläggare (~50 ärenden var) ligger majoriteten av en handläggares pågående ärenden utanför de 200 senaste ⇒ de försvinner tyst ur 'Mina ärenden', ur dagspulsen fristerBrinner (som härleds ur just de mappade korten, ArendeService.php:882-889) och ur klartIdag. Ett äldre ärende med brinnande frist blir alltså OSYNLIGT i den enda arbetsvyn — risk för missad lagstadgad 14-dagarsfrist. Samma tak träffar utredarBelastning (gruppledaren fördelar på fel belastningssiffror) och treservaReceipts/fordelningSummary. Baslinjen beskriver detta som 'tyst ofullständiga' — vid målskalan 1000 ärenden är det i praktiken funktionsdöd, därav eskalering.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:962 ('foreach ($this->arendeMapper->findAll(200) as $arende)' i dashboardArenden), :919 (klartIdag, andra full-skanningen), :1285 (utredarBelastning), :1202 (treservaReceipts findRegistrerade(200)); hubs_arende/lib/Db/ArendeMapper.php:167-175 (findAll: ORDER BY skapad DESC LIMIT utan WHERE)",
+  "forslag": "Flytta filtren in i SQL: mineOnly ⇒ JOIN mot hubs_arende_member på uid (index behövs, se separat fynd); enhets-scope ⇒ WHERE enhet IN (användarens grupper). Lägg paginering/limit EFTER filtret. Berör ArendeMapper (ny findByMemberUid/findByEnheter) + dashboardArenden/utredarBelastning/klartIdag i ArendeService. Storlek M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Bekräftat genom kodläsning: ArendeMapper.php:167-175 (findAll = ORDER BY skapad DESC LIMIT utan WHERE, inkluderar även avslutade rader), ArendeService.php:962-968 (dashboardArenden filtrerar enhet+medlemskap i PHP EFTER det globala 200-fönstret), :883-889 (fristerBrinner härleds ur de trunkerade korten), :1285 (utredarBelastning ur ofiltrerade findAll(200)), :1202 (treservaReceipts findRegistrerade(200)). Ingen alternativ frontend-källa: Mina ärenden = GET /arende-summary?mine=1 (ArendeController.php:119-123). Delvis kompenserande mekanism finns — FristVarselJob.php:63 använder frist-filtrerad SQL (ArendeMapper.php:185-203, ORDER BY frist_due ASC) och notifierar T-3/T-0 oberoende av taket, så 'OSYNLIGT' är något överdrivet — men jobbets egen kommentar (FristVarselJob.php:29-31) delegerar ansvaret för redan-förfallna ärenden tillbaka till dashboarden, dvs. till den yta som har taket. Två småjusteringar: klartIdag (:919) påverkas i praktiken knappt (dagens rader är per definition nyast i fönstret), och notisskyddsnätet gör att P0 inte är motiverat. Realistiskt i drift: avslutade rader ligger kvar till gallras_datum, så >200 registerrader nås inom månader; aktiva utredningsärenden faller ur fönstret redan vid ~2 nya ärenden/dag. Eskaleringen från baslinjens 'tyst ofullständiga' (kodkarta-hubs-arende rad 195) är motiverad — vid målskala är primärvyn, dagspulsen och belastningssiffrorna datadrivet fel, inte bara ofullständiga. P1 behålls."
+  }
+ },
+ {
+  "dim": "prestanda",
+  "titel": "N+1 i dashboardArenden/mapToCard: ~5 DB-queries per kort ⇒ ~251 queries för 50 ärenden, ~1000 vid 200-taket, per sidladdning",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "mapToCard gör per ärende: 3 separata pekare-queries (pekareTalkToken, pekareBevakningBoardId, pekareTeamId — var och en egen SELECT mot hubs_arende_pekare) + 2 OKACHADE ärendetyp-uppslag (pliktForArende och nastaAtgardForArende anropar båda typRegistry->get som går direkt till DB varje gång trots att det bara finns 8 typrader) + userManager->get per unik ägar-uid. Räkning för 50 ärenden: 1 (findAll) + 50×5 = 251 queries; vid 200-taket ~1001. dashboardSummary skannar dessutom registret EN GÅNG TILL i klartIdag. Detta körs vid varje Min dag-öppning, och frontend triggar om HELA sveppet efter varje omfördelning (MinaArenden.vue:835) och varje mötesbokning (:1008). fordelningSummary ärver samma N+1 via mapToFordelningsKort (:1245) plus ytterligare en findAll-skanning i utredarBelastning (:1285). 20 handläggare som öppnar Min dag på morgonen ⇒ ~20 000 queries i burst; sidlatens växer linjärt med ärendeantal.",
+  "evidens": "hubs_arende/lib/Service/ArendeService.php:1023-1025 (tre pekare-anrop i mapToCard), :1049-1087 (varje helper = egen findByCaseAndTyp-query), :2278 + :2295 (typRegistry->get per kort ×2), :1041 (userManager->get), :916-919 (klartIdag = andra findAll(200)); hubs_arende/lib/Service/ArendeTypRegistry.php:48-63 (get() = mapper->findByTypId, ingen memoisering); hubs_start/src/components/socialsekreterare/MinaArenden.vue:835, :1008 (full omladdning efter åtgärd)",
+  "forslag": "1) Batch-hämta pekare för ALLA case-ids i en query (WHERE hubs_case_id IN (...) — indexet hubs_arende_pekare_case finns redan) och skicka in en förberedd map till mapToCard. 2) Request-scopad memoisering i ArendeTypRegistry (8 rader — läs findAll() en gång). 3) Låt dashboardSummary återanvända den redan hämtade listan i klartIdag. Berör ArendeService::dashboardArenden/mapToCard/fordelningSummary + ArendeTypRegistry. Storlek S–M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P2",
+   "skal": "Mekanismen verifierad rad för rad: mapToCard gör 3 pekare-SELECT:ar per kort (ArendeService.php:1023-1025 → :1049-1087, var och en egen findByCaseAndTyp i PekareMapper.php:82-95) + 2 okachade typ-uppslag (:1010-1011 → :2278/:2295 → ArendeTypRegistry.php:48-64, findByTypId utan memoisering trots 8 rader) + userManager->get (:1041, dock NC-internt memoiserad per unik uid). dashboardArenden loopar findAll(200)→mapToCard (:962-969), klartIdag gör en andra findAll(200) (:919), fordelningSummary ärver N+1 via mapToFordelningsKort (:1162→:1245) plus tredje skanning i utredarBelastning (:1285). Frontend laddar om allt efter omfördelning/mötesbokning (MinaArenden.vue:835, :1008) och loadArendeSummary fläktar ut till 4 extra anrop (store/index.js:189-193). Ingen kompenserande cache någonstans (ArendeController.php:123 rakt igenom). NYTT mot baslinjen (mapToCard nämns bara deskriptivt). MEN allvar justeras P1→P2: (1) Min dag skickar mine=1 (api.js:361-364) ⇒ medlemsfiltrerad lista, typiskt 10-30 kort ⇒ ~50-150 extra queries, inte ~1000 — maxscenariot gäller bara fördelar-/adminvyn; (2) findAll(200)-capen begränsar värsta fallet strukturellt; (3) alla per-kort-queries är indexerade punktuppslag mot små tabeller (sub-ms styck) ⇒ även 1000 queries ger ~0,3-1 s extra latens, och 20-användarbursten är i snitt några qps — trivial DB-last. Verklig, lätt åtgärdad ineffektivitet (batch-IN + 8-raders memoisering, storlek S) med linjär latenstillväxt — men inte P1-nivåns driftpåverkan vid dagens skala och cap."
+  }
+ },
+ {
+  "dim": "prestanda",
+  "titel": "DeckClient hämtar HELA boarden (alla kort, alla stacks) via loopback-HTTP för varje getCard/createCard/addLabel — board-per-enhet växer obegränsat",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Deck-boarden är per ENHET (en board per enhet, DeckClient klassdok :35-37) — vid 1000 ärenden i en enhet ligger ~1000 kort på samma board. getCard gör GET /boards/{id}/stacks som returnerar SAMTLIGA stacks med ALLA inbäddade kort (inkl. beskrivningar/etiketter) och linjärsöker efter ett kort-id ⇒ varje Bevakningar-flik-klick laddar och JSON-parsar hela boarden över loopback-OCS. Värre: varje NYTT ärende (saga R5) gör resolveStackId (full board-GET) och addLabel→findStackIdForCard (full board-GET IGEN) ⇒ ärendeskapandet blir linjärt dyrare med varje befintligt ärende. ocsRequest har timeout 10s och ALLA fel är 'graceful null' ⇒ när board-JSON:en blir för stor börjar R5 tyst hoppa över Deck-kortet — nya ärenden föds utan bevakningskort utan att någon märker det. Detta är ytan som dör först vid 1000-ärenden-skala.",
+  "evidens": "hubs_arende/lib/Integration/Client/DeckClient.php:254-283 (getCard: GET stacks :259 + linjärskan :264-277), :326-339 (resolveStackId: GET stacks), :369-387 (findStackIdForCard: GET stacks igen), :465-501 (ocsRequest: loopback newClient+getAbsoluteURL, timeout 10, catch-all→null), :303-320 (resolveBoardId: GET /boards alla boards); hubs_arende/lib/Service/ArendeService.php:1608-1630 (bevakningar() anropar getCard per pekare)",
+  "forslag": "1) Persistera stackId i pekarens riktning-fält vid R5-create (redan bär boardId) så assignLabel/delete/getCard kan gå direkt på GET/PUT /boards/{b}/stacks/{s}/cards/{c} utan board-skan. 2) Använd Decks singelkorts-endpoint för getCard. 3) Långsiktigt: ompröva board-per-enhet (arkivera avslutade kort eller board-per-period). Berör DeckClient + R5-steget i ArendeService. Storlek M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Försökte avfärda men fyndet håller vid kodläsning. (a) Citerad kod gör exakt det som påstås: DeckClient.php:259 getCard hämtar GET /boards/{id}/stacks (Deck bäddar in ALLA kort i stacks-svaret) och linjärsöker :264-277; resolveStackId :326-339 och findStackIdForCard :369-390 gör var sin full stacks-GET; ocsRequest :465-501 har timeout 10s och catch-all Throwable→null. R5-steget (ArendeService.php:589-596) anropar createCard med enhetsNAMNET (icke-numeriskt) ⇒ resolveBoardId GET /boards + resolveStackId (full board-GET), och addLabel :596 ⇒ findStackIdForCard (full board-GET IGEN) — alltså 2 fulla board-hämtningar per ärendeskapande, linjärt i boardstorlek. bevakningar() (ArendeService.php:1616-1617) anropar getCard per deck_card-pekare och är frontend-exponerad (routes.php:64-67, ArendeController.php:264). (b) INGEN kompenserande mekanism finns: ingen cache i DeckClient; stackId persisteras inte (pekare.riktning bär bara boardId, ArendeService.php:601); GallringService.php har NOLL deck-referenser och ArendeLifecycleService.php likaså — varken gallring eller avslut tar bort kort; deleteCard anropas endast i saga-kompensation (rollback, ArendeService.php:614-617) och DemoSeedService — boarden växer alltså monotont för evigt. (c) Realistiskt: board-per-enhet utan städning når hundratals–tusentals kort i produktion; graceful-null gör att payload-/timeout-fel ser identiska ut med 'deck avstängt'. Två skärpande detaljer fyndet missade: (1) även TILLDELNING gör full board-skan per addLabel (ArendeService.php:1408-1414), och (2) board-ETIKETTERNA växer också obegränsat (en 'case:{uuid}'-label per ärende :596 + 'assignee:{uid}' per tilldelning :1412, gamla assignee-labels tas aldrig bort) så resolveLabelIds board-detail-GET (:347) växer också. Två småjusteringar: 'utan att någon märker' är lätt överdrivet — logger->warning skrivs (:492-498), men ingen användarsynlig signal finns; och resolveBoardIds GET /boards (:308) returnerar boards UTAN kort så den är billigare än fyndet antyder. Baslinjen nämner Deck-ACL-modellen (board-per-ärende vs läsprojektion) som öppet P3-produktbeslut men inte prestandamekaniken — NYTT står sig. P1 rätt nivå: inte P0 (deck är best-effort, ärendeskapandet misslyckas inte, ingen dataförlust/sekretessläcka) men förutsägbar tyst degradering på kritiska skapa-vägen utan någon städmekanism alls."
+  }
+ },
+ {
+  "dim": "prestanda",
+  "titel": "sdkmc SummaryService: kvitto-fan-out ~300 queries per poll + cache som ALDRIG träffar i steady state (TTL 20s < pollintervall 30s, cursor i nyckeln)",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Frontend pollar /summary var 30:e sekund per användare. CACHE_TTL är 20s — cachen hinner alltid dö mellan två polls — och cache-nyckeln är md5(userId|sinceIds) där sinceIds-cursorn flyttas varje poll ⇒ cachen är i praktiken dött kodvikt; varje poll är en full ombyggnad. I bygget hämtar buildReceiptItems 100 kvittorader och gör PER RAD upp till 3 extra queries: resolveChannelForMessage→lookupMailboxIdForMessage (3-vägs-join), threadDeepLinkForMessage→lookupMailboxIdForMessage IGEN (exakt samma uppslag för samma messageId, dubbelt arbete) + mailboxMapper->findById ⇒ upp till ~300 queries per poll per användare, plus ~8 queries per funktionskorg. 20 handläggare ⇒ i storleksordningen 12 000+ queries/minut i ren bakgrundspoll utan att någon rör UI:t. Skalar linjärt med användare och kvittovolym.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/SummaryService.php:59 (CACHE_TTL=20), :956-958 (cacheKey inkluderar sinceIds), :403 (fetchReceiptRows($userId, 100)), :417-419 (resolveChannelForMessage + threadDeepLinkForMessage per rad), :718-737 + :746-772 (båda anropar lookupMailboxIdForMessage :780-801); hubs_start/src/store/index.js:18 (POLL_INTERVAL_MS=30000), :429-435 (startPolling→refreshSummary)",
+  "forslag": "1) Sätt TTL > pollintervall (t.ex. 25–60s) och nyckla cachen på userId ENBART (leverera cursor-diff ur cachad payload), eller sänk pollen till TTL-takt. 2) Slå ihop resolveChannelForMessage/threadDeepLinkForMessage till ETT uppslag per rad. 3) Batcha alla message-ids i EN IN-query i stället för per-rad-join. Berör SummaryService. Storlek S–M.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P1",
+   "skal": "Alla citat verifierade genom kodläsning: CACHE_TTL=20 (SummaryService.php:59) med egen kommentar (:57-58) som bekräftar 30s-pollen (store/index.js:18, startPolling :429-435, ingen visibility-gating; enda stopp är Start.vue:163 unmount) — cachen kan per konstruktion aldrig träffa i steady state. Cache-nyckeln md5(userId|sinceIds) (:956-958). Fan-outen stämmer: buildReceiptItems körs varje buildSummary (:245), fetchReceiptRows($userId,100) (:403), per rad resolveChannelForMessage (:418→lookupMailboxIdForMessage :724 + mailboxMapper->findById :726) plus threadDeepLinkForMessage (:419→SAMMA lookupMailboxIdForMessage :748, duplicerad 4-tabells-join på mail_messages) = upp till 3 queries/rad, ~300/poll. Ingen kompenserande mekanism funnen (ingen HTTP-cache i SummaryController, ingen memoization, ingen batch-IN, ingen pollpaus). Fyndet är dessutom STARKARE än beskrivet: (1) $sinceIds-parametern i buildReceiptItems (:396) används aldrig i kroppen — cursorn beskär inte kvittoarbetet; (2) kvittorader får updated_at=null (:679) → since=nowIso() (:420) → advanceCursor (:247) flyttar maxSinceId till 'nu' varje poll så länge en pending/problem-kvittorad finns, så cache-nyckeln byts garanterat varje poll oavsett TTL; (3) tabellen är inte user-scopad (:657-659) så alla användare betalar för samma 100 rader, och mapReceiptState defaultar okända statusar till 'skickat' (:824) som passerar filtret (:405,:412) — hög fan-out-andel är realistisk. Enda nyansen: 'cachen är dött kodvikt' är lätt överdrivet (den deduplicerar medvetet bursts inom 20s per kommentaren :57-58), och 12000 q/min är värsta fall — men fyndet skriver 'upp till'. P1 rätt satt: linjärt skalande bakgrundslast med bevisat duplicerad identisk query per rad, ej P0 (gradvis degradering, ingen krasch)."
+  }
+ },
+ {
+  "dim": "prestanda",
+  "titel": "Obegränsad NOT IN-lista över alla tilldelade message-ids — växer för evigt och slår i parametertak ⇒ hela triagekön blir tyst tom",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "collectAssignedMessageIds materialiserar SAMTLIGA imap_message_id som någonsin fått en assignment-tagg i korgen till en PHP-array och skickar den som NOT IN-parameterlista i både countUnassigned och fetchUnassignedThreads — och kedjan getAssignmentTagsForMailbox+collectAssignedMessageIds körs TVÅ gånger per korg per summary-bygge (en gång för räknaren, en gång för radhämtningen). Varje 'Ta ärendet' lägger permanent till rader (ingen städning/arkivering finns) ⇒ efter något års drift med 1000+ hanterade meddelanden per korg är parameterlistan tusentals element per query, var 30:e sekund per användare. Vid Postgres hårda gräns 65535 bind-parametrar (eller MySQL max_allowed_packet) kastar queryn ⇒ buildSummary fångar ⇒ emptySummary returneras ⇒ triagekön och korgräknarna visar TOMT för alla, tyst.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/SummaryService.php:584-604 (collectAssignedMessageIds: selectDistinct alla ids), :563-565 (countUnassigned: notIn med hela listan), :628-630 (fetchUnassignedThreads: samma), :550-551 + :614-615 (dubbelanropet per korg)",
+  "forslag": "Ersätt den materialiserade listan med en anti-join i SQL: LEFT JOIN sdkmc_itsl_message_tag ON m.message_id = mmt.imap_message_id AND mmt.tag_id IN (taggarna) WHERE mmt.id IS NULL — konstant querystorlek oavsett volym. Dela dessutom resultatet mellan count- och fetch-vägen (beräkna en gång per korg). Berör SummaryService::countUnassigned/fetchUnassignedThreads. Storlek S.",
+  "verdikt": {
+   "bekraftat": true,
+   "justeratAllvar": "P2",
+   "skal": "Kärndefekten BEKRÄFTAD via egen läsning: SummaryService.php:591-593 selectDistinct utan LIMIT materialiserar alla taggade imap_message_id; :564 och :629 skickar hela listan som notIn(PARAM_STR_ARRAY); kedjan körs 2x per korg per build (:550-551 via :227, :614-615 via :237→:350). Ingen städning finns: assignment-taggar kan aldrig raderas (ItslTagService.php:218 'Cannot delete assignment tags') så DeleteTagsJob/deleteByTagId (:1091) rensar aldrig deras rader — listan växer monotont. Ej i baslinjen (den noterar bara mail-app-absent-TODO:n vid :648) ⇒ NYTT. MEN två överdrifter sänker allvaret: (1) Felmekanismen är fel — countUnassigned (:571-574) och fetchUnassignedThreads (:648-654) har EGNA try/catch som degraderar lokalt (0 resp []); buildSummary kastar inte, emptySummary returneras aldrig. Endast unassigned-räknare + Otilldelat-items blir tomma; receipts/unread/watching/mailboxes renderas fortsatt. Orosanmälan-triagen ('Att ta emot') matas av InflodeFeedService.filterHandled (InflodeFeedService.php:320-368) med säkert bundet mönster (IN över max ~50 hämtade rader, fail-open) och påverkas INTE. (2) Horisonten: hårda taket 65535 bind-parametrar kräver ~65k tilldelade meddelanden i EN korg — år bort vid realistisk volym; fyndets egen siffra '1000+ meddelanden' ger bara tusentals parametrar = gradvis prestandaförsämring (dämpad av 20s-cachen), inget haveri. Kvarstår: verklig designdefekt med tyst (debug-loggad) sluttillstånd och billig fix (anti-join, storlek S) — P2, inte P1."
+  }
+ },
+ {
+  "dim": "prestanda",
+  "titel": "Saknade DB-index mot faktiska WHERE-klausuler: member.uid (varje Min dag-load = full scan), case.provenance_state, case.dnr, case.skapad",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "hubs_arende_member har index på hubs_case_id och UNIQUE(hubs_case_id, uid, roll) — men findCaseIdsByUid frågar WHERE uid=? och kan inte använda något av dem (uid är inte ledande kolumn) ⇒ full table scan vid VARJE 'Mina ärenden'-load; member-tabellen växer snabbast av alla (hela mottagningskretsen skrivs in per ärende: 1000 ärenden × 5-10 kretsmedlemmar = 5-10k rader). hubs_arende_case saknar index på provenance_state (findRegistrerade för kvittensytan + findGallringsbara i dygnsjobbet = full scans), på dnr (findByDnr — resolveByRef/show på dnr-referens = full scan per uppslag) och på skapad (ORDER BY skapad DESC i findAll/findByEnhet/findOtilldelade = filesort). frist_due-indexet är känt saknat sedan baslinjen; de övriga är nya observationer. Vid 1000 rader mätbart men hanterbart; vid 10k+ blir varje dashboard-request en serie sekventiella skanningar.",
+  "evidens": "hubs_arende/lib/Migration/Version000200Date20260617140000.php:82-85 (endast case-index + UNIQUE(case,uid,roll)); hubs_arende/lib/Db/MemberMapper.php:126-131 (WHERE uid); hubs_arende/lib/Migration/Version000000Date20260616000000.php:141-146 (case-index: uuid/status/enhet/typ/conv — inget på dnr/provenance_state/skapad/frist_due); hubs_arende/lib/Db/ArendeMapper.php:79-93 (findByDnr), :262-273 (findRegistrerade), :134-157 (findGallringsbara), :167-175 (ORDER BY skapad)",
+  "forslag": "En ny migration med fyra addIndex: hubs_arende_member(uid), hubs_arende_case(dnr), hubs_arende_case(provenance_state, retention_state, gallras_datum) (täcker både findRegistrerade och findGallringsbara), hubs_arende_case(skapad); plus det redan kända frist_due. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "prestanda",
+  "titel": "createCase-sagan gör 10+ sekventiella loopback-HTTP-anrop (Deck/Spreed) — latens växer med boardstorlek och samtidiga 'Ta emot' riskerar PHP-FPM-utsvältning",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Både DeckClient och SpreedClient anropar den EGNA Nextcloud-instansen över HTTP (IClientService + getAbsoluteURL): varje anrop = en ny PHP-FPM-request med full NC-bootstrap (~100-300ms). En saga (R4 groupfolder, R5 Deck = 4-6 anrop inkl. två full-board-GET:ar, R6 Spreed = flera anrop, R7 kalender, T team) gör ~10+ sådana anrop SEKVENTIELLT medan förälder-requesten håller sin worker ⇒ 'Ta emot' tar flera sekunder redan idag och växer linjärt med Deck-boardens storlek. Vid 20 handläggare som tar emot samtidigt (måndagsmorgon) behöver varje pågående saga 1 worker + 1 ledig worker för nested-anropet; med typisk pm.max_children=10-20 uppstår kösituationer där nested-anrop väntar på workers som hålls av andra sagor — stall tills 10s-timeouten slår, varpå steget 'gracefully' hoppar över och ärendet föds utan Deck-kort/Talk-rum.",
+  "evidens": "hubs_arende/lib/Integration/Client/DeckClient.php:465-476 (newClient + getAbsoluteURL + timeout 10); hubs_arende/lib/Integration/Client/SpreedClient.php:300-301 (samma loopback-mönster; :291 'TODO[auth]: in-process call carries no session'); DeckClient.php:88-104 (resolveBoardId+resolveStackId per create); jfr in-process-alternativet i hubs_start/backend-additions/sdkmc/lib/Service/SecureMeetingService.php (RoomService::createConversation används redan där)",
+  "forslag": "Migrera Deck/Spreed-klienterna till in-process-API:er (Talk: OCA\\Talk\\Service\\RoomService — mönstret finns redan i SecureMeetingService; Deck: OCA\\Deck\\Service\\CardService/BoardService) med class_exists-gating som idag. Alternativ kortsiktig åtgärd: dokumenterad FPM-dimensionering (max_children ≥ 2× förväntad samtidighet) + sänkt timeout. Storlek M–L.",
+  "verdikt": null
+ },
+ {
+  "dim": "prestanda",
+  "titel": "Frontend-bundeln: 2,2 MiB main-chunk laddas eagert — demo-fixtures och alla 64 komponenter i samma chunk, ingen route-/persona-splitting",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Uppmätt: hubs_start-main.js = 2 199 730 bytes (build 2026-07-04) laddas vid varje öppning av dashboarden; därtill 2,3 MiB FilePicker-vendorchunk (lazy). Main-chunken innehåller statiskt importerat: hela demo-lagret (demoData.js, demo/socialsekreterare.js med ~22 fixture-ärenden, demo/treserva.js-stubben, queues-a/b/progress/stats/files-descriptors för ~29 persona-widgets), alla 6 personors widgets och samtliga 64 komponenter — trots att en skarp socialsekreterare bara använder MinaArenden-vyn och demo-koden är död i produktion. På kommunala tunna klienter/VDI (målmiljön) betyder ~2,2 MiB parse+execute märkbar TTI-kostnad vid varje kall sidladdning; NC:s app-JS cachas men busts vid varje appversion (deploy-frekvensen är hög: 1.3.x-serien).",
+  "evidens": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/js/hubs_start-main.js (2 199 730 bytes, ls 2026-07-04); statiska importer i hubs_start/src/services/api.js (demoData/ssDemo överst) och hubs_start/src/services/demoData.js → demo/*-modulerna; hubs_start/src/views/Start.vue renderar MinaArenden ELLER persona-dashboard men båda grenarna ligger i samma chunk",
+  "forslag": "1) Dynamic import() av demo/* bakom isDemo() (störst vinst, ren dödvikt i prod). 2) Route-split: MinaArenden-grenen vs persona-widget-grenen som separata chunks (Vue async components). 3) Bundle-analys (webpack-bundle-analyzer) för att verifiera vad som dominerar (nextcloud-vue är sannolikt störst — trädskakning av NcComponents-importer). Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "prestanda",
+  "titel": "Kalender-/Talk-läsytorna skannar brett per anrop: getCaseMeetings söker 455-dagarsfönster i ALLA kalendrar per flik-klick; getTodaysMeetings (pollad 30s) materialiserar hela deltagarlistan per rum för att räkna gäster",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Möten-fliken (per ärendekortsklick) kör calendar.search('/call/', ['LOCATION']) över SAMTLIGA användarens kalendrar med tidsfönster -90/+365 dagar och filtrerar sedan dnr i PHP — en substring-sökning över ~15 månaders kalenderobjekt per klick, som växer med användarens kalendervolym (delade kalendrar inkluderas). getTodaysMeetings pollas var 30:e sekund per användare och gör per möte: getRoomByToken + getNumberOfActors + resolveLobbyWaitingCount→getParticipantsForRoom som hämtar och hydratiserar ALLA deltagarobjekt bara för att räkna gäster (count) — för ett stormöte med 50+ deltagare är det onödig per-poll-vikt. 20 användare × poll = kontinuerlig bakgrundslast mot calendar- och Talk-tabellerna även när ingen har möten.",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/MeetingService.php:181-186 (fönster -90/+365), :190-191 (search per kalender), :196-199 (dnr-filter i PHP), :83-85 (tre resolvers per möte per poll), :477-480 + :485-515 (resolveLobbyWaitingCount→getParticipantsForRoom materialiserar alla deltagare); hubs_start/src/store/index.js:429-434 (refreshMeetings i 30s-pollen)",
+  "forslag": "1) getCaseMeetings: krympa default-fönstret (t.ex. -30/+90) och cachea per (userId, refs) med kort TTL; öppningen är per-flik-lazy så en 60s-cache räcker. 2) Räkna lobby-gäster med en COUNT-query (participantService har sessions-/actor-räknare) i stället för full materialisering. 3) Hoppa över room-state-resolvers helt när dagens event-lista är tom (early return finns redan) och cachea meetings-payloaden serverside med TTL ≥ pollintervall. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Tyst stub-fallback fullbordar en olaglig gallringskedja: syntetisk 'verifierad' commit → retention-flip → fysisk destruktion av register + journal",
+  "allvar": "P0",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Given en felkonfigurerad prod-instans (integration_mode_facksystem='live' utan bunden live-adapter, eller stavfel) resolvar porten TYST till FacksystemCommitStub som mintar dnr och ett kvitto med verifierad=true + gallrasDatum=+90 dagar. ArendeService::commit flippar då provenanceState='registrerad' + retentionState='gallras_efter_commit' och GallringService raderar 90 dagar senare registerrad, alla pekare, medlemsledger OCH händelsejournalen — för ett ärende som ALDRIG registrerats i något facksystem. Utfall: uppgifter om allmän handling destrueras utan gallringsbeslut och utan att akten finns någon annanstans = otillåten gallring (TF/arkivlagen) plus total spårlöshet vid tillsyn. Baslinjen känner själva fallbacken (KOMPLETT-ANALYS:168-173); eskaleringen är att kedjan numera går HELA vägen in i fysisk destruktion inklusive journalen (händelsejournal + journal-purge byggdes i session 5, efter den analysen).",
+  "evidens": "hubs_arende/lib/AppInfo/Application.php:137 ('$impl = $modeMap[$mode] ?? $default;' — okänt/'live'-läge faller tyst till stub) + :73 (enda mode i mappen är MODE_STUB); hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php:29-30,82 (verifierad callback sätter gallrasDatum, retentionDays=90); hubs_arende/lib/Service/ArendeService.php:1854-1859 (retention-flip på kvitto['verifierad']); hubs_arende/lib/Service/GallringService.php:130-145 (raderar pekare, medlemmar, händelsejournal via handelseMapper->deleteByCaseId, grupp och registerrad)",
+  "forslag": "Gör resolvePort fail-closed: kasta RuntimeException när konfigurerat mode saknas i modeMap (i st.f. '?? $default'), plus occ-statuskommando som visar effektivt mode per port. Kräv dessutom explicit app-config-flagga ('gallring_aktiverad') innan GallringJob får köra skarpt. Storlek S (två små ändringar i Application.php + GallringService/GallringJob).",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Gallra-flödet saknar gallringsprotokoll och utför ingenting: backend ack:ar 'gallra' som no-op medan UI:t lovar ett juridiskt gallringsbeslut",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "GallringsGrind tvingar fram val av handlingstyp mot dokumenthanteringsplan (rätt juridisk form), men: (a) den effektiva handlingstypslistan är den inbäddade 4-punkts demolistan (känd brist); (b) POST /inflode/gallra i motorn är en ren deterministisk ack ('ok:true') — inget raderas, inget taggas, ingenting registreras; (c) frontend-storen tar bort raden optimistiskt så handläggaren tror gallringen är verkställd; (d) vald handlingstyp, gallringsbeslut, aktör och tidpunkt persisteras ALDRIG någonstans (grep: 'gallringsprotokoll' = 0 träffar i kod+docs). Arkivlagen kräver att gallring sker med dokumenterat stöd och kan redovisas vid tillsyn — idag kan kommunen varken visa vad som gallrats, av vem, eller med vilket stöd. Dessutom: 'Registrera utan ärende'-vägen mappas till doSkapa→createCase, dvs. skapar ett HELT ärenderum — ingen diarieanteckning sker (5 kap. OSL 'registrering' uppfylls inte).",
+  "evidens": "hubs_arende/lib/Controller/InfodeController.php:176-181 ('besvara|vidarebefordra|gallra carry no register write … ack deterministically') + :174 ('skapa','registrera' => doSkapa); hubs_start/src/store/index.js:391-393 (removeInflode på gallra/registrera); hubs_start/src/components/socialsekreterare/GallringsGrind.vue:146-151 (inbäddad demolista), :183 (emit — payloaden med handlingstyp konsumeras aldrig server-side)",
+  "forslag": "Bygg en persistent gallringslogg-tabell i hubs_arende (radRef, handlingstyp, gallringsbeslut, aktorUid, tid, utfall) som skrivs INNAN någon verkan, ge gallra-verbet faktisk verkan (tagga källmeddelandet 'gallrad' via sdkmc så feeden inte återuppstår), och separera 'registrera utan ärende' till en EdiariumPort-väg i stället för createCase. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Signering är ett honor-system utan bevisvärde: checkbox-intyget persisteras aldrig, SigneringPort har noll konsumenter, dokumenturvalet läses aldrig",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "För 'signerat-beslut' gatear CommitGrind knappen 'För över' på checkboxen 'Jag har signerat dokumentet' — men signeradBekraftad skickas inte med i commit-payloaden, motorn läser varken den eller valdaDokument (0 träffar i hubs_arende), SigneringPort/SigneringStub konsumeras inte av något motorflöde, och journalens TYP_REGISTRERAD bär bara {dnr, destination}. Utfall vid IVO/förvaltningsrätt: kommunen kan inte visa ATT beslutet var signerat, på vilken nivå (SES/AES), av vem, eller vilka dokument som fördes över respektive undantogs ur akten. SIGNING-INERA.md fastslår själv att myndighetsbeslut kräver Inera-AES (GAP-034, känd) — eskaleringen är att inte ens det MANUELLA intyget lämnar något spår, så även interimsflödet är juridiskt tomt. Beslutspunkt för kund: kravnivåmatris per dokumenttyp (BESLUT-08, ÖPPET). Juridisk RISK i koden: noll spårbarhet oavsett matris.",
+  "evidens": "hubs_start/src/components/socialsekreterare/CommitGrind.vue:17-27 (checkbox), :370 (endast knapp-gate), :378-382 (payload = {...this.payload, valdaDokument, arende} — signeradBekraftad saknas); grep valdaDokument i hubs_arende = 0 träffar; grep SigneringPort = endast Application.php-bindning + Port/Stub/README; hubs_arende/lib/Service/ArendeService.php:1890-1893 (journal bär bara dnr+destination); hubs_start/docs/SIGNING-INERA.md:35-37 (myndighetsbeslut MÅSTE via Inera-AES)",
+  "forslag": "Persistera ett signeringsintyg i commit-flödet: utöka commit-payload/kvitto + händelsejournalen med {signeringsMetod, intygadAvUid, tid, dokumentHashRef, valdaDokument[]}; läs valdaDokument server-side och skriv det i journalen. Förbered fältet 'signeringsBackend' för Inera-adaptern. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Skyddsbedömnings-kvittensen (SoL 11:1a) är ett flyktigt klient-boolean som aldrig dokumenteras",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "Pliktgrinden blockerar korrekt forhandsbedomning→utredning tills kontext['skyddsbedomningKvitterad']===true — men kvittensen förkastas efter kontrollen: journalen får bara {fran, till}, och vem som kvitterade skyddsbedömningen, när, och med vilket utfall skrivs ingenstans. Vilken API-klient som helst kan dessutom skicka true. SoL 11 kap. 1a § kräver en OMEDELBAR och dokumenterad skyddsbedömning i barnavårdsärenden — vid IVO-granskning av ett orosanmälansärende kan Hubs visa att en övergång skedde men inte att/hur plikten uppfylldes. Baslinjen listar gap7/13 'skyddsbedömnings-materialisering i sagan' som känt; eskaleringen är att inte ens KVITTENSEN (grindens eget underlag) journalförs trots att journal-infran numera finns i samma metod.",
+  "evidens": "hubs_arende/lib/Service/ArendeLifecycleService.php:119-130 (grinden läser $kontext['skyddsbedomningKvitterad']), :144-148 (journalen skriver ENDAST ['fran'=>$franSteg,'till'=>$nyttSteg] — kontexten förkastas); hubs_arende/lib/Db/Handelse.php:41-54 (ingen händelsetyp för skyddsbedömning)",
+  "forslag": "Journalför kvittensen i samma transition: lägg skyddsbedomningKvitterad + aktorUid i TYP_STEG-detaljen, eller inför Handelse::TYP_SKYDDSBEDOMNING som skrivs när grinden passeras. Storlek S (en detalj-utökning i ArendeLifecycleService::transitionera).",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "GDPR-gallringen raderar kartan men inte datat — och förstör återfinningsvägen före innehållet",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "GallringService raderar pekare, referensfiler, team, medlemsledger, händelsejournal, per-case-grupp och registerrad — men river ALDRIG groupfoldern (aktfilerna), Talk-rummet (chatthistorik med klient-PII), Deck-kortet eller kalenderobjekten (inga GroupfolderClient/SpreedClient/DeckClient/CalendarClient-anrop finns i klassen). Efter sweepen: PII-bärande innehåll kvarstår på instansen, åtkomstgruppen är raderad (strandad data som bara admin når), och pekarna — den ENDA mappningen objekt↔ärende — är borta, så en senare laglig radering är praktiskt omöjlig (ingen vet längre vilken groupfolder som hörde till det gallrade ärendet). Art 5.1.e uppfylls alltså på koordinationsraden men bryts på innehållet, permanent. Känd som 'gallringen river inte externa rum' (KOMPLETT-ANALYS:221-222); eskaleringen är ordningsföljden: pekar-destruktionen FÖRE innehålls-rivning gör bristen irreversibel per sweep.",
+  "evidens": "hubs_arende/lib/Service/GallringService.php:116-145 (hela sweepen: taBortReferenser, destroyTeam, pekare-delete-loop :130-132, memberMapper :136, handelseMapper :139, arenderumGroupService :142, arendeMapper :145 — inga anrop som river groupfolder/Talk/Deck/kalender)",
+  "forslag": "Utöka sweepen: iterera pekarna och riv externa objekt (groupfolder via GroupfolderClient::removeFolder, Talk via SpreedClient::deleteRoom, Deck via DeckClient::deleteCard, kalenderobjekt) INNAN pekar-raderingen — kompensationslambdorna i createCase-sagan innehåller redan exakt denna kod att återanvända. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Ratificerat BESLUT-12 ej implementerat: ArendeTyp saknar PuB-/laglig-grund-fälten ('config-fält från dag 1')",
+  "allvar": "P1",
+  "nyhet": "KANT_ESKALERAT",
+  "beskrivning": "BESLUT-12 ratificerades 2026-06-16 med rekommendationen 'Config-fält i ArendeTyp-registry från dag 1' (lagligGrund, personuppgiftsansvarig, andamaalsbegransning, gdpr_art9) — och registret BYGGDES efter ratificeringen — men entiteten saknar samtliga fyra fält (grep i hela hubs_arende: 0 träffar). Beslutsloggens egen motivering: utan matrisen är Hubs 'juridiskt osäljbart (PuB oundertecknbart, RoPA omöjlig)'. Utfall: varje instans som sätts upp nu kräver senare schemamigration + ombyggd jsonSerialize/registry, och ingen RoPA/PuB-bilaga kan genereras datadrivet. Viktig distinktion: matris-INNEHÅLLET är kundens beslutspunkt (nämnd + DSO per BESLUT-12); att SCHEMAT saknas är leverantörens risk och bryter mot ett redan fattat beslut. B-PUB-1 är känd som öppen punkt — eskaleringen är att den ratificerade dag-1-delen (schemafälten) inte heller finns.",
+  "evidens": "hubs_start/docs/HUBS-BESLUTSLOGG.md:58 + :165-171 (BESLUT-12 REK, ratificerad enligt :14-16); hubs_arende/lib/Db/ArendeTyp.php:56-77 (komplett fältlista — lagligGrund/personuppgiftsansvarig/andamaalsbegransning/gdpr_art9 saknas); grep 'lagligGrund|personuppgiftsansvarig|gdpr_art9' i hubs_arende = 0 filer",
+  "forslag": "En migration som adderar fyra nullable kolumner på hubs_arende_typ + fälten i ArendeTyp-entiteten/jsonSerialize + seed-värden för orosanmälan (art 6.1.e + SoLPuL; art 9.2.g för känsliga uppgifter) i RegisterArendeTyper. Storlek S.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Ingen läs-/åtkomstlogg: otillåten intern slagning kan varken upptäckas eller utredas",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Händelsejournalen loggar ENBART mutationer (skapad/steg/tilldelad/medlem/registrerad/rum/kopplad). Läsningar — ArendeService::show, GET /arende/{ref}/historik, case-messages, bevakningar, inflödes-excerpts — loggas ingenstans i hubs_arende eller sdkmc-tilläggen. Intern otillåten slagning (kollega läser grannens/exets barnavårdsärende — den klassiska socialtjänstincidenten, straffbar som dataintrång BrB 4:9c) lämnar noll spår; vid misstanke kan arbetsgivaren inte utreda och vid IMY-/IVO-tillsyn kan systematisk åtkomstkontroll (GDPR art 32.1.d, logguppföljningspraxis för socialtjänst) inte visas. Notera domänprincipen: att behörig handläggare SER PII är avsett — läsloggen är just den kontroll som upprätthåller behörighetsgränsen i efterhand. Kravmassan nämner åtkomstlogg endast som widget-datakälla, utan backend-krav.",
+  "evidens": "hubs_arende/lib/Db/Handelse.php:41-54 (uttömmande händelsetyplista — ingen läs-typ); hubs_arende/appinfo/routes.php:58-61 (historik-läsyta utan loggning); grep 'åtkomstlogg|läslogg|loggkontroll' i hubs_start/docs = endast widget-referenser (PERSONA-DASHBOARD-SPEC.md:137, :338)",
+  "forslag": "Inför en åtkomstlogg-tabell (hubsCaseId, uid, yta, tid) skriven i show()/historik()/case-messages-vägarna med batchning + EGEN gallringsfrist (t.ex. 5 år, längre än ärendets), alternativt kanalisera till NC admin_audit med case-referens. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "'Historik & beslut' håller inte som beslutslogg vid tillsyn: journalen är best-effort, ej exportbar, och destrueras vid gallring",
+  "allvar": "P1",
+  "nyhet": "NYTT",
+  "beskrivning": "Tre samverkande egenskaper gör att fliken 'Historik & beslut' inte kan bära juridisk vikt: (1) journal-skrivning är uttryckligen best-effort — misslyckas den fullbordas övergången ändå och tidslinjen får en osynlig lucka; (2) journalen raderas i sin helhet vid gallring; (3) inget journal-extrakt committas någonsin till facksystemet, och Hubs-interna händelser (vem hade åtkomst när, när inleddes utredning i verktyget, omfördelningar) finns inte i den permanenta akten. Utfall: efter gallring finns NOLL spår av handläggningen i Hubs, och akten i facksystemet saknar Hubs-händelserna — vid JO-/IVO-granskning av ett äldre ärende kan handläggningsordningen inte rekonstrueras. Det ÖPPNA P3-beslutet 'beslutsloggens juridiska form' (GUI-ANALYS-MINDAG §4) är kundens beslutspunkt; risken i koden är att journalens nuvarande integritetsegenskaper redan förskottsvis omöjliggör alla svarsalternativ.",
+  "evidens": "hubs_arende/lib/Service/ArendeLifecycleService.php:68-70 ('journal-fel får aldrig fälla övergången') + :141-157 (catch → warning, övergången består); hubs_arende/lib/Service/GallringService.php:138-139 (handelseMapper->deleteByCaseId — journalen gallras med ärendet); hubs_arende/lib/Service/ArendeService.php:1890-1893 (endast dnr+destination når commit-spåret)",
+  "forslag": "Två steg: (a) markera journal-luckor (skriv en 'journal_lucka'-händelse vid retry, eller gör skrivningen transaktionell med steg-uppdateringen); (b) generera ett journal-extrakt (JSON/PDF) som del av commit-/avslutsflödet så handläggningshistoriken följer akten in i facksystemet INNAN gallring. Storlek M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "Dataminimering i extern mötesinbjudan: dnr + fri mötestitel + ärendemarkör i ICS som kan mailas till medborgarens inkorg",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "SecureMeetingService::buildIcs skriver användarens fria mötestitel i SUMMARY, ärendets dnr i CATEGORIES:hubs-dnr-{dnr} OCH X-HUBS-DNR, samt medborgaren som ATTENDEE med RSVP, och lägger objektet via ICreateFromString::createFromString — den yta som i standard-NC triggar iMIP-inbjudningsmail till attendees över vanlig SMTP. Scenario: bokning i ett skyddat ärende (våld i nära relation) → inbjudan med socialtjänst-dnr och en titel som 'Uppföljning placering NN' landar i familjens DELADE inkorg → ärendets existens röjs för fel person (över behörighetsgränsen — medborgaren är part, men inkorgen är inte en behörighetsavgränsad kanal). Kräver verifiering av att iMIP-utskick är aktivt på målinstansen; oavsett bör dnr/ärendemarkör aldrig lämna organizer-objektet. Juridisk risk: art 5.1.c + OSL 26 kap. röjande; beslutspunkt för kund: vilken kanal medborgarinbjudningar alls ska gå via (säkert meddelande vs e-post).",
+  "evidens": "hubs_start/backend-additions/sdkmc/lib/Service/SecureMeetingService.php:338 (SUMMARY = fri titel), :346-348 (CATEGORIES:hubs-dnr- + X-HUBS-DNR), :351-352 (medborgare som ATTENDEE), :290-291 (createFromString mot användarens personliga kalender); hubs_start/src/components/MeetingWizard.vue:583-586 (dnr skickas med bokningen)",
+  "forslag": "Neutralisera den externa ytan: sätt en neutral extern SUMMARY (t.ex. 'Möte med kommunen') och skriv dnr-markörerna ENBART i organizer-kopian (eller flytta dem till en icke-ICS-pekare i motorn); verifiera iMIP-beteendet på dev15. Storlek S/M.",
+  "verdikt": null
+ },
+ {
+  "dim": "juridik",
+  "titel": "GDPR art 30-underlag saknas helt: händelsejournalen är ingen behandlingslogg och ingen RoPA-/PuB-mall finns i repo",
+  "allvar": "P2",
+  "nyhet": "NYTT",
+  "beskrivning": "Svar på dimensionsfrågan: NEJ — händelsejournalen är ett per-ärende-koordinationsspår, inte ett register över behandlingsaktiviteter (art 30 är en organisationsnivå-förteckning: ändamål, kategorier av registrerade/uppgifter, mottagare, gallringsfrister, säkerhetsåtgärder). Ingen RoPA-mall, registerförteckning eller PuB-avtalsbilaga finns någonstans i repo (grep 'DPIA|art 30|registerförteckning|RoPA' i docs träffar endast beslutsloggens motivtext). Kombinerat med de saknade ArendeTyp-fälten (separat fynd) kan underlaget inte heller genereras ur koden. Utfall: kundens DSO kan inte fylla i sin art 30-förteckning för Hubs-behandlingarna och driftleverantören kan inte bilägga behandlingsbeskrivning till PuB-avtalet — försäljningsblockerare per beslutsloggens egen bedömning, men dokumentleverans, inte kodfel. Beslutspunkt för kund: innehållet; leverantörens skuld: mallen + genereringsvägen.",
+  "evidens": "grep 'DPIA|art.30|registerförteckning|behandlingsregister|RoPA' i hubs_start/docs = endast HUBS-BESLUTSLOGG.md:169 (motivtext 'RoPA omöjlig'); hubs_arende/lib/Db/Handelse.php:14-25 (journalens uttalade scope: 'vad MOTORN gjorde — koordination + kvitton'); HUBS-IMPLEMENTATIONSPLAN.md:519 ('per-kund PuB + RoPA' listat som verifieringspunkt, obyggt)",
+  "forslag": "Skriv docs/PUB-MATRIS-MALL.md (behandling per ärendetyp: ändamål, laglig grund, kategorier, mottagare, gallringsfrist, TOMs) + ett occ-kommando 'hubs_arende:ropa-export' som dumpar ArendeTyp-registret till RoPA-radunderlag när schemafälten (BESLUT-12) finns. Storlek S.",
+  "verdikt": null
+ }
+]

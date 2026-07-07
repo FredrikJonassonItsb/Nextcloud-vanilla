@@ -70,6 +70,12 @@ class FacksystemCommitStub implements FacksystemCommitPort {
      * @param string $timeoutHubsCaseIds Kommaseparerade hubsCaseId som ska kasta
      *               CommitTimeoutException (timeout-injektion).
      * @param int    $dnrSeqStart Startvärde för dnr-sekvensen (default 500, som demon).
+     * @param \OCP\AppFramework\Services\IAppConfig|null $appConfig PERSISTENT dnr-
+     *               sekvens (app-config 'stub_dnr_seq'). Stub-state är annars
+     *               in-memory PER REQUEST — utan persistens delar varje commit i
+     *               separata requests ut SAMMA dnr (dubblett-dnr-buggen). Autowiras
+     *               i DI; null i enhetstester ⇒ deterministisk in-memory-sekvens
+     *               precis som tidigare.
      */
     public function __construct(
         private bool $synchronousCallback = true,
@@ -77,6 +83,7 @@ class FacksystemCommitStub implements FacksystemCommitPort {
         private string $failHubsCaseIds = '',
         private string $timeoutHubsCaseIds = '',
         int $dnrSeqStart = 500,
+        private ?\OCP\AppFramework\Services\IAppConfig $appConfig = null,
     ) {
         $this->dnrSeq = $dnrSeqStart;
     }
@@ -270,6 +277,21 @@ class FacksystemCommitStub implements FacksystemCommitPort {
     }
 
     private function mintDnr(): string {
+        // PERSISTENT sekvens när app-config finns (DI/drift): stub-state är
+        // in-memory per request, så utan persistens börjar sekvensen om vid varje
+        // HTTP-anrop och två ärenden får SAMMA dnr — vilket dessutom kolliderar
+        // frontendens dnr-nycklade ytor. Enhetstester (utan appConfig) behåller
+        // den deterministiska in-memory-sekvensen.
+        if ($this->appConfig !== null) {
+            try {
+                $current = (int)$this->appConfig->getAppValue('stub_dnr_seq', (string)$this->dnrSeq);
+                $next = $current + 1;
+                $this->appConfig->setAppValue('stub_dnr_seq', (string)$next);
+                return '2026-IFO-' . str_pad((string)$next, 4, '0', STR_PAD_LEFT);
+            } catch (\Throwable $e) {
+                // Graceful: fall tillbaka till in-memory hellre än att fälla commit.
+            }
+        }
         return '2026-IFO-' . str_pad((string)(++$this->dnrSeq), 4, '0', STR_PAD_LEFT);
     }
 

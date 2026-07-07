@@ -1,0 +1,46 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/17 Underrättelse om beslut och överklagandehänvisning.docx",
+    "titel": "17 Underrättelse om beslut och överklagandehänvisning",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[Vårdnadshavare / barn (från viss ålder) / annan part]",
+        "[Gatuadress, postnummer och ort — eller digital adress om säker kanal används]",
+        "[hubsCaseId / Treserva-dnr]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Namn, titel — och delegationspunkt om tillämpligt]",
+        "[insats]",
+        "[Ange de skäl som bestämt utgången. Var konkret och begriplig. Redovisa vilka omständigheter och vilket lagrum beslutet grundas på.]",
+        "[nämndens namn / socialtjänsten]",
+        "[datum och ärende/dnr så att beslutet går att identifiera]",
+        "[vad du vill ska bli annorlunda]",
+        "[varför du anser att beslutet ska ändras]",
+        "[namn, personnummer, adress, telefon/e-post]",
+        "[ditt namn; ombud kan underteckna för din räkning]",
+        "[Namn, titel]",
+        "[Direktnummer / växel]",
+        "[Endast om säker överföring finns — annars hänvisa till telefon eller brev]",
+        "[Nämndens/socialtjänstens postadress]",
+        "[Om besök är möjligt]",
+        "[datum, av vem]",
+        "[tjänst/kanal]",
+        "[beskriv]",
+        "[Delgivningskvitto / läskvittens / annat — ange hur delfåendet styrks]",
+        "[Beslutsdatum + ärende/dnr]",
+        "[Enligt avsnitt 7]",
+        "[Personakt / Treserva dnr]"
+    ],
+    "falt": [
+        {
+            "id": "motivering",
+            "etikett": "Motivering",
+            "token": "[Ange de skäl som bestämt utgången. Var konkret och begriplig. Redovisa vilka omständigheter och vilket lagrum beslutet grundas på.]"
+        },
+        {
+            "id": "digital-delgivning-via-saker-kanal-med-laskvittens",
+            "etikett": "Digital delgivning via säker kanal med läskvittens",
+            "token": "[tjänst/kanal]"
+        }
+    ]
+}

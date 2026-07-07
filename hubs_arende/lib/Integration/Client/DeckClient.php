@@ -79,7 +79,7 @@ class DeckClient {
      * @param string|null $due   ISO-8601 frist (duedate), or null.
      * @return array{boardId:int,cardId:int}|null The created card pointer, or null (NO-OP).
      */
-    public function createCard(string $board, string $title, ?string $due): ?array {
+    public function createCard(string $board, string $title, ?string $due, ?string $description = null): ?array {
         if (!$this->isAvailable()) {
             $this->noop('createCard', $title);
             return null;
@@ -110,6 +110,10 @@ class DeckClient {
         ];
         if ($due !== null && $due !== '') {
             $payload['duedate'] = $due;
+        }
+        if ($description !== null && $description !== '') {
+            // Läsbar beskrivning ("vad gäller bevakningen") — pseudonym, ingen PII.
+            $payload['description'] = $description;
         }
         $response = $this->ocsRequest(
             'POST',
@@ -237,6 +241,52 @@ class DeckClient {
         ]);
 
         return true;
+    }
+
+    /**
+     * LÄS-PROJEKTION av ett ärendekort (titel, frist, kolumn, etiketter) för
+     * kortets Bevakningar-flik. Handläggaren saknar i regel board-behörighet
+     * (enhets-/SA-ägd board), så motorn läser via service-kontot och surfar
+     * ENDAST koordinationsvärden vidare — aldrig andra korts innehåll.
+     *
+     * @return array{titel:string,frist:?string,kolumn:?string,etiketter:list<string>,boardId:int,cardId:int}|null
+     */
+    public function getCard(int $boardId, int $cardId): ?array {
+        if (!$this->isAvailable() || $boardId <= 0 || $cardId <= 0) {
+            return null;
+        }
+
+        $stacks = $this->ocsRequest('GET', self::API_BASE . '/boards/' . $boardId . '/stacks', null, (string)$cardId);
+        $data = $stacks['ocs']['data'] ?? $stacks;
+        if (!is_array($data)) {
+            return null;
+        }
+        foreach ($data as $stack) {
+            if (!is_array($stack)) {
+                continue;
+            }
+            foreach ((array)($stack['cards'] ?? []) as $card) {
+                if (!is_array($card) || (int)($card['id'] ?? 0) !== $cardId) {
+                    continue;
+                }
+                $etiketter = [];
+                foreach ((array)($card['labels'] ?? []) as $label) {
+                    if (is_array($label) && isset($label['title'])) {
+                        $etiketter[] = (string)$label['title'];
+                    }
+                }
+                return [
+                    'titel' => (string)($card['title'] ?? ''),
+                    'beskrivning' => isset($card['description']) ? (string)$card['description'] : null,
+                    'frist' => isset($card['duedate']) && $card['duedate'] ? (string)$card['duedate'] : null,
+                    'kolumn' => isset($stack['title']) ? (string)$stack['title'] : null,
+                    'etiketter' => $etiketter,
+                    'boardId' => $boardId,
+                    'cardId' => $cardId,
+                ];
+            }
+        }
+        return null;
     }
 
     // ================================================================== //

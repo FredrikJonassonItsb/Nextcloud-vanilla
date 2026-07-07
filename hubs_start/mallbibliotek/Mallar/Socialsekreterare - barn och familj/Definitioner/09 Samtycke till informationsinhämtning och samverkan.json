@@ -1,0 +1,56 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/09 Samtycke till informationsinhämtning och samverkan.docx",
+    "titel": "09 Samtycke till informationsinhämtning och samverkan",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[Personnummer]",
+        "[Telefon/e-post]",
+        "[Namn och roll]",
+        "[Beskriv vilka uppgifter det gäller — t.ex. skolnärvaro och pedagogisk situation, vårdkontakter, utredningsresultat. Avgränsa till det som behövs.]",
+        "[Namn på enhet]",
+        "[Namn på mottagning]",
+        "[Namn]",
+        "[Namn och verksamhet]",
+        "[Beskriv varför uppgifterna behövs — t.ex. för att kunna göra en barnavårdsutredning, planera insatser eller samordna stöd i en SIP.]",
+        "[beskriv]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Datum, av vem, hur (muntligt/skriftligt)]",
+        "[Vårdnadshavare / ungdom / ställföreträdare]",
+        "[Ort, ÅÅÅÅ-MM-DD]",
+        "[Namn, titel]",
+        "[BankID i Hubs / papper skannat]",
+        "[Namn — ansvarig handläggare]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "annan-legal-stallforetradare-god-man",
+            "etikett": "Annan legal ställföreträdare / god man",
+            "token": "[Namn och roll]"
+        },
+        {
+            "id": "uppgifter-som-samtycket-omfattar",
+            "etikett": "Uppgifter som samtycket omfattar",
+            "token": "[Beskriv vilka uppgifter det gäller — t.ex. skolnärvaro och pedagogisk situation, vårdkontakter, utredningsresultat. Avgränsa till det som behövs.]"
+        },
+        {
+            "id": "syftet-med-att-uppgifter-utbyts",
+            "etikett": "Syftet med att uppgifter utbyts",
+            "token": "[Beskriv varför uppgifterna behövs — t.ex. för att kunna göra en barnavårdsutredning, planera insatser eller samordna stöd i en SIP.]"
+        },
+        {
+            "id": "samtycket-galler-fran",
+            "etikett": "Samtycket gäller från",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "noteras-vid-ev-aterkallelse",
+            "etikett": "Noteras vid ev. återkallelse",
+            "token": "[Datum, av vem, hur (muntligt/skriftligt)]"
+        }
+    ]
+}

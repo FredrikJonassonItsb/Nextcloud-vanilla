@@ -16,7 +16,14 @@ export const NASTA_ATGARD = {
 		// sätts via 🔔-snabbåtgärden; nästa-åtgärd här DRIVER mot avslut så hela resan
 		// går att slutföra (förut 'bevakning' → Deck, som aldrig nådde 'avslutat').
 		uppfoljning: { label: 'Avsluta ärende', action: 'avsluta', flik: 'oversikt' },
-		avslutat: { label: 'Visa avslutat ärende', action: 'open-rum', flik: 'oversikt' },
+		// Avslutade ärenden visas inte i arbetsvyn (backend filtrerar bort
+		// steg=avslutat ur dashboardArenden), så en åtgärdsknapp här vore död/
+		// vilseledande. Detta är en ren status-fallback — INTE en åtgärd:
+		// action: null gör att MinaArenden.onNastaAtgard faller till default
+		// (expandera kortet), och nastaFor() kan fortsatt använda posten som
+		// krasch-säkert fallback (NastaAtgardKnapp läser .label ovillkorligt).
+		// Steppern behåller Avslutat-noden som processindikator (PROCESS_STEG).
+		avslutat: { label: 'Arkiverat i verksamhetssystemet', action: null, flik: 'oversikt' },
 	},
 	overrides: {
 		motesanteckning: { label: 'Granska & godkänn mötesanteckning', action: 'godkann-anteckning', flik: 'moten' },

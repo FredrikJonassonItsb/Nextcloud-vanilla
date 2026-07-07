@@ -19,7 +19,7 @@
 				:aria-label="kollapsad
 					? t('hubs_start', 'Visa Att hantera')
 					: t('hubs_start', 'Dölj Att hantera')"
-				@click="kollapsad = !kollapsad">
+				@click="kollapsad = !kollapsad; anvandarStyrd = true">
 				<ChevronDownIcon v-if="!kollapsad" :size="20" />
 				<ChevronRightIcon v-else :size="20" />
 			</button>
@@ -158,11 +158,21 @@ export default {
 
 	data() {
 		return {
-			/** Hela sektionen kollapsad. */
-			kollapsad: false,
+			/** Hela sektionen kollapsad. TOM panel startar kollapsad (en rad +
+			 * räknare 0 räcker — tom yta ska inte stjäla höjd från arbetet);
+			 * auto-expanderar när innehåll kommer, tills användaren själv togglar. */
+			kollapsad: (this.items || []).length === 0,
+			anvandarStyrd: false,
 			/** Set av grupp-nycklar som är kollapsade (default: alla öppna). */
 			kollapsadeGrupper: [],
 		}
+	},
+	watch: {
+		items(nya) {
+			if (!this.anvandarStyrd) {
+				this.kollapsad = (nya || []).length === 0
+			}
+		},
 	},
 
 	computed: {

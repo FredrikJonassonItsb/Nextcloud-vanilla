@@ -72,6 +72,7 @@ final class ArendeServicePekareTest extends TestCase {
             $this->pekare('conversation', 'conv-abc'),
             $this->pekare('deck_card', '7', '99'),             // objekt_id=cardId, riktning=boardId
             $this->pekare('calendar', 'case-cal.ics', 'agare-uid'),
+            $this->pekare('team', 'team-single-id'),           // T — presentationsteamet
             $this->pekare('talk_room', 'token-ORIG'),          // SAGA-original (äldst)
         ]);
         // mapToCard (inherited) reuses findByCaseAndTyp for talkToken + bevakningBoardId.
@@ -95,6 +96,12 @@ final class ArendeServicePekareTest extends TestCase {
             'deckCardId' => 7,
             'calendarUri' => 'case-cal.ics',
             'bevakningBoardId' => 99,
+            'teamId' => 'team-single-id',
+            // 1:n — ALLA rum, äldst först (saga-originalet med namn=null först).
+            'talkRooms' => [
+                ['token' => 'token-ORIG', 'namn' => null],
+                ['token' => 'token-NEW', 'namn' => null],
+            ],
         ], $full['pekare']);
         // bevakningBoardId === deckBoardId invariant.
         self::assertSame($full['pekare']['deckBoardId'], $full['pekare']['bevakningBoardId']);
@@ -116,10 +123,13 @@ final class ArendeServicePekareTest extends TestCase {
             'deckCardId' => null,
             'calendarUri' => null,
             'bevakningBoardId' => null,
+            'teamId' => null,
+            'talkRooms' => [],
         ], $full['pekare']);
         // Collapsed keys (inherited) are also honest-empty.
         self::assertNull($full['talkToken']);
         self::assertNull($full['bevakningBoardId']);
+        self::assertNull($full['teamId']);
     }
 
     // ================================================================== //
@@ -151,6 +161,7 @@ final class ArendeServicePekareTest extends TestCase {
         self::assertNull($pek['conversationId']);
         self::assertNull($pek['calendarUri']);
         self::assertNull($pek['deckCardId']);
+        self::assertNull($pek['teamId']);
         // '' riktning guarded to null, not a falskt 0.
         self::assertNull($pek['deckBoardId']);
         self::assertNull($pek['bevakningBoardId']);

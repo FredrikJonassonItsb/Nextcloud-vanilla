@@ -28,9 +28,16 @@
 				:label-visible="true"
 				class="koppla-valjare__sok" />
 
-			<ul class="koppla-valjare__lista" :aria-label="t('hubs_start', 'Välj målärende')">
-				<li v-for="a in filtrerade" :key="a.hubsCaseId || a.triageRef">
-					<button type="button" class="koppla-valjare__arende hs-target" @click="valj(a)">
+			<ul class="koppla-valjare__lista" role="listbox" :aria-label="t('hubs_start', 'Välj målärende')">
+				<li v-for="a in filtrerade" :key="a.hubsCaseId || a.triageRef" role="presentation">
+					<button
+						type="button"
+						role="option"
+						class="koppla-valjare__arende hs-target"
+						:class="{ 'koppla-valjare__arende--vald': arValt(a) }"
+						:aria-selected="arValt(a) ? 'true' : 'false'"
+						@click="markera(a)"
+						@dblclick="markeraOchKoppla(a)">
 						<span class="koppla-valjare__arende-ref">
 							<FolderAccountOutlineIcon :size="18" />
 							{{ a.triageRef || a.barnRef || a.hubsCaseId }}
@@ -49,6 +56,9 @@
 			<div class="koppla-valjare__footer">
 				<NcButton type="tertiary" @click="$emit('close')">
 					{{ t('hubs_start', 'Avbryt') }}
+				</NcButton>
+				<NcButton type="primary" :disabled="!valtArende" @click="koppla">
+					{{ kopplaEtikett }}
 				</NcButton>
 			</div>
 		</div>
@@ -103,6 +113,8 @@ export default {
 	data() {
 		return {
 			sok: '',
+			/** Steg 1 av det människo-bekräftade valet: markerat (ej ännu kopplat) ärende. */
+			valtArende: null,
 		}
 	},
 
@@ -120,6 +132,23 @@ export default {
 				return hay.includes(q)
 			})
 		},
+
+		/** Etikett på bekräfta-knappen — visar vald referens (aldrig råa maskin-id). */
+		kopplaEtikett() {
+			const ref = this.valtArende && (this.valtArende.triageRef || this.valtArende.barnRef)
+			return ref
+				? t('hubs_start', 'Koppla till {ref}', { ref })
+				: t('hubs_start', 'Koppla till valt ärende')
+		},
+	},
+
+	watch: {
+		/** Om markeringen filtreras bort ur listan får den inte kunna bekräftas osynligt. */
+		filtrerade(nya) {
+			if (this.valtArende && !nya.some((a) => this.arValt(a))) {
+				this.valtArende = null
+			}
+		},
 	},
 
 	methods: {
@@ -129,10 +158,27 @@ export default {
 			return TYP_LABEL[typ] || typ || ''
 		},
 
-		/** Bekräfta valet → den durabla Väg A-kopplingen körs i föräldern. */
-		valj(a) {
+		arValt(a) {
+			return !!(this.valtArende && a && a.hubsCaseId === this.valtArende.hubsCaseId)
+		},
+
+		/** Steg 1: markera raden — kopplar INGET än (valet är alltid människo-bekräftat). */
+		markera(a) {
 			if (a && a.hubsCaseId) {
-				this.$emit('valj', a.hubsCaseId)
+				this.valtArende = a
+			}
+		},
+
+		/** Snabbväg: dubbelklick = markera + bekräfta i ett svep. */
+		markeraOchKoppla(a) {
+			this.markera(a)
+			this.koppla()
+		},
+
+		/** Steg 2: bekräfta valet → den durabla Väg A-kopplingen körs i föräldern. */
+		koppla() {
+			if (this.valtArende && this.valtArende.hubsCaseId) {
+				this.$emit('valj', this.valtArende.hubsCaseId)
 			}
 		},
 	},
@@ -193,6 +239,13 @@ export default {
 		&:hover {
 			background: var(--color-background-hover);
 			border-color: var(--color-primary-element);
+		}
+
+		&--vald,
+		&--vald:hover {
+			background: var(--color-primary-element-light);
+			border-color: var(--color-primary-element);
+			box-shadow: inset 0 0 0 1px var(--color-primary-element);
 		}
 	}
 

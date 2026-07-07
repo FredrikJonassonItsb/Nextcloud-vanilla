@@ -9,12 +9,17 @@ declare(strict_types=1);
 
 namespace OCA\HubsArende\AppInfo;
 
+use OCA\HubsArende\Integration\Client\FolkbokforingClient;
 use OCA\HubsArende\Integration\Port\EdiariumPort;
 use OCA\HubsArende\Integration\Port\FacksystemCommitPort;
+use OCA\HubsArende\Integration\Port\FolkbokforingPort;
 use OCA\HubsArende\Integration\Port\SigneringPort;
 use OCA\HubsArende\Integration\Stub\EdiariumStub;
 use OCA\HubsArende\Integration\Stub\FacksystemCommitStub;
+use OCA\HubsArende\Integration\Stub\FolkbokforingStub;
 use OCA\HubsArende\Integration\Stub\SigneringStub;
+use OCA\HubsArende\Notification\Notifier;
+use OCA\HubsArende\Teams\ArenderumTeamResourceProvider;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -47,6 +52,9 @@ class Application extends App implements IBootstrap {
 
     /** Default integration mode — deterministic in-process stub. */
     public const MODE_STUB = 'stub';
+
+    /** Live integration mode — skarp klient mot extern integration (Frends). */
+    public const MODE_LIVE = 'live';
 
     public function __construct() {
         parent::__construct(self::APP_ID);
@@ -90,6 +98,35 @@ class Application extends App implements IBootstrap {
                 EdiariumStub::class,
             );
         });
+
+        // Folkbokföring (Navet via kommunens interna Frends-API, K-NAV-3.1).
+        // Default = FolkbokforingStub (deterministiska testpersoner inkl. skyddade,
+        // speglar testbeställning 00000236-FO01-0002). 'live' växlar till den
+        // skarpa klienten mot Frends-uppslags-API:t:
+        //   occ config:app:set hubs_arende integration_mode_folkbokforing --value live
+        //   occ config:app:set hubs_arende folkbokforing_api_url --value https://…
+        //   occ config:app:set hubs_arende folkbokforing_api_nyckel --value …
+        $context->registerService(FolkbokforingPort::class, function (ContainerInterface $c): FolkbokforingPort {
+            return self::resolvePort(
+                $c,
+                'folkbokforing',
+                [
+                    self::MODE_STUB => FolkbokforingStub::class,
+                    self::MODE_LIVE => FolkbokforingClient::class,
+                ],
+                FolkbokforingStub::class,
+            );
+        });
+
+        // --- Team-presentation: akten synlig på ärendets TEAM-sida --------
+        // Talk listar redan diskussionsrummet (teamet är deltagare); denna
+        // provider lägger till AKTEN (groupfoldern) via motorns pekare, så
+        // team-vyn knyter ihop hela ärenderummet. Core gatar per användare
+        // (TeamManager kräver team-synlighet innan providern frågas).
+        $context->registerTeamResourceProvider(ArenderumTeamResourceProvider::class);
+
+        // --- NC-notiser (klockan): tilldelning/medlemskap/frist-varsel ----
+        $context->registerNotifierService(Notifier::class);
     }
 
     public function boot(IBootContext $context): void {

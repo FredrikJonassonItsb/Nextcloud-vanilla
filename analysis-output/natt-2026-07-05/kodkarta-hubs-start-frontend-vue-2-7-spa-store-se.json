@@ -1,0 +1,448 @@
+{
+ "omrade": "hubs_start frontend (Vue 2.7 SPA): store, services, persona-dashboard och socialsekreterar-vyn \"Mina ärenden\"",
+ "sammanfattning": "hubs_start-frontenden är en standalone Vue 2.7-SPA (ingen Vuex/Pinia — Vue.observable-store i store/index.js) som monteras på #hubs-start och renderar antingen den persona-drivna widget-dashboarden (views/Start.vue) eller, för personan socialsekreterare, den helt omdesignade ärende-centriska vyn MinaArenden.vue. ALL nätverkstrafik går genom services/api.js som är det enda frontend↔backend-kontraktet: varje funktion har en DEMO-gren (isDemo() i demoData.js: ?demo=1/0-override + sessionStorage + server-boot-flagga) som kortsluter till in-memory-fixtures, och en LIVE-gren som träffar tre backend-ytor — sdkmc OCS (summary, inflöde-feed, recipients, möten, note-to-self, case-messages, team), hubs_arende OCS (ärendemotorn: arende-summary?mine=1, skapa/steg/tilldela/medlem/talkrum/historik/bevakningar/fordelning-summary, treserva/commit+receipts) samt calendar (appointment_configs). Inflödesverb boundary-routas i api.js (skapa/koppla/registrera/gallra → hubs_arende; besvara/vidarebefordra m.fl. → sdkmc). Livscykel-logiken sitter i services/arendeFlow.js (steg→Nästa åtgärd-state-machine med plikt-/vantar-overrides) och drivs av NastaAtgardKnapp + MinaArendens onNastaAtgard-switch; commit till Treserva går via CommitGrind och flippar provenans/retention/plikt ENDAST på verifierat kvitto (r.ok && r.verifierad), följt av automatiskt steg-avancemang. Deep links ut ur dashboarden centraliseras i services/deepLinks.js med \"honest null\"-kontrakt (spreedRoomLink/teamLink returnerar null i stället för påhittade mål). Persona-/rollstyrningen har två lager: personaConfig.js (genererad katalog med 38 widgets, 30 primäråtgärder, 6 personas med layouter) som driver WidgetRenderer:s trestegsupplösning (8 riktiga store-matade widgets → 4 demo-descriptor-varianter → ärlig WidgetFallback), samt profilfältet (boot.profile==='forvaltare') som rollstyr gruppledarens fördelningsläge i skarpt läge. Demo-läget backas av en stateful Treserva/Frends-stub (demo/treserva.js) med eget register/kvittenser så skapa→committa→gallra hänger ihop utan backend. 13 unit-testfiler finns under tests/unit (deepLinks, skapaArende, commitGrind, store m.fl.).",
+ "formagor": [
+  "Central API-klient där alla anrop går genom en modul med DEMO/LIVE-växel per funktion — api.js:60 (DEMO-konstant), api.js:62-69 (SDKMC/HUBS_ARENDE_OCS-prefix)",
+  "Aggregerad triage-summary från sdkmc med inkrementell polling via sinceIds — api.js:119-125; upsert-merge i store/index.js:136-153; 30s-polling store/index.js:18,429-442",
+  "Medlemsbaserad 'Mina ärenden'-summary från hubs_arende (GET /arende-summary?mine=1) — api.js:357-366; laddas i store/index.js:175-194",
+  "Lazy-laddat fullt ärende med stabil cache-nyckel triageRef — api.js:373-380 (GET /arende/{ref}); store/index.js:203-217; ArendeKort.vue:324-335",
+  "sdkmc-berikning av expanderat kort via pekare.talkToken (arende-enrichment), merge utan att skriva över motorfält — api.js:254-260; store/index.js:227-242",
+  "Skapa ärende ur inflöde-rad: PII-fri payload, conversationId-idempotens, inf:-prefix-strippning, ärlig felyta (400/403-envelope) + best-effort case:-taggning i användarens session — api.js:517-564, api.js:504-515; dubbelklicksgard + dedup i MinaArenden.vue:619-638 och store/index.js:366-399",
+  "arendeTyp-upplösning för inflöde: messageType-karta + korg-nyckelords-routing (första träff vinner) — api.js:442-492 (arendeTypForRad)",
+  "Koppla meddelande till ärende (Fas F/Väg A): durabel referens-fil via hubs_arende FÖRST, synliga user-scopade mail-taggar best-effort, 'kopplat' visas först på verifierad=true — api.js:305-331; KopplaValjare-modal (människobekräftat) MinaArenden.vue:679-695",
+  "Livscykel-state-machine steg→Nästa åtgärd med plikt-gate (skyddsbedömning) och vantar-overrides (motesanteckning/signaturkvittens) — arendeFlow.js:9-55; åtgärdsrouting MinaArenden.vue:563-586",
+  "Commit till Treserva med verifierat-kvitto-disciplin: provenans/retention/plikt flippas bara på r.ok && r.verifierad; auto steg-avancemang efter verifierad commit inkl. ORO-1 skyddsbedomningKvitterad=true — store/index.js:249-277; MinaArenden.vue:924-958; api.js:389-399 (POST /treserva/commit)",
+  "Steg-övergång i livscykelgrafen (POST /arende/{ref}/steg) med lokal steg-patch — api.js:576-580; store/index.js:284-291; AvslutaGrind → 'avslutat' MinaArenden.vue:882-902",
+  "Tilldela/omfördela ärende via hubs_arende (POST /arende/{ref}/tilldela) med summary-omladdning efter ägarbyte — api.js:589-596; MinaArenden.vue:821-850",
+  "Multi-korg-inflöde med tre band (1a Att ta emot/1b Att hantera/1c Ej kopplat) styrda av zonOf-selektor + korg∩typ-filter — api.js:690-700 (sdkmc /inflode-summary); MinaArenden.vue:464-488,523-553; KorgValjare.vue",
+  "Gruppledarens fördelningsvy (rollstyrd, ej demo-gated): Att fördela + utredarbelastning (aggregat, aldrig innehåll) — api.js:708-713 (hubs_arende /fordelning-summary); MinaArenden.vue:9-30,443-446; FordelningsVy.vue; UtredarLast.vue; FordelaTill.vue",
+  "Juridisk gallringsgrind: gallra aldrig naket klick — handlingstyp ur dokumenthanteringsplan, 'ringa betydelse'-spärr tvingar till Registrera-vägen — GallringsGrind.vue:1-10 (headerkontrakt); EjKoppladSektion.vue äger grinden",
+  "Varsel-lista 'Kräver åtgärd nu' som länkar NER till kortet (scroll+markering, aldrig flyttade kort) — MinaArenden.vue:392-421,984-1000; VarselLista.vue",
+  "Ärendekort med 6 alltid synliga flikar och lazy per-flik-hämtning: Meddelanden (sdkmc /case-messages), Möten (sdkmc /arende-meetings), Bevakningar (motor-Deck-projektion), Historik (motorns händelsejournal) — ArendeKort.vue:403-414,471-498; api.js:620-667",
+  "1:n ärendechattar: NyChattModal → POST /arende/{ref}/talkrum, redirect in i nya rummet — api.js:607-612; MinaArenden.vue:793-816; Rum-fliken ArendeKort.vue:347-355",
+  "Lägg till kollega/medlem i ärendet (co_handlaggare/observator) — api.js:677-682 (POST /arende/{ref}/medlem); medlemspanel i ArendeKort",
+  "Säkert-möte-wizard i ETT serveranrop (Talk-rum + CalDAV + BankID/SMS-intents) med ärende-bindning via dnr — MeetingWizard.vue:559-613; api.js:190-194; gap17-wiring MinaArenden.vue:977-983",
+  "Dagens möten + lobbystatus + BankID-gästidentitet — api.js:177-218; DagensMoten.vue; MotesRemsa/MotesRad (live meetings-ytan, MinaArenden.vue:368-373)",
+  "Egna anteckningar (privat, append-only, sdkmc note-to-self) — api.js:229-244; MinaAnteckningar.vue; fot-ingång MinaArenden.vue:176-180",
+  "Kontakter-favoriter med resolverade pekare + tombstone-spärr (borttagen DIGG-post ej valbar) — api.js:408-412; FavoritValjare.vue:1-12; vidarebefordra-flöde MinaArenden.vue:702-724",
+  "Enhetschatt som lugn sidopanel (pull, aldrig inkorgssiffra) med honest-null-rumslänk — api.js:720-724; EnhetschattPanel.vue; MinaArenden.vue:753-762",
+  "Kvittens-/retentionsyta med verifierade Treserva-kvittenser — api.js:419-424 (hubs_arende /treserva/receipts); TreservaKvittens.vue",
+  "Deep-link-resolver med honest-null-kontrakt och case-pre-taggning i composern (&case=) — deepLinks.js:21-176; composerLink caseRef deepLinks.js:33-44; arenderumLink per hubsCaseId deepLinks.js:88-90; teamLink deepLinks.js:100-107",
+  "Persona-katalog + persona-driven dashboard: 6 personas (socialsekreterare/registrator/hsl_skoterska/hr_chef/overformyndare/forvaltare) med main/side-layouter och primäråtgärder — personaConfig.js:591-831; actions/widget-upplösning personas.js:36-47; Start.vue:140-148",
+  "WidgetRenderer trestegsupplösning: 8 riktiga store-matade widgets (attHantera/dagensMoten/kvittenser/funktionsbrevlador/bevakningar/bokningsbaraTider/nytta/systemhalsa) → variant-komponenter (queue/progress/stat/files) på demo-descriptors → ärlig WidgetFallback — WidgetRenderer.vue:45-50,88-163",
+  "Widget-proveniens som pedagogiskt lager (backing app, native/proposed/external, system-of-record) med riktig öppna-länk endast för native — appProvenance.js:28-57; widgetApps.js (genererad karta); WidgetProvenance.vue",
+  "Triage-åtgärder på riktiga sdkmc-tag-API:t: Ta ärendet (takeThread) + Klart (setMessageTag) — api.js:272-290; Start.vue:282-314",
+  "Smart mottagare med serverklassad kanal (aldrig klientklassning) → composer-deep-link — api.js:150-166; SmartMottagare.vue; kanalkarta channels.js:28-69",
+  "CommandPalette Ctrl+K: statiska verb + debounced mottagarsök med stale-response-skydd — CommandPalette.vue:210-243; global keybind MinaArenden.vue:555-560",
+  "LOA3-självbetjäningsuppgradering (ersätter tvingad utloggning) — deepLinks.js:132-135; MinaArenden.vue:1038-1040",
+  "Onboarding för widget-dashboard + stegvis OnboardingTour i soc-vyn med persistent onboardingSeen-pref — Onboarding.vue; OnboardingTour.vue; store/index.js:460-463",
+  "Per-user-preferenser (onboardingSeen/keyboardMode/verbEntryDismissed) via hubs_start egna OCS /preferences — api.js:92-107; store/index.js:455-469",
+  "Härledd Dagspuls ur laddad data (aldrig döda motor-nollor) + puls-/stegfilter över zoner — MinaArenden.vue:447-458; store/index.js:303-311",
+  "Demo-läge som helhet: ?demo=1/0-override (sessionStorage) ovanpå server-boot, 'Visa i demoläge'-länk i foten — demoData.js:31-47; MinaArenden.vue:496-500,187-191",
+  "13 unit-testfiler: tests/unit/{deepLinks,skapaArende,commitGrind,avslutaGrind,nyChattModal,minaAnteckningar,arendeDiskussion,inflodeRad,varselLista,store,storeEnrich,channels,sections}.spec.js"
+ ],
+ "filer": [
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/main.js",
+   "roll": "SPA-entry: monterar App på #hubs-start, globala t/n + $store, webpack-nonce"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/App.vue",
+   "roll": "Skal: NcContent/NcAppContent runt StartView"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/views/Start.vue",
+   "roll": "Rotvy: boot+loadAll+polling; renderar MinaArenden för socialsekreterare-personan, annars persona-dashboard (HeaderBar/ActionBar/WidgetRenderer-grid) + modaler; routar widget-events (take/open/done/join) mot riktiga API:er; demoBlocked()-spärr för deep links i demo"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/store/index.js",
+   "roll": "Reaktiv store (Vue.observable): triage-, ärende-, inflöde-, fördelnings-, team-, kvittens- och favorit-state; alla actions (loadArendeSummary/loadArende/enrichArende/commitArende/transitionSteg/inflodeAction/kopplaMeddelandeTillArende); polling"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/api.js",
+   "roll": "DET enda frontend↔backend-kontraktet: ~30 funktioner med DEMO-gren + LIVE-endpoints (sdkmc OCS, hubs_arende OCS, calendar); boundary-routing av inflödesverb; arendeTyp-mappning; koppla/skapa-orkestrering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/arendeFlow.js",
+   "roll": "State machine: NASTA_ATGARD (steg→åtgärd + overrides), PROCESS_STEG, nastaFor() med plikt-/vantar-företräde"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/deepLinks.js",
+   "roll": "Deep-link-resolver: thread/composer(+case)/deck/mailbox/call/room/arenderum/team/file/loa3Upgrade + resolve(descriptor); honest-null för rum/team"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/channels.js",
+   "roll": "Kanal-PRESENTATION (aldrig klassning): id→Akademi-etikett/ikon/färgtoken + CHANNEL_TO_MESSAGE_TYPE"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/sections.js",
+   "roll": "Triagesektioner (fast ordning) + GOV.UK-statusar med toner"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/personas.js",
+   "roll": "Persona-helpers över katalogen: listPersonas/getPersona/widgetMeta/actionsForPersona; defaultPersonaId = första personan"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/personaConfig.js",
+   "roll": "AUTOGENERERAD personakatalog: 38 widgets (dataSource real/proposed), 30 primäråtgärder, 6 personas med layout + KPI:er"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/widgetApps.js",
+   "roll": "AUTOGENERERAD widget→app-karta: backingApp, native/proposed/external, deepLink, prerequisites, system-of-record"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/appProvenance.js",
+   "roll": "Proveniens-helpers: provenanceFor/isNative/appUrl (öppna native-app på riktigt)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/icons.js",
+   "roll": "Kuraterad namn→ikon-karta (persona-åtgärder + badges); okänt namn → neutral punkt"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/tones.js",
+   "roll": "tone→CSS-variabel (--hs-status-*)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demoData.js",
+   "roll": "DEMO-kärnan: isDemo() (?demo-override + boot-flagga) + fixtures för summary/receipts/meetings/recipients/notes/appointments + demo-API-objektet"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demoWidgets.js",
+   "roll": "Merge av demo-descriptors för de 29 persona-renderade widgetarna; descriptorFor()"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/socialsekreterare.js",
+   "roll": "DEMO-fixtures för soc-vyn: triage, ~22 ärenden, multi-korg-inflöde (3 band), fördelningsvy, team, enrichments; delegerar mutationer till treserva-stubben"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/treserva.js",
+   "roll": "SEAM[treserva]: stateful in-memory Treserva/Frends-stub (REGISTER/RECEIPTS): seedRegister/skapaArende/commitHandling(verifierat kvitto)/kopplaInflode/listReceipts"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/favoriter.js",
+   "roll": "SEAM[favoriter]: stub av sdkmc:s Kontakter-favorit-resolver (DIGG-pekare, fax-vCard, intern-pekare, tombstones)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/queues-a.js",
+   "roll": "Statiska queue-descriptors: orosanmalningar, utskrivningsbevakning, samverkansavvikelser, granskningsko, rehabarenden, kansligInkorg, minaUppgifter"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/queues-b.js",
+   "roll": "Statiska queue-descriptors batch B (attSignera, skickatForSignering, registreraFordela, utlamnande, incidentrapporter, sakerhetshandelser m.fl.)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/progress.js",
+   "roll": "Statiska progress-descriptors: arsrakningar, namndcykel m.fl."
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/stats.js",
+   "roll": "Statiska stat-descriptors: fristStrip, authLoa, dataSuveranitet, loggSparbarhet, complianceStatus"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/files.js",
+   "roll": "Statiska files-descriptors: arenderum, senasteFiler, mallarSamtycke, arkivGallring"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/extra.js",
+   "roll": "Statisk queue-descriptor: provisionering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/services/demo/newcases.js",
+   "roll": "Statiska descriptors: todolista + motesanteckningar (kundens tillagda use cases)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/HeaderBar.vue",
+   "roll": "Dashboard-header: hälsning, personaväxlare (demo), LOA-chip, residensbadge"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/ActionBar.vue",
+   "roll": "Personans 3–5 verb-först-primäråtgärder; Start.vue routar (riktig modal eller proposed-notis)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetRenderer.vue",
+   "roll": "Widget-id→komponent: 8 riktiga store-matade / variant på descriptor / WidgetFallback; bifogar WidgetProvenance"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/AttHanteraQueue.vue",
+   "roll": "REAL widget: aggregerad triagekö (summary.items) med sektioner + kanalflikar + tangentbordsläge"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/QueueSection.vue",
+   "roll": "Presentational: en triagesektion (fast ordning, aldrig blandad ström)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/QueueItem.vue",
+   "roll": "Presentational: en triagerad (kanalchip, status, dnr, Ta/Öppna/Klart)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/DagensMoten.vue",
+   "roll": "REAL widget: dagens säkra möten med lobby-/verifieringsstatus + anslut"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/KvittensWidget.vue",
+   "roll": "REAL widget: leveranskvittens-tidslinje per utgående meddelande"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/FunktionsbrevladorWidget.vue",
+   "roll": "REAL widget: funktionsbrevlådor med oläst/otilldelat"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/BevakningarWidget.vue",
+   "roll": "REAL widget: frånvarodelegationer (watching)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/BokningsbaraTider.vue",
+   "roll": "REAL widget: kalenderns appointment configs med bokningslänkar"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/NyttaWidget.vue",
+   "roll": "ROI-widget; läser state.nytta men faller till PLACEHOLDER-konstanter (ingen backend sätter state.nytta)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/SystemHalsa.vue",
+   "roll": "Driftstatus-widget som anropar sdkmc-endpoints DIREKT med axios (sdkLog, activityNotificationStatus, runExpungeNow) — går förbi api.js"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetQueue.vue",
+   "roll": "Variant-komponent: kö-rader ur demo-descriptor; emit @action"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetProgress.vue",
+   "roll": "Variant-komponent: kampanj-/progresskort (value-of-total + breakdown)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetStat.vue",
+   "roll": "Variant-komponent: KPI-brickor/checklista/statements (compliance-ytor)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetFiles.vue",
+   "roll": "Variant-komponent: dokument-/ärenderumsrader"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetFallback.vue",
+   "roll": "Ärlig placeholder för widget utan komponent/descriptor (proposed feature)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/WidgetProvenance.vue",
+   "roll": "Pedagogisk fot under varje widget: backing app + system-of-record; öppna-länk endast native"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/SmartMottagare.vue",
+   "roll": "Mottagarsök med SERVER-klassad kanal → composer-deep-link; manuell klassning via classifyRecipient"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/MeetingWizard.vue",
+   "roll": "3-stegs säkert-möte-wizard (Vem/När/Skydd) → createSecureMeeting; ärende-bindning via payload.dnr (gap17); bekräftelsevy med smsStatus/protection"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/CommandPalette.vue",
+   "roll": "Ctrl+K-palett: 3 statiska verb + debounced live mottagarsök (stale-skydd), aria-combobox"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/PersonaSwitcher.vue",
+   "roll": "DEMO-only personaväxlare (i prod härleds personan av roll/grupp och denna göms)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/Onboarding.vue",
+   "roll": "Förstagångs-wizard (ersätter firstrunwizard) för widget-dashboarden"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/LoaChip.vue",
+   "roll": "LOA-nivå-chip (LOA1/2/3) med uppgraderings-CTA"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/MinaArenden.vue",
+   "roll": "ORKESTRERANDE huvudvy (1155 rader): zoner 0–5, zonOf-selektor, all åtgärdsrouting (triage/koppla/skapa/commit/signera/avsluta/omfördela/fördela/möte/chatt), 12 modaler, rollstyrd lägesväxel, demo-länk"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/ArendeKort.vue",
+   "roll": "Kärnkomponent: ETT ärende — stepper+frist+provenans+tilldelningsband+EN lysande Nästa åtgärd; Quick View med 6 flikar (Akten/Meddelanden/Rum/Möten/Bevakningar/Historik) lazy-laddade; modulrad (Team/Akten/Meddelanden/Kalender/Signering); medlemspanel + Ta ärendet"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/ArendeZon.vue",
+   "roll": "Zon 2/3-container: ArendeKort-lista med segmentfilter på processteg (knapp/tangentbord, WCAG 2.5.7)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/ArendeDiskussion.vue",
+   "roll": "Diskussion-flik i Quick View: lättviktig trådvy m. SekretessRad + broar (gör till handling / lyft avidentifierat till enhetschatt)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/AttTaEmotSektion.vue",
+   "roll": "Zon 1a 'Att ta emot': nytt-ärende-inflöde (orosanmälningar); tom panel kollapsas till en rad; polite aria-live"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/AttTaEmotRad.vue",
+   "roll": "Rad i 1a: kanalikon, avsändare + identitetsbadge, frist, primär 'Ta emot & starta' + koppla/visa"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/AttHanteraSektion.vue",
+   "roll": "Zon 1b 'Att hantera (mina korgar)': inflöde som hör till mina pågående ärenden, grupperat per barn-referens; spara-i-rum/skapa-bevakning/besvara"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/EjKoppladSektion.vue",
+   "roll": "Zon 1c-hinken: inget försvinner utan koppling/registrering/gallring med stöd; SLA-röd räknare; äger GallringsGrind"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/EjKoppladRad.vue",
+   "roll": "Rad i 1c med sex åtgärder (koppla/skapa/besvara/vidarebefordra/gallra/registrera); föreslagen åtgärd som primärknapp + synligt 'varför'"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/InflodeRad.vue",
+   "roll": "Delad radkomponent (1b/1c): kanalikon · korg · avsändare+identitet · tid · typ-chip · KopplingBadge · ärvd frist; aldrig klartext-PII"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/KorgValjare.vue",
+   "roll": "Korg- + typfilter-piller överst i Zon 1 (korg ∩ typ kombineras)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/KopplaValjare.vue",
+   "roll": "Fas F3-modal: välj målärende för koppling — alltid människobekräftat (felkoppling = sekretessincident)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/KopplingBadge.vue",
+   "roll": "Ärendekopplings-badge (kopplad/föreslagen/ej) på objekt; pseudonym, aldrig rå UUID"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/VarselLista.vue",
+   "roll": "'Kräver åtgärd nu' som varsellista som länkar NER till kortet (kort flyttas aldrig)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/MinDagHeader.vue",
+   "roll": "Zon 0: hälsning, datasuveränitetsprick, LOA, Dagspuls, palett-/hjälpknappar"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/Dagspulsen.vue",
+   "roll": "Fem klickbara pulspiller (frist/möten/signera/inflöde/omnämnanden) som filter"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/VadVillDuGora.vue",
+   "roll": "Verbingång: fem stora verbknappar (dismissbar, kollapsbar)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/NastaAtgardKnapp.vue",
+   "roll": "Ledande åtgärdsknapp ur state machine + '[▾ gör annat]'-meny (stänger före modal)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/ProcessStepper.vue",
+   "roll": "5-stegs processindikator med aria-current; okvitterad plikt spärrar framåt"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/FristChip.vue",
+   "roll": "Fristindikator: ikon+text+dagar, grå→gul(≤3)→röd; öppnar FristPanel"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/FristPanel.vue",
+   "roll": "Popover fristdetaljer: källa, påminnelser, 'ägs av Treserva — speglad via Frends'"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/ProvenansChip.vue",
+   "roll": "Mellanlagring→facksystem-chip: 'ej registrerad' (→commit) / 'Registrerad, dnr X · gallras {datum}' (dubbel countdown)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/TilldelningBand.vue",
+   "roll": "Tilldelningsstatus + ursprung på kortet (ägare, fördelare, datum, NY-markör 24h); emit omfordela-begaran"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/DiskussionChip.vue",
+   "roll": "💬-chip: olästa (neutral) / @omnämnande (accent); aldrig växande inkorgssiffra"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/SekretessRad.vue",
+   "roll": "Vem-ser-tråden + sekretessklassning överst på chatt-ytor (ACL-krets, OSL 26 kap.)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/CommitGrind.vue",
+   "roll": "Commit-modal Frends→Treserva: granskbart dokumenturval, inbäddad signeringsbekräftelse (#6, gateas via kraverSignering), anropar api.commitToTreserva, emit committed(result, valdaDokument)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/AvslutaGrind.vue",
+   "roll": "Bekräftelsemodal för terminalt avslut (ren transitionSteg→avslutat; startar Hubs-rummets gallring)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/GallringsGrind.vue",
+   "roll": "Juridisk gallringsgrind: handlingstyp ur dokumenthanteringsplan; ej-ringa-betydelse tvingas till Registrera-vägen; aldrig naken radering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/NyChattModal.vue",
+   "roll": "Skapa ytterligare chatt i ärenderummet (1:n); PII-varning för rumsnamn; pseudonymt hubsCaseId som fallback-namn"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/OmfordelaModal.vue",
+   "roll": "Omfördela ägt ärende till namngiven kollega (motorn validerar användare + kör hela handoff:en)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/MinaAnteckningar.vue",
+   "roll": "Modal 'Egna anteckningar': privat, append-only, note-to-self-backad; aldrig delad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/EnhetschattPanel.vue",
+   "roll": "Sidopanel team-/enhetschatt: diskreta olästa + omnämnanden; öppna trådar via rums-token (honest null)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/FavoritValjare.vue",
+   "roll": "Mottagar-/favoritväljarmodal: resolverade pekare med klass-badge + proveniens; tombstones överstrukna/ej valbara"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/FordelningsVy.vue",
+   "roll": "Gruppledarens läge: Zon A Att fördela (förslag+primäråtgärd), B utredarbelastning (aggregat), C mottagningens pågående; compliance-ankare 'antal visas alltid'"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/FordelaTill.vue",
+   "roll": "Fördela-knapp: välj utredare med belastning i etiketten ('Sara (8)'), nära-tak-markör"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/UtredarLast.vue",
+   "roll": "Belastningsstaplar per utredare (tal + stapel, röda frister som tal+ikon) — aldrig ärendeinnehåll"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/MotesRemsa.vue",
+   "roll": "Zon 4 'Mina möten idag' (live meetings-ytan)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/MotesRad.vue",
+   "roll": "Mötesrad: tid/nedräkning, dnr-chip, lobbystatus + verifieringsbock, anslut"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/TreservaKvittens.vue",
+   "roll": "Kvittens-/retentionsyta: verifierade Treserva-commits + gallringsklocka; read-only (aldrig gallring på kryssruta)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/src/components/socialsekreterare/OnboardingTour.vue",
+   "roll": "Stegvis intro för soc-vyn (dismissbar banner + steg); markOnboardingSeen vid slut"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit",
+   "roll": "13 unit-testfiler: deepLinks, skapaArende, commitGrind, avslutaGrind, nyChattModal, minaAnteckningar, arendeDiskussion, inflodeRad, varselLista, store, storeEnrich, channels, sections"
+  }
+ ],
+ "stubbar": [
+  "services/demoData.js — hela demo-API:t (summary/items/receipts/meetings/lobby/recipients/notes/appointments) som in-memory-fixtures; stubbar sdkmc+calendar på vanilla Nextcloud (demoData.js:294-341)",
+  "services/demo/treserva.js — SEAM[treserva]: stateful stub av kanoniska registret hubs_arenden, Frends-konnektorn och atomära 'skapa ärende'-orkestrering; i prod ersätts av hubs_arende/sdkmc OCS + verifierad Frends-callback (headerblock treserva.js:1-22)",
+  "services/demo/socialsekreterare.js — alla ärende-/inflöde-/fördelnings-/team-fixtures för soc-vyn i demo (hela filen; seedar treserva-stubben rad 292)",
+  "services/demo/favoriter.js — SEAM[favoriter]: stub av sdkmc:s Kontakter-favorit-resolver (DIGG-batch-resolve); prod = sdkmc GET /favoriter",
+  "services/demoWidgets.js + demo/{queues-a,queues-b,progress,stats,files,extra,newcases}.js — statiska descriptors för ~29 persona-widgets; på riktig install ska dessa backas av proposed apps/tjänster (många widgets i personaConfig har dataSource:'proposed' och är därmed ALLTID demo/fallback även i skarpt läge: attSignera, skickatForSignering, orosanmalningar, utskrivningsbevakning, samverkansavvikelser, arsrakningar, granskningsko, uppdragskontroll, rehabarenden, fristStrip, mallarSamtycke, registreraFordela, utlamnande, namndcykel, justeringAnslag, arkivGallring, complianceStatus, incidentrapporter, loggSparbarhet, dataSuveranitet, nytta, motesanteckningar)",
+  "Optimistiska DEMO-no-ops i api.js — dessa returnerar {ok:true} utan att röra fixtures: tilldela (api.js:593), transitionSteg (api.js:577), skapaArendeChatt (api.js:609), laggTillMedlem (api.js:679), inflodeAction övriga verb (api.js:735), kopplaMeddelandeTillArende (api.js:306); fetchArendeEnrichment/fetchCaseMessages/fetchArendeMeetings/fetchArendeHistorik/fetchArendeBevakningar returnerar TOMT i demo (api.js:257,623,636,650,664) — flikinnehåll i demo kommer enbart ur fixture-kortens inline-data",
+  "NyttaWidget.vue — ROI-siffror är PLACEHOLDER-konstanter; state.nytta sätts aldrig av store/backend (NyttaWidget.vue:100-127)",
+  "WidgetFallback.vue — medveten 'proposed feature'-platshållare för widget-id utan komponent/descriptor",
+  "PersonaSwitcher.vue — demo-only-kontroll; i prod ska persona härledas ur roll/grupp (RoleService) — den härledningen finns inte i frontend utan förväntas komma via boot.persona (store/index.js:101-103)",
+  "Start.vue proposedNotice() — persona-primäråtgärder utan native-backing visar bara en 'demonstration'-toast i stället för ett flöde (Start.vue:197-234)"
+ ],
+ "kandaBrister": [
+  "Inflödesfeeden läser sdkmc, INTE motorn: hubs_arende:s /inflode-summary har ingen rå-feed wirad (resolveInflodeRows() tom) — cross-app-enrichment (sdkmc-feed → hubs_arende klassning+match) är obyggd; dokumenterat i api.js:692-699",
+  "Två olika vägar för samma domänverb tilldela/omfördela: fördelningsvyn kör store.inflodeAction('tilldela'/'omfordela') som routas till sdkmc /inflode/tilldela|omfordela (ej i ARENDE_VERB-listan, api.js:739-741; MinaArenden.vue:727-750), medan kortets omfördelning kör hubs_arende POST /arende/{ref}/tilldela (api.js:589-596; MinaArenden.vue:821-850) — sdkmc-vägens existens/semantik behöver verifieras i fas 2",
+  "AttHanteraSektions verb 'spara-i-rum' och 'skapa-bevakning' (MinaArenden.vue:90-91) skickas till inflodeAction men ingår inte i den dokumenterade verbuppsättningen (api.js:727-733) → POST till sdkmc /inflode/spara-i-rum resp. /inflode/skapa-bevakning; oklart om endpoints finns — potentiellt trasiga i skarpt läge",
+  "onOpenKoppling navigerar inte: 'Öppna kopplat ärende' visar bara en info-toast med referensen (MinaArenden.vue:696-699) — ingen scroll/expand till kortet, ingen deep link",
+  "CommandPalette-eventet 'new-message' mappas i soc-vyn till openMeetingWizard (MinaArenden.vue:237) — 'Nytt säkert meddelande' i paletten öppnar mötesguiden i stället för composer/SmartMottagare (Start.vue mappar korrekt till openSmartMottagare, Start.vue:74)",
+  "SystemHalsa.vue anropar axios direkt mot sdkmc (SystemHalsa.vue:177-227) i strid med api.js-konventionen 'components must NOT call axios directly' (api.js:4-5); saknar dessutom DEMO-gren → felstate på vanilla install",
+  "triageFiltered returnerar alltid A.triage ofiltrerat trots kommentaren om pulsfilter-smalning (MinaArenden.vue:459-462) — 'inflode'-pulsfiltret påverkar bara taEmotItems, inte triage-arrayen",
+  "Foten 'Senaste säkra filer' länkar hårdkodat till /apps/files/?dir=/Ärenderum (MinaArenden.vue:184) medan ärenderum i live monteras per hubsCaseId (deepLinks.arenderumLink) — länken pekar sannolikt på en icke-existerande mapp i drift",
+  "deepLinks.resolve() hanterar bara app-typerna thread/composer/mailbox/call/room (deepLinks.js:158-176) — server-levererade deepLink-descriptors av andra typer faller tyst tillbaka till dashboard-roten",
+  "composerLink kräver mail-routerhooken i backend-additions/mail (deepLinks.js:7-10) inkl. &case=-pre-taggning (deepLinks.js:39-42) — frontendens 'sänt meddelande auto-taggas på ärendet' är beroende av att den overlay-additionen är deployad",
+  "Persona-täckning i skarpt läge: activePersona = boot.persona annars FÖRSTA personan (socialsekreterare) (store/index.js:101-103; personas.js:22) — registrator/hsl/hr/overformyndare/forvaltare-dashboarderna är onåbara i drift utan server-satt persona (växlaren är demo-only), och deras huvudwidgets är ändå till stor del proposed/demo-descriptors",
+  "Polling täcker bara summary+meetings (store/index.js:429-435) — receipts, appointmentConfigs, arende-summary, inflöde, team och fördelningsvyn uppdateras inte löpande utan bara vid load/aktion; nya inflöde-rader syns först efter omladdning av vyn",
+  "Dagspulsen importeras och registreras i MinaArenden (rad 294, 323) men används aldrig i templaten (pulsen renderas via MinDagHeader) — död import",
+  "store.commitArende hittar mål-ärendet endast på dnr/triageRef-match i state.arende.arenden (store/index.js:255-258) — kvittens för ett ärende som inte ligger i listan (t.ex. laddat via fördelningsvyn) flippar ingen provenans lokalt",
+  "Demo-preferenser inkonsekventa: demo.getPreferences returnerar profile:'forvaltare' (demoData.js:302) men store läser profile enbart ur boot (store/index.js:98) — fältet ignoreras",
+  "MeetingWizard skickar personnummer/mobil/e-post i klartext i payload (MeetingWizard.vue:560-569) — designat (PII till behörig backend) men bör granskas mot logg-/telemetrivägar i fas 2"
+ ]
+}

@@ -11,8 +11,12 @@ namespace OCA\HubsArende\Service;
 
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
+use OCA\HubsArende\Db\HandelseMapper;
 use OCA\HubsArende\Db\MemberMapper;
+use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Db\PekareMapper;
+use OCA\HubsArende\Db\SakuppgiftMapper;
+use OCA\HubsArende\Integration\Client\TeamClient;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Psr\Log\LoggerInterface;
 
@@ -59,6 +63,26 @@ class GallringService {
         // TRAILING OPTIONAL (autowired): referens-filer i ärendemappen måste gallras
         // (annars kvarlämnad pekar-fil när akten stängs). Pekar-fil, ej PII.
         private ?ReferensFilService $referensFilService = null,
+        // TRAILING OPTIONAL (autowired): ärenderummets team (presentationslagret)
+        // måste rivas med rummet — gruppen (teamets enda medlem) raderas nedan,
+        // så ett kvarlämnat team vore en tom föräldralös circle per gallrat ärende.
+        private ?TeamClient $teamClient = null,
+        // TRAILING OPTIONAL (autowired): händelsejournalen gallras MED ärendet —
+        // aktor_uid är personuppgift (GDPR art. 5.1.e); facksystemet äger akten.
+        private ?HandelseMapper $handelseMapper = null,
+        // TRAILING OPTIONAL (autowired): PARTSREGISTRET — motorns enda sanktionerade
+        // PII-tabell (namn/pnr/adress; ANALYS-HANDLING-FRAN-MALL §3.4). Gallras
+        // OVILLKORLIGEN med ärendet: PII-raderna får aldrig överleva
+        // koordinationsraden (GDPR art. 5.1.e + K-NAV-4.6).
+        private ?PartMapper $partMapper = null,
+        // TRAILING OPTIONAL (autowired): genererade handlingar (utkast ur mall)
+        // i ärenderummets groupfolder städas MED ärendet enligt policy-beslutet
+        // 2026-07-06 (utkast får leva kort i Hubs; slutresultatet bor i SoR).
+        private ?HandlingService $handlingService = null,
+        // TRAILING OPTIONAL (autowired): SAKUPPGIFTSLAGRET (dokumentkedjans
+        // minne — bekräftade sakuppgifter, kan bära PII) gallras OVILLKORLIGEN
+        // med ärendet (GDPR art. 5.1.e; samma regler som partsregistret).
+        private ?SakuppgiftMapper $sakuppgiftMapper = null,
     ) {
     }
 
@@ -106,6 +130,18 @@ class GallringService {
             // till meddelanden måste bort med akten (annars kvarlämnad fil).
             $this->referensFilService?->taBortReferenser($hubsCaseId);
 
+            // Genererade handlingar (mall-utkast) städas med akten — policy-beslut:
+            // utkast lever kort i Hubs, slutresultatet är committat till SoR.
+            $this->handlingService?->taBortHandlingar($hubsCaseId);
+
+            // Teamet (presentationslagret) rivs FÖRE pekarna — destroy behöver
+            // pekarens singleId, och gruppen (teamets enda medlem) raderas nedan.
+            if ($this->teamClient !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'team') as $teamPekare) {
+                    $this->teamClient->destroyTeam($teamPekare->getObjektId());
+                }
+            }
+
             // Pekarna FÖRST (routing-/koordinations-pekare till externa objekt), så
             // ingen orphan-pekare överlever register-raden. findByCaseId + delete-loop
             // över ALLA objekt_typ:er (vi äger inte PekareMapper, så vi använder dess
@@ -117,6 +153,17 @@ class GallringService {
             // Ärenderummets förstaklassiga medlemmar (uid+roll = personal-PII) MÅSTE
             // gallras med rummet — annars kvarlämnad PII-rest (GDPR art. 5.1.e).
             $this->memberMapper?->deleteByCaseId($hubsCaseId);
+
+            // Händelsejournalen gallras med ärendet (aktor_uid = personuppgift).
+            $this->handelseMapper?->deleteByCaseId($hubsCaseId);
+
+            // PARTSREGISTRET (namn/pnr/adress — motorns enda PII-tabell) gallras
+            // ovillkorligen med ärendet (K-NAV-4.6; policy-beslut 2026-07-06).
+            $this->partMapper?->deleteByCaseId($hubsCaseId);
+
+            // SAKUPPGIFTSLAGRET (dokumentkedjans minne, kan bära PII) gallras
+            // med ärendet — bekräftade uppgifter är transient arbetsminne.
+            $this->sakuppgiftMapper?->deleteByCaseId($hubsCaseId);
 
             // Per-case-åtkomstgruppen raderas så ingen tom grupp blir kvar.
             $this->arenderumGroupService?->delete($hubsCaseId);

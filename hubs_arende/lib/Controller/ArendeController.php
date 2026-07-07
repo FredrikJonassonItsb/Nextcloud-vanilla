@@ -111,14 +111,16 @@ class ArendeController extends OCSController {
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
-    public function summary(?string $enhet = null): DataResponse {
+    public function summary(?string $enhet = null, string $mine = '0'): DataResponse {
+        $mineOnly = $mine === '1' || strtolower($mine) === 'true';
         try {
             // Dashboarden (loadArendeSummary) konsumerar dashboard-shapen
             // {arenden, puls, triage, moten, klartIdag} — INTE de rena enhet-counts
             // som summary($enhet) ger. Returnera dashboardSummary() så "Mina ärenden"
             // OCH koppla-väljaren får de faktiska ärende-korten (engine-honest, thin).
             // De aggregerade counts finns kvar i summary($enhet) för ev. andra konsumenter.
-            $summary = $this->arendeService->dashboardSummary();
+            // ?mine=1 ⇒ MEDLEMSBASERAT: endast ärenden där anroparen finns i ledgern.
+            $summary = $this->arendeService->dashboardSummary($mineOnly);
             if ($enhet !== null && $enhet !== '') {
                 $summary['counts'] = $this->arendeService->summary($enhet);
             }
@@ -225,6 +227,51 @@ class ArendeController extends OCSController {
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende steg failed', ['exception' => $e, 'hubsCaseId' => $hubsCaseId]);
             return new DataResponse(['error' => 'steg_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * The case's HÄNDELSEJOURNAL (oldest first) — the "Historik & beslut"
+     * timeline. Read-only; coordination values only, never PII/innehåll.
+     *
+     * GET /api/v1/arende/{ref}/historik
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function historik(string $ref): DataResponse {
+        if ($ref === '') {
+            return new DataResponse(['error' => 'ref_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            return new DataResponse(['handelser' => $this->arendeService->historik($ref)], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende historik failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'historik_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * The case's BEVAKNINGAR — a read-only projection of the case's Deck card
+     * (title, due, column, labels), read via the service account since the
+     * handläggare typically lacks board access.
+     *
+     * GET /api/v1/arende/{ref}/bevakningar
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function bevakningar(string $ref): DataResponse {
+        if ($ref === '') {
+            return new DataResponse(['error' => 'ref_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            return new DataResponse(['bevakningar' => $this->arendeService->bevakningar($ref)], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende bevakningar failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'bevakningar_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 

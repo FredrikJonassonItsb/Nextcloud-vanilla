@@ -1,0 +1,92 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/14 Samordnad individuell plan (SIP).docx",
+    "titel": "14 Samordnad individuell plan (SIP)",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Namn — vid barn: båda vårdnadshavarna om gemensam vårdnad]",
+        "[den enskilde själv / vårdnadshavare / båda]",
+        "[ange konsekvens; SIP kan inte upprättas utan samtycke såvida inte annan grund finns]",
+        "[ange vilka verksamheter/uppgifter som får delas]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[namn, titel]",
+        "[Barn och familj / mottagning]",
+        "[namn, funktion, kontaktväg]",
+        "[t.ex. BUP, vårdcentral, habilitering]",
+        "[skolans namn]",
+        "[t.ex. omsorg, familjebehandling, extern utförare]",
+        "[ja/nej — om nej, ange varför och hur deras röst ändå tas tillvara]",
+        "[Skriv med den enskildes egna ord i den mån det går. Vad vill hen ska bli bättre?]",
+        "[Vad ska planen leda till? Formulera konkret och uppföljningsbart.]",
+        "[Behov 1 — vad som behöver hända]",
+        "[Behov 2]",
+        "[Behov 3]",
+        "[Beskriv insatsen]",
+        "[Socialtjänst / hälso- och sjukvård / skola / övrig]",
+        "[Namn, funktion]",
+        "[ÅÅÅÅ-MM-DD eller intervall]",
+        "[Vad ska vara uppnått och hur mäts det]",
+        "[Namn, titel]",
+        "[Socialtjänst / hälso- och sjukvård / skola]",
+        "[Telefon / e-post via säker kanal]",
+        "[Kallar till uppföljning, bevakar insatser, är kontaktpunkt för den enskilde. Justera vid behov.]",
+        "[ange]",
+        "[Vilka mål/insatser stäms av? Vem kallar? Vem deltar?]",
+        "[När och hur revideras planen om behoven ändras?]",
+        "[Namn]",
+        "[ja/nej]",
+        "[Namn, verksamhet]",
+        "[ja/nej — datum]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "ja-samtycke-inhamtat-fran",
+            "etikett": "Ja — samtycke inhämtat. Från",
+            "token": "[den enskilde själv / vårdnadshavare / båda]"
+        },
+        {
+            "id": "delvis-samtycket-omfattar",
+            "etikett": "Delvis — samtycket omfattar",
+            "token": "[ange vilka verksamheter/uppgifter som får delas]"
+        },
+        {
+            "id": "den-enskilde-barnet-och-vardnadshavare-deltar",
+            "etikett": "Den enskilde/barnet och vårdnadshavare deltar",
+            "token": "[ja/nej — om nej, ange varför och hur deras röst ändå tas tillvara]"
+        },
+        {
+            "id": "den-enskildes-barnets-egen-beskrivning-av-behov-och-onskemal",
+            "etikett": "Den enskildes/barnets egen beskrivning av behov och önskemål",
+            "token": "[Skriv med den enskildes egna ord i den mån det går. Vad vill hen ska bli bättre?]"
+        },
+        {
+            "id": "overgripande-mal-med-samordningen",
+            "etikett": "Övergripande mål med samordningen",
+            "token": "[Vad ska planen leda till? Formulera konkret och uppföljningsbart.]"
+        },
+        {
+            "id": "samordningsansvarets-innebord-i-detta-arende",
+            "etikett": "Samordningsansvarets innebörd i detta ärende",
+            "token": "[Kallar till uppföljning, bevakar insatser, är kontaktpunkt för den enskilde. Justera vid behov.]"
+        },
+        {
+            "id": "datum-for-uppfoljning-form",
+            "etikett": "Datum för uppföljning:  Form",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "vad-ska-foljas-upp",
+            "etikett": "Vad ska följas upp",
+            "token": "[Vilka mål/insatser stäms av? Vem kallar? Vem deltar?]"
+        },
+        {
+            "id": "plan-for-revidering",
+            "etikett": "Plan för revidering",
+            "token": "[När och hur revideras planen om behoven ändras?]"
+        }
+    ]
+}

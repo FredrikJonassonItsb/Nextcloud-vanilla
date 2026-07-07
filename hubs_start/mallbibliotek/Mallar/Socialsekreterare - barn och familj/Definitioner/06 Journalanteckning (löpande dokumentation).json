@@ -1,0 +1,60 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/06 Journalanteckning (löpande dokumentation).docx",
+    "titel": "06 Journalanteckning (löpande dokumentation)",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Mottagning / Barn och familj / utredningsgrupp]",
+        "[Namn, titel]",
+        "[ÅÅÅÅ-MM-DD hh:mm]",
+        "[Kort rubrik, t.ex. \"Hembesök\", \"Telefonkontakt med skola\", \"Inkommen handling\", \"Beslut om insats\"]",
+        "[Vilka deltog eller kontaktades — namn och roll. Ange om barnet var med.]",
+        "[Beskriv i sak vad som hände, sades eller inkom. Återge faktiska iakttagelser och uppgifter — inte din tolkning. Ange källa när det är relevant.]",
+        "[Din analys och värdering av det som framkommit. Håll detta tydligt skilt från faktauppgifterna ovan.]",
+        "[Vad beslutas eller planeras, av vem och när. Ange om beslutet är delegerat och till vem.]",
+        "[Namn, titel — samt datum om annat än ovan]",
+        "[Barnets namn / hubsCaseId / Treserva-dnr]",
+        "[ÅÅÅÅ-MM-DD – ÅÅÅÅ-MM-DD, om samlad utskrift]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "datum-och-klockslag",
+            "etikett": "Datum och klockslag",
+            "token": "[ÅÅÅÅ-MM-DD hh:mm]"
+        },
+        {
+            "id": "handelse-atgard",
+            "etikett": "Händelse/åtgärd",
+            "token": "[Kort rubrik, t.ex. \"Hembesök\", \"Telefonkontakt med skola\", \"Inkommen handling\", \"Beslut om insats\"]"
+        },
+        {
+            "id": "narvarande-kontakt",
+            "etikett": "Närvarande/kontakt",
+            "token": "[Vilka deltog eller kontaktades — namn och roll. Ange om barnet var med.]"
+        },
+        {
+            "id": "vad-som-skett-eller-framkommit-faktiska-uppgifter",
+            "etikett": "Vad som skett eller framkommit (faktiska uppgifter)",
+            "token": "[Beskriv i sak vad som hände, sades eller inkom. Återge faktiska iakttagelser och uppgifter — inte din tolkning. Ange källa när det är relevant.]"
+        },
+        {
+            "id": "bedomning-stallningstagande",
+            "etikett": "Bedömning/ställningstagande",
+            "token": "[Din analys och värdering av det som framkommit. Håll detta tydligt skilt från faktauppgifterna ovan.]"
+        },
+        {
+            "id": "beslut-nasta-steg",
+            "etikett": "Beslut/nästa steg",
+            "token": "[Vad beslutas eller planeras, av vem och när. Ange om beslutet är delegerat och till vem.]"
+        },
+        {
+            "id": "signatur",
+            "etikett": "Signatur",
+            "token": "[Namn, titel — samt datum om annat än ovan]"
+        }
+    ]
+}

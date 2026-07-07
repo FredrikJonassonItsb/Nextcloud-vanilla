@@ -25,6 +25,7 @@ import ArchiveArrowDown from 'vue-material-design-icons/ArchiveArrowDown.vue'
 import CheckDecagram from 'vue-material-design-icons/CheckDecagram.vue'
 import AlertDecagram from 'vue-material-design-icons/AlertDecagram.vue'
 import AccountGroup from 'vue-material-design-icons/AccountGroup.vue'
+import AccountSwitch from 'vue-material-design-icons/AccountSwitch.vue'
 import FolderHeart from 'vue-material-design-icons/FolderHeart.vue'
 import VideoAccount from 'vue-material-design-icons/VideoAccount.vue'
 import DrawPen from 'vue-material-design-icons/DrawPen.vue'
@@ -82,7 +83,7 @@ import TextBoxOutline from 'vue-material-design-icons/TextBoxOutline.vue'
 const MAP = {
 	InboxArrowDown, FolderLockOpen, EmailFast, VideoPlus, FileSign, BellPlus,
 	FileDocumentEdit, FileSearch, CalendarAccount, Gavel, ArchiveArrowDown,
-	CheckDecagram, AlertDecagram, AccountGroup, FolderHeart, VideoAccount, DrawPen,
+	CheckDecagram, AlertDecagram, AccountGroup, AccountSwitch, FolderHeart, VideoAccount, DrawPen,
 	FileChart, EmailAlert, CalendarClock, ShieldAlert, FileExport, DatabaseSearch,
 	AccountKey, ChartBoxOutline,
 	ClockAlert, ClockOutline, AlertCircleOutline, AlertOutline, ShieldCheck,

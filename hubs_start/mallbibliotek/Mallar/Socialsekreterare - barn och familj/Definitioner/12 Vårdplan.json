@@ -1,0 +1,86 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/12 Vårdplan.docx",
+    "titel": "12 Vårdplan",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Barn och familj / Placeringsgrupp]",
+        "[Namn, titel]",
+        "[Namn — anges om det är relevant för planen]",
+        "[Beskriv i sak vad som lett fram till behovet av vård utanför hemmet — koppla till utredningen, inte till nya värderingar.]",
+        "[datum/dnr]",
+        "[beskriv]",
+        "[Formulera ett tydligt, uppföljningsbart mål utifrån barnets behov — t.ex. trygg och stabil omsorg, fungerande skolgång, återförening när det är möjligt och för barnets bästa.]",
+        "[Vad ska uppnås]",
+        "[Hur vet vi att målet nås]",
+        "[När]",
+        "[Namn på familjehem/verksamhet — eller \"ej klart\" om placering ännu inte anvisats]",
+        "[Placeringsort]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Heltid/dygnsvård eller omfattning för öppenvård; bedömd tid — vården är inte tidsbestämd men ange planeringshorisont]",
+        "[Beskriv planerat umgänge — omfattning, form (fysiskt/digitalt), plats, ev. stöd/övervakning och skäl till det.]",
+        "[Syskon, mor-/farföräldrar, andra viktiga personer för barnet.]",
+        "[Nuvarande och ev. ny skola, hur skolgången ska säkras vid placering]",
+        "[Behov och planerade insatser]",
+        "[datum]",
+        "[BUP, habilitering, vårdcentral m.m.]",
+        "[Tandläkarkontakt och planerade besök]",
+        "[Kända behov och stöd]",
+        "[Socialtjänsten — ansvarig socialsekreterare]",
+        "[Vårdgivare/utförare]",
+        "[Vårdnadshavare — om vård med samtycke]",
+        "[Ange]",
+        "[Löpande — ange intervall och form, t.ex. uppföljningssamtal med barnet, hembesök hos familjehemmet]",
+        "[Beskriv hur barnet har fått komma till tals och barnets egen inställning till vården. Anpassa efter ålder och mognad.]",
+        "[Beskriv vårdnadshavarnas inställning och delaktighet i planeringen.]",
+        "[Namn, titel — nämnd/delegat]",
+        "[Ev. barn, vårdnadshavare, medbedömare]",
+        "[Barn / vårdnadshavare / vårdgivare — datum]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "kort-bakgrund-till-placeringen-insatsen",
+            "etikett": "Kort bakgrund till placeringen/insatsen",
+            "token": "[Beskriv i sak vad som lett fram till behovet av vård utanför hemmet — koppla till utredningen, inte till nya värderingar.]"
+        },
+        {
+            "id": "overgripande-mal-vad-varden-ska-leda-till-for-barnet",
+            "etikett": "Övergripande mål (vad vården ska leda till för barnet)",
+            "token": "[Formulera ett tydligt, uppföljningsbart mål utifrån barnets behov — t.ex. trygg och stabil omsorg, fungerande skolgång, återförening när det är möjligt och för barnets bästa.]"
+        },
+        {
+            "id": "umgange-med-vardnadshavare-foraldrar",
+            "etikett": "Umgänge med vårdnadshavare/föräldrar",
+            "token": "[Beskriv planerat umgänge — omfattning, form (fysiskt/digitalt), plats, ev. stöd/övervakning och skäl till det.]"
+        },
+        {
+            "id": "kontakt-med-syskon-och-ovrigt-natverk",
+            "etikett": "Kontakt med syskon och övrigt nätverk",
+            "token": "[Syskon, mor-/farföräldrar, andra viktiga personer för barnet.]"
+        },
+        {
+            "id": "uppfoljning-av-varden-sker",
+            "etikett": "Uppföljning av vården sker",
+            "token": "[Löpande — ange intervall och form, t.ex. uppföljningssamtal med barnet, hembesök hos familjehemmet]"
+        },
+        {
+            "id": "nasta-overvagande-omprovning-planerad",
+            "etikett": "Nästa övervägande/omprövning planerad",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "barnets-delaktighet-och-installning",
+            "etikett": "Barnets delaktighet och inställning",
+            "token": "[Beskriv hur barnet har fått komma till tals och barnets egen inställning till vården. Anpassa efter ålder och mognad.]"
+        },
+        {
+            "id": "vardnadshavarnas-installning",
+            "etikett": "Vårdnadshavarnas inställning",
+            "token": "[Beskriv vårdnadshavarnas inställning och delaktighet i planeringen.]"
+        }
+    ]
+}

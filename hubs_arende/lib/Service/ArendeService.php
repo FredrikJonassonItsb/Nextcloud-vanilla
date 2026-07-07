@@ -12,6 +12,8 @@ namespace OCA\HubsArende\Service;
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\ArendeTyp;
+use OCA\HubsArende\Db\Handelse;
+use OCA\HubsArende\Db\HandelseMapper;
 use OCA\HubsArende\Db\Member;
 use OCA\HubsArende\Db\MemberMapper;
 use OCA\HubsArende\Db\PekareMapper;
@@ -21,6 +23,7 @@ use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
 use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
+use OCA\HubsArende\Integration\Client\TeamClient;
 use OCA\HubsArende\Integration\Port\EdiariumPort;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Services\IAppConfig;
@@ -30,6 +33,7 @@ use OCP\Files\Folder;
 use OCP\Files\IRootFolder;
 use OCP\IGroupManager;
 use OCP\IUserSession;
+use OCP\Notification\IManager as INotificationManager;
 use OCP\Security\ISecureRandom;
 use Psr\Log\LoggerInterface;
 
@@ -82,7 +86,7 @@ class ArendeService {
     ];
 
     /**
-     * Honest-empty SAGA-pekarblock — alla 7 koordinations-pekare null. Returneras
+     * Honest-empty SAGA-pekarblock — alla 8 koordinations-pekare null. Returneras
      * när pekareMapper saknas (positionell testharness) eller ingen pekare finns.
      * Bär ENDAST koordinationspekare (board-/kort-id, opaka tokens, conversation),
      * aldrig PII/innehåll (NEVER-SoR).
@@ -97,6 +101,10 @@ class ArendeService {
         'deckCardId' => null,
         'calendarUri' => null,
         'bevakningBoardId' => null,
+        'teamId' => null,
+        // ALLA ärendets chattrum (1:n) — saga-originalet först; namn = riktning
+        // (null för originalet ⇒ frontendens etikett "Ärendets diskussion").
+        'talkRooms' => [],
     ];
 
     /**
@@ -153,7 +161,105 @@ class ArendeService {
         // (INTEGRATION_MODE). TRAILING OPTIONAL — null i den positionella
         // testharnessen ⇒ pre-hook fail-closed, post-hook graceful no-op.
         private ?EdiariumPort $ediariumPort = null,
+        // T — ärenderummets PRESENTATIONSLAGER: ett Team (circle) per ärende med
+        // per-case-gruppen som enda medlem (åtkomstspegeln — ägarmodellen ändras
+        // inte). TRAILING OPTIONAL — null ⇒ T är en loggad skip, rummet fungerar
+        // fullt ut utan sitt team.
+        private ?TeamClient $teamClient = null,
+        // Händelsejournalen ("Historik & beslut"-tidslinjen). BEST-EFFORT —
+        // journal-skrivning får aldrig fälla mutationen den beskriver.
+        // TRAILING OPTIONAL — null ⇒ journalen är en no-op.
+        private ?HandelseMapper $handelseMapper = null,
+        // Användarvalidering för tilldela/laggTillMedlem: en medlem MÅSTE vara en
+        // riktig NC-/Hubs-användare (annars spök-rader i ledgern som aldrig når
+        // grupp/chatt). TRAILING OPTIONAL — null ⇒ valideringen hoppar (testharness).
+        private ?\OCP\IUserManager $userManager = null,
+        // NC-notiser (klockan): tilldelning/medlemskap/frist-varsel. BEST-EFFORT —
+        // en notis får aldrig fälla mutationen. TRAILING OPTIONAL.
+        private ?INotificationManager $notificationManager = null,
     ) {
+    }
+
+    /**
+     * KORT pseudonym referens för människor: de 6 första hex-tecknen av
+     * hubsCaseId (utan bindestreck). Används i rums-/team-/kort-namn och
+     * kort-rubriker — hela UUID:t är brus för ögat men förblir den tekniska
+     * nyckeln. Fortfarande pseudonym (M2) — aldrig PII.
+     */
+    public static function kortRef(string $hubsCaseId): string {
+        return substr(str_replace('-', '', $hubsCaseId), 0, 6);
+    }
+
+    /**
+     * Validera att en uid är en RIKTIG användare. Graceful i testharness/CLI
+     * utan userManager (valideringen hoppar — demo-seed använder demo-uids).
+     *
+     * @throws \InvalidArgumentException när användaren inte finns.
+     */
+    private function assertRiktigAnvandare(string $uid): void {
+        if ($this->userManager === null || $uid === '') {
+            return;
+        }
+        if (!$this->userManager->userExists($uid)) {
+            throw new \InvalidArgumentException('Användaren finns inte i Hubs: ' . $uid);
+        }
+    }
+
+    /**
+     * Skicka en NC-notis (best-effort). Params bär ENDAST pseudonym referens +
+     * koordinationsvärden — aldrig PII. Självnotiser hoppas (aktören vet redan).
+     *
+     * @param array<string,string> $params
+     */
+    private function skickaNotis(string $tillUid, string $subject, array $params, string $objektId): void {
+        if ($this->notificationManager === null || $tillUid === '') {
+            return;
+        }
+        // Ingen notis till den som själv utförde handlingen ("Ta ärendet").
+        $aktor = $this->userSession?->getUser()?->getUID();
+        if ($aktor !== null && $aktor === $tillUid) {
+            return;
+        }
+        try {
+            $notis = $this->notificationManager->createNotification();
+            $notis->setApp('hubs_arende')
+                ->setUser($tillUid)
+                ->setDateTime($this->timeFactory->getDateTime())
+                ->setObject('arende', substr($objektId, 0, 64))
+                ->setSubject($subject, $params);
+            $this->notificationManager->notify($notis);
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: notis misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'subject' => $subject,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Append a journal row (best-effort). $detalj bär ENDAST koordinationsvärden
+     * (steg-namn, dnr, roll) — ALDRIG fritext/PII. Aktören läses ur sessionen
+     * ('' = system/saga-kontext). Ett journal-fel får ALDRIG fälla mutationen —
+     * fel sväljs och loggas.
+     *
+     * @param array<string,mixed> $detalj
+     */
+    private function loggaHandelse(string $hubsCaseId, string $typ, array $detalj = []): void {
+        if ($this->handelseMapper === null) {
+            return;
+        }
+        try {
+            $aktor = $this->userSession?->getUser()?->getUID() ?? '';
+            $this->handelseMapper->record($hubsCaseId, $typ, $detalj, $aktor);
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: journal-skrivning misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $hubsCaseId,
+                'typ' => $typ,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -394,6 +500,41 @@ class ArendeService {
             ];
 
             // ========================================================== //
+            //  T — Team (circle): ärenderummets PRESENTATIONSLAGER.
+            // ========================================================== //
+            // One Team per case, owned by the service account, with the per-case
+            // access group as its ONLY member ⇒ the team is an automatically
+            // correct mirror of the room's access list (handoff included) — the
+            // ÄGARMODELLEN IS UNCHANGED, gruppen förblir åtkomstprimitiven. The
+            // team ties the room together in NC:s egna UI:n: R4 grantar teamet
+            // som extra applicable på groupfoldern och R6 lägger det som
+            // Talk-deltagare, så akt + diskussion listas som team-resurser.
+            // Pseudonymt namn (M2) — aldrig triageRef. Pekare objekt_typ='team'
+            // (objekt_id = circle singleId). Graceful skip utan client/grupp.
+            $teamSingleId = null;
+            if ($this->teamClient !== null && $this->pekareMapper !== null && $perCaseGid !== null) {
+                $teamSingleId = $this->teamClient->createTeam('Ärende ' . self::kortRef($hubsCaseId), $perCaseGid);
+                if ($teamSingleId !== null) {
+                    $this->pekareMapper->record($hubsCaseId, 'team', $teamSingleId);
+                }
+            } else {
+                $this->skipStep('T', $hubsCaseId);
+            }
+            $compensations[] = [
+                'name' => 'T:destroy-team',
+                'fn' => function () use ($hubsCaseId): void {
+                    if ($this->teamClient === null || $this->pekareMapper === null) {
+                        $this->noopCompensation('T', $hubsCaseId);
+                        return;
+                    }
+                    foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'team') as $p) {
+                        $this->teamClient->destroyTeam($p->getObjektId());
+                    }
+                    $this->pekareMapper->deleteByCaseAndTyp($hubsCaseId, 'team');
+                },
+            ];
+
+            // ========================================================== //
             //  R4 — Groupfolder (ärenderum) + least-permission ACL.
             // ========================================================== //
             // Create the ärenderum, grant the enhet's mottagningskrets-group(s)
@@ -403,10 +544,16 @@ class ArendeService {
             if ($this->groupfolderClient !== null && $this->pekareMapper !== null) {
                 // M2 — use the pseudonym hubsCaseId as the human-visible mount name,
                 // NEVER triageRef (which may carry a kommunal referens nearer PII).
+                // Teamet grantas som EXTRA applicable (samma publik som gruppen —
+                // ingen behörighetsbreddning) så akten listas som team-resurs.
+                $folderGroups = $perCaseGid !== null ? [$perCaseGid] : [];
+                if ($teamSingleId !== null) {
+                    $folderGroups[] = $teamSingleId;
+                }
                 $folderId = $this->groupfolderClient->createArenderum(
                     $hubsCaseId,
                     (string)$typ->getAclProfil(),
-                    $perCaseGid !== null ? [$perCaseGid] : [],
+                    $folderGroups,
                 );
                 if ($folderId !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'groupfolder', (string)$folderId);
@@ -437,11 +584,13 @@ class ArendeService {
             // frist is not yet computed; pass null due (the register carries the
             // authoritative frist after R8). isAvailable()-gated graceful skip.
             if ($this->deckClient !== null && $this->pekareMapper !== null) {
-                // M2 — card title is the pseudonym hubsCaseId, never triageRef.
+                // M2 — pseudonym korttitel; KORT ref för läsbarhet på tavlan
+                // (hela UUID:t är oläsbart och sa ingenting om vad bevakningen gäller).
                 $card = $this->deckClient->createCard(
                     (string)$arende->getEnhet(),
-                    $hubsCaseId,
+                    'Ärende ' . self::kortRef($hubsCaseId),
                     null,
+                    'Bevakning för ärende ' . self::kortRef($hubsCaseId) . ' (' . $typ->getArendeTypId() . '). Fristen bärs av ärendekortet i Hubs Start.',
                 );
                 if ($card !== null) {
                     $this->deckClient->addLabel($card['boardId'], $card['cardId'], 'case:' . $hubsCaseId);
@@ -476,14 +625,21 @@ class ArendeService {
             // participants; store a pekare (objekt_typ='talk_room', objekt_id=token).
             // isAvailable()-gated graceful skip.
             if ($this->spreedClient !== null && $this->pekareMapper !== null) {
-                // M2 — room name is the pseudonym hubsCaseId, never triageRef.
+                // M2 — pseudonymt rumsnamn; "– diskussion" gör HUVUDCHATTEN
+                // identifierbar i Talk-listan (rått UUID sa ingenting).
                 // Participants = the mottagningskrets resolved once for step M (above).
                 $talkToken = $this->spreedClient->createRoom(
-                    $hubsCaseId,
+                    'Ärende ' . self::kortRef($hubsCaseId) . ' – diskussion',
                     $kretsUids,
                 );
                 if ($talkToken !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'talk_room', $talkToken);
+                    // T-koppling: teamet som deltagare (markör-attendee) så rummet
+                    // listas som team-resurs + @team-mention. Samma publik som
+                    // kretsen — ingen behörighetsbreddning. Best-effort.
+                    if ($teamSingleId !== null) {
+                        $this->spreedClient->addCircleParticipant($talkToken, $teamSingleId);
+                    }
                 }
             } else {
                 $this->skipStep('R6', $hubsCaseId);
@@ -592,6 +748,19 @@ class ArendeService {
             // (triage_forward/karantan) föds i 'inflode'.
             $arende->setSteg($this->fodelseSteg($commitDestination));
             $arende = $this->arendeMapper->update($arende);
+
+            // Journal: ärendet föddes (+ ev. född-registrerad via kat6-hooken).
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_SKAPAD, [
+                'arendeTyp' => $typ->getArendeTypId(),
+                'enhet' => (string)$arende->getEnhet(),
+            ]);
+            if ($arende->getProvenanceState() === 'registrerad') {
+                $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, [
+                    'dnr' => (string)$arende->getDnr(),
+                    'destination' => $commitDestination,
+                    'vidFodsel' => true,
+                ]);
+            }
 
             $this->logger->info('hubs_arende: createCase OK', [
                 'app' => 'hubs_arende',
@@ -708,8 +877,8 @@ class ArendeService {
      *
      * @return array<string,mixed>
      */
-    public function dashboardSummary(): array {
-        $cards = $this->dashboardArenden();
+    public function dashboardSummary(bool $mineOnly = false): array {
+        $cards = $this->dashboardArenden($mineOnly);
         // gap25 — dagspuls: räkna ur de redan-mappade korten (frist-färg = sanning).
         $fristerBrinner = 0;
         foreach ($cards as $kort) {
@@ -768,12 +937,40 @@ class ArendeService {
      * cases for an enhet it belongs to) — the same fail-closed enhet-predikat the
      * rest of the service uses.
      *
+     * MEDLEMSBASERAT läge ($mineOnly): "Mina ärenden" = de ärenden där anroparen
+     * finns i medlemsledgern (mottagningskrets/handläggare/co/observatör) — inte
+     * hela enhetens lista. Enhet-authz (H1) gäller FORTFARANDE per rad ovanpå
+     * medlemsfiltret. System/CLI-kontext (ingen session) ⇒ mineOnly ignoreras
+     * (smoke/jobb ser allt, som tidigare).
+     *
      * @return list<array<string,mixed>>
      */
-    public function dashboardArenden(): array {
+    public function dashboardArenden(bool $mineOnly = false): array {
+        $minaCaseIds = null;
+        if ($mineOnly && $this->memberMapper !== null) {
+            $uid = $this->userSession?->getUser()?->getUID();
+            if ($uid !== null && $uid !== '') {
+                try {
+                    $minaCaseIds = array_fill_keys($this->memberMapper->findCaseIdsByUid($uid), true);
+                } catch (\Throwable $e) {
+                    // Graceful: fall tillbaka till enhets-scopad lista hellre än tom vy.
+                    $minaCaseIds = null;
+                }
+            }
+        }
         $out = [];
         foreach ($this->arendeMapper->findAll(200) as $arende) {
             if (!$this->enhetTillaten($arende->getEnhet())) {
+                continue;
+            }
+            if ($minaCaseIds !== null && !isset($minaCaseIds[$arende->getHubsCaseId()])) {
+                continue;
+            }
+            // AVSLUTADE ärenden visas ALDRIG i arbetsvyn (Fredrik 2026-07-07):
+            // akten lever i SoR och Hubs-raden väntar bara på gallringssvepet —
+            // den är inte handläggarens arbetsmaterial. ("Klart idag"-pulsen
+            // räknar avslutade separat och påverkas inte av detta filter.)
+            if ($arende->getSteg() === 'avslutat') {
                 continue;
             }
             $out[] = $this->mapToCard($arende);
@@ -790,11 +987,16 @@ class ArendeService {
      */
     public function mapToCard(Arende $arende): array {
         return [
-            // triageRef carries a stable, addressable pseudonym so the card has a
-            // unique key AND fetchArende($ref) resolves (dnr once committed, else the
-            // hubsCaseId). barnRef is the case-object pseudonym (NEVER PII).
+            // triageRef = ALLTID hubsCaseId: stabil OCH garanterat unik kort-nyckel.
+            // Tidigare 'dnr ?? hubsCaseId' — men dnr är inte garanterat unikt
+            // (stubbens per-request-sekvens gav dubbletter; även live kan moduler
+            // återanvända serier), och en nyckelkollision blandar frontendens
+            // full[]-cache/flikinnehåll mellan kort. dnr visas separat.
             'dnr' => $arende->getDnr(),
-            'triageRef' => $arende->getDnr() ?? $arende->getHubsCaseId(),
+            'triageRef' => $arende->getHubsCaseId(),
+            // Kort, mänsklig referens ('Ärende 353730') för rubriker — ett
+            // oregistrerat ärende får ALDRIG en tom rubrik.
+            'kortRef' => self::kortRef($arende->getHubsCaseId()),
             'barnRef' => $arende->getObjektRef(),
             'hubsCaseId' => $arende->getHubsCaseId(),
             'steg' => $arende->getSteg(),
@@ -815,14 +1017,36 @@ class ArendeService {
             'plikt' => $this->pliktForArende($arende),
             'nastaAtgard' => $this->nastaAtgardForArende($arende),
             'vantar' => null,
+            // Tilldelningsläget för kortets TilldelningBand (tidigare saknades
+            // blocket helt på motor-data ⇒ bandet renderades aldrig live).
+            'tilldelning' => [
+                'status' => $arende->getStatus(),
+                'agareUid' => $arende->getAgareUid(),
+                'agareNamn' => $this->agareVisningsnamn($arende->getAgareUid()),
+            ],
             // SAGA-koordinationspekare som /arende-summary kan bära utan en full
             // fetch: ärenderummets diskussions-token + bevaknings-board (= deck-board).
             // THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
             'talkToken' => $this->pekareTalkToken($arende->getHubsCaseId()),
             'bevakningBoardId' => $this->pekareBevakningBoardId($arende->getHubsCaseId()),
+            'teamId' => $this->pekareTeamId($arende->getHubsCaseId()),
             // The dashboard can badge this row as real engine state (deliberately thin).
             'kallaMotor' => true,
         ];
+    }
+
+    /**
+     * Ägarens visningsnamn för TilldelningBand ("Tilldelad Axel Israelsson av …").
+     * GRACEFUL: ingen userManager / okänd uid ⇒ null (bandet faller tillbaka på
+     * uid-jämförelsen "mig"). Visningsnamn är inte PII-känsligare än uid här —
+     * bandet visas bara för ärendets egna medlemmar.
+     */
+    private function agareVisningsnamn(?string $uid): ?string {
+        if ($uid === null || $uid === '' || $this->userManager === null) {
+            return null;
+        }
+        $user = $this->userManager->get($uid);
+        return $user !== null ? $user->getDisplayName() : null;
     }
 
     /**
@@ -834,6 +1058,21 @@ class ArendeService {
             return null;
         }
         foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'talk_room') as $p) {
+            return $p->getObjektId() !== '' ? $p->getObjektId() : null;
+        }
+        return null;
+    }
+
+    /**
+     * Teamets singleId (team.objekt_id) för kortet, eller null — ärenderummets
+     * presentationslager i Contacts team-vy. GRACEFUL: ingen pekareMapper /
+     * ingen pekare ⇒ null (aldrig ett kast).
+     */
+    private function pekareTeamId(string $hubsCaseId): ?string {
+        if ($this->pekareMapper === null) {
+            return null;
+        }
+        foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'team') as $p) {
             return $p->getObjektId() !== '' ? $p->getObjektId() : null;
         }
         return null;
@@ -864,15 +1103,29 @@ class ArendeService {
     public function mapToFullCard(Arende $arende): array {
         // gap19 — enumerera ärenderummets groupfolder-filer (namn + ev. fileid).
         [$groupfolderId, $dokument] = $this->arenderumDokument($arende->getHubsCaseId());
+        $hubsCaseId = $arende->getHubsCaseId();
+        // Ärenderummets medlemmar (ur ledgern) — kortets medlemspanel.
+        $medlemmar = [];
+        if ($this->memberMapper !== null) {
+            try {
+                $medlemmar = array_map(
+                    static fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll()],
+                    $this->memberMapper->findByCaseId($hubsCaseId),
+                );
+            } catch (\Throwable $e) {
+                // Graceful — panel utan data hellre än ett fällt kort.
+            }
+        }
         return $this->mapToCard($arende) + [
             'rum' => ['groupfolderId' => $groupfolderId, 'olasta' => 0, 'acl' => null, 'dokument' => $dokument],
             'meddelanden' => [],
             'moten' => [],
             'bevakningar' => [],
             'beslut' => null,
+            'medlemmar' => $medlemmar,
             // SAGA-koordinationspekare for deep-länkning (ärenderum/diskussion/
             // ärendekort/kalender). THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
-            'pekare' => $this->pekarBlock($arende->getHubsCaseId()),
+            'pekare' => $this->pekarBlock($hubsCaseId),
         ];
     }
 
@@ -1124,6 +1377,10 @@ class ArendeService {
         $hubsCaseId = $arende->getHubsCaseId();
         $typ = $this->typRegistry->get($arende->getArendeTyp());
 
+        // En handläggare MÅSTE vara en riktig användare — annars föds spök-rader
+        // i ledgern som aldrig når grupp/chatt/kalender (och notisen studsar).
+        $this->assertRiktigAnvandare($uid);
+
         // Säkerhet: validera att assignee är behörig för enheten INNAN ACL-rewrite /
         // kalender-re-home — annars kan ärendets (pseudonyma) kalenderobjekt re-homas
         // in i en GODTYCKLIG användares egen kalender och Deck/ACL pekas om till fel
@@ -1200,6 +1457,11 @@ class ArendeService {
         // Spegla in handläggaren i per-case-gruppen (folder-åtkomst).
         $this->syncArenderumGrupp($hubsCaseId);
 
+        $this->loggaHandelse($hubsCaseId, Handelse::TYP_TILLDELAD, ['uid' => $uid]);
+        $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_TILLDELAD, [
+            'ref' => (string)($arende->getDnr() ?? $hubsCaseId),
+        ], $hubsCaseId);
+
         $this->logger->info('hubs_arende: tilldela', [
             'app' => 'hubs_arende',
             'hubsCaseId' => $arende->getHubsCaseId(),
@@ -1223,6 +1485,9 @@ class ArendeService {
         if (!in_array($roll, [Member::ROLL_HANDLAGGARE, Member::ROLL_CO_HANDLAGGARE, Member::ROLL_OBSERVATOR], true)) {
             throw new \InvalidArgumentException('Otillåten medlemsroll: ' . $roll);
         }
+        // En medlem MÅSTE vara en riktig användare — annars skrivs en spök-rad i
+        // ledgern som aldrig når gruppen/chatten (och UI:t ljuger "tillagd").
+        $this->assertRiktigAnvandare($uid);
         $arende = $this->show($ref);
         $hubsCaseId = $arende->getHubsCaseId();
 
@@ -1236,6 +1501,11 @@ class ArendeService {
                 $this->spreedClient->addParticipant($p->getObjektId(), $uid);
             }
         }
+
+        $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, ['uid' => $uid, 'roll' => $roll, 'riktning' => 'in']);
+        $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_MEDLEM, [
+            'ref' => (string)($arende->getDnr() ?? $hubsCaseId),
+        ], $hubsCaseId);
 
         $this->logger->info('hubs_arende: laggTillMedlem', [
             'app' => 'hubs_arende',
@@ -1277,6 +1547,8 @@ class ArendeService {
             }
         }
 
+        $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, ['uid' => $uid, 'roll' => $roll, 'riktning' => 'ut']);
+
         $this->logger->info('hubs_arende: taBortMedlem', [
             'app' => 'hubs_arende',
             'hubsCaseId' => $hubsCaseId,
@@ -1303,6 +1575,68 @@ class ArendeService {
     }
 
     /**
+     * Ärendets HÄNDELSEJOURNAL (äldst först) — datakällan för kortets
+     * "Historik & beslut"-tidslinje. H1-authz via show(); bär ENDAST
+     * koordinationsvärden (typ, detalj-JSON, aktör-uid, tid) — aldrig PII/innehåll.
+     *
+     * @return list<array<string,mixed>>
+     * @throws DoesNotExistException
+     */
+    public function historik(string $ref): array {
+        $arende = $this->show($ref);
+        if ($this->handelseMapper === null) {
+            return [];
+        }
+        try {
+            return array_map(
+                static fn (Handelse $h): array => $h->jsonSerialize(),
+                $this->handelseMapper->findByCaseId($arende->getHubsCaseId()),
+            );
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: historik-läsning misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $arende->getHubsCaseId(),
+                'exception' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Ärendets BEVAKNINGAR — läs-projektion av ärendets Deck-kort (titel, frist,
+     * kolumn, etiketter). Byggd för kortets Bevakningar-flik: handläggaren saknar
+     * i regel Deck-board-behörighet (boarden är enhets-/SA-ägd), så motorn läser
+     * kortet via service-kontot och visar PROJEKTIONEN — aldrig en skriv-yta.
+     * H1-authz via show(). Graceful: ingen deck-pekare/klient ⇒ tom lista.
+     *
+     * @return list<array<string,mixed>>
+     * @throws DoesNotExistException
+     */
+    public function bevakningar(string $ref): array {
+        $arende = $this->show($ref);
+        $hubsCaseId = $arende->getHubsCaseId();
+        if ($this->deckClient === null || $this->pekareMapper === null) {
+            return [];
+        }
+        $out = [];
+        try {
+            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'deck_card') as $p) {
+                $card = $this->deckClient->getCard((int)$p->getRiktning(), (int)$p->getObjektId());
+                if ($card !== null) {
+                    $out[] = $card;
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: bevaknings-läsning misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $hubsCaseId,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+        return $out;
+    }
+
+    /**
      * 1:n — lägg till YTTERLIGARE ett talkrum i samma ärenderum (samma
      * hubs_case_id). Default-sagan skapar exakt ETT rum (R6); detta är den
      * explicita vägen för fler (t.ex. ett separat samverkans-/sekretess-rum).
@@ -1319,11 +1653,24 @@ class ArendeService {
             $this->skipStep('extra-talkrum', $hubsCaseId);
             return null;
         }
-        // M2 — rumsnamn är pseudonymt (hubsCaseId) om inget annat anges.
-        // Deltagare = ärendets AKTIVA åtkomstlista (handoff-medveten).
-        $token = $this->spreedClient->createRoom($namn ?? $hubsCaseId, $this->atkomstUids($hubsCaseId));
+        // M2 — pseudonymt defaultnamn med KORT ref; eget namn prefixas med
+        // ärendereferensen så alla ärendets rum hittas ihop i Talk-listan.
+        $rumNamn = $namn !== null && $namn !== ''
+            ? 'Ärende ' . self::kortRef($hubsCaseId) . ' – ' . $namn
+            : 'Ärende ' . self::kortRef($hubsCaseId) . ' – chatt';
+        $token = $this->spreedClient->createRoom($rumNamn, $this->atkomstUids($hubsCaseId));
         if ($token !== null) {
-            $this->pekareMapper->record($hubsCaseId, 'talk_room', $token);
+            // riktning bär rummets namn (null för saga-originalet) så kortets
+            // Rum-flik kan visa läsbara etiketter utan Talk-uppslag.
+            $this->pekareMapper->record($hubsCaseId, 'talk_room', $token, $rumNamn);
+            // T-koppling: teamet som deltagare även i EXTRA chattar, så de listas
+            // som team-resurser + framtida medlemmar följer med via gruppen.
+            // Samma publik som åtkomstlistan — ingen behörighetsbreddning.
+            $teamId = $this->pekareTeamId($hubsCaseId);
+            if ($teamId !== null) {
+                $this->spreedClient->addCircleParticipant($token, $teamId);
+            }
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_RUM, ['namngiven' => $namn !== null]);
         }
         $this->logger->info('hubs_arende: laggTillTalkrum', [
             'app' => 'hubs_arende',
@@ -1403,6 +1750,7 @@ class ArendeService {
             foreach ($ids as $mid) {
                 $this->referensFilService->skrivMeddelandeReferens($hubsCaseId, (string)$mid);
             }
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_KOPPLAD, ['antal' => count($ids)]);
         }
 
         // SÄKERHET (IDOR): tagMessage kör server-till-server som SERVICE-KONTOT, som
@@ -1544,6 +1892,12 @@ class ArendeService {
                     'exception' => $e,
                 ]);
             }
+
+            // Journal: verifierad facksystem-registrering (dnr + destination).
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, [
+                'dnr' => (string)($kvitto['dnr'] ?? ''),
+                'destination' => (string)$arende->getCommitDestination(),
+            ]);
 
             // gap24 — steg-advancering sker INTE här. Commit = Treserva-registrering
             // (provenans/dnr/retention) och är ORTOGONAL mot livscykel-steget: en
@@ -1971,11 +2325,19 @@ class ArendeService {
         }
         $block = self::TOM_PEKARE;
         $deckBoardId = null;
+        $talkRooms = [];
         foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $p) {
             // id-DESC ⇒ skriv varje typ varv för varv; sista (= äldsta) vinner.
             switch ($p->getObjektTyp()) {
                 case 'talk_room':
                     $block['talkToken'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
+                    if ($p->getObjektId() !== '') {
+                        // Samla ALLA rum (id-DESC här; vänds till äldst-först nedan).
+                        $talkRooms[] = [
+                            'token' => $p->getObjektId(),
+                            'namn' => $p->getRiktning() !== null && $p->getRiktning() !== '' ? $p->getRiktning() : null,
+                        ];
+                    }
                     break;
                 case 'groupfolder':
                     $block['groupfolderId'] = $this->pekareInt($p->getObjektId());
@@ -1992,10 +2354,15 @@ class ArendeService {
                 case 'calendar':
                     $block['calendarUri'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
                     break;
+                case 'team':
+                    $block['teamId'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
+                    break;
             }
         }
         // bevakningBoardId speglar deck-boardet (bevakningar bor på ärendekortets board).
         $block['bevakningBoardId'] = $deckBoardId;
+        // Äldst först (saga-originalet = ärendets diskussion) — Rum-flikens ordning.
+        $block['talkRooms'] = array_reverse($talkRooms);
         return $block;
     }
 

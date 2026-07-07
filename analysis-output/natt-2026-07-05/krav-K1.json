@@ -1,0 +1,222 @@
+{
+ "kapitel": 1,
+ "kapitelRubrik": "SCOPE, VISION, PERSONAS/ROLLER & MODUL-PAKETERING (områdeskod OVERSIKT; konsoliderar HUBS-ARKITEKTUR-SOCIALTJANST.md, KOMMUNROLLER-SOR-INTEGRATIONER.md, MODULARISERING-LICENS-DATALAGER.md)",
+ "krav": [
+  {
+   "id": "K-1.1",
+   "rubrik": "Hubs scope: säker kommunikations- och ärendekoordinationssvit, mellanlager",
+   "beskrivning": "Hubs SKA vara en säker kommunikations- och ärende-koordinationssvit för kommunal verksamhet under OSL, byggd på Nextcloud v32 (Hub 25). Scope är att vara mellanlager mellan inflöde och facksystem; att vara verksamhetens System of Record (SoR) är uttryckligen utanför scope.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (plattform [FINNS])",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.2",
+   "rubrik": "Tre identifierare per ärende (conversationId, hubsCaseId, dnr)",
+   "beskrivning": "Hubs SKA hålla isär tre identifierare per ärende: conversationId (provenans-ankare, föds vid inflöde), hubsCaseId (kanonisk UUID, föds vid ärendeskapande, bärs av varje objekt) och dnr (facksystemets nyckel, föds vid commit). hubsCaseId är röda tråden; dnr kan saknas utan att ärendet upphör — ärendet finns innan dnr existerar.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Löser GAP-005 (token↔dnr) och GAP-002 (fristens start)"
+  },
+  {
+   "id": "K-1.3",
+   "rubrik": "Öppna ärende = server-side aggregering, aldrig klient-fan-out",
+   "beskrivning": "\"Öppna ärende\" SKA vara server-side aggregering (\"alla objekt taggade case:{hubsCaseId}\"), aldrig klient-fan-out. Fil-taggbara objekt bär systemtaggen; icke-taggbara objekt (Deck-kort/Talk-rum/kalender) nås via strukturerad register-pekare. Ger O(1)-uppslag och samlar OSL-sekretessgränsen på ett ställe.",
+   "typ": "arkitektur",
+   "statusIDok": "Taggmotor [FINNS], aggregat [BYGGS]",
+   "beroenden": "Taggmotorn ItslTagService (sdkmc); registret med pekare (kap 3)"
+  },
+  {
+   "id": "K-1.4",
+   "rubrik": "Graceful degradation per grannapp",
+   "beskrivning": "Hubs SKA stödja graceful degradation: varje grannberoende funktion ska kunna släckas om grannappen saknas, utan att kärninvarianterna bryts. AppDetectionService finns och är fundamentet för \"sälj separat\", men måste utökas från kanal- till funktions-detektering.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (utökas [BYGGS])",
+   "beroenden": "AppDetectionService (sdkmc); modulmodellen M0–M4 (K-1.17/K-1.19)"
+  },
+  {
+   "id": "K-1.5",
+   "rubrik": "Hubs aldrig SoR för verksamhetsdata",
+   "beskrivning": "Hubs SKA aldrig vara System of Record för verksamhetsdata. Intern DB håller endast mellanlagrets koordinations-state (var saker ligger), aldrig sakerna själva. Byte av backend (Tables→DB) ändrar inte SoR-statusen. Principen \"kartan, inte territoriet\".",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.6",
+   "rubrik": "commitDestination NOT NULL på varje ArendeTyp-rad",
+   "beskrivning": "Varje ArendeTyp-rad SKA ha icke-null commitDestination (facksystem · diarium · e_arkiv · extern_myndighet · triage_forward · karantan), hävdat som NOT NULL-constraint i schemat — inte bara kod-konvention. Motivering: dödligaste felmoden (9/12 roller) — varken commit eller medvetet avslut gör Hubs till SoR genom passivitet (otillåten gallring av allmän handling, TF).",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS]→[BYGGS]",
+   "beroenden": "Motsvarar beslut B-INV-1 i §9 beslutslogg (kap 9, rad 682); relaterar K-2.19, K-3.23"
+  },
+  {
+   "id": "K-1.7",
+   "rubrik": "SoR-doktrinen som fyrvägs-utfall per ärendetyp",
+   "beskrivning": "SoR-doktrinen SKA realiseras som fyra möjliga utfall per ärendetyp: (i) Fallback-SoR (diarium/e-arkiv när facksystem saknas), (ii) nytt register/pekare (Hubs pekar, blir ej SoR), (iii) tidsbegränsat mellanlager med spårbarhet (kräver uttryckligt beslut + gallringsregel + rättslig grund), (iv) AVVISA/KARANTÄN. sorFallback-fältet gör destinationen datadriven. Bakgrund: tidigare modell antog tyst att SoR alltid finns och att Hubs alltid får röra informationen — båda antagandena bryts.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.8",
+   "rubrik": "Retention-flipp kräver registrerat utfall + verifierad callback",
+   "beskrivning": "Retention-flippen (R8 aktiv→gallras) SKA aldrig ske utan att ett av de fyra SoR-utfallen (K-1.7) är explicit registrerat OCH, för commit-fallen, att en verifierad facksystem-callback mottagits. Gallring får aldrig bindas till tid eller kryssruta.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Löser GAP-007; beror på K-1.7 och FacksystemCommitService (GAP-019, kap 3)"
+  },
+  {
+   "id": "K-1.9",
+   "rubrik": "Enda legitima SoR-roll: audit-/provenans-spåret",
+   "beskrivning": "Den enda legitima SoR-roll Hubs får ta SKA vara det smala audit-/provenans-spåret — bevis på att handover/eskaleringskvittens skedde korrekt (\"skickat\" ≠ \"mottaget\") — aldrig verksamhetsdata. Realiseras via postCommitHook='handover_kvittens'. Två genuint nya smala SoR-fall (F42, F45).",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.10",
+   "rubrik": "Säkerhetsskyddsklassat material avvisas/karantänsätts",
+   "beskrivning": "Säkerhetsskyddsklassificerat material SKA avvisas/karantänsättas — det får inte ligga i Hubs alls (terminerande utfall, inte snävare ACL). Skild från skyddade_personuppgifter, som betyder snävare ACL inom systemet. Rättslig grund: säkerhetsskyddslagen (2018:585) + förordning (2021:955) — att behandla säkerhetsskyddsklassat som skyddade PU är lagbrott. Enda hårda gräns som inverterar mellanlager-principen.",
+   "typ": "sakerhet",
+   "statusIDok": "[BESLUT KRÄVS]→[BYGGS]",
+   "beroenden": "Motsvarar beslut B-SEC-1 i §9 beslutslogg (kap 9, rad 683); kräver terminerande utfall i sagan (K-1.27)"
+  },
+  {
+   "id": "K-1.11",
+   "rubrik": "Visselblåsning isoleras, passerar aldrig sagan",
+   "beskrivning": "Visselblåsning (lag 2021:890) SKA isoleras och får ej passera sagan — separat restricted SoR utanför Hubs domän (t.ex. Lantero/WhistleB), med tvingande opt-out ur ArendeMatchService, ConsolidateMailboxesService och alla aggregat. Integration mot visselblåsarsystem ska medvetet utebli, eftersom matchningsmotorn (case-tagg→conversationId→SSN) är direkt oförenlig med identitetsskyddet.",
+   "typ": "sakerhet",
+   "statusIDok": "[KONFIG] + [EXTERN]",
+   "beroenden": "Externa system Lantero/WhistleB; opt-out i ArendeMatchService och ConsolidateMailboxesService"
+  },
+  {
+   "id": "K-1.12",
+   "rubrik": "12 roller som datadrivna config-profiler",
+   "beskrivning": "Hubs SKA stödja 12 kommunala roller som datadrivna config-profiler ovanpå oförändrad ryggrad (R1–R9): 1 Registrator/Nämndsekreterare, 2 Kommunsjuksköterska/HSL, 3 HR/Chef, 4 Överförmyndarhandläggare, 5 IT/Informationssäkerhet/Dataskydd, 6 Skola/Förskola/Elevhälsa/Rektor, 7 Omsorgsutförare/Enhetschef, 8 Bygglov/Plan/Miljö/Livsmedel, 9 Upphandling/Inköp/Ekonomi, 10 Säkerhetssamordnare/Beredskap/Räddningstjänst, 11 Kommunjurist/Visselblåsarfunktion, 12 Medborgarservice/Kontaktcenter/Växel. Verifierat: ingen roll motiverar eget kodflöde; skillnaderna är data. 0/12 är ren config rakt av — config-vokabulären utökas med 7 nya fält.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "ArendeTyp-config-utökning (K-1.26)"
+  },
+  {
+   "id": "K-1.13",
+   "rubrik": "Primär byggpersona: socialsekreterare",
+   "beskrivning": "Primär byggpersona SKA vara socialsekreterare (barn & familj, SoL 2025:400, BBIC) — referensimplementationen mot vilken motor, UI och Treserva-konnektorn först byggs. Övriga 11 roller är config-profiler + konnektorfamiljer. All UX/UI-spec och GAP-019 är skrivna mot socialsekreteraren; e-diarium blir andra instansen som bevisar (modul × produkt)-mappningen.",
+   "typ": "funktion",
+   "statusIDok": "UI [FINNS], motor [BYGGS]",
+   "beroenden": "Treserva-konnektorn (GAP-019)"
+  },
+  {
+   "id": "K-1.14",
+   "rubrik": "Roller klassas på SoR-typ (a–e) som styr integrationsmönster",
+   "beskrivning": "Rollerna SKA klassas på SoR-typ (a–e) som driver integrationsmönstret: (a) tydlig enkel SoR, (b) fragmenterad, (c) inget bra SoR, (d) triage-only, (e) separat restricted. Klassningen styr commitDestination, fallback och om matchningsmotorn körs. SoR-typen, inte rollnamnet, avgör arkitekturkraven (roll 12 = d; roll 5 = c och hårdast; roll 4 = a men e-tjänst-inflöde går förbi Hubs).",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "commitDestination (K-1.6), fyrvägs-utfall (K-1.7)"
+  },
+  {
+   "id": "K-1.15",
+   "rubrik": "Cross-role-routing: primarRoll + medmottagare, akter slås aldrig ihop",
+   "beskrivning": "Hubs SKA hantera cross-role-routing som mönster: ett hubsCaseId kan ha primarRoll + medmottagare[] (eskalering, parallell flermottagare, transit). Medmottagares akter SKA aldrig slås ihop — varje medmottagare får egen ACL-krets + egen commit. Motivering: tre arketyper återkommer i 9+ roller; sammanslagning över sekretessgränser är en inbyggd incident.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.16",
+   "rubrik": "Behörighet via Circles + aclProfil-bibliotek, per-roll-konfigurerbar default",
+   "beskrivning": "Behörighet SKA skala via Circles + ett aclProfil-bibliotek med minst 8 profiler. ACL-default SKA vara per-roll konfigurerbar, inte hårdkodad deny-by-default (för roll 8/11/12 är offentlighet norm). Flaggan skyddade_personuppgifter överstyr alla profiler hårdare.",
+   "typ": "sakerhet",
+   "statusIDok": "[KONFIG] + [BYGGS]",
+   "beroenden": "Nextcloud Circles; flaggan skyddade_personuppgifter (K-1.10 avgränsning, K-3.21)"
+  },
+  {
+   "id": "K-1.17",
+   "rubrik": "Fem moduler i kärna-plus-tillägg-modell (M0–M4)",
+   "beskrivning": "Hubs SKA paketeras som fem moduler i kärna-plus-tillägg-modell: M0 plattformskärna (obligatorisk, osynlig — sdkmc-core), M1 Meddelanden (ankarprodukt), M2 Video & Chat, M3 Filer, M4 Verksamhet (motor + valbara konnektorer). M4 lagrar ingen verksamhetsdata. Kärna-plus-tillägg är kod-tvingad.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Refereras av beslut B-SKU-1 i §9 beslutslogg (kap 9, rad 695)"
+  },
+  {
+   "id": "K-1.18",
+   "rubrik": "Bryt sdkmc-monoliten i M0 + sdkmc-msg FÖRE M4",
+   "beskrivning": "Dagens sdkmc-monolit SKA brytas i M0 (sdkmc-core) + sdkmc-msg (M1) INNAN M4 byggs. Taggmotorn flyttar till M0. Detta är en kod-refaktor, inte en data-migration. Görs det inte är \"sälj M4 separat\" osant.",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS]→[BYGGS]",
+   "beroenden": "Motsvarar beslut B-MOD-1 i §9 beslutslogg (kap 9, rad 681) och roadmap-steg P0.1 i §10 (rad 727); relaterar K-2.2, K-3.28"
+  },
+  {
+   "id": "K-1.19",
+   "rubrik": "Minsta säljbara enheter + mjuka modulberoenden",
+   "beskrivning": "Minsta säljbara enheter SKA vara: M1 = M0+M1; M4 = M0+M1+motor (M2/M3/Kontakter valbara). M4:s beroenden mot M2/M3/Kontakter SKA vara mjuka (graceful) — M4:s kärnlöfte kräver bara M0+M1.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Graceful degradation (K-1.4); refereras av B-SKU-1 i §9 (kap 9)"
+  },
+  {
+   "id": "K-1.20",
+   "rubrik": "Licensgräns vid processgränsen; M4-motorn ExApp-ren",
+   "beskrivning": "Modul-/licensgränsen SKA dras vid processgränsen (\"processgränsen ÄR licensgränsen\"). M4-motorn SKA designas ExApp-rent: inga FK:er mot oc_*-tabeller, opaka pekare, all skrivning via service-lager. Detta är i grunden en rättsfråga — inget proprietärt licensbeslut får fattas utan IP-jurist.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "IP-/upphovsrättsjurist [EXTERN]; motsvarar beslut B-LIC-1 i §9 beslutslogg (kap 9, rad 693); relaterar K-2.8–K-2.12, K-2.15"
+  },
+  {
+   "id": "K-1.21",
+   "rubrik": "Designprincip: ärende-först",
+   "beskrivning": "Ärende-först: den meningsbärande axeln i UI/modell SKA vara ärendekoppling (nytt · hör-till · ej-kopplat), inte korg. Kravtabellen i §1.5 saknar motiveringskolumn (bärande designprincip).",
+   "typ": "ux",
+   "statusIDok": "[FINNS] (UI) / [BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-1.22",
+   "rubrik": "Designprincip: all chatt lever i Spreed (M2)",
+   "beskrivning": "All chatt SKA leva i Spreed (M2) — exponerad som flik på ärendekortet + räknare i pulsen, aldrig som en andra inkorg. Registret bär en talkToken-pekare till Talk-rummet.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (M2 [FINNS])",
+   "beroenden": "M2/Spreed; register-pekaren talkToken (kap 3)"
+  },
+  {
+   "id": "K-1.23",
+   "rubrik": "Designprincip: M4 lagrar ingen verksamhetsdata",
+   "beskrivning": "M4 SKA inte lagra någon verksamhetsdata — den renderar aggregat och skickar kommandon. NC-objekten (Deck/Files/Spreed m.fl.) är vyer/projektioner, inte sanning.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "SoR-doktrinen (K-1.5)"
+  },
+  {
+   "id": "K-1.24",
+   "rubrik": "Designprincip: Flow vs programmatiskt hålls isär",
+   "beskrivning": "Flow (core-Nextcloud-automation) och programmatisk orkestrering SKA hållas isär: core-Flow används för fil-/tagg-centriska, deklarativa regler; icke-fil-objekt och fler-objekts-orkestrering sker programmatiskt.",
+   "typ": "arkitektur",
+   "statusIDok": "[KONFIG] + [BYGGS]",
+   "beroenden": "Nextcloud Flow; utvecklas i K-3.16 (kap 3)"
+  },
+  {
+   "id": "K-1.25",
+   "rubrik": "Designprincip: commitDestination-invarianten bärande",
+   "beskrivning": "commitDestination-invarianten SKA vara en bärande designprincip: ingen ArendeTyp-rad lever utan destination, inget gallras utan registrerat utfall + verifierad callback, och \"Ej ärendekopplat\" har en registrerings-/gallringsgrind.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-1.6 (NOT NULL-constraint), K-1.8 (verifierad callback)"
+  },
+  {
+   "id": "K-1.26",
+   "rubrik": "ArendeTyp-raden utökas med 7 strukturella fält",
+   "beskrivning": "ArendeTyp-raden SKA utökas med 7 strukturella fält som är data, inte kontrollflöde: sex rena datafält och ett fält (karantanKravs) som rör motorn.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "ArendeTyp-registryn (K-3.19, kap 3); rollprofilerna (K-1.12)"
+  },
+  {
+   "id": "K-1.27",
+   "rubrik": "Sagan får terminerande \"föds inte\"-utfall (led -1)",
+   "beskrivning": "Skapa-sagan SKA få terminerande \"föds inte\"-utfall (avvisad/karantän) som led -1, FÖRE R1, med abort-semantik samt retroaktiv karantän. Detta är den enda genuina motor-utökningen; dokumentet markerar den som hög risk.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (hög risk)",
+   "beroenden": "Krävs av säkerhetsskydd (K-1.10) och visselblåsning (K-1.11); saga-designen R1–R9 (kap 3, K-3.24)"
+  }
+ ]
+}

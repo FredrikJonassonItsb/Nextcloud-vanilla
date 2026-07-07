@@ -1,0 +1,205 @@
+{
+ "omrade": "hubs_arende — integrations- och API-yta (Integration/Client+Port+Stub, Controllers, routes, AppInfo, Notification, BackgroundJob, Teams, Command, Settings, provision)",
+ "sammanfattning": "hubs_arende-motorns integrationslager är byggt i två skikt. (1) Sex tunna HTTP-/in-process-KLIENTER (lib/Integration/Client) mot grann-NC-appar — sdkmc (mail-taggar), groupfolders (ärenderum), deck (ärendekort), spreed/Talk (ärenderum-chat), circles/Teams (presentationslager) samt calendar via in-process CalDavBackend — alla med samma kontrakt: isAvailable() via IAppManager, PII-säker digest-loggning, och graceful degradation där varje fel sväljs+loggas så sagan aldrig kraschar. Autentisering för server-till-server-OCS-anropen sker med ServiceAccountAuth (Basic-header ur app-config sa_user/sa_token; okonfigurerad ⇒ null ⇒ 401 som sväljs). (2) Tre PORTAR (lib/Integration/Port) mot externa system — FacksystemCommitPort (Frends→Treserva/Lifecare/Viva med verifierad-callback-mönstret GAP-007), SigneringPort (Inera Underskriftstjänst/PAdES) och EdiariumPort (e-diarium/e-arkiv FGS) — som i dag ENBART har stateful in-memory-STUBBAR; Application::register() binder port→impl via app-config integration_mode_{port} men modeMap innehåller bara 'stub', så 'live' faller tyst tillbaka till stubben. OCS-ytan (appinfo/routes.php) är 17 rutter under /ocs/v2.php/apps/hubs_arende/api/v1/ fördelade på fyra kontroller (Arende, Infode, Fordelning, Admin); alla utom Admin#seedDemo är #[NoAdminRequired] och objektnivå-authz (H1 enhet-gate) ligger i ArendeService, inte i kontrollerna. Klienterna är på riktigt inkopplade i sagan (R3–R9+T), tilldela-ACL-omskrivning, medlemsmutationer, retroaktiv säkerhetsskydds-isolering och gallring/purge. Kringytan: Notifier+FristVarselJob (NC-notiser), GallringJob (GDPR-gallring), ArenderumTeamResourceProvider (akten i team-vyn), tre occ-kommandon, admin-statuspanel samt provision/ (idempotent dev15-bootstrap med pinnade app-versioner).",
+ "formagor": [
+  "OCS-yta 17 rutter under /ocs/v2.php/apps/hubs_arende/api/v1/: createCase, show, summary, tilldela, commit, medlemmar, historik, bevakningar, medlem POST/DELETE, talkrum, groupfolder, steg, inflode-summary, inflode/{action}, fordelning-summary, treserva/receipts, admin/seed-demo — hubs_arende/appinfo/routes.php:18-144",
+  "ServiceAccountAuth: Basic-auth-header för service-konto ur app-config sa_user+sa_token; null vid okonfigurerad ⇒ säker degradering (klienter skickar oautentiserat, 401 sväljs) — hubs_arende/lib/Integration/ServiceAccountAuth.php:46-53",
+  "SdkmcClient (R3/R9): createCaseTag/deleteCaseTag via sdkmc /api/tags/{accountId} (kräver config sdkmc_tag_account, annars ärlig no-op) samt tagMessage/untagMessage via bulk /api/thread/tags/{imapLabel}; tagMessage returnerar 'landed' först vid OCS 2xx — hubs_arende/lib/Integration/Client/SdkmcClient.php:104,205,281",
+  "GroupfolderClient (R4): createArenderum (mountpoint + addGroup per enhetsgrupp + ACL-flagga), addGroup, applyAcl, removeFolder via /apps/groupfolders/folders — hubs_arende/lib/Integration/Client/GroupfolderClient.php:68,104,130,154",
+  "DeckClient (R5): board-per-enhet + 'Inkommande'-stack resolvas/skapas on demand; createCard, addLabel (case:{id}), deleteCard, getCard (läs-projektion för Bevakningar-fliken via service-kontot) via /apps/deck/api/v1.0 — hubs_arende/lib/Integration/Client/DeckClient.php:82,161,213,254",
+  "SpreedClient (R6): createRoom (grupprum typ 2 + deltagare), addParticipant, addCircleParticipant (team som deltagare, source=circles), removeParticipant (attendeeId-uppslag), deleteRoom (saga-kompensation/purge, hard delete), archiveRoom (säkerhetsskydds-retroaktiv isolering, bevarande) via /ocs/v2.php/apps/spreed/api/v4/room — hubs_arende/lib/Integration/Client/SpreedClient.php:62,106,138,168,230,256",
+  "CalendarClient (R7): INGEN HTTP/auth — skriver in-process via OCA\\DAV\\CalDAV\\CalDavBackend (lazy container-uppslag, ExApp-rent); prepareCaseCalendar (pseudonym VEVENT, UID/CATEGORIES=hubsCaseId, deterministisk objUri hubs-case-{id}.ics), removeCalendar (permanent delete förbi trashbin), moveCaseCalendar (re-homing service-konto→handläggare vid tilldelning) — hubs_arende/lib/Integration/Client/CalendarClient.php:104,137,166,275",
+  "TeamClient (saga T): createTeam via circles-OCS med per-case-NC-gruppen som ENDA medlem (all-or-nothing: misslyckad medlemskoppling ⇒ teamet rivs), destroyTeam vid kompensation/gallring/purge — hubs_arende/lib/Integration/Client/TeamClient.php:78,129",
+  "Klienterna är RIKTIGT inkopplade i sagan: R3 tag (ArendeService.php:439), team T (516), R4 groupfolder (553), R5 deck (589), R6 talk (631), R7 kalender (673), R9 meddelande-tagg (712) + kompensationer; tilldela: applyAcl (1393), deck-label (1409), kalender-flytt (1427); medlem: addParticipant (1494)/removeParticipant (1539); bevakningar: getCard (1617); extra talkrum (1654)/groupfolder (1696)",
+  "FacksystemCommitPort-kontrakt (GAP-007): commit → preliminärt kvitto; retention/provenans flippas ENBART i verifyCallback (idempotent på token); registerCallback binder korrelationsnyckel — hubs_arende/lib/Integration/Port/FacksystemCommitPort.php:60,75,91",
+  "FacksystemCommitStub: statefullt in-memory-Treserva med deterministisk dnr-sekvens (2026-IFO-NNNN, persistent via app-config stub_dnr_seq), synkron/async callback, fel-/timeout-injektion (failHubsCaseIds/timeoutHubsCaseIds) — hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php:91,165,170,279",
+  "FacksystemCommitService: enda vägen till facksystem-commit; validerar commit_destination mot vitlista (facksystem/diarium/e_arkiv/extern_myndighet), FAIL-CLOSED modul-routing (tom frends_modul ⇒ kast, aldrig gissad default) — hubs_arende/lib/Service/FacksystemCommitService.php:83,146,172",
+  "Port-bindning per INTEGRATION_MODE i DI: Application::register() registrerar FacksystemCommitPort/SigneringPort/EdiariumPort via resolvePort() som läser app-config integration_mode_{facksystem|signering|ediarium}, default+fallback 'stub' — hubs_arende/lib/AppInfo/Application.php:69-94,124-142",
+  "EdiariumPort ANVÄNDS: diariefor_direkt-preSagaHook (kat 6 rättsligt/tvång) anropar ediariumPort->registrera — hubs_arende/lib/Service/ArendeService.php:2137,2155",
+  "SäkerhetsskyddGrind retroaktiv isolering använder klienterna: untagMessage, archiveRoom (bevarande, ej delete), applyAcl('karantan_deny_all') — hubs_arende/lib/Service/SakerhetsskyddGrind.php:279,290,303",
+  "Authz: OCS-session via OCSController; H1 objektnivå-enhet-gate i ArendeService (IUserSession+IGroupManager; admin ser allt; SYSTEM/CLI-kontext utan session bypassar) och show() är existens+authz-gate för show/commit/steg/historik/bevakningar/medlemmar/koppla — hubs_arende/lib/Service/ArendeService.php:1989-2060,1732,1822",
+  "Admin-only-yta: AdminController#seedDemo saknar avsiktligt #[NoAdminRequired] ⇒ OCS-ramverket kräver admin; backar reseed-knappen (purge+seed via DemoSeedService) — hubs_arende/lib/Controller/AdminController.php:54-70",
+  "InfodeController: M3-säkerhetsskyddsgrind körs FÖRST per inflöde-rad på läs-/triage-vägen (karantän-markör utan PII), server-side klassning+matchning, sex action-verb, NC31-workaround för terminal path-param (actionFromUri) — hubs_arende/lib/Controller/InfodeController.php:94,157,219,244",
+  "kopplaMeddelande med IDOR-skydd: durabel admin-taggning AV by default (config koppla_admin_tag=1 krävs); .url-referensfiler i akten skrivs oavsett; conversation-pekare skrivs bara när taggen bevisligen landade — hubs_arende/lib/Service/ArendeService.php:1731-1795,1804",
+  "Notifier (NC-klockan): subjects tilldelad/medlem/frist, pseudonym ref (dnr/hubsCaseId) + datum, länk till hubs_start med graceful fallback till instansroten — hubs_arende/lib/Notification/Notifier.php:50-90; registrerad i Application.php:104",
+  "FristVarselJob: daglig TimedJob, varslar T-3 och förfallodag (0), mottagare = tilldelad ägare annars mottagningskretsen ur member-ledgern — hubs_arende/lib/BackgroundJob/FristVarselJob.php:55-133",
+  "GallringJob: daglig GDPR-gallring (art 5.1.e) av motorns pseudonyma koordinationsrader via GallringService — hubs_arende/lib/BackgroundJob/GallringJob.php:47-62; GallringService river även teamet (GallringService.php:122)",
+  "ArenderumTeamResourceProvider: gör akten (groupfoldern) synlig som team-resurs via pekare team→hubsCaseId→groupfolder; authz gatas av core TeamManager (endast teamets medlemmar) — hubs_arende/lib/Teams/ArenderumTeamResourceProvider.php:62-110; registrerad i Application.php:101",
+  "occ-kommandon: hubs_arende:smoke (E2E createCase→grind→commit→verifierat kvitto→provenansflip mot stub, lib/Command/Smoke.php:49), hubs_arende:status (PII-fri motorstatus + integrationsläge per port, lib/Command/Status.php:35), hubs_arende:seed-demo [--purge] (lib/Command/SeedDemo.php:47) — registrerade i appinfo/info.xml:49-53",
+  "Admin-settings: AdminSection + AdminStatus (read-only PII-fri statuspanel via StatusService) — hubs_arende/lib/Settings/AdminStatus.php:26, AdminSection.php:27; info.xml:54-57",
+  "provision/: idempotent dev15-bootstrap (bootstrap.sh steg a–i: appstore-toggle, contacts-enable, tarball-install deck/tasks/forms/notes/libresign, app_api+deploy-daemon, DB-migration, appdeploy, repair) + manifest.yaml som pinnad källa-till-sanning + reset-restore.md — hubs_arende/provision/README.md:24-41, manifest.yaml:112-227",
+  "Pekare-bokföring för alla externa objekt (objekt_typ: case_tag, groupfolder, deck_card, talk_room, calendar, conversation, team) så kompensation/gallring/purge kan resolva externa id:n — hubs_arende/lib/Integration/Client/README.md:41-49 + DemoSeedService.php:197-218"
+ ],
+ "filer": [
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/ServiceAccountAuth.php",
+   "roll": "Seam A: Basic-auth-credential (sa_user/sa_token ur app-config) för alla server-till-server-OCS-anrop; null ⇒ graceful no-op-degradering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/SdkmcClient.php",
+   "roll": "Klient mot sdkmc tag-API (R3 case-tag, R9 meddelande-tagg); accountId-seam via config sdkmc_tag_account"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/GroupfolderClient.php",
+   "roll": "Klient mot groupfolders-OCS (R4 ärenderum: create/addGroup/applyAcl/removeFolder)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/DeckClient.php",
+   "roll": "Klient mot deck-OCS (R5 ärendekort: board-per-enhet, kort, etikett, delete + getCard-läsprojektion)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/SpreedClient.php",
+   "roll": "Klient mot Talk room-API v4 (R6: skapa rum, deltagare, circle-deltagare, delete vs archive)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/CalendarClient.php",
+   "roll": "Kalenderskrivning in-process via CalDavBackend (R7: pseudonym VEVENT, re-homing vid tilldelning, permanent delete)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/TeamClient.php",
+   "roll": "Klient mot circles-OCS (saga T: team-per-ärende med per-case-gruppen som enda medlem)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Client/README.md",
+   "roll": "Designkontrakt för klienterna (isAvailable/no-op/pekare-tabell) + wiring-guide"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Port/FacksystemCommitPort.php",
+   "roll": "Port mot Frends→Treserva/Lifecare/Viva; verifierad-callback-kontraktet (GAP-007)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Port/SigneringPort.php",
+   "roll": "Port mot Inera Underskriftstjänst (request/poll/fetch PAdES) — registrerad men okonsumerad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Port/EdiariumPort.php",
+   "roll": "Port mot e-diarium/e-arkiv (FGS: registrera + arkivera)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php",
+   "roll": "Stateful stub-Treserva: dnr-mint, pending/receipts, synkron/async verifierad callback, felinjektion"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/SigneringStub.php",
+   "roll": "Stub-Inera: pending→signed-simulering, syntetisk PAdES-PDF"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/EdiariumStub.php",
+   "roll": "Stub-e-diarium: diarienummer-mint, SIP-paket-kvitto"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/README.md",
+   "roll": "Integrationslagrets översikt (port↔stub↔live, INTEGRATION_MODE) — OBS delvis inaktuella config-nycklar"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/appinfo/routes.php",
+   "roll": "Hela OCS-rutt-ytan (17 rutter, prefix /api/v1)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/appinfo/info.xml",
+   "roll": "App-manifest: background-jobs, repair-steps, commands, admin-settings, NC 30–32"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/AppInfo/Application.php",
+   "roll": "Bootstrap: port→stub-bindning via integration_mode_*, TeamResourceProvider- och Notifier-registrering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Controller/ArendeController.php",
+   "roll": "OCS-huvudyta: createCase/show/summary/tilldela/commit/steg/historik/bevakningar/medlemmar/medlem/talkrum/groupfolder"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Controller/InfodeController.php",
+   "roll": "Inflöde-banden: summary + sex action-verb, M3-grind först på läsvägen, NC31-pathparam-workaround"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Controller/FordelningController.php",
+   "roll": "Read-only: fördelningsvy + verifierade Treserva-kvittenser"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Controller/AdminController.php",
+   "roll": "ADMIN-ONLY seed-demo (reseed av demodata)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Service/FacksystemCommitService.php",
+   "roll": "Enda commit-vägen: destination-vitlista, fail-closed modulrouting, konsumerar DI-porten"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Notification/Notifier.php",
+   "roll": "Renderar NC-notiser (tilldelad/medlem/frist), PII-invariant, brand-regel"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/BackgroundJob/FristVarselJob.php",
+   "roll": "Daglig frist-varsling T-3/T-0 till ägare eller mottagningskrets"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/BackgroundJob/GallringJob.php",
+   "roll": "Daglig GDPR-gallring av koordinationsrader efter verifierad commit-deadline"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Teams/ArenderumTeamResourceProvider.php",
+   "roll": "Team-resursprovider: akten synlig på ärendets team-sida via pekare"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/Smoke.php",
+   "roll": "occ hubs_arende:smoke — E2E-bevis mot stubbar"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/Status.php",
+   "roll": "occ hubs_arende:status — PII-fri motorstatus inkl. integrationsläge per port"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/SeedDemo.php",
+   "roll": "occ hubs_arende:seed-demo [--purge] — syntetisk demodata genom riktiga motorn"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Settings/AdminStatus.php",
+   "roll": "Admin-statuspanel (read-only) via StatusService"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Settings/AdminSection.php",
+   "roll": "Admin-sidebar-sektion för motorn"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/provision/bootstrap.sh",
+   "roll": "Idempotent dev15-provisionering (appar, AppAPI, DB, appdeploy)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/provision/manifest.yaml",
+   "roll": "Överlever-reset-manifest: pinnade versioner, restore-steg, destruktivitet per artefakt"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Service/ArendeService.php",
+   "roll": "Sagan/single-writer som konsumerar alla klienter+portar; H1-authz; kopplaMeddelande med IDOR-skydd"
+  }
+ ],
+ "stubbar": [
+  "FacksystemCommitStub (lib/Integration/Stub/FacksystemCommitStub.php) — stubbar HELA facksystem-vägen Frends iPaaS → Treserva/Lifecare/Viva: in-memory-register, deterministisk dnr (2026-IFO-NNNN, sekvens persistent via app-config stub_dnr_seq), verifierad callback synkront/asynkront, felinjektion. INGEN live-Frends-adapter finns i kodbasen.",
+  "SigneringStub (lib/Integration/Stub/SigneringStub.php) — stubbar Inera Underskriftstjänst: pending→partially_signed→signed-simulering, syntetisk 'PAdES-B-LTA'-PDF (%PDF-1.7-header med markörrad). Ingen riktig e-legitimation/LTV. libresign-spåret är enligt provision/manifest.yaml:149-167 medvetet senarelagt (java saknas i hubs-php).",
+  "EdiariumStub (lib/Integration/Stub/EdiariumStub.php) — stubbar e-diarium/e-arkiv (FGS): mintat diarienummer (SN-2026-NNNN-mönster via diarieSeq), syntetiskt SIP-paket-id. Ingen riktig FGS-leverans.",
+  "Alla tre portar binds till stub i DI oavsett config-värde utom 'stub': Application::resolvePort() modeMap innehåller ENDAST [stub => StubClass]; värdet 'live' resolverar tyst till stubben (Application.php:69-94,137).",
+  "FacksystemCommitService::port() har dessutom en lazy in-line stub-fallback (new FacksystemCommitStub()) för DI-lös testharness (FacksystemCommitService.php:138-140).",
+  "InfodeController::resolveKorgar()/resolveInflodeRows() returnerar tomma listor — inget live-inflöde är kopplat till motorn (flödet bor i sdkmc/mail); besvara/vidarebefordra/gallra ack:ar deterministiskt utan registermutation (InfodeController.php:173-182,394-407).",
+  "DemoSeedService + AdminController#seedDemo + occ seed-demo — syntetisk demodata (conversationId 'demo-%') genom riktiga motorn; purge river även riktiga externa objekt via klienterna (DemoSeedService.php:197-218).",
+  "Stub-tillståndet (register/pending/receipts) är in-memory PER REQUEST — endast dnr-sekvensen persisteras; kvittens-/registerdata över requests bärs i stället av motorns DB-register (kommentar i FacksystemCommitStub.php:73-79)."
+ ],
+ "kandaBrister": [
+  "Dokumentationsdrift config-nycklar: lib/Integration/README.md (rad 24-49) anger occ-nycklarna 'integration.facksystem' m.fl. med PUNKT, medan den kanoniska nyckeln är 'integration_mode_facksystem' (Application.php:48, bekräftat fixat i FacksystemCommitService.php:34-40). README:ns occ-exempel sätter alltså fel nyckel.",
+  "README-utlovad fail-safe-VARNING saknas: Integration/README.md:52-55 säger att live-läge utan registrerad live-port faller tillbaka till stub 'med en varning i loggen' — Application::resolvePort() (Application.php:124-142) loggar ingenting vid fallback.",
+  "provision/service-account.md finns INTE: refereras från ServiceAccountAuth.php:25 ('see provision/service-account.md') men provision/ innehåller endast README.md, bootstrap.sh, manifest.yaml, reset-restore.md (verifierat med Glob).",
+  "Inga live-implementationer för någon av de tre portarna (Frends/Inera/e-diarium) — hela commit-/signerings-/diariekedjan är stub-only. 'Att gå live' är beskrivet (Integration/README.md §5) men obyggt.",
+  "SigneringPort är registrerad i DI (Application.php:78-85) men KONSUMERAS INGENSTANS — ingen kod i lib/ anropar requestSignature/pollStatus/fetchSignedDocument utom stubben själv (verifierat med grep). Signeringsflödet saknar alltså motorväg helt.",
+  "GroupfolderClient::applyAcl() slår bara PÅ ACL-flaggan (POST /{id}/acl {acl:1}) — den sätter INTE per-grupp/per-user-regler ur aclProfil (kvarvarande TODO[groupfolders] på GroupfolderClient.php:136-138). 'Least-permission ACL-profil' verkställs därmed inte via denna klient.",
+  "SdkmcClient case-tag (R3) NO-OP:ar om inte operatören manuellt satt app-config sdkmc_tag_account (Mail-konto-id ägt av service-kontot); den varaktiga lösningen kräver en e-post-scopad case-tag-rutt på sdkmc-sidan som inte finns än (SdkmcClient.php:44-63,294-318).",
+  "Durabel meddelande-koppling AV by default (IDOR-skydd): kopplaMeddelande taggar inte klient-angivna messageIds under service-kontots behörighet utan per-meddelande-authz; kräver config koppla_admin_tag=1 (ArendeService.php:1749-1765,1804-1809). Koppla-svaret blir verifierad=false i default-miljö.",
+  "Kvarvarande TODO[auth]-kommentarer i SdkmcClient (216,250,341), GroupfolderClient (33,190), SpreedClient (33,69,291) trots att ServiceAccountAuth faktiskt ÄR inkopplad i alla ocsRequest() — vilseledande doc-drift snarare än saknad funktion.",
+  "Allt integrationsfel sväljs (graceful degradation by design): en 401/nätverksfel ger tyst ett ärende UTAN rum/kort/tagg och sagan fortsätter — ingen retry-kö, ingen efterläkning/reconciliation av saknade pekare (mönstret i varje klients ocsRequest, t.ex. SpreedClient.php:324-333).",
+  "OCS-authz är helt delegerad till ArendeService H1 (enhet-gate); kontrollerna själva har inga behörighetsattribut utöver #[NoAdminRequired]. SYSTEM/CLI-kontext (ingen session) bypassar authz (ArendeService.php:2031-2034) — korrekt för cron/occ men värt att granska när ExApp-/service-anrop mot OCS-ytan blir fler.",
+  "NC 31-plattforms-quirk: terminalt OCS-path-segment binds inte för POST — workaround actionFromUri() i InfodeController.php:157-163,219-228; kontraktsbräcklig om rutt-strukturen ändras.",
+  "FristVarselJob varslar ENDAST vid exakt 3 respektive 0 dagar kvar (FristVarselJob.php:72) — om cron-dygnet missas (nedtid) hoppas tröskeln över helt, inget ikapp-varsel.",
+  "DeckClient-kompensationen lagrar boardId i pekare-fältet 'riktning' (hack, noterat i Client/README.md:152 'switch to a richer pekare if you prefer') — semantiskt fel fält, bräckligt vid framtida riktning-användning.",
+  "Inflöde-ytan är delvis skal: korgar och inflöde-rader är alltid tomma (InfodeController.php:394-407) och besvara/vidarebefordra/gallra gör ingen registermutation — kravtäckning för inflödestriage kan inte hämtas härifrån utan sdkmc-sidan.",
+  "provision/manifest.yaml dokumenterar blockerare för ExApp-fasen: app_api 3.2.0 runtime-trasig på ITSL NC 31.0.8.1 (OC_Util::getChannel saknas) och docker.sock ej monterad i hubs-php (manifest.yaml:184-226) — ExApp-paketering kan inte genomföras på dev15 i nuläget.",
+  "provision/README.md:91-92 listar DB-tabellerna som hubs_arende_case/typ/flagga/pekare — saknar senare tillkomna tabeller (t.ex. hubs_arende_handelse/member som används av FristVarselJob/historik) ⇒ manifestet är inte längre komplett källa-till-sanning.",
+  "Stub-kvittots modul-värden: FacksystemCommitStub håller register per hubsCaseId med EN modul — flera handlingar mot olika moduler på samma ärende skriver över entry['modul'] (FacksystemCommitStub.php:123); ok för demo men inte kontraktstestat."
+ ]
+}

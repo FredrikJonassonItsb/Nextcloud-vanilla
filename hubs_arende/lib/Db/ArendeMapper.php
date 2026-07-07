@@ -175,6 +175,34 @@ class ArendeMapper extends QBMapper {
     }
 
     /**
+     * Öppna (ej avslutade) ärenden med en frist som förfaller senast $senast.
+     * Källan för FristVarselJob:s dagliga varsel-svep — bara rader med en
+     * faktisk frist (frist_due IS NOT NULL) och kvarvarande arbete.
+     *
+     * @return Arende[]
+     * @throws Exception
+     */
+    public function findMedFristSenast(\DateTime $senast, int $limit = 200): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNotNull('frist_due'))
+            ->andWhere(
+                $qb->expr()->lte(
+                    'frist_due',
+                    $qb->createNamedParameter($senast, IQueryBuilder::PARAM_DATETIME_MUTABLE)
+                )
+            )
+            ->andWhere(
+                $qb->expr()->neq('steg', $qb->createNamedParameter('avslutat', IQueryBuilder::PARAM_STR))
+            )
+            ->orderBy('frist_due', 'ASC')
+            ->setMaxResults($limit);
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Find all cases whose conversationId matches a LIKE pattern. Used ONLY by the
      * demo-seeder's --purge to locate its own synthetic rows (conversationId
      * 'demo-%'). Dev/demo tool — not part of the production flow.

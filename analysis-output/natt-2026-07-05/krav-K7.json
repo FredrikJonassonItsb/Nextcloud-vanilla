@@ -1,0 +1,294 @@
+{
+ "kapitel": 7,
+ "kapitelRubrik": "SEKRETESS, JURIDIK, SIGNERING, RETENTION & COMPLIANCE",
+ "krav": [
+  {
+   "id": "K-7.1",
+   "rubrik": "Strukturerad sekretessgrund per ärendetyp",
+   "beskrivning": "Varje ArendeTyp-rad ska bära strukturerat sekretessGrund[] ({grund, omfattning:'hel_akt'|'delfalt', temporal}) i stället för skalär sekretessNiva. Grund-enum ska minst täcka OSL 26 (soc), 39 (HR), 19:3/31:16 (anbud/affär), 32:4 (ÖF), 18 (brott/skydd), 23/25 + PDL (skola/HSL), GDPR art. 9 samt TF (offentlig). Motivering: skalär hög|normal bryter mot 4/12 roller och utan struktur kan menprövning/maskning/PuB-matris inte härledas datadrivet.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-7.2",
+   "rubrik": "Femgradig sekretessNiva-enum + per-roll konfigurerbar ACL-default",
+   "beskrivning": "sekretessNiva ska bli enum med fem lägen: offentlig_tills_menprovad | normal | hog | restricted | sakerhetsskydd. ACL-default ska vara per-roll konfigurerbar, inte hårdkodad deny-by-default, eftersom bygglov/miljö/kontaktcenter/diarium har offentlighet som norm och hårdkodad deny blockerar legitim sökbarhet.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]/[KONFIG]",
+   "beroenden": "Relaterar till K-1.16 (per-roll ACL-default)"
+  },
+  {
+   "id": "K-7.3",
+   "rubrik": "Tre-lagers-ACL-koherens för inre sekretess",
+   "beskrivning": "Inre sekretess ska upprätthållas av tre-lagers-ACL-koherens: case:-tagg ∩ Groupfolder-ACL ∩ Tables/aggregat-vy måste vara samma sanning. Koherenstestet ska gälla även aggregeringslagret — räknare, frist-färg och summary får inte läcka det ACL döljer, annars bryts inre sekretess via en räknare även om akten är skyddad.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-058; refereras av K-7.8; §10 roadmap P0-steg (GAP-057/058)"
+  },
+  {
+   "id": "K-7.4",
+   "rubrik": "aclProfil-bibliotek ovanpå Circles",
+   "beskrivning": "Behörighetsmatrisen ska realiseras som ett aclProfil-bibliotek (minst 8 profiler) ovanpå Circles som kanonisk medlemskapssanning, där aclProfil-id väljer Circle-mönster per funktionsadress. En gradient-aclProfil ensam kan inte uttrycka partsåtskillnad, murar eller oberoende-kretsar.",
+   "typ": "sakerhet",
+   "statusIDok": "[FINNS] (Circles) / [BYGGS] (bibliotek)",
+   "beroenden": "Relaterar till K-1.16"
+  },
+  {
+   "id": "K-7.5",
+   "rubrik": "Verksamhetsgren + sekretessMur mellan regimer",
+   "beskrivning": "Datamodellen ska stödja verksamhetsgren + sekretessMur (hård mur, inte gradient) mellan självständiga sekretessregimer i samma fysiska person/akt; routing ska aldrig kunna placera HSL-innehåll i en SoL-akt. Utan detta är en sekretessincident inbyggd i datamodellen.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Relaterar till K-7.32 (vardgivarSpar/regimAxel)"
+  },
+  {
+   "id": "K-7.6",
+   "rubrik": "Jäv-/intressekonflikt-exkludering på instansnivå",
+   "beskrivning": "ACL ska stödja jäv-/intressekonflikt-exkludering på ärendeinstansnivå via exkludera_uid[] — personen som själv är part (t.ex. jurist roll 11, chef-är-part roll 3) får inte se sitt eget ärende via default 'ägande enhet får insyn'. GAP-058-koherenstestet ska täcka exkluderingen.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-058; K-7.3"
+  },
+  {
+   "id": "K-7.7",
+   "rubrik": "GallringsGrind för favoritlistor (Kontakter)",
+   "beskrivning": "Favoritlistor i Kontakter ska gå genom en server-side GallringsGrind: medborgar-PII blockeras och styrs till ärenderummet under hubsCaseId; klass (b) externt fax kräver X-HUBS-OWNER = funktion. Favoriten är alltid en pekare mot DIGG/SDK, aldrig auktoritativ kopia — detta hindrar att fri favoritlista blir oregistrerat personregister/ändamålsbrott. Laglig grund = art. 6.1.e, ej samtycke (EU-dom C-77/21).",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Djupdok KONTAKTER-FAVORITER.md §4 (registrerat i §11 dokumentregister)"
+  },
+  {
+   "id": "K-7.8",
+   "rubrik": "skyddade_personuppgifter som hård ACL-override",
+   "beskrivning": "Flaggan skyddade_personuppgifter (OSL 22 kap.) ska fungera som hård ACL-override som överstyr alla aclProfil till snävast krets och döljer posten i ALLA aggregat, räknare och frist-färger — även aggregeringslagret enligt K-7.3. Folkbokföringssekretess/skyddsidentitet får inte läcka via enhetsvy eller summary.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-7.3; K-3.21 (flaggor[] på instansen)"
+  },
+  {
+   "id": "K-7.9",
+   "rubrik": "Säkerhetsskydd = terminerande utfall (led -1, abort)",
+   "beskrivning": "Säkerhetsskyddsklassificerad information (SäkL 2018:585 + förordning 2021:955) ska hanteras som terminerande utfall, inte som sekretessnivå: preSagaHook='avvisa_sakerhetsskydd' körs som led -1 FÖRE saga-steg R1 med abort-semantik — ingen Groupfolder, ingen rad med innehåll, ingen case:-tagg, inget Talk-rum, ingen commit, endast spårbart avvisningskvitto. Att behandla säkerhetsskyddsklassat som vanlig sekretess/skyddade PU är lagbrott; detta är den enda genuina motor-utökningen.",
+   "typ": "sakerhet",
+   "statusIDok": "[BESLUT KRÄVS] + [BYGGS]",
+   "beroenden": "§9 beslutslogg B-SEC-1; K-1.10, K-3.24; §10 roadmap Δ7/Δ8/Δ9"
+  },
+  {
+   "id": "K-7.10",
+   "rubrik": "Retroaktiv karantängrind (fail-closed)",
+   "beskrivning": "Karantängrinden ska verka retroaktivt på svaga signaler (fail-closed): radera ur index/Talk/Groupfolder/tagg-DB även efter mottagning och stoppa tagg-propagering bakåt. Default vid säkerhetsskydds-indikator är avvisa — farligaste vägen är inkommande felmottagning, och själva upptäckten kan vara en säkerhetsskyddsincident strängare än 72h-PU-incident.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-7.9; §9 B-SEC-1 (är retroaktiv karantän testad)"
+  },
+  {
+   "id": "K-7.11",
+   "rubrik": "Regim-/lägesbyte vid höjd beredskap",
+   "beskrivning": "Ett regim-/lägesbyte (höjd_beredskap/krig) ska kunna flytta hela kategorier av ärenden från normal regim till säkerhetsskydds-regim, eftersom krisledningsmaterial (roll 10) blir klassat en masse under höjd beredskap.",
+   "typ": "sakerhet",
+   "statusIDok": "[BESLUT KRÄVS]/[BYGGS]",
+   "beroenden": "§9 B-SEC-1 (inkluderar regimbyte höjd beredskap); K-7.9"
+  },
+  {
+   "id": "K-7.12",
+   "rubrik": "Visselblåsning som NON-route med tre hårda opt-outs",
+   "beskrivning": "Visselblåsning (lag 2021:890) ska behandlas som NON-route som inte får passera skapa-sagan, med tre hårda opt-outs: ur ArendeMatchService, ur ConsolidateMailboxesService, samt egen ACL-domän vissel_isolerad. Hubs ska medvetet INTE integrera mot visselblåsarsystem (Lantero/WhistleB) — SSN-matchning av visselblåsning mot den anmäldes personalärende vore en katastrof för identitetsskyddet.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]/[EXTERN]",
+   "beroenden": "§9 T-VISSEL-1 (verifiera att opt-out är testad); K-1.11"
+  },
+  {
+   "id": "K-7.13",
+   "rubrik": "Signeringsadapter med två utbytbara backends (arkitekturval A)",
+   "beskrivning": "Signering ska byggas som en signeringsadapter-app med två utbytbara backends bakom samma kö-UI/provenance-modell: LibreSign för internt lågrisk och Inera Underskriftstjänst-API för skarp AES. UI, kö och bevarandepanel är identiska; endast identitets-/trust-lagret byts — 'bygg arbetsytan + bevarandepanelen, inte kryptokärnan'.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Djupdok SIGNING-INERA.md (registrerat i §11); §10 roadmap refererar K-7.13"
+  },
+  {
+   "id": "K-7.14",
+   "rubrik": "Inera Underskriftstjänst obligatorisk för skarpa beslut och externa signatärer",
+   "beskrivning": "För skarpa myndighetsbeslut (avslag, bistånd, SIP, justering, samtycke, delgivning) och för ALLA externa signatärer ska signeringssteget gå via Inera Underskriftstjänst-API (BankID/Freja/SITHS-AES → PAdES); LibreSign-AES får aldrig användas för dessa. Ett SMS-/kontosignerat avslagsbeslut står sig inte i förvaltningsrätt (GAP-034/037).",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]/[EXTERN] (Inera-avtal)",
+   "beroenden": "§9 B-SIGN-1 (Inera-avtal, mTLS vs OOB, GAP-033); K-7.13"
+  },
+  {
+   "id": "K-7.15",
+   "rubrik": "Ärlig identitetsetikettering i demo/lågriskläge",
+   "beskrivning": "I demo/internt lågriskläge ska identiteten etiketteras ärligt ('konto/SMS, ej BankID') och bevarandepanelen får INTE påstå LTV, eftersom LibreSign saknar robust LTV/kvalificerad tidsstämpel och en falsk 'Giltig då'-markering är vilseledande bevisvärde (GAP-035).",
+   "typ": "ux",
+   "statusIDok": "[KONFIG]",
+   "beroenden": "K-7.13; GAP-035"
+  },
+  {
+   "id": "K-7.16",
+   "rubrik": "Arkivhärdning av signerat dokument (PDF/A + LTV)",
+   "beskrivning": "Efter PAdES-svar från Inera ska Hubs härda dokumentet i mellanlagret till PDF/A-1 + LTV + kvalificerad tidsstämpel + valideringsintyg ('Giltig nu / Giltig då'-panelen) före slutlagring. Inera levererar PAdES; arkivhärdningen är Hubs ansvar, och det ska verifieras om Inera-profilen kan leverera LTV/tidsstämpel direkt.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]/[EXTERN]",
+   "beroenden": "K-7.14; [EXTERN] Inera-profilverifiering"
+  },
+  {
+   "id": "K-7.17",
+   "rubrik": "Endast hash exponeras mot Underskriftstjänsten",
+   "beskrivning": "Endast hash/checksumma + signeringsmeddelande ska exponeras mot Underskriftstjänsten; ingen sekretessbärande dokumenttext får lämna driftmiljön. Den hash-baserade profilen ska verifieras mot Inera (OSL 10:2a) — detta bevarar OSL 10:2a-/CLOUD Act-berättelsen att dokumentet stannar i Hubs.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]/[EXTERN]",
+   "beroenden": "§9 B-SIGN-1 (hash-baserad profil verifieras mot Inera); K-7.14"
+  },
+  {
+   "id": "K-7.18",
+   "rubrik": "Juristgranskad SignMessage-text per dokumenttyp",
+   "beskrivning": "SignMessage-texten per dokumenttyp ska sättas av signeringsadaptern och granskas juridiskt, eftersom signeringsmeddelandet är det undertecknaren godkänner och bär rättshandlingen — vag eller felaktig text underminerar bevisvärdet.",
+   "typ": "juridik",
+   "statusIDok": "[BESLUT KRÄVS] (juristgranskning per typ)",
+   "beroenden": "§9 B-SIGN-1 (SignMessage-texter, juristgranskning); K-7.13"
+  },
+  {
+   "id": "K-7.19",
+   "rubrik": "Kravnivå-badge per dokumenttyp (SES/AES/QES)",
+   "beskrivning": "Per dokumenttyp ska en kravnivå-badge (SES / 'Godkänn' / AES / QES) visas, härledd ur en kund-/jurist-satt matris baserad på SKR:s vägledning 2025. Hubs VISAR kravnivån men gissar den aldrig — mappningen beslutstyp→kravnivå är en policy-/juristfråga per kommun.",
+   "typ": "ux",
+   "statusIDok": "[BESLUT KRÄVS] per kund",
+   "beroenden": "§9 B-SIGN-1 (kravnivå-matris per dokumenttyp); K-7.13"
+  },
+  {
+   "id": "K-7.20",
+   "rubrik": "Gallring endast N dagar efter verifierad commit",
+   "beskrivning": "Gallring av Hubs mellanlagringskopia ska triggas N dagar efter verifierad commit-händelse från facksystemet — aldrig på 'tagg + tid' eller enbart en manuell 'markera överförd'-kryssruta. Tills verifierad commit finns: ingen gallring vid manuell markering, och andrahandläggar-bekräftan krävs för fristbärande poster. Worst case annars: 'överförd' markeras utan registrering → Hubs gallrar enda kopian → arkiv-/offentlighetsbrott (tyngsta retention-blockern, GAP-007).",
+   "typ": "juridik",
+   "statusIDok": "[BESLUT KRÄVS] + [BYGGS]",
+   "beroenden": "§9 T-RET-1 (gallringströskeln) och T-SOR-1; GAP-007; K-1.8, K-3.25; §10 roadmap P0-steg 5"
+  },
+  {
+   "id": "K-7.21",
+   "rubrik": "GallringsGrind bunden till handlingstyp mot DHP",
+   "beskrivning": "Retention ska realiseras via en GallringsGrind bunden till handlingstyp mot kommunens dokumenthanteringsplan (DHP): varje handlingstyp → bevaras/gallras + frist + ansvar. Rå mötesinspelning/transkript, favoritlistor och utredningsmaterial ska in i DHP som egna handlingstyper — även kort rensning av Hubs är annars formellt oreglerad gallring utan dokumenterat gallringsbeslut (GAP-008/026).",
+   "typ": "juridik",
+   "statusIDok": "[KONFIG] per kommun / [BYGGS] (grind)",
+   "beroenden": "§9 T-DHP-1 (DHP-källa: konfigfil/tabell/integration); GAP-008/026"
+  },
+  {
+   "id": "K-7.22",
+   "rubrik": "commitDestination-invarianten (NOT NULL) + fyrvägs-utfall före retention-flip",
+   "beskrivning": "Varje ArendeTyp-rad MÅSTE ha icke-null commitDestination (facksystem | diarium | e_arkiv | extern_myndighet | triage_forward | karantan), och retentionState-flippen (R8) får aldrig ske utan att ett av de fyra SoR-utfallen är explicit registrerat. Detta motverkar den dödligaste felmoden (9/12 roller): Hubs blir SoR genom passivitet, ett skuggregister utan gallringsklocka.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] / [KONFIG] (destination per typ)",
+   "beroenden": "§9 B-INV-1 (NOT NULL-constraint); K-1.6, K-1.7, K-2.19, K-3.23"
+  },
+  {
+   "id": "K-7.23",
+   "rubrik": "Retention-paus vid utlämnandebegäran (TF)",
+   "beskrivning": "Retention ska kunna pausas automatiskt vid registrerad utlämnandebegäran enligt TF — en gallringsklocka får aldrig radera en handling som någon begärt ut innan prövningen är klar (GAP-031, blockerare).",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-031 (blocker); K-3.25 (retention-paus-hook saknar trigger idag)"
+  },
+  {
+   "id": "K-7.24",
+   "rubrik": "retentionAnkare lösgjort från commit",
+   "beskrivning": "retentionAnkare ska vara lösgjort från commit för fall där bevarandet styrs av annat än överföring, t.ex. kamera-/lagstadgad lagringstid (R10) i säkerhets-/beredskapsdomänen. Ankaret ska vara datadrivet per handlingstyp.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-7.21 (handlingstyp/DHP)"
+  },
+  {
+   "id": "K-7.25",
+   "rubrik": "fristPolicy-struct med verksamhetskorrekt ankare",
+   "beskrivning": "Frister ska modelleras som fristPolicy-struct {typ, ankare, milstolpar[], forlangningsbar, bindande:'lag'|'avtal'} där ankaret är verksamhetskorrekt: 14-dagars förhandsbedömning + skyddsbedömning ankras i inkom-datum (inte tilldelning/plock, JO-praxis), PBL-frist i komplett_ansokan, överklagandefrist (FL 44 §) i valt delgivningssätt. Fel referenspunkt ger falsk trygghet (GAP-002/046/055/039).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-002/046/055/039; K-7.28 (delgivningssätt); K-3.19 (fristPolicy i ArendeTyp)"
+  },
+  {
+   "id": "K-7.26",
+   "rubrik": "Multi-milstolpe-frister med ankare = vetskap, parallella klockor",
+   "beskrivning": "fristPolicy ska stödja multi-milstolpe med ankare = vetskap/kännedom: PU-incident 72h (art. 33) ur kännedom, NIS2 24h→72h→30d, Lex Sarah ≤5 veckor, FK-plan dag 30, visselblåsning (bekräfta ≤7 dagar / återkoppla ≤3 månader). En händelse ska kunna starta två parallella klockor, t.ex. ransomware med PU = IMY 72h OCH MSB 24h.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-7.25"
+  },
+  {
+   "id": "K-7.27",
+   "rubrik": "Facksystemet blir ensam fristägare efter överföring",
+   "beskrivning": "När en fristbärande post markeras 'förd till facksystemet' ska kvarvarande Hubs-påminnelser (VALARM/Deck/VTODO) avaktiveras så att facksystemet blir ensam fristägare; Hubs ska spegla, inte räkna egen frist parallellt. Dubbelbevakning ger två konkurrerande röda datum och en Hubs-räknad frist kan divergera från en giltig förlängning (GAP-018/044/047).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-018/044/047; K-3.5 (fristDue speglad, ej lokalt räknad)"
+  },
+  {
+   "id": "K-7.28",
+   "rubrik": "Spårning av delgivningssätt, ej påstådd delgivning",
+   "beskrivning": "Hubs ska spåra delgivningssätt (vanlig / förenklad / digital brevlåda) och aldrig påstå att en teknisk 'Läst'-notis fullbordar delgivning — läsnotis är bevisning, inte fullbordad delgivning. Tidsstyrt flöde (kontrollmeddelande, 2-veckorsfiktion, förhandsupplysning) enligt delgivningslagen (2010:1932) ska stödjas, och rättsläget för Mina meddelanden/Kivra (SOU 2024:47) ska verifieras.",
+   "typ": "juridik",
+   "statusIDok": "[BESLUT KRÄVS] + [BYGGS]",
+   "beroenden": "§9 T-DELG-1 (rättsläge digital brevlåda verifieras per beslutstyp); K-7.25 (överklagandefrist ur delgivningssätt)"
+  },
+  {
+   "id": "K-7.29",
+   "rubrik": "Maskerings-/sekretessprövningsstöd vid delning ur ärenderum",
+   "beskrivning": "Vid kommunicering/säker delning ska ärenderummet ge maskerings-/sekretessprövningsstöd: välj utvalda handlingar och varna för tredjemansuppgifter. Delning av hela rummet får inte vara default — att dela fel fil ur ett känsligt rum är flödets allvarligaste enskilda felrisk (GAP-017, major).",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-017 (major)"
+  },
+  {
+   "id": "K-7.30",
+   "rubrik": "Korrekt samtyckes-formulering i UI",
+   "beskrivning": "UI ska formulera samtycke korrekt: samtycket dokumenterar information/transparens, det häver INTE sekretess och är INTE rättslig grund (rättslig grund = myndighetsutövning, art. 6.1.e). OSL/sekretess kan inte avtalas bort — fel UI-formulering bygger in en juridisk felföreställning (GAP-023).",
+   "typ": "ux",
+   "statusIDok": "[KONFIG] (UI-text)",
+   "beroenden": "§9 T-SAMTYCKE-1 (Hubs aldrig auktoritativt samtyckesregister); GAP-023"
+  },
+  {
+   "id": "K-7.31",
+   "rubrik": "Fasvalidering mot otillåten uppgiftsinhämtning i förhandsbedömning",
+   "beskrivning": "Fasvalidering ska finnas i datamodellen: under förhandsbedömningsfasen ska widgeten varna/spärra mot uppgiftsinhämtning från otillåten part (endast vårdnadshavare/anmälare/barn är tillåtna). Utan detta vilar den rättsliga begränsningen helt på handläggarens kunskap (GAP-006/013).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-006/013; §10 roadmap refererar K-7.31"
+  },
+  {
+   "id": "K-7.32",
+   "rubrik": "PuB-/ändamåls-/regim-matris i ArendeTyp-config",
+   "beskrivning": "En PuB-/ändamåls-/regim-matris ska ligga i ArendeTyp-config från dag ett: per rad lagligGrund, personuppgiftsansvarig (nämnd/myndighet, aldrig handläggare), andamaalsbegransning, gdpr_art9, samt vardgivarSpar/regimAxel som håller HSL/SoL fysiskt åtskilda. Utan matrisen är Hubs juridiskt osäljbart (PuB oundertecknbart, RoPA omöjlig) och regim-blandning blir inbyggd incident (Δ17).",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]/[BESLUT KRÄVS] (innehåll per kund)",
+   "beroenden": "§9 T-PUB-1 (matrisens innehåll per ArendeTyp × kund); Δ17; K-7.5"
+  },
+  {
+   "id": "K-7.33",
+   "rubrik": "Biträdesavtal + loggminimering med egen gallringsfrist",
+   "beskrivning": "PuB-förhållandet till driftleverantören ska regleras i biträdesavtal och Hubs-/favoritdata får inte användas för andra ändamål. Loggrader (activity) ska minimeras till referens/ID + händelse (aldrig PII) och ha egen gallringsfrist så att loggen inte blir ett PII-skuggregister — full audit-logg utan minimering är ett parallellt PII-register.",
+   "typ": "juridik",
+   "statusIDok": "[KONFIG] (avtal)/[BYGGS] (logg-minimering)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-7.34",
+   "rubrik": "FGS-e-arkivering med tydlig ansvarsgräns, aldrig dubbelarkivering",
+   "beskrivning": "E-arkivering ska ske via FGS-paketering med tydlig ansvarsgräns: beslut committade till facksystemet e-arkiveras via facksystemet (Treserva→e-arkiv), medan Hubs egen FGS-export (mönster C) endast är reserv för det som BARA bor i Hubs. Hubs får aldrig dubbelarkivera — oskarp ansvarsgräns ger dubbelarkivering eller dubbla sanningar (GAP-040).",
+   "typ": "integration",
+   "statusIDok": "[KONFIG] per kund / [BYGGS] (FGS-export)",
+   "beroenden": "GAP-040"
+  },
+  {
+   "id": "K-7.35",
+   "rubrik": "Externa myndighets-commits som egen integrationsklass",
+   "beskrivning": "Externa myndighets-'commits' (IMY/MSB/IVO/FK/Länsstyrelse/polis) ska behandlas som egen integrationsklass skild från facksystem: commitMode='extern_anmalan' (Hubs förbereder, människa lämnar in), ingen dnr-callback, ankare = vetskap, ofta PII-maskning — och den flippar INTE retentionState. En tillsynsrapport är inte en commit till SoR och får inte trigga gallring av Hubs-kopian.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-7.22 (retentionState-flip); K-7.26 (ankare = vetskap)"
+  },
+  {
+   "id": "K-7.36",
+   "rubrik": "Single-writer + append-only audit-logg oavsett datalagerhem",
+   "beskrivning": "Det juridiska kravet på single-writer + spårbar, append-only kvittens-/audit-logg för registret ska respekteras oavsett om registret bor i sdkmc:s NC-app-DB (start) eller separat ExApp-DB (mål); audit-/handover-spåret är Hubs ENDA legitima SoR-roll. Retention-/gallrings-/bevisgarantierna hänger på en betrodd, oförvanskbar logg (Tables underkänt), och var registret bor är samtidigt en AGPL-gräns.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (sdkmc-DB)/[BESLUT KRÄVS] (ExApp-lyft)",
+   "beroenden": "§9 B-DL-1 (datalagervalet) och B-EXAPP-1 (ExApp-lyftets tidpunkt); K-1.9, K-2.13–2.15, K-3.6"
+  }
+ ]
+}

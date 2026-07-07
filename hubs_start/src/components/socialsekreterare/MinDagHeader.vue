@@ -50,6 +50,7 @@
 
 <script>
 import { translate as t } from '@nextcloud/l10n'
+import { getCurrentUser } from '@nextcloud/auth'
 
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 
@@ -94,9 +95,12 @@ export default {
 	},
 
 	computed: {
-		/** Demo name per spec. */
+		/** Inloggad användares förnamn (aldrig hårdkodat — 'Anna'-buggen). */
 		namn() {
-			return 'Anna'
+			const user = getCurrentUser()
+			const visning = (user && (user.displayName || user.uid)) || ''
+			// Förnamnet räcker i hälsningen; hela namnet är brus.
+			return visning.split(' ')[0] || this.t('hubs_start', 'kollega')
 		},
 
 		/** "God morgon, Anna · måndag 14 juni" — localised. */

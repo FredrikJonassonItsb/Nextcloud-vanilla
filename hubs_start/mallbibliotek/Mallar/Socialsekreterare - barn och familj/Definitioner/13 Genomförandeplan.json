@@ -1,0 +1,63 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/13 Genomförandeplan.docx",
+    "titel": "13 Genomförandeplan",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Barn och familj]",
+        "[Namn — och om vårdnaden är gemensam eller enskild]",
+        "[Ange insatsen exakt som den beslutats, t.ex. kontaktfamilj, öppenvårdsbehandling, familjebehandling, placering]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[ÅÅÅÅ-MM-DD / tills vidare med omprövning]",
+        "[Det huvudsakliga mål som insatsen ska bidra till för barnet]",
+        "[Konkret mål 1 — formulerat så att det går att avgöra om det är uppnått]",
+        "[Konkret mål 2]",
+        "[Konkret mål 3]",
+        "[Vad ska göras konkret]",
+        "[Vilket mål i avsnitt 2 aktiviteten bidrar till]",
+        "[Utförare / socialsekreterare / vårdnadshavare / barnet]",
+        "[Hur delmålet följs upp / vad som ska ha hänt]",
+        "[beskriv hur, t.ex. utifrån ålder/mognad]",
+        "[ange varför]",
+        "[Återge barnets uppfattning med barnets egna ord så långt möjligt]",
+        "[Vårdnadshavarens uppfattning om mål och genomförande. Vid gemensam vårdnad — bådas inställning]",
+        "[Beskriv delaktigheten — möte, samtal, vad man kom överens om, ev. kvarstående skilda uppfattningar]",
+        "[Frekvens, t.ex. var tredje månad]",
+        "[beskriv]",
+        "[Namn, titel]",
+        "[Namn/enhet på den som genomför insatsen — t.ex. öppenvård, kontaktfamilj]",
+        "[Barn, vårdnadshavare, utförare — ange vilka som medverkat]",
+        "[Barn / vårdnadshavare / utförare]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "overgripande-mal-fran-vardplanen",
+            "etikett": "Övergripande mål (från vårdplanen)",
+            "token": "[Det huvudsakliga mål som insatsen ska bidra till för barnet]"
+        },
+        {
+            "id": "barnets-egna-synpunkter-pa-mal-och-insats",
+            "etikett": "Barnets egna synpunkter på mål och insats",
+            "token": "[Återge barnets uppfattning med barnets egna ord så långt möjligt]"
+        },
+        {
+            "id": "vardnadshavarens-synpunkter",
+            "etikett": "Vårdnadshavarens synpunkter",
+            "token": "[Vårdnadshavarens uppfattning om mål och genomförande. Vid gemensam vårdnad — bådas inställning]"
+        },
+        {
+            "id": "hur-planen-tagits-fram-tillsammans-med-barn-vardnadshavare",
+            "etikett": "Hur planen tagits fram tillsammans med barn/vårdnadshavare",
+            "token": "[Beskriv delaktigheten — möte, samtal, vad man kom överens om, ev. kvarstående skilda uppfattningar]"
+        },
+        {
+            "id": "vem-ansvarar-for-att-uppfoljningen-gors",
+            "etikett": "Vem ansvarar för att uppföljningen görs",
+            "token": "[Namn, titel]"
+        }
+    ]
+}

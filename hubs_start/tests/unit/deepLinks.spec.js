@@ -13,6 +13,7 @@ import deepLinks, {
 	mailboxLink,
 	callLink,
 	spreedRoomLink,
+	teamLink,
 	loa3UpgradeLink,
 	resolve,
 } from '../../src/services/deepLinks.js'
@@ -78,13 +79,26 @@ describe('spreedRoomLink', () => {
 	})
 })
 
+describe('teamLink', () => {
+	it('builds the Contacts team deep link from a circle singleId', () => {
+		expect(teamLink('NlPWA6hFlhIBpudXzx7AmmagVDSyLxj'))
+			.toBe('/index.php/apps/contacts/direct/circle/NlPWA6hFlhIBpudXzx7AmmagVDSyLxj')
+	})
+
+	it('returns null when no team id is known (caller must hide the control)', () => {
+		expect(teamLink(null)).toBeNull()
+		expect(teamLink('')).toBeNull()
+		expect(teamLink(undefined)).toBeNull()
+	})
+})
+
 // Regression: the default-export object MUST expose every helper a component calls
 // as `deepLinks.<fn>` (MinaArenden imports the default and calls deepLinks.deckLink).
 // deckLink was added as a named export but originally omitted from the default
 // object, so deepLinks.deckLink was undefined → the Bevakning button threw at runtime.
 describe('default export surface', () => {
 	it('exposes every helper used via the default import', () => {
-		for (const fn of ['threadLink', 'composerLink', 'deckLink', 'mailboxLink', 'callLink', 'spreedRoomLink', 'arenderumLink', 'fileLink', 'loa3UpgradeLink', 'resolve']) {
+		for (const fn of ['threadLink', 'composerLink', 'deckLink', 'mailboxLink', 'callLink', 'spreedRoomLink', 'arenderumLink', 'teamLink', 'fileLink', 'loa3UpgradeLink', 'resolve']) {
 			expect(typeof deepLinks[fn]).toBe('function')
 		}
 	})

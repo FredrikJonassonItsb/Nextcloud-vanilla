@@ -1,0 +1,342 @@
+{
+ "kapitel": 5,
+ "kapitelRubrik": "ROLLER, SYSTEM OF RECORD, INTEGRATIONER & SÄKERHETSSKYDD",
+ "krav": [
+  {
+   "id": "K-5.1",
+   "rubrik": "En motor för alla 12 roller",
+   "beskrivning": "Hubs ska stödja alla 12 kommunala roller genom EN ärende-motor plus N datadrivna ArendeTyp-rader — aldrig per-roll-kodflöde. Ryggraden R1–R9 är oförändrad i alla 12 roller; ingen roll motiverar eget kontrollflöde.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Bygger på ArendeTyp-registryn (K-3.18/K-3.19)"
+  },
+  {
+   "id": "K-5.2",
+   "rubrik": "7 nya/ombyggda ArendeTyp-fält",
+   "beskrivning": "ArendeTyp-raden ska utökas med 7 nya/ombyggda fält: systemOfRecord+sorFallback+inflodeVia; sekretessGrund[] (struct, temporal); riskKlass; externMyndighetMottagare+commitMode; verksamhetsgren+sekretessMur; utökad partsModell+joinNyckel; karantanKravs. Sex är rena datafält; endast karantanKravs berör motorn. Motiveras av att socialtjänst-config-raden tyst antog fyra premisser (A1–A4) som bryts kommun-brett.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Utökar K-1.26/K-3.19; detaljeras i K-5.9, K-5.13, K-5.30, K-5.32, K-5.34"
+  },
+  {
+   "id": "K-5.3",
+   "rubrik": "Rollskillnad som data, inte kod",
+   "beskrivning": "Skillnaden mellan roller ska bäras av enum-värden, flaggor och aclProfil-id — INTE av nya tjänster eller 'if roll == X'-kod. AppDetectionService styr graceful degradation.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS]/[BYGGS]",
+   "beroenden": "AppDetectionService (K-1.4, K-2.6)"
+  },
+  {
+   "id": "K-5.4",
+   "rubrik": "riskKlass som ortogonal axel",
+   "beskrivning": "riskKlass (normal/förhöjd/hög/kritisk) ska vara en härledd, ortogonal axel ovanpå ärendetypen — flera roller har lågrisk-typ men högrisk-instans, så risk och ärendetyp fångas separat.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-5.5",
+   "rubrik": "Fyrvägs-SoR-doktrin per ArendeTyp",
+   "beskrivning": "'Hubs är ALDRIG SoR' ska realiseras som fyrvägs-doktrin per ArendeTyp-rad: (i) Fallback-SoR, (ii) Nytt register/pekare, (iii) Tidsbegränsat mellanlager med spårbarhet (uttryckligt beslut + gallringsregel + rättslig grund), (iv) Avvisa/karantän. Modellen antog tidigare tyst att SoR alltid finns och att Hubs alltid får röra informationen.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Speglar K-1.7"
+  },
+  {
+   "id": "K-5.6",
+   "rubrik": "commitDestination NOT NULL",
+   "beskrivning": "commitDestination ska vara NOT NULL i sdkmc_arende_typ som DB-constraint, med värdena facksystem/diarium/e_arkiv/extern_myndighet/triage_forward/karantan. Detta är den centrala invarianten mot att Hubs blir SoR genom passivitet — dokumentet kallar det den dödligaste felmoden i 9/12 roller.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Samma invariant som K-1.6, K-2.19, K-3.23; beslut B-INV-1 i §9"
+  },
+  {
+   "id": "K-5.7",
+   "rubrik": "Retention-flip kräver registrerat utfall",
+   "beskrivning": "Retention-flippen (saga-steg R8) får aldrig ske utan att ett av de fyra SoR-utfallen är explicit registrerat. För kluster A (utredning/arbetsmaterial) får retention inte flippa till 'klart' förrän handlingen committats ELLER ett uttryckligt icke-diarieföringsbeslut spårats — tyst icke-diarieföring är otillåten gallring av allmän handling enligt TF.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Kopplar till K-1.8, K-3.25 (GAP-007); diariePlikt-fältet"
+  },
+  {
+   "id": "K-5.8",
+   "rubrik": "Enda legitima SoR: audit-/provenansspåret",
+   "beskrivning": "Den enda legitima SoR-roll Hubs får ta är det smala audit-/provenans-spåret — att handover skedde korrekt och mottagningskvittens fanns (fallen F42/F45), realiserat via postCommitHook='handover_kvittens'. Aldrig verksamhetsdata; 'skickat' är inte samma som 'mottaget'.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Speglar K-1.9"
+  },
+  {
+   "id": "K-5.9",
+   "rubrik": "inflodeVia avgör mellanlagring",
+   "beskrivning": "Fältet inflodeVia (funktionsadress/e_tjanst/muntlig_kontakt) ska avgöra om Hubs mellanlagrar alls. Vid e_tjanst går informationen förbi Hubs — exempel Överförmyndare (R4) där årsräkning via e-Wärna går direkt till facksystemet som äger både inlämningskanal och SoR, varför Hubs inte får dubbellagra.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Del av K-5.2-fälten"
+  },
+  {
+   "id": "K-5.10",
+   "rubrik": "FacksystemCommitService med konnektorfamiljer",
+   "beskrivning": "TreservaCommitService ska generaliseras till FacksystemCommitService som väljer konnektorfamilj via systemOfRecord+frendsModul. Treserva/Lifecare-konnektorn (GAP-019) byggs först som referensimplementation; tjänsten och konnektorerna bor i M4-zonen (ExApp om proprietär). Dagens motor har bara EN väg (commitToTreserva) och frendsModul ensam är fel abstraktionsnivå.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-019; K-3.22; M4/ExApp-beslutet (K-2.10, §9 B-LIC-1)"
+  },
+  {
+   "id": "K-5.11",
+   "rubrik": "2-dimensionell frendsMappning (modul × produkt)",
+   "beskrivning": "frendsMappning ska bli 2-dimensionell (modul × produkt) eftersom samma modul (t.ex. ediarium) har olika schema per produkt (Public360 ≠ W3D3 ≠ Platina ≠ Ciceron ≠ Evolution). Mappnings-id ligger i config; varje mappning är riktig integrationskod per produkt × kund — dokumentet bedömer detta som 5–10× socialtjänstens GAP-019 och tyngsta integrationsbördan (Δ15).",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Δ15; GAP-019; K-5.10"
+  },
+  {
+   "id": "K-5.12",
+   "rubrik": "Multi-commit: frendsModul[] / commitPlan[]",
+   "beskrivning": "En frendsModul ska kunna bli frendsModul[] (multi-commit via commitPlan[]): t.ex. R2 journal+samordning, R7 verkställighet+Appva, R8 ByggR+Ecos — flera commit-mål från samma händelse men ingen akt-sammanslagning. Flera SoR per händelse är ett mönster, inte kantfall.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.36 (ingen akt-sammanslagning)"
+  },
+  {
+   "id": "K-5.13",
+   "rubrik": "commitMode styr commit-riktning",
+   "beskrivning": "commitMode (commit/referens_lank/las_konsument/extern_anmalan) ska styra commit-riktningen. las_konsument innebär att Hubs ALDRIG får skriva (Pascal/NPÖ/SVOD — kommunsjuksköterskan är konsument av annan vårdgivares data och Hubs får aldrig cacha den). Läs-vs-skriv-asymmetrin är ett principiellt skydd.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Del av K-5.2-fälten"
+  },
+  {
+   "id": "K-5.14",
+   "rubrik": "P0: generaliserad e-diarium/e-arkiv-konnektor",
+   "beskrivning": "En generaliserad e-diarium/e-arkiv-konnektor ska byggas först (P0): den är primär-SoR för R1/R11 OCH laglig fallback-SoR för varje (c)-zon i R5/R6/R7 — EN konnektor avlastar 9 roller. Inkluderar postCommitHook='arkivera_fgs'. Produkterna som nämns: Public360, W3D3, Ciceron, Platina, Evolution, Castor, Sydarkivera, iipax.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.10/K-5.11; prioritet i roadmap §10"
+  },
+  {
+   "id": "K-5.15",
+   "rubrik": "P1-konnektorer: Sokigo, Appva, HR, Överförmyndare",
+   "beskrivning": "Som P1 ska konnektorer byggas för Sokigo-klustret (ByggR/Nova + Ecos 2 + Daedalos) för R8/R10, Appva MCSS read/notify för R2/R7, HR-system (Heroma/Personec) för R3 och Överförmyndarsystem (e-Wärna Go/Provisum/Gö, sorProdukt per kund ×3) för R4. Konnektor-grupperingen visar var EN konnektor återanvänds.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]/[KONFIG]",
+   "beroenden": "K-5.10/K-5.11; prioritet i roadmap §10"
+  },
+  {
+   "id": "K-5.16",
+   "rubrik": "Extern myndighet = egen integrationsklass",
+   "beskrivning": "Rapport till tillsynsmyndighet ska vara en egen integrationsklass (commitDestination.typ='extern_myndighet', commitMode='extern_anmalan') skild från facksystem-commit: ingen dnr-callback, ankaret är vetskap/kännedom, ofta PII-maskning, och den flippar INTE retentionState. Hubs förbereder payload; en människa lämnar in.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Avviker medvetet från commit-flödet i K-3.22/K-5.10"
+  },
+  {
+   "id": "K-5.17",
+   "rubrik": "P0-externa mål: IMY, MSB/CERT-SE, IVO",
+   "beskrivning": "De mest universella externa myndighets-commit-målen ska byggas som P0-extern: IMY personuppgiftsincident (GDPR art. 33, 72h ur vetskap), MSB/CERT-SE NIS2 (milstolpar 24h→72h→30 dagar) samt IVO Lex Sarah (≤5 veckor, maska PII) och Lex Maria ('snarast', maska) för R2/R7.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.16 (integrationsklassen); K-5.40 (fristPolicy för klockorna)"
+  },
+  {
+   "id": "K-5.18",
+   "rubrik": "Parallell flermottagare (Arketyp B)",
+   "beskrivning": "En händelse ska kunna föda flera commits till flera SoR med olika sekretessregim och olika klockor. Kanoniskt exempel: R5 ransomware-med-personuppgifter kräver både NIS2-anmälan (MSB 24h) OCH PU-incident (IMY 72h) — två commits, en händelse.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.12 (multi-commit), K-5.35 (arketyp B i cross-role)"
+  },
+  {
+   "id": "K-5.19",
+   "rubrik": "Bred externMyndighetMottagare-enum",
+   "beskrivning": "Enum:en externMyndighetMottagare ska täcka övriga externa mottagare brett: Försäkringskassan (plan dag-30, R3), Länsstyrelsen (R4/R8/R10), polis/åklagare (anmälningsplikt bryter sekretess, R4/R7/R10/R11), domstol (FR/MMD/TR; överklagande 3 veckor) — samt reservera en integrationspunkt mot det nationella ställföreträdarregistret fr.o.m. 2028 (R4). Avsändar-/mottagarregistret måste täcka alla externa parter med rätt LOA.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]/[BESLUT KRÄVS]",
+   "beroenden": "Beslutsdelen hör hemma i beslutsloggen §9"
+  },
+  {
+   "id": "K-5.20",
+   "rubrik": "Terminerande 'föds inte'-utfall (led −1)",
+   "beskrivning": "Sagan ska få ETT nytt terminerande utfall: 'föds inte' (avvisad_sakerhetsskydd). preSagaHook='avvisa_sakerhetsskydd' körs som led −1 FÖRE R1 (mint) med abort-semantik, och default vid säkerhetsskydds-indikator är avvisa (fail-closed, samma disciplin som MessageTypeService som kastar Exception på okänt suffix). Detta är det enda i rollanalysen som rör själva motorn, inte bara config (Δ10), och gäller 8–9 av 12 roller.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (säkerhetskritiskt, Δ10)",
+   "beroenden": "K-1.27/K-3.24 (motor-utökningen); §9 B-SEC-1; roadmap §10 kräver detta före släpp utanför socialtjänst"
+  },
+  {
+   "id": "K-5.21",
+   "rubrik": "Avvisning lämnar inga artefakter",
+   "beskrivning": "Vid avvisning ska utfallet vara: ingen Groupfolder, ingen DB-rad med innehåll, ingen case:-tagg, inget Spreed-rum, ingen Frends-commit — bara ett spårbart avvisningskvitto. Säkerhetsskyddsklassat material (SäkL 2018:585 + förordning 2021:955) får ofta inte ligga i internetexponerad Nextcloud/Spreed alls.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.20"
+  },
+  {
+   "id": "K-5.22",
+   "rubrik": "Säkerhetsskydd ≠ skyddade personuppgifter",
+   "beskrivning": "Säkerhetsskydd-gränsen ska vara kvalitativt skild från skyddade_personuppgifter: skyddade PU ger snävare ACL inom systemet, medan säkerhetsskyddsklassat inte får vara i systemet alls. sekretessNiva='sakerhetsskydd' är därför inte en ACL-profil utan ett avvisnings-utfall — dokumentet kallar detta den viktigaste enskilda arkitekturregeln, och att behandla det förra som det senare är lagbrott.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-1.10; K-5.20/K-5.21"
+  },
+  {
+   "id": "K-5.23",
+   "rubrik": "Retroaktiv karantän vid felmottagning",
+   "beskrivning": "Retroaktiv karantän ska stödjas när säkerhetsskyddsklassat redan tagits emot: radera ur index, Spreed, Groupfolder och tag-DB efter mottagning, triggat på svaga signaler (fail-closed), och stoppa propagering retroaktivt (svårt när taggen redan spridits trådbrett). Upptäckten kan i sig vara en säkerhetsskyddsincident (strängare än PU-incidentens 72h). InnehallsKlassService utökas med avvisa/isolera (Δ11).",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (Δ11)",
+   "beroenden": "InnehallsKlassService (kap. 4); K-5.37"
+  },
+  {
+   "id": "K-5.24",
+   "rubrik": "Läges-/regimbyte (höjd beredskap/krig)",
+   "beskrivning": "Ett läges-/regimbyte ska stödjas: höjd_beredskap/krig kan flytta hela kategorier från normal regim till säkerhetsskydd-regim, och vid regimbyte kan hela Hubs bli olämpligt för vissa kategorier (R10). Säkerhetsskydd-regimen är dynamisk, inte bara statisk per ärende.",
+   "typ": "beslut",
+   "statusIDok": "[BESLUT KRÄVS]/[BYGGS]",
+   "beroenden": "§9 B-SEC-1 (regimbyte vid höjd beredskap nämns där explicit)"
+  },
+  {
+   "id": "K-5.25",
+   "rubrik": "Medvetet ICKE-byggda säkerhetsskydds-integrationer",
+   "beskrivning": "Säkerhetsskydds-integrationer ska medvetet INTE byggas: WIS (MSB-ägt, hanteras via manuell referens) och FM-godkänd krypto/signalskydd. Klassad RSA, krisledning, SUA och säkerhetsprövning hanteras via avvisa-vägen.",
+   "typ": "sakerhet",
+   "statusIDok": "[EXTERN]",
+   "beroenden": "K-5.20 (avvisa-vägen)"
+  },
+  {
+   "id": "K-5.26",
+   "rubrik": "Visselblåsning som NON-route",
+   "beskrivning": "Visselblåsning (lag 2021:890) ska vara en NON-route som inte ens får passera sagan — utfallet är avvisa/isolera. SoR är ett separat restricted-system utanför Hubs domän (Lantero/WhistleB/Draftit Whistle); Hubs roll är enbart att avvisa/isolera felmottaget material, aldrig route:a det. Reconciliation, ConsolidateMailboxesService och ArendeMatchService är oförenliga med isoleringskravet. Berör R1/R3/R9/R11.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]/[EXTERN]",
+   "beroenden": "K-1.11; K-3.17 (reconciliation), ArendeMatchService (kap. 4)"
+  },
+  {
+   "id": "K-5.27",
+   "rubrik": "aclProfil='vissel_isolerad' — tre hårda opt-outs",
+   "beskrivning": "Profilen vissel_isolerad ska ge tre hårda opt-outs: (1) ur ArendeMatchService (ingen SSN-/case-tagg-matchning), (2) ur ConsolidateMailboxesService, (3) egen ACL-domän som döljs även för gruppledare och alla aggregat. Matchningsmotorn är fienden vid isolering — en SSN-träff mot t.ex. ett personalärende om den anmälde vore katastrof.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.26; K-5.33 (aclProfil-biblioteket)"
+  },
+  {
+   "id": "K-5.28",
+   "rubrik": "Jäv-baserad intra-Circle-exkludering",
+   "beskrivning": "Jäv-baserad exkludering inom en Circle ska stödjas via exkludera_uid[] på ärendeinstansen: juristen/handläggaren kan vara part/motpart till en kollega, vilket kräver isolering utanför rollens egen krets (R11). GAP-058-koherenstestet måste täcka detta.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-058 (tre-lagers-ACL-koherens)"
+  },
+  {
+   "id": "K-5.29",
+   "rubrik": "PuB-/laglig-grund-/ändamålsmatris i config",
+   "beskrivning": "En PuB-/laglig-grund-/ändamålsmatris ska ligga i config från dag ett, per ArendeTyp-rad: lagligGrund, personuppgiftsansvarig, andamaalsbegransning, gdpr_art9. Utan matrisen blir Hubs juridiskt osäljbart — PuB-avtal går inte att underteckna och RoPA (registerförteckning) blir omöjlig (Δ17).",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS] (Δ17)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-5.30",
+   "rubrik": "Temporal sekretessGrund + utökad sekretessNiva",
+   "beskrivning": "sekretessGrund[] ska vara en struct med temporalitet, och sekretessNiva utökas till skalan offentlig_tills_menprovad | normal | hog | restricted | sakerhetsskydd. omfattning='delfalt' täcker asymmetrisk sekretess som anmälaridentitet (R8). Motiveras av tre brutna antaganden (A2+A3): offentlighet som norm, temporal sekretess och restricted ovanför hög.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Del av K-5.2-fälten; K-5.31"
+  },
+  {
+   "id": "K-5.31",
+   "rubrik": "Temporal ACL-degradering (anbudssekretess-flip)",
+   "beskrivning": "Temporal ACL-degradering ska stödjas (Δ13): absolut anbudssekretess (OSL 19:3) gäller tills tilldelningsbeslut, sedan flippar offentligheten via postCommitHook='slapp_anbudssekretess'. Flippen måste degradera HELA case:-klustret — även Spreed-historik och Deck-kort (bakåt-läckage) — och avtalsspärr/överprövning 10 dagar får inte glömmas. Temporal sekretess är ett modellgap i 5 roller oberoende (R1/R5/R8/R9/R11).",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (Δ13)",
+   "beroenden": "K-5.30; case:-tagg-klustret (K-3.14)"
+  },
+  {
+   "id": "K-5.32",
+   "rubrik": "sekretessMur — verksamhetsgrens-mur",
+   "beskrivning": "sekretessMur (verksamhetsgrens-mur, inte ACL-gradient) ska stödjas: hård mur mellan självständiga verksamhetsgrenar i samma fysiska person/akt — EMI/HSL (PDL, OSL 25) mot skoldokumentation (OSL 23) i R6, och SoL (OSL 26) mot HSL (PDL) i R2/R7 via vardgivarSpar (SoL|HSL|bada). Utan detta route:ar modellen HSL-innehåll in i SoL-akt — en inbyggd sekretessincident; detta är den enda hårda nya fält-utökningen.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Del av K-5.2-fälten"
+  },
+  {
+   "id": "K-5.33",
+   "rubrik": "aclProfil-bibliotek (≥8 profiler)",
+   "beskrivning": "aclProfil ska bli ett bibliotek om minst 8 profiler (socialtjanst_deny_default, offentlig_tills_menprovad, vissel_isolerad, partsatskillnad, verksamhetsgrens_mur, extern_part_scoped, dso_oberoende, temporal_degraderbar) där aclProfil-id väljer Circles-mönster (konfiguration, inte ny kod). ACL-default ska vara per-roll, inte hårdkodad deny-by-default; skyddade_personuppgifter överstyr alla profiler hårdare, och dso_oberoende ger en avskild krets även gentemot egen IT-chef (R5, GDPR art. 38). Δ14.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]/[KONFIG] (Δ14)",
+   "beroenden": "Circles; GAP-058 tre-lagers-koherens; K-1.16"
+  },
+  {
+   "id": "K-5.34",
+   "rubrik": "Utökad partsModell + avstängbar SSN-matchning",
+   "beskrivning": "partsModell ska utökas och kompletteras med joinNyckel (se K-4.25). SSN-steget i ArendeMatchService ska kunna stängas av kategori-specifikt för objektärenden (R8/R9), anonym begäran (TF 2:18, R1/R12) och myndighetssamverkan (R10) — SSN-matchning antar personärenden, vilket objekt-/anonym-/uppdragsärenden bryter.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.25 (joinNyckel); ArendeMatchService (kap. 3/4)"
+  },
+  {
+   "id": "K-5.35",
+   "rubrik": "Cross-role på instansen (tre arketyper)",
+   "beskrivning": "Cross-role-routing ska bäras på ärendeinstansen, inte typen: primarRoll + medmottagare[] ({roll, sekretessGrund, commitMode, aclScope:'egen_kerna'}) + korsAxel (eskalering | parallell_flermottagare | transit). Tre arketyper: A eskaleringskedja (R6), B parallell flermottagare (R5), C felmottaget/transit (R12/R1/R11) — mönster, inte kantfall, vilket undviker kombinatorisk explosion (Δ12).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (Δ12)",
+   "beroenden": "K-1.15; K-5.18 (arketyp B), K-5.37 (arketyp C)"
+  },
+  {
+   "id": "K-5.36",
+   "rubrik": "Medmottagares akter slås ALDRIG ihop",
+   "beskrivning": "Medmottagares akter ska ALDRIG slås ihop: delat hubsCaseId får användas för koordinering, men commit-målen ska vara separata med olika ACL-kretsar (sekretessmur). Sammanslagning över sekretessgränser är en inbyggd incident.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-5.35; K-1.15; K-5.12 (multi-commit)"
+  },
+  {
+   "id": "K-5.37",
+   "rubrik": "felmottaget_men_känsligt — fail-closed + retroaktiv isolering",
+   "beskrivning": "Utfallet felmottaget_men_känsligt ska fail-closed:a på svaga signaler och kunna isolera retroaktivt: opt-out ur ArendeMatchService innan SSN-ankring, stoppa propagering och riva taggar (GAP-063). forstaAtgard='karantan_vidarebefordra' (anti-saga, R12) vidarebefordrar materialet oöppnat — känsligt som landar fel ska vidare oöppnat, t.ex. visselblåsning som läcker in på juridik@ (R11).",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-063; K-5.23 (retroaktiv karantän), K-5.26 (visselblåsning)"
+  },
+  {
+   "id": "K-5.38",
+   "rubrik": "forstaAtgard: icke-födande/icke-commit-utfall",
+   "beskrivning": "forstaAtgard ska stödja utfall bortom 'föd ärende': ta_emot_uppdrag (R7 — sagan körs baklänges via preSagaHook='spegla_myndighetsbeslut'), karantan_vidarebefordra (R12), menprovning/radgivning (R11), triage_vidareformedla med frendsModul=null (R6/R12/R10) samt sekretessprovning/rattidsprovning/diariefor_direkt (R1). Sagan kan idag bara föda; tre utfallsklasser saknas.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Saga-motorn (K-3.8–K-3.13); K-5.20 (terminerande utfall)"
+  },
+  {
+   "id": "K-5.39",
+   "rubrik": "retentionAnkare lösgörs från commit",
+   "beskrivning": "retentionAnkare ska lösgöras från commit och kunna vara commit | lagstadgad_tid | vidaresant_kvittens: kamerabevakningsmaterial gallras per kamerabevakningslagen och RSA per 2-årscykel — inte vid facksystem-commit (R10). Annars bryter gallring av kamera/RSA mot R8-flippens logik.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Modifierar commit-bunden retention i K-3.25/K-5.7"
+  },
+  {
+   "id": "K-5.40",
+   "rubrik": "fristPolicy som struct med multi-milstolpar",
+   "beskrivning": "fristPolicy ska vara en struct, inte skalär: {typ, ankare, milstolpar[], forlangningsbar, bindande:'lag'|'avtal'}. Den måste täcka 72h ur kännedom (IMY), NIS2 multi-milstolpe (24h→72h→30d), sub-dygn/'skyndsamt' (icke-numerisk, TF 2:16), komplett-ansökan-ankare (PBL 10 veckor), avtalslivscykel (framtida datum) och säsongsklump (1 mars årsräkning, R4). Avtalsfrister skiljs från lagfrister via bindande-fältet. Frister har olika ankare och multi-milstolpar i 7 roller (Δ16).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (Δ16)",
+   "beroenden": "K-5.17 (IMY/NIS2-klockorna); fristPolicy i K-3.19"
+  },
+  {
+   "id": "K-5.41",
+   "rubrik": "Registry + constraint + commit-tjänst i M4-zonen",
+   "beskrivning": "ArendeTyp-registryn, commitDestination-constrainten och FacksystemCommitService-konnektorerna ska bo i M4-zonen med single-writer-garanti. Starten sker i (b) sdkmc:s NC-app-DB (sdkmc_arende*-tabeller) med ExApp-rent schema så att lyft till (c) ExApp-DB blir en ren data-migrering; Tables är underkänd som backend och ExApp-modellen löser modul-, licens- och datalagerfrågan i ett val.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]/[BESLUT KRÄVS]",
+   "beroenden": "K-2.13–K-2.15, K-3.3/K-3.4; beslut B-DL-1 och B-LIC-1 i §9"
+  },
+  {
+   "id": "K-5.42",
+   "rubrik": "Taggmotorn till M0 före M4",
+   "beskrivning": "Taggmotorn (case:{id}-token) ska flyttas till plattformskärnan M0 FÖRE M4 byggs — en kod-refaktor, inte data-migration. Görs det inte cementeras monoliten.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-2.2/K-2.3, K-3.28; beslut B-MOD-1 i §9"
+  }
+ ]
+}

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\HubsArende\Service;
 
 use OCA\HubsArende\Db\ArendeMapper;
+use OCA\HubsArende\Db\HandelseMapper;
 use OCA\HubsArende\Db\MemberMapper;
 use OCA\HubsArende\Db\Pekare;
 use OCA\HubsArende\Db\PekareMapper;
@@ -18,6 +19,7 @@ use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
 use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
+use OCA\HubsArende\Integration\Client\TeamClient;
 
 /**
  * DEV/DEMO seedning av syntetiska demo-ärenden — återanvändbar service.
@@ -81,6 +83,11 @@ class DemoSeedService {
         private SdkmcClient $sdkmcClient,
         private MemberMapper $memberMapper,
         private ArenderumGroupService $arenderumGroupService,
+        // TRAILING OPTIONAL (autowired): teamet (presentationslagret) rivs i purge
+        // via tearDownExternal (objekt_typ='team'); null ⇒ graceful skip.
+        private ?TeamClient $teamClient = null,
+        // TRAILING OPTIONAL (autowired): händelsejournalen rivs med demo-ärendet.
+        private ?HandelseMapper $handelseMapper = null,
     ) {
     }
 
@@ -158,6 +165,8 @@ class DemoSeedService {
             // Riv ärenderummets förstaklassiga medlemmar (mottagningskrets + ev.
             // handläggare/co-handläggare) så purge ger ett RENT utgångsläge.
             $this->memberMapper->deleteByCaseId($id);
+            // Riv händelsejournalen med ärendet.
+            $this->handelseMapper?->deleteByCaseId($id);
             // Riv per-case-åtkomstgruppen så ingen tom grupp blir kvar.
             $this->arenderumGroupService->delete($id);
             $this->arendeMapper->delete($rad);
@@ -176,6 +185,7 @@ class DemoSeedService {
      *   case_tag      → SdkmcClient::deleteCaseTag(hubsCaseId, email, objektId=tagId)
      *   conversation  → SdkmcClient::untagMessage(hubsCaseId, []) (demo har inga
      *                    riktiga message-ids; untag är då en graceful no-op)
+     *   team          → TeamClient::destroyTeam(objektId=circle singleId)
      *
      * GRACEFUL: alla fel sväljs så purge fortsätter. Okänd objekt_typ ignoreras.
      */
@@ -202,6 +212,10 @@ class DemoSeedService {
                     break;
                 case 'conversation':
                     $this->sdkmcClient->untagMessage($hubsCaseId, []);
+                    break;
+                case 'team':
+                    // Ärenderummets presentationsteam (circle singleId i objektId).
+                    $this->teamClient?->destroyTeam($objektId);
                     break;
                 default:
                     // Okänd typ — ingen teardown att göra; pekaren raderas ändå.

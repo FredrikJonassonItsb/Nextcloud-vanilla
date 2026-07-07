@@ -14,18 +14,35 @@
 			class="korg-valjare__korgar"
 			role="group"
 			:aria-label="t('hubs_start', 'Korgar')">
+			<!-- AGGREGAT-pillren (Alla korgar / Alla grupper) har egen gråton
+			     (--aggregat) — de är SUMMOR av de andra korgarna, inte egna val. -->
 			<button
 				type="button"
-				class="korg-valjare__korg hs-target"
+				class="korg-valjare__korg korg-valjare__korg--aggregat hs-target"
 				:class="{ 'korg-valjare__korg--aktiv': aktivKorg === null }"
 				:aria-pressed="aktivKorg === null ? 'true' : 'false'"
-				:aria-label="t('hubs_start', 'Alla korgar — {n} otriagerat', { n: totaltOtriagerat })"
+				:aria-label="t('hubs_start', 'Alla korgar (summan av alla) — {n} otriagerat', { n: totaltOtriagerat })"
 				@click="valjKorg(null)">
 				<span class="korg-valjare__ikon" aria-hidden="true">
 					<InboxMultipleIcon :size="18" />
 				</span>
 				<span class="korg-valjare__etikett">{{ t('hubs_start', 'Alla korgar') }}</span>
 				<NcCounterBubble v-if="totaltOtriagerat > 0" class="korg-valjare__bubbla">{{ totaltOtriagerat }}</NcCounterBubble>
+			</button>
+
+			<button
+				v-if="harGrupper"
+				type="button"
+				class="korg-valjare__korg korg-valjare__korg--aggregat hs-target"
+				:class="{ 'korg-valjare__korg--aktiv': aktivKorg === GRUPPER }"
+				:aria-pressed="aktivKorg === GRUPPER ? 'true' : 'false'"
+				:aria-label="t('hubs_start', 'Alla grupper (summan av funktionsbrevlådorna) — {n} otriagerat', { n: gruppOtriagerat })"
+				@click="valjKorg(GRUPPER)">
+				<span class="korg-valjare__ikon" aria-hidden="true">
+					<AccountGroupIcon :size="18" />
+				</span>
+				<span class="korg-valjare__etikett">{{ t('hubs_start', 'Alla grupper') }}</span>
+				<NcCounterBubble v-if="gruppOtriagerat > 0" class="korg-valjare__bubbla">{{ gruppOtriagerat }}</NcCounterBubble>
 			</button>
 
 			<button
@@ -123,9 +140,30 @@ export default {
 	},
 
 	computed: {
+		/**
+		 * Sentinel-värdet för aggregatet "Alla grupper" (= alla korgar utom den
+		 * personliga). '@'-prefixet kan aldrig kollidera med en korg-adress.
+		 * MinaArendens filteredInflode tolkar samma sentinel.
+		 */
+		GRUPPER() {
+			return '@alla-grupper'
+		},
+
 		/** Summan av otriagerat över alla korgar — visas på "Alla"-pillret. */
 		totaltOtriagerat() {
 			return this.korgar.reduce((sum, korg) => sum + Number(korg.otriagerat || 0), 0)
+		},
+
+		/** Finns funktionsbrevlådor (grupp/fax/sdk)? Annars är aggregatet meningslöst. */
+		harGrupper() {
+			return this.korgar.some((korg) => korg.scope !== 'personlig')
+		},
+
+		/** Summan av otriagerat över funktionsbrevlådorna — "Alla grupper"-pillret. */
+		gruppOtriagerat() {
+			return this.korgar
+				.filter((korg) => korg.scope !== 'personlig')
+				.reduce((sum, korg) => sum + Number(korg.otriagerat || 0), 0)
 		},
 
 		/** De åtta meddelandetyperna med svensk etikett + ikon, i fast visningsordning. */
@@ -230,6 +268,22 @@ export default {
 			background: var(--color-primary-element-light, var(--color-background-hover));
 			color: var(--color-main-text);
 			font-weight: 700;
+		}
+
+		// AGGREGAT-pillren (Alla korgar / Alla grupper): egen gråton + streckad
+		// ram som signalerar "summan av de andra", inte ett eget korg-val.
+		&--aggregat:not(&--aktiv) {
+			background: var(--color-background-dark);
+			border-style: dashed;
+			font-weight: 500;
+
+			&:hover {
+				background: var(--color-background-hover);
+			}
+		}
+
+		&--aggregat#{&}--aktiv {
+			border-style: dashed;
 		}
 	}
 

@@ -117,6 +117,28 @@ class MemberMapper extends QBMapper {
     }
 
     /**
+     * All distinct case ids where a uid is a member (any role) — the source for
+     * the MEDLEMSBASERADE "Mina ärenden" (dashboard mineOnly).
+     *
+     * @return string[] hubs_case_id-värden
+     * @throws Exception
+     */
+    public function findCaseIdsByUid(string $uid): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->selectDistinct('hubs_case_id')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('uid', $qb->createNamedParameter($uid, IQueryBuilder::PARAM_STR)));
+
+        $result = $qb->executeQuery();
+        $ids = [];
+        while (($row = $result->fetch()) !== false) {
+            $ids[] = (string)$row['hubs_case_id'];
+        }
+        $result->closeCursor();
+        return $ids;
+    }
+
+    /**
      * Number of members of a case room (all roles). For the admin/status view.
      *
      * @throws Exception

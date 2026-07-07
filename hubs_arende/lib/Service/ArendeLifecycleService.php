@@ -12,8 +12,11 @@ namespace OCA\HubsArende\Service;
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\ArendeTyp;
+use OCA\HubsArende\Db\Handelse;
+use OCA\HubsArende\Db\HandelseMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -62,6 +65,10 @@ class ArendeLifecycleService {
         private ArendeTypRegistry $typRegistry,
         private LoggerInterface $logger,
         private ITimeFactory $timeFactory,
+        // Händelsejournalen ("Historik & beslut"). BEST-EFFORT — journal-fel får
+        // aldrig fälla övergången. TRAILING OPTIONAL (positionell testharness).
+        private ?HandelseMapper $handelseMapper = null,
+        private ?IUserSession $userSession = null,
     ) {
     }
 
@@ -130,6 +137,24 @@ class ArendeLifecycleService {
         $this->maybeRecomputeFristDue($arende, $nyttSteg);
 
         $arende = $this->arendeMapper->update($arende);
+
+        // Journal (best-effort): steg-övergången i "Historik & beslut"-tidslinjen.
+        if ($this->handelseMapper !== null) {
+            try {
+                $this->handelseMapper->record(
+                    $arende->getHubsCaseId(),
+                    Handelse::TYP_STEG,
+                    ['fran' => $franSteg, 'till' => $nyttSteg],
+                    $this->userSession?->getUser()?->getUID() ?? '',
+                );
+            } catch (\Throwable $e) {
+                $this->logger->warning('hubs_arende: journal-skrivning misslyckades (graceful)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $arende->getHubsCaseId(),
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // Provenance log — hubsCaseId + från/till-steg only, NEVER PII.
         $this->logger->info('hubs_arende: steg-övergång', [

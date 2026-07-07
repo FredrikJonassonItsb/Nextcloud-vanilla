@@ -1,0 +1,27 @@
+﻿**Kompletthetskritik — vad som saknas eller är underutvecklat i de tre GTM-utkasten** (rangordnat efter påverkan på slutresultatet)
+
+**1. Namngiven första-kund-lista.** Alla tre beskriver ICP:n skarpt (mellanstor kommun, Treserva, förbundsdrift) men ingen namnger en enda kandidat. Med 12–24 månaders säljcykel och EN referens som grind för allt är detta strategins mest kritiska tomrum: slutversionen måste innehålla en shortlist på 5–10 konkreta kommuner/förbund (och 3–5 advokatbyråer/SUA-underleverantörer ur Fredriks/Rebeccas faktiska nätverk) med angiven relationsväg in. Utan den är "referenskommunen" en abstraktion, inte en plan.
+
+**2. Löpande KPI:er per fas — inte bara GO/NO-GO.** Grindarna är bra men binära och glesa (mån 6/18/30). Det saknas en styrpanel däremellan: pipeline-mått (bokade Hubs-dagar/kvartal, kvalificerade möten), aktiveringsmått (dagliga aktiva handläggare nämns men utan måltal per månad), leveransmått (time-to-live per konnektor), NRR/churn. Fem personer utan styrelseerfaren rytm behöver månadsvisa ledande indikatorer, annars upptäcks NO-GO först vid grinden.
+
+**3. Certifieringar som köpkrav — KLASSA, ISO 27001, ev. ISO 27701/Tisax-motsvarigheter.** ISO 27001 nämns i alla tre som "påbörjas mån 18+", men i kommunal upphandling är KLASSA-klassning och informationssäkerhetsbilaga ofta *inträdeskrav*, inte merit — och SUA-segmentet kräver säkerhetsskyddad upphandling där även ITSL:s *personal* måste säkerhetsprövas (bara B ser registreringen, ingen ser personfrågan). Sekvensen måste vändas: gap-analys mot KLASSA + ISO-förstudie i mån 0–6, annars diskvalificeras anbuden innan suveränitetsargumentet ens hörs.
+
+**4. Supportmodell och SLA i siffror.** "Mattias + partner bär SLA" är en ansvarsfördelning, inte en supportmodell. Saknas: definierade servicenivåer (svarstid/åtgärdstid per allvarlighetsgrad), jourfråga (vem svarar 02:00 när socialjourens meddelandekanal ligger nere — detta är verksamhetskritisk infrastruktur för myndighetsutövning), eskalationskedja, och SLA-vite-exponering i partnerledet. En kommun köper inte utan detta dokument; det måste finnas före första anbudet.
+
+**5. Brain-portabilitet som produktlöfte.** Utkasten säljer "testad exit" för Hubs men säger inget om exit för *AI-lagret*. Anti-lock-in-berättelsen är ofullständig utan: dokumenterat exportformat för Evidence-schema + embeddings, löfte om att brainen är läsbar utan ITSL:s mjukvara, och exit-test även för Verket/Minne. Detta är dessutom den skarpaste differentieringen mot alla AI-konkurrenter — att den saknas är ett självmål.
+
+**6. EU- och innovationsfinansiering som hävstng.** Ingen av tre nämner Vinnova, Digital Europe Programme, EIC eller Eurostars — trots att "litet kapital, ingen extern finansiering" är hela begränsningen. Suverän europeisk AI-infrastruktur är exakt vad dessa program finansierar 2026. En Vinnova-ansökan med referenskommunen som partner kan finansiera Verket-produktifieringen (6–9 pm) utan utspädning. Detta är gratis optionalitet som lämnats på bordet.
+
+**7. Akademiska/ekosystempartnerskap.** AI Sweden, RISE och universitetens socialtjänstforskning saknas helt. AI Sweden ger tre saker ITSL inte kan köpa: trovärdighet i svensk eval-svit-arbetet (den "svenska evalueringssviten" blir starkare sam-publicerad), tillgång till kommunala AI-nätverk (färdiga leads för våg 2), och rekryteringskanal för verksamhetsingenjören.
+
+**8. Styrelseförankring och ägarfrågor.** Strategin innehåller ett förberett exitscenario ("sälj konnektorfamiljen mån 30") och ett VD-beslutspaket — men inget om styrelsens mandat, ägarnas tidshorisont, eller vad som händer med Johan/övriga ägare vid pivot. CLA-frågan kräver dessutom bolagsrättsligt beslut om vem som äger inlämnad kod. En GTM som kan sluta i bolagsförsäljning utan förankrad ägarsamsyn är en konfliktgenerator.
+
+**9. Konkurrentbevakning som process, inte punktlista.** Riskavsnitten nämner Context Chat "kvartalsvis" och sovereignty-washing-signaler, men ingen äger bevakningen. Slutversionen behöver: vem (Sandra?), vilka källor (Nextcloud-roadmap, Microsoft Sverige-lanseringar, Adda-avrop, Legora/Harvey-rörelser), vilken kadens, och koppling till kill-signalerna — annars är kill-kriterierna omätta i praktiken.
+
+**10. Community-strategi för AGPL-kärnan.** C nämner app store som leadmotor men ingen har en plan för att *odla* communityt: publika issues/roadmap, bidragspolicy (hänger ihop med CLA), relation till openDesk/ZenDiS, och hur kommunala IT-avdelningar blir ambassadörer snarare än fripassagerare. AGPL utan community är bara en licens — vallgraven kräver båda.
+
+**11. Marknadsmotor och innehållsplan.** "Varje vinst pressmeddelas" är inte en marknadsplan. Saknas: kanalval (Almedalen? Socionomdagarna? KOMMITS?), innehållsserie kring CLOUD Act/molnpolicyn, vem som skriver, och budget i kronor. Sandra har rollen men inget program.
+
+**12. Kundlivscykel efter signatur.** Onboarding, utbildning av handläggare, förnyelseprocess och merförsäljningsmotion (M1→M4→Verket) är obeskrivna — trots att hela våg 2-logiken ("noll ny säljkostnad till befintlig bas") *förutsätter* en fungerande expansionsmotion. NHS-läxan citeras men ingen äger adoptionen efter go-live.
+
+Sammanfattning: utkasten är starka på sekvens, positionering och risk — svagast på det operativa golvet (namn, siffror, ägda processer) och på gratis hävstänger (EU-medel, AI Sweden, brain-exit som löfte). Punkt 1–5 måste in före beslut; 6–8 före mån 6; 9–12 före första expansionen.

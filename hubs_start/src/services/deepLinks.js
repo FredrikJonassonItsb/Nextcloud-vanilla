@@ -90,6 +90,23 @@ export function arenderumLink(hubsCaseId) {
 }
 
 /**
+ * Open the ärenderummets TEAM (the per-case circle that ties the room together:
+ * members, akt, diskussion) in the Contacts team view. Returns null when no
+ * team id is known so the caller MUST hide/disable the control — never a
+ * fabricated team (same honest-null contract as spreedRoomLink).
+ * @param {?string} teamId circle singleId from the engine's pekare block
+ * @return {?string} url, or null when teamId is absent
+ */
+export function teamLink(teamId) {
+	if (!teamId) {
+		return null
+	}
+	// The circles app's own canonical deep link (Circle::getUrl()) — redirects
+	// into the Contacts team view.
+	return generateUrl('/apps/contacts/direct/circle/{teamId}', { teamId })
+}
+
+/**
  * Open a single file in Files by its full path (parent dir gets focus on the file).
  * @param {string} path full path to the file, e.g. /HUBS-2026-0001/utredning.pdf
  * @return {string}
@@ -118,6 +135,22 @@ export function loa3UpgradeLink(returnUrl = null) {
 }
 
 /**
+ * Öppna meddelandemodulen (säker post — mail-appen med sdkmc-overlayn).
+ * @return {string}
+ */
+export function mailModuleLink() {
+	return generateUrl('/apps/mail/')
+}
+
+/**
+ * Öppna kalendermodulen.
+ * @return {string}
+ */
+export function calendarModuleLink() {
+	return generateUrl('/apps/calendar/')
+}
+
+/**
  * Resolve a QueueItem.deepLink descriptor ({ app, params }) to a URL.
  * @param {object} deepLink
  * @return {string}
@@ -142,4 +175,4 @@ export function resolve(deepLink) {
 	}
 }
 
-export default { threadLink, composerLink, deckLink, mailboxLink, callLink, spreedRoomLink, arenderumLink, fileLink, loa3UpgradeLink, resolve }
+export default { threadLink, composerLink, deckLink, mailboxLink, callLink, spreedRoomLink, arenderumLink, teamLink, fileLink, loa3UpgradeLink, mailModuleLink, calendarModuleLink, resolve }

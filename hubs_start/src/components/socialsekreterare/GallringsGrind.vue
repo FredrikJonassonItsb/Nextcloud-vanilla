@@ -27,23 +27,34 @@
 				{{ t('hubs_start', 'En allmän handling får inte gallras utan stöd i dokumenthanteringsplanen. Välj handlingstyp för att se gällande beslut.') }}
 			</p>
 
+			<!-- Spärrande tomt-läge: i live utan konfigurerad plan får inget gallras. -->
+			<div
+				v-if="planSaknas"
+				class="gallrings-grind__plan-saknas"
+				role="alert">
+				<AlertOctagonOutlineIcon :size="18" />
+				<span>{{ t('hubs_start', 'Kommunens dokumenthanteringsplan är inte konfigurerad — gallring kan inte genomföras med dokumenterat stöd.') }}</span>
+			</div>
+
 			<!-- Steg 1: välj handlingstyp -->
-			<label class="gallrings-grind__label" for="gallrings-grind-typ">
-				{{ t('hubs_start', 'Handlingstyp enligt dokumenthanteringsplan') }}
-			</label>
-			<NcSelect
-				v-model="valdTyp"
-				input-id="gallrings-grind-typ"
-				class="gallrings-grind__select"
-				:options="typer"
-				label="label"
-				:clearable="false"
-				:placeholder="t('hubs_start', 'Välj handlingstyp …')"
-				:aria-label="t('hubs_start', 'Välj handlingstyp enligt dokumenthanteringsplan')" />
+			<template v-else>
+				<label class="gallrings-grind__label" for="gallrings-grind-typ">
+					{{ t('hubs_start', 'Handlingstyp enligt dokumenthanteringsplan') }}
+				</label>
+				<NcSelect
+					v-model="valdTyp"
+					input-id="gallrings-grind-typ"
+					class="gallrings-grind__select"
+					:options="typer"
+					label="label"
+					:clearable="false"
+					:placeholder="t('hubs_start', 'Välj handlingstyp …')"
+					:aria-label="t('hubs_start', 'Välj handlingstyp enligt dokumenthanteringsplan')" />
+			</template>
 
 			<!-- Steg 2: konsekvenstext (gallrings-/bevarandebeslut) -->
 			<div
-				v-if="valdTyp"
+				v-if="valdTyp && !planSaknas"
 				class="gallrings-grind__konsekvens"
 				:class="konsekvensClass"
 				role="status"
@@ -69,7 +80,7 @@
 			<!-- Registrera: tvingande väg när handlingen ej är ringa, annars alltid tillåten -->
 			<NcButton
 				type="secondary"
-				:disabled="!valdTyp"
+				:disabled="!valdTyp || planSaknas"
 				@click="onRegistrera">
 				<template #icon>
 					<ArchiveArrowDownOutlineIcon :size="20" />
@@ -104,6 +115,8 @@ import CheckCircleOutlineIcon from 'vue-material-design-icons/CheckCircleOutline
 
 import { translate as t } from '@nextcloud/l10n'
 
+import { isDemo } from '../../services/demoData.js'
+
 export default {
 	name: 'GallringsGrind',
 
@@ -124,7 +137,11 @@ export default {
 			type: Object,
 			required: true,
 		},
-		/** Handlingstyper ur kommunens dokumenthanteringsplan. Faller tillbaka på en inbäddad demo-lista om tom. */
+		/**
+		 * Handlingstyper ur kommunens dokumenthanteringsplan. I demoläge faller
+		 * grinden tillbaka på en inbäddad demo-lista om tom; i skarp drift utan
+		 * konfigurerad plan spärras gallring helt (planSaknas).
+		 */
 		handlingstyper: {
 			type: Array,
 			default: () => [],
@@ -138,10 +155,17 @@ export default {
 	},
 
 	computed: {
-		/** Effektiva handlingstyper — kommunens plan om angiven, annars inbäddad demo. */
+		/**
+		 * Effektiva handlingstyper — kommunens plan om angiven. Den inbäddade
+		 * fixture-listan får ALDRIG användas i skarp drift: ett formellt
+		 * gallringsbeslut måste vila på kommunens faktiska plan.
+		 */
 		typer() {
 			if (this.handlingstyper && this.handlingstyper.length) {
 				return this.handlingstyper
+			}
+			if (!isDemo()) {
+				return []
 			}
 			return [
 				{ id: 'reklam', label: this.t('hubs_start', 'Reklam/spam'), gallringsbeslut: this.t('hubs_start', 'Får gallras vid inaktualitet'), ringa: true },
@@ -151,9 +175,14 @@ export default {
 			]
 		},
 
-		/** Gallra-knappen är aktiv bara när en typ är vald OCH den är av ringa betydelse. */
+		/** Spärrande tomt-läge: i skarp drift utan konfigurerad dokumenthanteringsplan. */
+		planSaknas() {
+			return this.typer.length === 0
+		},
+
+		/** Gallra-knappen är aktiv bara när planen finns, en typ är vald OCH den är av ringa betydelse. */
 		gallraTillaten() {
-			return !!(this.valdTyp && this.valdTyp.ringa)
+			return !this.planSaknas && !!(this.valdTyp && this.valdTyp.ringa)
 		},
 
 		/** Referens till raden — aldrig klartext-PII, bara ärende-/triagereferens. */
@@ -184,7 +213,7 @@ export default {
 		},
 
 		onRegistrera() {
-			if (!this.valdTyp) {
+			if (!this.valdTyp || this.planSaknas) {
 				return
 			}
 			this.$emit('registrera', { rad: this.rad, handlingstyp: this.valdTyp })
@@ -192,13 +221,6 @@ export default {
 
 		onClose() {
 			this.$emit('close')
-		},
-
-		/** NcDialog stänger sig självt → re-emit close. */
-		onUpdateOpen(open) {
-			if (!open) {
-				this.$emit('close')
-			}
 		},
 	},
 }
@@ -237,6 +259,19 @@ export default {
 		margin: 0;
 		font-size: 0.88rem;
 		color: var(--color-text-maxcontrast);
+	}
+
+	// Spärrande tomt-läge: skarp drift utan konfigurerad dokumenthanteringsplan.
+	&__plan-saknas {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		padding: 10px 12px;
+		border-radius: var(--border-radius-large, 12px);
+		border: 1px solid var(--hs-status-error);
+		background: color-mix(in srgb, var(--hs-status-error) 12%, var(--color-main-background));
+		color: var(--hs-status-error);
+		font-weight: 600;
 	}
 
 	&__label {

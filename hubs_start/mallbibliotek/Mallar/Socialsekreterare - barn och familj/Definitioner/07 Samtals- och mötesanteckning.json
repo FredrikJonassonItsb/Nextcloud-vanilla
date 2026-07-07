@@ -1,0 +1,52 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/07 Samtals- och mötesanteckning.docx",
+    "titel": "07 Samtals- och mötesanteckning",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[kk:mm–kk:mm]",
+        "[plats]",
+        "[beskriv]",
+        "[Namn — roll/relation till barnet, t.ex. barn, vårdnadshavare, socialsekreterare, skola, BUP]",
+        "[språk, tolkförmedling/tolknummer om ja]",
+        "[Beskriv kort varför samtalet hölls — vad ni skulle prata om eller besluta.]",
+        "[Vad togs upp, av vem, och vad blev sagt? Skriv sakligt och undvik värderingar här.]",
+        "[Din professionella bedömning av det som framkom, tydligt åtskild från referatet ovan. Vad betyder det för barnet och för den fortsatta handläggningen?]",
+        "[om nej, ange om och hur barnet kommer till tals på annat sätt]",
+        "[Återge så nära barnets egna ord och uttryckssätt som möjligt — inte en tolkning. Notera ålder och mognad, och hur barnet gavs möjlighet att komma till tals.]",
+        "[Vad kom ni överens om? Vem ansvarar för vad?]",
+        "[Åtgärd]",
+        "[namn]",
+        "[ÅÅÅÅ-MM-DD / ej bestämt]",
+        "[Namn, titel]",
+        "[ÅÅÅÅ-MM-DD hh:mm]",
+        "[Ev. medbedömare/kollega som var med]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "syfte",
+            "etikett": "Syfte",
+            "token": "[Beskriv kort varför samtalet hölls — vad ni skulle prata om eller besluta.]"
+        },
+        {
+            "id": "referat-uppgift-vad-som-sades-framkom",
+            "etikett": "Referat (uppgift — vad som sades/framkom)",
+            "token": "[Vad togs upp, av vem, och vad blev sagt? Skriv sakligt och undvik värderingar här.]"
+        },
+        {
+            "id": "socialsekreterarens-bedomning-vardering",
+            "etikett": "Socialsekreterarens bedömning (värdering)",
+            "token": "[Din professionella bedömning av det som framkom, tydligt åtskild från referatet ovan. Vad betyder det för barnet och för den fortsatta handläggningen?]"
+        },
+        {
+            "id": "barnets-egna-ord-och-uttryck",
+            "etikett": "Barnets egna ord och uttryck",
+            "token": "[Återge så nära barnets egna ord och uttryckssätt som möjligt — inte en tolkning. Notera ålder och mognad, och hur barnet gavs möjlighet att komma till tals.]"
+        }
+    ]
+}

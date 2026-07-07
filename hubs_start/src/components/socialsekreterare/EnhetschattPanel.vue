@@ -18,9 +18,11 @@
 			ref="panel"
 			class="enhetschatt__panel"
 			role="dialog"
+			aria-modal="true"
 			:aria-label="t('hubs_start', 'Enhetschatt')"
 			tabindex="-1"
-			@keydown.esc.stop="$emit('close')">
+			@keydown.esc.stop="$emit('close')"
+			@keydown.tab="fokusfalla">
 			<header class="enhetschatt__head">
 				<h2 class="enhetschatt__title">
 					<AccountGroupIcon :size="20" />
@@ -45,8 +47,10 @@
 					<button
 						class="enhetschatt__team hs-target"
 						type="button"
+						:disabled="!grupp.token"
+						:title="!grupp.token ? t('hubs_start', 'Chattrum saknas för teamet ännu') : null"
 						:aria-label="teamAriaLabel(grupp)"
-						@click="$emit('oppna-tradar', grupp)">
+						@click="grupp.token && $emit('oppna-tradar', grupp)">
 						<span class="enhetschatt__team-label">{{ grupp.label }}</span>
 
 						<span class="enhetschatt__indikatorer">
@@ -69,15 +73,23 @@
 				</li>
 			</ul>
 
+			<!-- Inga team alls: copy matchar villkoret (inte "inga olästa"). -->
 			<NcEmptyContent
 				v-if="!team.length"
 				class="enhetschatt__empty"
-				:name="t('hubs_start', 'Lugnt i enhetschatten')"
-				:description="t('hubs_start', 'Inga olästa och inga omnämnanden just nu. Det här är en lugn sidoyta — inget måste läsas direkt.')">
+				:name="t('hubs_start', 'Inga team att visa')"
+				:description="t('hubs_start', 'När du kopplas till ett team i enheten dyker det upp här.')">
 				<template #icon>
 					<ForumOutlineIcon :size="40" />
 				</template>
 			</NcEmptyContent>
+
+			<!-- Team finns men allt är läst: den lugna texten hör hemma här. -->
+			<p
+				v-else-if="allaLugna"
+				class="enhetschatt__lugn">
+				{{ t('hubs_start', 'Inga olästa och inga omnämnanden just nu. Det här är en lugn sidoyta — inget måste läsas direkt.') }}
+			</p>
 
 			<footer class="enhetschatt__foot">
 				<NcButton
@@ -134,20 +146,68 @@ export default {
 
 	watch: {
 		// Flytta fokus in i panelen när den öppnas — Escape fungerar direkt, fokus fastnar inte bakom backdrop.
+		// Vid stängning återlämnas fokus till elementet som öppnade panelen.
 		open(isOpen) {
 			if (isOpen) {
+				this.tidigareFokus = document.activeElement
 				this.$nextTick(() => {
 					if (this.$refs.panel) {
 						this.$refs.panel.focus()
 					}
 				})
+			} else if (this.tidigareFokus && typeof this.tidigareFokus.focus === 'function') {
+				this.tidigareFokus.focus()
+				this.tidigareFokus = null
 			}
 		},
+	},
+
+	computed: {
+		/** Team finns men allt är läst — då visas den lugna texten (inte "inga team"). */
+		allaLugna() {
+			return this.team.length > 0
+				&& this.team.every((grupp) => this.olasta(grupp) === 0 && this.omnamnanden(grupp) === 0)
+		},
+	},
+
+	created() {
+		// Icke-reaktiv referens till elementet som hade fokus innan panelen öppnades.
+		this.tidigareFokus = null
 	},
 
 	methods: {
 		t,
 		n,
+
+		/**
+		 * Enkel fokusfälla: Tab/Shift+Tab cyklar mellan panelens fokuserbara element
+		 * så fokus aldrig hamnar bakom backdropen medan panelen är öppen.
+		 * @param {KeyboardEvent} event tab-tryck inne i panelen
+		 */
+		fokusfalla(event) {
+			const panel = this.$refs.panel
+			if (!panel) {
+				return
+			}
+			const fokuserbara = panel.querySelectorAll(
+				'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+			)
+			if (!fokuserbara.length) {
+				event.preventDefault()
+				return
+			}
+			const forsta = fokuserbara[0]
+			const sista = fokuserbara[fokuserbara.length - 1]
+			if (event.shiftKey) {
+				if (document.activeElement === forsta || document.activeElement === panel) {
+					event.preventDefault()
+					sista.focus()
+				}
+			} else if (document.activeElement === sista) {
+				event.preventDefault()
+				forsta.focus()
+			}
+		},
 
 		/** Olästa för ett team (neutral indikator). */
 		olasta(grupp) {
@@ -173,7 +233,10 @@ export default {
 			if (omnamnanden === 0 && olasta === 0) {
 				delar.push(this.t('hubs_start', 'inget nytt'))
 			}
-			delar.push(this.t('hubs_start', 'öppna trådar'))
+			// Rad utan chattrum lovar inget den inte kan hålla.
+			delar.push(grupp.token
+				? this.t('hubs_start', 'öppna trådar')
+				: this.t('hubs_start', 'chattrum saknas för teamet ännu'))
 			return delar.join(' — ')
 		},
 	},
@@ -255,6 +318,16 @@ export default {
 		&:hover {
 			background: var(--color-background-hover);
 		}
+
+		// Team utan chattrum ännu: rad utan destination visas dämpad, ej klickbar.
+		&:disabled {
+			cursor: default;
+			color: var(--color-text-maxcontrast);
+
+			&:hover {
+				background: transparent;
+			}
+		}
 	}
 
 	&__team-label {
@@ -300,6 +373,15 @@ export default {
 
 	&__empty {
 		margin: 16px 8px;
+	}
+
+	// Lugn-läget: diskret rad under team-listan när allt är läst — ingen stor tom-yta.
+	&__lugn {
+		flex: 0 0 auto;
+		margin: 0;
+		padding: 8px 16px 12px;
+		font-size: 0.85rem;
+		color: var(--color-text-maxcontrast);
 	}
 
 	&__foot {

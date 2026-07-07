@@ -95,6 +95,29 @@ class PekareMapper extends QBMapper {
     }
 
     /**
+     * REVERSE lookup: all pointers of one objekt_typ with a given external id —
+     * resolves an external object back to its case(s). Used by the team-resource
+     * provider (teamId → hubsCaseId) where only the external id is known.
+     *
+     * @return Pekare[]
+     * @throws Exception
+     */
+    public function findByTypAndObjektId(string $objektTyp, string $objektId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where(
+                $qb->expr()->eq('objekt_typ', $qb->createNamedParameter($objektTyp, IQueryBuilder::PARAM_STR))
+            )
+            ->andWhere(
+                $qb->expr()->eq('objekt_id', $qb->createNamedParameter($objektId, IQueryBuilder::PARAM_STR))
+            )
+            ->orderBy('id', 'DESC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Delete every pointer of one objekt_typ for a case. Idempotent — used by the
      * SAGA compensations after the external object has been torn down so no
      * orphaned pekare row survives. Returns the number of rows deleted.

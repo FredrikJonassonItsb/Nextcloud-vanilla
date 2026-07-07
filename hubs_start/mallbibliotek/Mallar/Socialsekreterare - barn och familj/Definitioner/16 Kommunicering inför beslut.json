@@ -1,0 +1,43 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/16 Kommunicering inför beslut.docx",
+    "titel": "16 Kommunicering inför beslut",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[Barn / vårdnadshavare / annan part]",
+        "[Postadress eller säkert digitalt svarssätt]",
+        "[Namn]",
+        "[Namn, uppdrag]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Mottagning / Barn och familj]",
+        "[Kort beskrivning av vilken fråga beslutet ska avse, t.ex. ansökan om bistånd, insats, utredning]",
+        "[Benämning, t.ex. yttrande från förskolan]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Källa/uppgiftslämnare]",
+        "[Beskriv i sak vad materialet innehåller. Håll dig till fakta. Undvik att röja uppgifter som skyddas av sekretess.]",
+        "[säker e-tjänst / Mina sidor]",
+        "[Adress]",
+        "[Namn, telefon]",
+        "[beskriv]",
+        "[Namn, titel]",
+        "[Enhet / grupp]",
+        "[Telefon / säker e-post / e-tjänst]",
+        "[Namn — och datum/sätt för utskick]",
+        "[ange vad som maskats och varför]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "sammanfattning-av-de-uppgifter-som-kan-ligga-till-grund-for-beslutet",
+            "etikett": "Sammanfattning av de uppgifter som kan ligga till grund för beslutet",
+            "token": "[Beskriv i sak vad materialet innehåller. Håll dig till fakta. Undvik att röja uppgifter som skyddas av sekretess.]"
+        },
+        {
+            "id": "ditt-yttrande-ska-ha-kommit-in-senast",
+            "etikett": "Ditt yttrande ska ha kommit in senast",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        }
+    ]
+}

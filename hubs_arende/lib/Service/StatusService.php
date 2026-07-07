@@ -28,7 +28,7 @@ class StatusService {
     private const APP_ID = 'hubs_arende';
 
     /** The harness ports whose INTEGRATION_MODE (stub|live) is surfaced. */
-    private const PORTAR = ['facksystem', 'signering', 'ediarium'];
+    private const PORTAR = ['facksystem', 'signering', 'ediarium', 'folkbokforing'];
 
     public function __construct(
         private ArendeMapper $arendeMapper,

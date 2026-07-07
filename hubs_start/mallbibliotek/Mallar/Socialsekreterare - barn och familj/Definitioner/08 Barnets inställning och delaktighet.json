@@ -1,0 +1,64 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/08 Barnets inställning och delaktighet.docx",
+    "titel": "08 Barnets inställning och delaktighet",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Antal år]",
+        "[Kort beskrivning av barnets utvecklingsnivå, språk, ev. funktionsnedsättning som påverkar delaktigheten]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Namn, titel]",
+        "[Beskriv vilken information barnet fått om varför socialtjänsten är inkopplad, vad som utreds och vad som kan hända, anpassat till ålder och mognad.]",
+        "[Enskilt samtal / observation / lek / tillsammans med förälder / annat]",
+        "[Var samtalet ägde rum — och varför den platsen valdes]",
+        "[ÅÅÅÅ-MM-DD, klockslag]",
+        "[namn, relation]",
+        "[språk]",
+        "[beskriv]",
+        "[Återge barnets åsikt så nära barnets egna ord som möjligt. Använd citat där det går. Skilj på vad barnet faktiskt sagt/uttryckt och din tolkning.]",
+        "[Vad barnet lyfter fram som betydelsefullt — trygghet, relationer, skola, fritid, oro, önskemål.]",
+        "[Ange orsaken — t.ex. barnets ålder/mognad, barnet ville inte, skyddsskäl, praktiska hinder.]",
+        "[motivera]",
+        "[datum]",
+        "[Beskriv hur barnets perspektiv inhämtats på annat sätt, t.ex. via observation, nätverk, tidigare samtal, och hur du planerar för att barnet ska kunna komma till tals framöver.]",
+        "[Redogör för hur barnets åsikt har vägts in i bedömningen. Om utredningen landar i något annat än vad barnet önskar — förklara varför, med hänvisning till barnets bästa.]",
+        "[hur och när]",
+        "[Namn]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "barnet-erbjods-att-ha-med-en-trygg-vuxen-stodperson",
+            "etikett": "Barnet erbjöds att ha med en trygg vuxen / stödperson",
+            "token": "[namn, relation]"
+        },
+        {
+            "id": "barnets-installning-i-fragan-utredningen",
+            "etikett": "Barnets inställning i frågan/utredningen",
+            "token": "[Återge barnets åsikt så nära barnets egna ord som möjligt. Använd citat där det går. Skilj på vad barnet faktiskt sagt/uttryckt och din tolkning.]"
+        },
+        {
+            "id": "vad-ar-viktigt-for-barnet",
+            "etikett": "Vad är viktigt för barnet",
+            "token": "[Vad barnet lyfter fram som betydelsefullt — trygghet, relationer, skola, fritid, oro, önskemål.]"
+        },
+        {
+            "id": "skal-till-att-barnet-inte-kommit-till-tals",
+            "etikett": "Skäl till att barnet inte kommit till tals",
+            "token": "[Ange orsaken — t.ex. barnets ålder/mognad, barnet ville inte, skyddsskäl, praktiska hinder.]"
+        },
+        {
+            "id": "hur-barnets-basta-anda-beaktats",
+            "etikett": "Hur barnets bästa ändå beaktats",
+            "token": "[Beskriv hur barnets perspektiv inhämtats på annat sätt, t.ex. via observation, nätverk, tidigare samtal, och hur du planerar för att barnet ska kunna komma till tals framöver.]"
+        },
+        {
+            "id": "avvagning-mellan-barnets-vilja-och-barnets-basta",
+            "etikett": "Avvägning mellan barnets vilja och barnets bästa",
+            "token": "[Redogör för hur barnets åsikt har vägts in i bedömningen. Om utredningen landar i något annat än vad barnet önskar — förklara varför, med hänvisning till barnets bästa.]"
+        }
+    ]
+}

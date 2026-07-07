@@ -1,0 +1,48 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/11 Begäran om uppgifter från annan myndighet.docx",
+    "titel": "11 Begäran om uppgifter från annan myndighet",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[Myndighetens/verksamhetens namn, t.ex. skola, region/hälso- och sjukvård, Försäkringskassan, annan kommun]",
+        "[Avdelning, mottagning eller kontaktfunktion om känd]",
+        "[Säker e-postfunktion, funktionsbrevlåda eller registrator]",
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Specificera exakt vilka uppgifter eller handlingar som begärs, t.ex. närvaro/frånvaro under angiven period, ett visst utlåtande, journalanteckningar för avgränsad tid, beslut i visst ärende.]",
+        "[Ange grund]",
+        "[beskriv]",
+        "[Beskriv kort varför uppgifterna behövs för handläggningen, t.ex. som underlag i pågående utredning enligt socialtjänstlagen, för skyddsbedömning eller för att bedöma barnets behov.]",
+        "[ange kanal/funktionsbrevlåda]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[Säker kanal / registrator]",
+        "[Namn, titel]",
+        "[Mottagning / Barn och familj]",
+        "[Uppgiftsskyldighet / sekretessbrytande bestämmelse / samtycke]",
+        "[Delegationsbeslut eller diarienr om tillämpligt]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "uppgifter-handlingar-som-efterfragas",
+            "etikett": "Uppgifter/handlingar som efterfrågas",
+            "token": "[Specificera exakt vilka uppgifter eller handlingar som begärs, t.ex. närvaro/frånvaro under angiven period, ett visst utlåtande, journalanteckningar för avgränsad tid, beslut i visst ärende.]"
+        },
+        {
+            "id": "annan-grund",
+            "etikett": "Annan grund",
+            "token": "[beskriv]"
+        },
+        {
+            "id": "andamal-med-inhamtningen",
+            "etikett": "Ändamål med inhämtningen",
+            "token": "[Beskriv kort varför uppgifterna behövs för handläggningen, t.ex. som underlag i pågående utredning enligt socialtjänstlagen, för skyddsbedömning eller för att bedöma barnets behov.]"
+        },
+        {
+            "id": "onskat-svar-senast",
+            "etikett": "Önskat svar senast",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        }
+    ]
+}

@@ -1,0 +1,246 @@
+{
+ "kapitel": 4,
+ "kapitelRubrik": "KATEGORISERING, KLASSIFICERING & ROUTING",
+ "krav": [
+  {
+   "id": "K-4.1",
+   "rubrik": "Tre ortogonala klassningsaxlar",
+   "beskrivning": "Triagen SKA klassa varje rad längs tre oberoende axlar i en server-side-passage: A KORG (behörighet), B KANALTYP (5 typer), C ÄRENDEKOPPLING (nytt/hör_till/ej_kopplat). Ingen axel får skriva över en annan; resultatet är triage-shapen {korg, kanalTyp, primärKat, flaggor[], arendekoppling, konfidens}. Motivering: blandade axlar ger '13 inkorgar', isärhållna ger ärende-först-vy.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (A+B) / [BYGGS] (C)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-4.2",
+   "rubrik": "Axel B (kanaltyp) helt deterministisk, ingen LLM",
+   "beskrivning": "Kanaltypsklassningen SKA förbli helt deterministisk utan LLM: MessageTypeService::getMessageTypeFromEmail() mappar adress-suffix till 5 kanaltyper (sdk_message, fax_message, sms_message, internal_message, secure_email) plus IMAP-headers X-Sdk/X-MessageType. Okänt suffix ger throw Exception (fail-closed). Detta är symmetri-ankaret som innehållsklassningen byggs ovanpå.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]",
+   "beroenden": "MessageTypeService (sdkmc)"
+  },
+  {
+   "id": "K-4.3",
+   "rubrik": "Axel C: ArendeMatchService för ärendekoppling",
+   "beskrivning": "Axel C (ärendekoppling) SKA byggas som ArendeMatchService, server-side på MessageReceivedEvent, och sätta arendekoppling ∈ {nytt, hör_till, ej_kopplat} som styr band i UI via MinaArenden.vue zonOf() (hör_till→1b, ej_kopplat→1c, annars→1a). UI-banden ändras INTE. Mall för implementationen: MessageImportantClassifiedListener.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "MessageReceivedEvent, MinaArenden.vue, MessageImportantClassifiedListener (mall), registret sdkmc_arende (K-4.10)"
+  },
+  {
+   "id": "K-4.4",
+   "rubrik": "Axel A: korg = filter + etikett, aldrig primär sortering",
+   "beskrivning": "Korgen SKA förbli filter och etikett, aldrig primär sortering, server-filtrerad till behöriga korgar (OSL-gränsen) via ConsolidateMailboxesService/ProvisionPersonligAccountsService. Korg är en behörighetsstyrd ström, inte en mapp; sortering på korg återskapar silos.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS]",
+   "beroenden": "ConsolidateMailboxesService, ProvisionPersonligAccountsService"
+  },
+  {
+   "id": "K-4.5",
+   "rubrik": "InnehallsKlassService (ny tjänst)",
+   "beskrivning": "En ny InnehallsKlassService SKA producera {primärKat 1–8, konfidens, flaggor[]}, anropad från lib/Listener/MessageReceivedListener.php på MessageReceivedEvent efter mallen MessageImportantClassifiedListener::handle(). Resultatet bärs som kat:{n}-tagg via befintliga ItslTagService->tagMessageWithMetadata().",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "ItslTagService (finns), MessageReceivedEvent, kanaltypslagret (K-4.2)"
+  },
+  {
+   "id": "K-4.6",
+   "rubrik": "Fallande deterministisk signalkaskad för innehållsklassning",
+   "beskrivning": "Klassningen SKA följa en fallande deterministisk kaskad som stannar på första säkra träffen: (a) strukturerade SDK-fält/X-headers (konfidens 1.0) → (b) avsändartyp/org mot konfigurerbart org-register, LOA3-stärkt (Check/Loa3.php) → (c) blankett-/formulärtyp → (d) nyckelord/handlingstyp (svagast, får aldrig ensam auto-applicera på sekretess) → (e) LLM-förslag utanför kaskaden. Org-typ är stark prior, inte facit.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] / [KONFIG] (org-register)",
+   "beroenden": "Check/Loa3.php, konfigurerbart org-register, K-4.7 (LLM-lagret)"
+  },
+  {
+   "id": "K-4.7",
+   "rubrik": "LLM endast som människo-bekräftat förslagslager",
+   "beskrivning": "LLM SKA vara valfritt, avstängbart och människo-bekräftat förslagslager — aldrig autonomt/skarpt på sekretess: (a) människo-bekräftelse alltid när klassningen rör vart sekretess routas; (b) medborgar-PII/ärendetext lämnar aldrig huset — eventuell modell-assist körs lokalt på människo-begäran; (c) avvisade/korrigerade förslag loggas i activity. Skarp AI-drift på sekretessbelagt klientsamtal är röd zon tills IMY/SKR/Socialstyrelsen gett vägledning.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] / [EXTERN]",
+   "beroenden": "GAP-052, GAP-060; extern vägledning från IMY/SKR/Socialstyrelsen"
+  },
+  {
+   "id": "K-4.8",
+   "rubrik": "Klassningströskel som server-side policy med tre utfall",
+   "beskrivning": "Klassningströskeln SKA vara server-side policy (granskad, per kund), aldrig klientlogik eller demo-konstant (≥0.9). Tre utfall: ≥tröskel → 'klassad' (auto-applicerad men redigerbar); <tröskel med kandidat → 'föreslagen' (människa bekräftar; bilaga speglas vid bekräftelse, inte vid förslag); noll/motstridig signal → 'oklassad' (band 1c, manuell triage). Default vid otillräcklig signal = fail mot människa.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-060 (ärver auto-kopplingströskeln)"
+  },
+  {
+   "id": "K-4.9",
+   "rubrik": "Fjärde terminerande utfall: avvisa/isolera (inkl. retroaktivt)",
+   "beskrivning": "InnehallsKlassService SKA stödja ett fjärde, terminerande avvisa/isolera-utfall, triggat av sekretessGrund='sakerhetsskydd' eller 'felmottaget_men_kansligt'. Det kör terminerande preSagaHook FÖRE register-rad mintas och MÅSTE kunna isolera retroaktivt (radera ur index/tagg-DB/Groupfolder). Motivering: sagan antar att alla ärenden skapas, men säkerhetsskyddsklassat får ofta inte ligga i moln-IT alls.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Saga-motorn (preSagaHook, K-3.24/K-5.20-familjen), K-4.19"
+  },
+  {
+   "id": "K-4.10",
+   "rubrik": "Matchningskaskad för ärendekoppling (Axel C-internals)",
+   "beskrivning": "ArendeMatchService SKA matcha inkommande mot registret sdkmc_arende via fallande deterministisk kaskad med konfidens: (1) explicit case:{id}-tagg (1.0, auto) → (2) dnr i ämne mot dnr-fältet → (3) conversationId-träff i conversationIds[] via MessageThread (≥tröskel) → (4) avsändar-joinNyckel mot ärendepart (svag, <tröskel → 'föreslagen'). Bilaga speglas aldrig vid förslag.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "sdkmc_arende-registret, MessageThread, K-4.8 (tröskel), K-4.11 (SSN-steget), K-4.25 (joinNyckel)"
+  },
+  {
+   "id": "K-4.11",
+   "rubrik": "SSN-steget joinNyckel-betingat avstängbart",
+   "beskrivning": "Matchningskaskadens SSN-steg (steg 4) SKA vara joinNyckel-betingat avstängbart: för objektärenden (joinNyckel ∈ {objektRef, upphandlingsRef, avtalsRef}) hoppas steget; för anonyma ärenden (partsModell='anonym_begaran', TF 2:18) är det förbjudet att efterfråga identitet och steget MÅSTE stängas av. Person-/barnRef-antagandet bryter för objektärenden, uppdrag, anonyma och myndighetssamverkan.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.10 (kaskaden), K-4.25 (partsModell/joinNyckel); TF 2:18"
+  },
+  {
+   "id": "K-4.12",
+   "rubrik": "Axelkorrelation som svag signal, aldrig hårdkodad",
+   "beskrivning": "Klassningen FÅR utnyttja korrelationen mellan axlarna som svag signal (kat 4 & 7 ⇒ oftast hör_till; kat 1 & 2 ⇒ oftast nytt) men ALDRIG hårdkoda den; UI-banden ändras aldrig av innehållskategorin. Axlarna är korrelerade men ortogonala — t.ex. kan en orosanmälan röra ett barn med pågående ärende.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.1 (axlarna)"
+  },
+  {
+   "id": "K-4.13",
+   "rubrik": "Dubbelmärkning: EN primär kategori + SET av flaggor",
+   "beskrivning": "Varje rad SKA bära exakt EN primär kategori (1–8) plus ett SET oberoende cross-cutting-flaggor beräknade parallellt/oberoende. Primärkategorin styr process-mall/routing/SoR; flaggorna är modifierare på ärendeinstansen (flaggor[]), aldrig på ArendeTyp — flaggor på typen ger kombinatorisk explosion.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-4.14",
+   "rubrik": "Flagg-effekter (prioritet, routing-override, ACL-gate)",
+   "beskrivning": "Flagg-effekter SKA realiseras: akut_fara/våld_hot/frist_kritisk ger prioritets-höjning; akut_fara ger dessutom hård routing-override (mottagning/jour) och triggar parallell skyddsbedömning; skyddade_personuppgifter ger behörighets-gate (snävare ACL, deny-by-default, döljs i aggregat per OSL 26 kap.); barn_berörs ger barnskyddsspår och påverkar facksystem-modul. Skyddade PU måste reflekteras i tre-lagers-koherensen.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-058 (tre-lagers-ACL-koherens); OSL 26 kap."
+  },
+  {
+   "id": "K-4.15",
+   "rubrik": "Dubbelmärkning bevisar kategori-som-etikettaxel",
+   "beskrivning": "En kat-7-månadsrapport med flaggan akut_fara SKA förbli primärt kat 7 OCH starta parallell kat-1-skyddsbedömning via flaggan — aldrig omklassas till kat 1. I UI visas detta som två chips, inte två rader. Detta bevisar att primärkategorin är en process-mall-parameter, inte en exklusiv switch.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.13, K-4.14"
+  },
+  {
+   "id": "K-4.16",
+   "rubrik": "Kategori/flaggor som imap_label-taggar, korg-scopade",
+   "beskrivning": "Primärkategori och varje flagga SKA bäras som egna imap_label-taggar (t.ex. kat:7, flag:akut_fara), email-/funktionsadress-scopade så att klassningen delas av alla handläggare med korgen. Återanvänder den email-scopade single-writer-taggmotorn.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (bärare) / [BYGGS] (konvention)",
+   "beroenden": "ItslTagService/taggmotorn (finns)"
+  },
+  {
+   "id": "K-4.17",
+   "rubrik": "Härledd riskKlass-axel (styr synlighet/audit, ej routing)",
+   "beskrivning": "Systemet SKA bära en härledd, explicit riskKlass-axel (normal|forhojd|hog|kritisk), ortogonal mot ärendetyp, härledd ur flaggor + sekretessGrund. Den styr aggregat-synlighet, audit-skärpa och eskaleringsväg — INTE routing. Motivering: en lågrisk-typ kan bära en högrisk-instans.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.23 (sekretessGrund), flaggorna (K-4.13)"
+  },
+  {
+   "id": "K-4.18",
+   "rubrik": "verksamhetsgren + sekretessMur (mur, inte gradient)",
+   "beskrivning": "verksamhetsgren + sekretessMur SKA modelleras som mur, inte gradient: {delningKraverMenprovning:bool, getsEjBlandasMed:enum[]}. Klassningen får ALDRIG route:a HSL-innehåll (PDL, OSL 25) in i SoL-akt (OSL 26) eller EMI/HSL-journal ihop med skoldokumentation (OSL 23). Utan fältet är sekretessincidenten inbyggd eftersom aclProfil-gradienten inte kan uttrycka en mur mellan självständiga verksamhetsgrenar.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "aclProfil-biblioteket; OSL 23/25/26, PDL"
+  },
+  {
+   "id": "K-4.19",
+   "rubrik": "karantanKravs + sakerhetsskyddRegim styr terminerande saga-utfall",
+   "beskrivning": "karantanKravs:bool + sakerhetsskyddRegim (nej|mojlig|klassificerad) SKA styra terminerande negativt saga-utfall: true ger preSagaHook='avvisa_sakerhetsskydd' FÖRE R2 (vägrar minta hubsCaseId, vägrar Spreed-rum/Groupfolder, lämnar bara avvisningskvitto); 'klassificerad' får EJ ligga i moln och ska avvisas. Dokumentet markerar detta som det enda klassnings-/config-fältet som rör motorn, inte bara data.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (motor-utökning)",
+   "beroenden": "Saga-motorns terminerande utfall (K-3.24/K-5.20), K-4.9"
+  },
+  {
+   "id": "K-4.20",
+   "rubrik": "Seed av ArendeTyp-registryn (8 baskategorier)",
+   "beskrivning": "ArendeTyp-registryn SKA seedas med de 8 baskategorierna plus basfälten per axel a–h enligt K-3.19. En motor att testa, inte åtta; registry-raden ÄR dokumentationen av handläggningsregeln.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-3.19 (ArendeTyp-radens fältdefinition), tabellen sdkmc_arende_typ"
+  },
+  {
+   "id": "K-4.21",
+   "rubrik": "commitDestination-invarianten (NOT NULL + gallringsgrind)",
+   "beskrivning": "Varje ArendeTyp-rad MÅSTE ha icke-null commitDestination (≡ systemOfRecord) ∈ {facksystem, diarium, e_arkiv, extern_myndighet, triage_forward, karantan}. Retention-flippen (R8) FÅR ALDRIG ske utan att ett SoR-utfall är explicit registrerat, och klassning som lämnar en rad utan commit-mål MÅSTE blockeras vid seed/validering. Dokumentet kallar detta den enskilt viktigaste regeln (dödligaste felmoden i 9/12 roller: Hubs blir tyst de-facto-SoR).",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Schema-constraint i sdkmc_arende_typ (K-2.19/K-3.23, beslut B-INV-1 i §0.5), retention-motorn (R8)"
+  },
+  {
+   "id": "K-4.22",
+   "rubrik": "systemOfRecord + sorFallback + inflodeVia ersätter 'alltid Treserva'",
+   "beskrivning": "Fälten systemOfRecord, sorFallback (diarium|e_arkiv|ingen_route|null) och inflodeVia (funktionsadress|e_tjanst|muntlig_kontakt) SKA ersätta antagandet att SoR alltid är Treserva. inflodeVia='e_tjanst' betyder att informationen går FÖRBI Hubs och då får Hubs inte dubbel-lagra. Bakgrund: roll 1/8/11 committar till diarium, roll 12 till CRM, roll 5/9 saknar bra SoR.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "SoR-doktrinen (K-1.7/K-5.5), rollklassningen a–e (K-1.14)"
+  },
+  {
+   "id": "K-4.23",
+   "rubrik": "sekretessGrund[]-struct med temporal sekretess",
+   "beskrivning": "Skalären sekretessNiva SKA ersättas av en sekretessGrund[]-struct {grund, omfattning:'hel_akt'|'delfalt', temporal:{utgangsTrigger,utgangsDatum}|null} plus nivå-enum (offentlig_tills_menprovad|normal|hog|restricted|sakerhetsskydd). Temporal sekretess: anbudssekretess (OSL 19:3) flippar vid utgangsTrigger='tilldelningsbeslut' → post-commit-hooken slapp_anbudssekretess degraderar hela case:-klustret (även Talk-historik och Deck-kort); ACL-flippen läcker bakåt.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "case:-taggklustret, Talk/Deck-projektionerna, postCommitHook-mekanismen; OSL 19:3"
+  },
+  {
+   "id": "K-4.24",
+   "rubrik": "externMyndighetMottagare + commitMode",
+   "beskrivning": "Fälten externMyndighetMottagare (IMY|MSB|IVO|Lansstyrelsen|polis|sakerhetspolis|tingsratt|mark_miljodomstol|forsakringskassan|null) och commitMode (commit|referens_lank|las_konsument|extern_anmalan) SKA modellera commit-mål utanför kommunen. Vid extern_anmalan förbereder Hubs payload, en människa lämnar in, och retentionState flippar INTE; vid las_konsument (Pascal/NPÖ) får Hubs ALDRIG skriva. Bakgrund: IMY 72h, MSB NIS2, IVO Lex Sarah är externa mål utan maskin-API.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] / [EXTERN]",
+   "beroenden": "R7-commit/FacksystemCommitService (K-3.22, K-5.16–K-5.18), retention-motorn"
+  },
+  {
+   "id": "K-4.25",
+   "rubrik": "Utökad partsModell + joinNyckel",
+   "beskrivning": "partsModell SKA utökas till (enskild_klient|flerpartsärende|vardnadshavare_godman|uppdrag|objektsärende|anonym_begaran|myndighetssamverkan|ingen_part) och kompletteras med joinNyckel (ssn|barnRef|objektRef|upphandlingsRef|avtalsRef|conversationId). joinNyckel MÅSTE styra vilken matchningsnyckel ArendeMatchService använder (per K-4.11), eftersom barnRef-/SSN-antagandet bryter för objektärenden, uppdrag, anonyma och myndighetssamverkan.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.11, K-4.10 (ArendeMatchService)"
+  },
+  {
+   "id": "K-4.26",
+   "rubrik": "forstaAtgard-enum med terminerande/icke-födande värden (anti-saga)",
+   "beskrivning": "forstaAtgard-enumet SKA utöver grundvärdena (skyddsbedomning|behovsbedomning|registrering|koppla_befintligt) inkludera terminerande/icke-födande värden: ta_emot_uppdrag, karantan_vidarebefordra, menprovning, triage_vidareformedla. karantan_vidarebefordra är en anti-saga: ta emot → klassa → vidarebefordra → kvittera, utan att föda hubsCaseId. Behovet kommer från roller 4,5,7,8,9,10,11,12 (vägra / ta emot redan fattat beslut / triage-only utan commit).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Saga-motorn och dess terminerande utfall (K-3.24)"
+  },
+  {
+   "id": "K-4.27",
+   "rubrik": "Feature-detektering styr både widget och saga-utfall",
+   "beskrivning": "Modul-/feature-tillgänglighet SKA detekteras via AppDetectionService och styra både widget-rendering och saga-utfall: saknas facksystemskonnektorn får commitDestination EJ peka dit. Kopplar modul-paketeringens graceful degradation till commitDestination-invarianten.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] / [BYGGS]",
+   "beroenden": "AppDetectionService (finns, utökas per K-2.6), K-4.21 (invarianten)"
+  },
+  {
+   "id": "K-4.28",
+   "rubrik": "Routing-regeln kategori → mål-enhet (inkl. kat 2-subklassning)",
+   "beskrivning": "Routing-regeln 'kategori → mål-enhet' SKA byggas ovanpå ConsolidateMailboxesService (calculateEffectiveUsers()/syncMailboxAccess()/syncAssignmentTags()) via uppslag i ArendeTyp.defaultEnhet. Kategori 2 SKA stödja sub-klassificering (insatstyp → 5 mål-enheter: ÄO/LSS/vuxen/ekb/barn). Korg-/behörighetsmaskineriet finns — det som byggs är regeln, inte motorn.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS] / [BYGGS]",
+   "beroenden": "ConsolidateMailboxesService (finns), ArendeTyp.defaultEnhet (K-3.19)"
+  },
+  {
+   "id": "K-4.29",
+   "rubrik": "Flaggor kan flytta routing utan att ändra primärkategori",
+   "beskrivning": "Flaggor SKA kunna flytta routingen utan att ändra primärkategorin: skyddade_pu → skyddad krets, akut_fara → prioritetskö/jour. Detta är en override-väg, inte ett komplement; skyddade PU överstyr aclProfil.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-4.13/K-4.14 (dubbelmärkningen), K-4.28 (routing-regeln), aclProfil"
+  },
+  {
+   "id": "K-4.30",
+   "rubrik": "Klassningsresultat endast via server-side-aggregat",
+   "beskrivning": "Klassningsresultatet SKA levereras uteslutande via server-side-aggregat (GET /api/v2/inflode-summary) — ingen klient-fan-out. Dashboarden tar emot färdiga fält och InflodeRad.vue renderar KategoriBadge bredvid typ-chippen. Följer CONTRACTS-regeln: allt ur server-side-aggregat, hubs_start lagrar inget.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "OCS-/api/v2-konventionen (K-3.27), hubs_start-dashboarden (InflodeRad.vue)"
+  }
+ ]
+}

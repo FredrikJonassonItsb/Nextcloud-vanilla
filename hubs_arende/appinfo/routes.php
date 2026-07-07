@@ -55,6 +55,18 @@ return [
             'url' => '/api/v1/arende/{ref}/medlemmar',
             'verb' => 'GET',
         ],
+        // GET    /arende/{ref}/historik       -> händelsejournalen (Historik & beslut)
+        [
+            'name' => 'Arende#historik',
+            'url' => '/api/v1/arende/{ref}/historik',
+            'verb' => 'GET',
+        ],
+        // GET    /arende/{ref}/bevakningar    -> läs-projektion av ärendets Deck-kort
+        [
+            'name' => 'Arende#bevakningar',
+            'url' => '/api/v1/arende/{ref}/bevakningar',
+            'verb' => 'GET',
+        ],
         // POST   /arende/{ref}/medlem         -> lägg till co-handläggare/observatör
         [
             'name' => 'Arende#laggTillMedlem',
@@ -83,6 +95,62 @@ return [
         [
             'name' => 'Arende#steg',
             'url' => '/api/v1/arende/{hubsCaseId}/steg',
+            'verb' => 'POST',
+        ],
+
+        // --- Partsregistret (motorns enda PII-tabell; K-NAV-4.x) ------------
+        // GET /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/parter -> ärendets parter
+        [
+            'name' => 'Part#parter',
+            'url' => '/api/v1/arende/{ref}/parter',
+            'verb' => 'GET',
+        ],
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/part -> manuell part
+        [
+            'name' => 'Part#laggTill',
+            'url' => '/api/v1/arende/{ref}/part',
+            'verb' => 'POST',
+        ],
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/part/uppslag
+        //   -> Navet-uppslag (via FolkbokforingPort) in i partsregistret
+        [
+            'name' => 'Part#uppslag',
+            'url' => '/api/v1/arende/{ref}/part/uppslag',
+            'verb' => 'POST',
+        ],
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/part/{id}/uppdatera
+        //   -> uppdatera befintlig part från Navet (rättelse-garantin, K-NAV-4.4)
+        [
+            'name' => 'Part#uppdatera',
+            'url' => '/api/v1/arende/{ref}/part/{id}/uppdatera',
+            'verb' => 'POST',
+        ],
+        // DELETE /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/part/{id}
+        [
+            'name' => 'Part#taBort',
+            'url' => '/api/v1/arende/{ref}/part/{id}',
+            'verb' => 'DELETE',
+        ],
+
+        // --- Handling-från-mall (fas 1: mall + ärendedata → docx i akten) ---
+        // GET /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/mallar -> mallbibliotekets .docx
+        [
+            'name' => 'Handling#mallar',
+            'url' => '/api/v1/arende/{ref}/mallar',
+            'verb' => 'GET',
+        ],
+        // GET /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/handling-utkast
+        //   -> förifyllnadsförslag (register + partsregister, skyddsgrindat)
+        [
+            'name' => 'Handling#utkast',
+            'url' => '/api/v1/arende/{ref}/handling-utkast',
+            'verb' => 'GET',
+        ],
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/handling
+        //   -> generera ifylld handling i ärenderummets groupfolder
+        [
+            'name' => 'Handling#skapa',
+            'url' => '/api/v1/arende/{ref}/handling',
             'verb' => 'POST',
         ],
 

@@ -121,20 +121,31 @@
 					class="commit-grind__error"
 					role="alert">
 					<AlertIcon :size="16" />
-					{{ t('hubs_start', 'Överföringen stannade vid Skickat. Inget registrerades — försök igen.') }}
+					<span>
+						{{ t('hubs_start', 'Överföringen stannade vid Skickat. Inget registrerades — försök igen.') }}
+						<template v-if="felOrsak">
+							{{ t('hubs_start', 'Orsak: {orsak}', { orsak: felOrsak }) }}
+						</template>
+					</span>
 				</p>
 			</section>
 
 			<!-- Konsekvenstext. Gap 31: gallras-/retention-meningen renderas ENDAST
-			     post-commit (v-if="committed") så gallrasDatum aldrig fabriceras
-			     pre-commit (datumet är känt först ur API-svaret/provenance efter
-			     bekräftad överföring). -->
+			     post-commit (v-if="committed") och ENDAST med motorns faktiska datum
+			     (kvitto/provenance) — aldrig ett fabricerat. Saknar kvittot datum
+			     visas i stället att facksystemet sätter det vid verifierad
+			     registrering. -->
 			<p class="commit-grind__consequence">
 				<InfoIcon :size="16" />
 				<span>
 					{{ t('hubs_start', 'Handlingen blir allmän handling i akten.') }}
 					<template v-if="committed">
-						{{ t('hubs_start', 'Hubs-rummet gallras {datum} efter bekräftad överföring.', { datum: gallrasDatum }) }}
+						<template v-if="gallrasDatum">
+							{{ t('hubs_start', 'Hubs-rummet gallras {datum} efter bekräftad överföring.', { datum: gallrasDatum }) }}
+						</template>
+						<span v-else class="commit-grind__consequence-pending">
+							{{ t('hubs_start', 'Gallringsdatum: sätts av facksystemet vid verifierad registrering.') }}
+						</span>
 					</template>
 				</span>
 			</p>
@@ -186,6 +197,7 @@ import ArchiveCheckIcon from 'vue-material-design-icons/ArchiveCheck.vue'
 import { translate as t } from '@nextcloud/l10n'
 
 import api from '../../services/api.js'
+import { isDemo } from '../../services/demoData.js'
 import { toneColor } from '../../services/tones.js'
 
 // Human labels per payload.typ — what is actually being committed.
@@ -241,6 +253,11 @@ export default {
 			isRunning: false,
 			result: null,
 			timers: [],
+			// Motorns felorsak (OCS error) vid misslyckad överföring — visas i felraden.
+			felOrsak: null,
+			// Demo-läge: styr om steg-indikatorn får teater-fördröjning (800 ms/steg).
+			// I live drivs stegen av det faktiska API-svaret (kort stegring för läsbarhet).
+			demoLage: isDemo(),
 			// #6 — signerings-bekräftelse (gateas "För över" när kraverSignering).
 			signeradBekraftad: false,
 			// #5 — granskbar dokumentlista (alla förvalda). Normaliserar både
@@ -281,10 +298,15 @@ export default {
 			const dnr = this.arende.dnr || t('hubs_start', 'nytt')
 			return t('hubs_start', 'Treserva-akt · dnr {dnr}', { dnr })
 		},
+		/**
+		 * Gap 31: ALDRIG fabricerat — endast motorns kvitto (result) eller redan
+		 * verifierad provenance. null när motorn inte satt datumet; UI:t visar då
+		 * "sätts av facksystemet …" i stället för ett påhittat datum.
+		 */
 		gallrasDatum() {
 			return (this.result && this.result.gallrasDatum)
 				|| (this.arende.provenance && this.arende.provenance.gallrasDatum)
-				|| t('hubs_start', '3 mån efter överföring')
+				|| null
 		},
 	},
 
@@ -358,8 +380,10 @@ export default {
 		},
 
 		/**
-		 * Drive the simulated three-step Frends progress, then emit @committed.
-		 * Spinner → bock per step. In demo this always succeeds.
+		 * Drive the three-step Frends progress, then emit @committed.
+		 * Spinner → bock per step. LIVE: stegen drivs av det faktiska API-svaret —
+		 * när anropet returnerat markeras de i följd med kort visuell stegring
+		 * (≤150 ms, endast för läsbarhet). DEMO: simulerad teater (800 ms/steg).
 		 */
 		async onCommit() {
 			if (this.isRunning || this.committed) {
@@ -371,6 +395,7 @@ export default {
 				return
 			}
 			this.failed = false
+			this.felOrsak = null
 			this.isRunning = true
 			this.activeIndex = 0
 
@@ -381,13 +406,18 @@ export default {
 				// Step 0 → 1: Skickat → Bekräftat (call the Frends connector here).
 				const r = await api.commitToTreserva({ ...this.payload, valdaDokument, arende: this.arende })
 				if (!r || r.ok === false) {
-					throw new Error('frends-rejected')
+					const err = new Error('frends-rejected')
+					err.motorOrsak = (r && r.error) || null
+					throw err
 				}
 				this.result = r
 
-				// Demo: stage the three-step indicator with setTimeout.
-				await this.advanceTo(1) // Bekräftat (API-svar)
-				await this.advanceTo(2) // Registrerat
+				// Svaret är redan bekräftat här — i LIVE markeras stegen direkt i
+				// följd (kort stegring för läsbarhet, ingen konstgjord väntan).
+				// I DEMO behålls teatern med 800 ms/steg.
+				const stegDelay = this.demoLage ? 800 : 150
+				await this.advanceTo(1, stegDelay) // Bekräftat (API-svar)
+				await this.advanceTo(2, stegDelay) // Registrerat
 
 				this.committed = true
 				this.isRunning = false
@@ -396,19 +426,22 @@ export default {
 				this.$emit('committed', this.result, valdaDokument)
 			} catch (e) {
 				// Failure: stay at "Skickat", show fel-tone. No move. (Demo: never.)
+				// Motorns orsak sväljs ALDRIG tyst — OCS-felet (eller ok:false-svarets
+				// error) plockas upp och visas i felraden.
 				this.clearTimers()
 				this.activeIndex = 0
 				this.failed = true
+				this.felOrsak = e?.response?.data?.ocs?.data?.error || e?.motorOrsak || null
 				this.isRunning = false
 			}
 		},
 
-		advanceTo(index) {
+		advanceTo(index, delay) {
 			return new Promise((resolve) => {
 				const id = setTimeout(() => {
 					this.activeIndex = index
 					resolve()
-				}, 800)
+				}, delay)
 				this.timers.push(id)
 			})
 		},
@@ -575,7 +608,7 @@ export default {
 
 	&__error {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		gap: 8px;
 		margin: 0;
 		padding: 8px 12px;
@@ -583,6 +616,11 @@ export default {
 		color: var(--hs-status-error);
 		background: var(--color-background-hover);
 		font-weight: 500;
+
+		svg {
+			flex-shrink: 0;
+			margin-top: 2px;
+		}
 	}
 
 	&__consequence {
@@ -600,6 +638,11 @@ export default {
 			flex-shrink: 0;
 			margin-top: 1px;
 		}
+	}
+
+	// Gap 31 — datum saknas i kvittot: dämpad, icke-auktoritativ formulering.
+	&__consequence-pending {
+		font-style: italic;
 	}
 
 	&__commit {

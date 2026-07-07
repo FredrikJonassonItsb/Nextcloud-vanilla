@@ -204,6 +204,189 @@ Commits `0fb67a1c`→`9e4f0645` (deployat dev15). Grindar: **jest 88, phpunit 72
 
 **KVAR ATT GUI-KLICK-VERIFIERA (BankID-login krävs — jag kan ej):** hela resan Ta emot→tagg→ut ur feed→förhandsbed→utredning→beslut→signering(nu fixad)→uppföljning→avsluta; demo-länken; overlay-bygget för punkt 4. **Untracked i git:** `analysis-output/VARDE-*.md`, `analysis-output/rapport/`.
 
+### ✅ SESSION 4 (2026-07-02) — ÄRENDERUMMETS PRESENTATIONSLAGER: ETT TEAM (CIRCLE) PER ÄRENDE
+**hubs_arende 0.7.6 + hubs_start 1.2.16 (deployat dev15, live-verifierat). Grindar: jest 90, phpunit 76, bygg grönt, smoke OK.**
+
+**Beslut (användarens vision):** ärenderummet ska PRESENTERAS som ett Team (Circles) som knyter
+ihop akten/chatten/medlemmarna — men **ägarmodellen ändras INTE**: per-case-NC-gruppen
+(`hubs-case-{uuid}`, speglad ur member-ledgern med handoff-avsmalning) förblir åtkomstprimitiven.
+Teamet får GRUPPEN som sin ENDA medlem (Member::TYPE_GROUP=2) → teamet är en automatiskt korrekt
+spegel, ingen egen synk-väg. Service-kontot äger teamet (level 9); ny circle är låst per default
+(config 0 — ingen självanslutning).
+
+**Byggt:**
+- **`TeamClient`** (`hubs_arende/lib/Integration/Client/TeamClient.php`) — circles OCS via
+  ServiceAccountAuth (samma mönster som SpreedClient). createTeam är all-or-nothing (misslyckad
+  grupp-koppling ⇒ teamet rivs, null). destroyTeam idempotent.
+- **Saga-steg T** (efter M, före R4): skapar 'Ärende {hubsCaseId}' + pekare `objekt_typ='team'`
+  (objekt_id = circle singleId). Kompensation T:destroy-team körs före M:s (team rivs före gruppen).
+- **R4**: teamet grantas som EXTRA applicable på ärenderummets groupfolder (samma publik som
+  gruppen — ingen behörighetsbreddning) → akten syns via teamet. **R6**: teamet läggs som
+  Talk-deltagare (`SpreedClient::addCircleParticipant`, source='circles') → rummet listas som
+  team-resurs (`GET /ocs/v2.php/teams/{id}/resources`, LIVE-verifierat) + @team-mention.
+- **Teardown på alla vägar:** saga-kompensation, `GallringService` (trailing TeamClient),
+  `DemoSeedService::tearDownExternal` (case 'team'), `dev15-reset.sh` (nytt steg 0: läser
+  team-pekare FÖRE SQL:en + namn-fallback; nytt steg 4: raderar `hubs-case-*`-grupper —
+  täppte hålet där 43 orphan-grupper läckt).
+- **Ytor:** pekarblocket + kollapsade kortet bär `teamId`; `deepLinks.teamLink()` →
+  `/apps/contacts/direct/circle/{singleId}` (ärlig null); ArendeKort visar "Team"-piller
+  ENDAST när teamId finns → `MinaArenden.onOpenTeam`.
+- **Verifierat på dev15:** circles 31.0.0 + related_resources 2.0.0 aktiva; smoke skapade 9 team
+  med korrekt medlemskap (grupp type 16 + svc-ägare); groupfolders listar BÅDE gruppen och teamet
+  som applicable; Talk-rummen har circles-markör-attendee; teams/resources listar rummet;
+  reset återställde känt läge (team=0, case_grupper=0, 2 otaggade orosanmälningar).
+
+**GUI-KLICK-VERIFIERAT (2026-07-02, användaren inloggad med BankID):** riktig orosanmälan →
+"Ta emot" → ärende med team föddes; Team-pillret → Contacts team-vy (medlemmar + Talk-resurs);
+Talk-resursen → ärenderummets diskussion med teamet som deltagare. Användaren körde därefter
+själv kvittera→commit (dnr 2026-IFO-0501).
+**KÄNDA GRÄNSER:** (a) REMOVE av user ur NC-gruppen propagerar INTE till Talk (cirklar fyrar
+inget event vid grupp-borttag) — dagens explicita `removeParticipant` i motorn täcker det;
+(b) en admin kan flippa CFG_OPEN via Contacts-UI:t (mjukt skydd; `flagAsAppManaged` kräver
+in-process superSession = av-mönster, ej byggt); (c) 'Team'-terminologin följer NC:s UI —
+aldrig 'Circles' i strängar.
+
+### ✅ SESSION 4b (2026-07-02) — AKTEN PÅ TEAMSIDAN + "NY CHATT I ÄRENDET"
+**hubs_arende 0.7.7 + hubs_start 1.2.17 (deployat dev15, GUI-verifierat live). Grindar: jest 93, phpunit 82.**
+
+- **`ArenderumTeamResourceProvider`** (`hubs_arende/lib/Teams/`, registrerad via
+  `registerTeamResourceProvider` i Application) — team-sidan visar nu AKTEN
+  ("Ärenderum → Akten – ärendets dokument") via motorns pekare (team→hubsCaseId→groupfolder).
+  Core:s TeamManager gatar per användare (endast teamets medlemmar). Ny
+  `PekareMapper::findByTypAndObjektId` (reverse lookup).
+- **"Ny chatt i ärendet"** — nytt menyval i kortets "…"-meny → `NyChattModal` (namn valfritt,
+  PII-varning) → befintliga motor-API:t `POST /arende/{ref}/talkrum` → **landar direkt i nya
+  rummet**. `laggTillTalkrum` lägger nu även TEAMET som deltagare i extra chattar → de listas
+  automatiskt på teamsidan + bokförs som talk_room-pekare (gallras med ärendet).
+- **GUI-verifierat:** "Samverkan skola" skapad från kortet; teamsidan listar Akten + BÅDA
+  chattarna; deltagare + team-systemmeddelande korrekta i nya rummet.
+- **Från Teams/Circles-hållet (utan utveckling):** skapa rum i Talk och lägg till teamet
+  "Ärende {uuid}" som deltagare — rummet syns då automatiskt på teamsidan och alla
+  ärendemedlemmar får det. OBS: sådana rum bokförs INTE av motorn (ingen pekare ⇒ ingen
+  gallring, syns ej i kortet) — presentationsvägen, inte den spårade.
+- **UX-BUGG HITTAD (generell, ej ny):** NcActions-menyn på kortet stängs INTE när ett menyval
+  öppnar en modal — menyn ligger kvar ovanpå modalen (drabbar Ny chatt, Boka möte m.fl.).
+  Fixa genom close-menu-before-emit i NastaAtgardKnapp (liten).
+
+### ✅ SESSION 5 (2026-07-03) — GUI-ANALYSENS HELA ÅTGÄRDSPAKET (P1+P2) BYGGT & GUI-VERIFIERAT
+**hubs_arende 0.8.0 (MIGRATION: hubs_arende_handelse) + hubs_start 1.3.2 (deployat dev15).
+Grindar: jest 95, phpunit 87, bygg grönt.** Se docs/GUI-ANALYS-MINDAG.md för analysen bakom.
+
+**MOTORN:**
+- **Händelsejournal** (`hubs_arende_handelse` + Handelse/HandelseMapper): loggas best-effort vid
+  skapad/steg/tilldelad/medlem±/registrerad/rum/kopplad (aktor ur session). GET /arende/{ref}/historik.
+  Gallras/purgas MED ärendet. GUI-verifierad (första raden: tilldelad via "Ta ärendet").
+- **Medlemsbaserad summary**: `?mine=1` ⇒ dashboardArenden filtrerar på medlemsledgern
+  (MemberMapper::findCaseIdsByUid). "Mina ärenden" = mina, inte enhetens-minus-heta.
+- **pekare.talkRooms[]** (alla rum, äldst först; namn lagras i pekare.riktning vid laggTillTalkrum),
+  **medlemmar[]** i mapToFullCard, **GET /arende/{ref}/bevakningar** (läs-projektion av Deck-kortet
+  via DeckClient::getCard — handläggare behöver ingen board-ACL; verifierad live med riktig kortdata).
+- **NC-notiser**: Notifier (tilldelad/medlem/frist, länk till Hubs Start, cross-app-guarded) +
+  notify i tilldela/laggTillMedlem (självnotis skippas) + **FristVarselJob** (dagligen, T-3 + förfallodag,
+  ägare annars krets; registrerad i oc_jobs).
+
+**SDKMC (backend-additions — OBS efemära, routes-snippet uppdaterad):**
+- **CaseMessagesService/-Controller**: GET /api/v1/case-messages?ref= — ärendets ALLA kopplade
+  meddelanden via case:-taggen (sdkmc:s egna taggtabeller), mailbox-ACL-buret, threadLink per rad.
+- **MeetingService::getCaseMeetings + Meeting#forCase**: GET /api/v1/arende-meetings?refs= —
+  kommande+genomförda dnr-märkta bokningar ur användarens kalendrar.
+- **`appinfo/routes-ocs-snippet.php` = KOMPLETT deploybart ocs-block (16 rutter)** — wipe-
+  återställningskällan. MANIFEST kompletterad med fas 2d + nya filer.
+
+**FRONTEND (Min dag-omgörningen):**
+- **"Kräver åtgärd nu" = varsel-LISTA** (VarselLista.vue): kompakta rader (frist/plikt/omnämnande)
+  + "Gå till ärendet ↓" som scrollar/markerar/auto-expanderar kortet. Heta kort FLYTTAS ALDRIG —
+  ett ärende, ett kort, en arbetsyta. aktivaArenden = ALLA mina, frist-sorterade.
+- **Kortet som ärendenav**: modulrad (Team först, Akten, Meddelanden, Kalender, Signering — åtgärder
+  bor i …-menyn), flikrad ALLTID synlig med räknare: Akten (KLICKBARA filer + referensrader→
+  Meddelanden), Meddelanden (case-messages), Rum (talkRooms + Ny chatt), Möten (kommande/genomförda
+  + Boka), Bevakningar (Deck-projektion), Historik & beslut (journal-tidslinje). **Medlemspanel**
+  (ledgern + "Lägg till kollega") + **Otilldelad-badge + "Ta ärendet"** (GUI-verifierad).
+- **Zonerna**: tomma paneler kollapsade till en-radare (Att ta emot/Att hantera/Ej ärendekopplat
+  auto-kollaps + Mina möten/Kvittenser); dagspuls HÄRLEDD ur laddad data (inga döda nollor);
+  **"God morgon, {förnamn}"** ur sessionen + ägar-attribution via uid (Anna-buggen BORTA);
+  NcActions close-after-click (menyn-över-modal-buggen fixad); läge-växeln ROLLSTYRD
+  (profil forvaltare, ej demo-gated); MeetingWizard skickar dnr (gap17 stängd frontend-sidan).
+
+**⚠ UPPTÄCKT STUB-BEGRÄNSNING (pre-existing, viktig):** FacksystemCommitStub:ens dnr-sekvens är
+in-memory PER REQUEST ⇒ två commits ger SAMMA dnr (2026-IFO-0501 ×2 på dev15 nu) ⇒ triageRef
+(dnr ?? hubsCaseId) KOLLIDERAR ⇒ frontendens full[]-cache blandar kortens flikinnehåll. Live-Frends
+ger unika dnr; kortsiktig härdning = nyckla cachen på hubsCaseId eller persistera stub-sekvensen.
+
+**KVAR ATT GUI-VERIFIERA:** Meddelanden-fliken mot riktig kopplad post (kräver din session — svc
+ser ACL-tomt), Möten-fliken efter en dnr-märkt bokning, frist-notisen (kör occ background-job),
+"Lägg till kollega" med riktig kollega-uid.
+
+### ✅ SESSION 5b (2026-07-03) — REGRESSIONSJAKT + REN OMTESTNING AV HELA FLÖDET
+**hubs_arende 0.8.1 + hubs_start 1.3.3 + apps/sdkmc ItslTagService F2/F2b (deployat, GUI-verifierat
+i ren körning från dev15-reset).** Tre användarrapporterade fel — alla rotorsakade och fixade:
+
+1. **Taggarna "försvann" (F2-regressionen):** container-omstarten ~21 juni omsynkade apps/sdkmc
+   och RENSADE Fas F2:s in-place-ändring i ItslTagService (fanns bara i hubs-code-forken, inte i
+   backend-additions → wipe-recoveryn missade den). Nya taggar fick råa namn ("Case:{uuid}", grå).
+   **Fix:** F2 återapplicerad på live-filen; HELA den patchade 2.2.25-filen ligger nu i
+   `backend-additions/sdkmc/lib/Service/ItslTagService.php` som återställningskälla.
+2. **Taggar syntes ALDRIG i trådvyn (F2b, ny):** mailklientens "Taggar"-sektion läser mail-appens
+   EGNA tabeller (oc_mail_tags — tomma), inte sdkmc:s. **Fix:** `mirrorTagToMailApp()` — best-effort
+   dubbelskrivning vid tagMessage/tagMessages. GUI-verifierat: tråden visar "Ärende 35373032" (grön)
+   + "Behandlad" (blå).
+3. **Dubblett-dnr:** FacksystemCommitStub:ens sekvens var in-memory per request. **Fix:** persistent
+   sekvens via app-config `stub_dnr_seq` (enhetstester opåverkade — in-memory utan appConfig).
+   Dessutom härdat: `mapToCard.triageRef = ALLTID hubsCaseId` (unik kort-/cachenyckel; dnr separat).
+4. **Klassningen syntes inte i triaget:** servern klassade rätt (orosanmalan@-korridoren) men
+   AttTaEmotRad renderade ingen typ-chip. **Fix:** "Orosanmälan"-chip i Att ta emot-raden.
+5. **Spök-taggar** (6 case-taggar för 2 ärenden, från gårdagens mellanläges-testning): kunde inte
+   reproduceras i ren körning — exakt 1 ärende + 1 tagg per "Ta emot". Bevaka.
+6. Reset-skriptet rensar nu även `hubs_arende_handelse` (nytt sedan journalen).
+
+**REN TESTRUNDA (från dev15-reset, allt via GUI som inloggad användare):** klassning ("Orosanmälan"-
+chip) → Ta emot ×2 → varsin case-tagg med F2-namn + behandlad → feeden tömd → Fatta beslut →
+CommitGrind → För över ×2 → **UNIKA dnr 2026-IFO-0501 / 0502** → steg→utredning → journal komplett
+(skapad/registrerad/steg per ärende) → Historik & beslut-fliken visar tidslinjen → 2 team →
+taggarna synliga i mailklientens trådvy. **Läge på dev15:** 2 ärenden i utredning (0501/0502),
+otilldelade — INTE återställt (medvetet, så flödet kan inspekteras).
+
+### ✅ SESSION 5c (2026-07-04) — SEX ANVÄNDARRAPPORTERADE GUI-FIXAR + REN OMTESTNING
+**hubs_arende 0.8.2 + hubs_start 1.3.4 + sdkmc ItslTagService (kort-id 6 tecken) — deployat,
+dev15-reset kört (inkl. `occ config:app:delete hubs_arende stub_dnr_seq`), HELA flödet omtestat
+i GUI från grunden. Grindar: jest 95, phpunit 87, smoke grön.** De sex felen — alla fixade + GUI-verifierade:
+
+1. **Dubbelklick på "Ta emot" gav 2 ärenden:** motorn VAR idempotent (conversation_id-UNIQUE) men
+   store:ns optimistiska unshift dedupade inte + knappen förblev klickbar. **Fix:** (a) store
+   `inflodeAction('skapa')` dedupar på hubsCaseId före unshift, (b) `taEmotPending`-gard i
+   MinaArenden→AttTaEmotSektion→AttTaEmotRad: knapparna inaktiveras + "Skapar ärende…" under
+   anropet. Verifierat: 2 snabba klick ⇒ EXAKT 1 ärende i DB.
+2. **Nyskapat ärende saknade ärendenummer i rubriken:** barnRef tom + dnr null ⇒ tom rubrik.
+   **Fix:** `ArendeService::kortRef()` (6 första hex av hubsCaseId) + `kortTitel` i ArendeKort:
+   **"Ärende 643935"** (+ "· dnr …" efter registrering). VarselLista-undertexten använder samma
+   kort-ref i st.f. rå UUID.
+3. **Bevakningar gick inte att inspektera:** **Fix:** DeckClient.createCard tar description
+   (R5 skriver "Bevakning för ärende {kort} ({typ})…"), getCard läser {titel, beskrivning, frist,
+   kolumn, etiketter}; Bevakningar-fliken renderar titel + beskrivning. GUI-verifierat.
+4. **"Lägg till kollega" accepterade vad som helst:** **Fix:** `assertRiktigAnvandare()` i motorn
+   (tilldela + laggTillMedlem) — 400 med "Användaren finns inte i Hubs: {uid}" via IUserManager;
+   frontend visar motorns orsak (motorFel-extraktion). Verifierat: ogiltig uid ⇒ ärligt fel;
+   axel.israelsson ⇒ ledger co_handlaggare + per-case-GRUPP-medlem + Talk-deltagare + notis.
+5. **Talk-rummens namn:** huvudchatten heter nu **"Ärende {kort6} – diskussion"**, extra chattar
+   **"Ärende {kort6} – {namn}"** (namnet persisteras i pekare.riktning), team **"Ärende {kort6}"**,
+   Deck-kort **"Ärende {kort6}"**, mail-taggen **"Ärende {kort6}"** (ItslTagService kort 8→6).
+   Verifierat i Talk-sidopanelen, team-sidan (Contacts) och trådvyns taggar.
+6. **"Ta ärendet" visades på redan ägda ärenden:** **Fix:** knappen visas ENDAST när
+   status=otilldelat && !agareUid (+ `togsNyss`-gard direkt efter klick). Omfördelning är nu ett
+   MENYVAL: "Omfördela till kollega" under kortets tre prickar (NastaAtgardKnapp) + TilldelningBands
+   "Mer" → **OmfordelaModal** (uid-input) → `api.tilldela()`. Verifierat: ogiltig uid ⇒ fel;
+   anna.ignell ⇒ motorns ENHETS-grind svarar "Tilldelad handläggare är inte behörig för ärendets
+   enhet" (fail-closed authz!); axel.israelsson (efter group:adduser barn-familj) ⇒ ägarbyte,
+   journal 'tilldelad', NC-notis, kortet visar "Tilldelad Axel Israelsson av mottagningen".
+   **Bonusfix:** mapToCard fyller nu agareNamn via IUserManager displayName (tidigare null ⇒
+   "okänd handläggare").
+
+**Läge på dev15 efter 5c:** 2 ärenden i utredning (0501=Nils, 0502=axel.israelsson), 1 otriagerad
+rad kvar i Att ta emot ("Meddelande till orosanmälan"), axel.israelsson tillagd i barn-familj-gruppen.
+Kända kvarvarande skönhetsfel: gamla Talk-rum från tidigare körningar ligger kvar i sidopanelen
+(reset:en river pekare/team men inte Talk-rummen — gallringen gör det i drift); "Fördela
+(gruppledare)"-vyn använder fortfarande inflodeAction('tilldela')-routing (ska → api.tilldela).
+
 ### ÅTERSTÅR efter session 2 (prioriterad)
 - **AB-01 (kat2 insats-sub-typ-router)** — BYGGS EJ ensidigt: kräver (a) bekräftelse att `insatsTyp` finns
   på inflöde-raden, och (b) en **migration** (persistera resolverad frendsModul/insatsTyp på case-raden så

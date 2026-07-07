@@ -44,7 +44,7 @@
 				<template #icon>
 					<AccountSwitchIcon :size="20" />
 				</template>
-				{{ t('hubs_start', 'Begär omfördelning') }}
+				{{ t('hubs_start', 'Omfördela till kollega') }}
 			</NcActionButton>
 		</NcActions>
 	</div>
@@ -62,9 +62,7 @@ import StarIcon from 'vue-material-design-icons/Star.vue'
 import DotsHorizontalIcon from 'vue-material-design-icons/DotsHorizontal.vue'
 
 import { translate as t } from '@nextcloud/l10n'
-
-/** Demo: behandla denna ägare som "mig" tills inloggad uid finns att jämföra mot. */
-const DEMO_MIG_NAMN = 'Anna'
+import { getCurrentUser } from '@nextcloud/auth'
 
 export default {
 	name: 'TilldelningBand',
@@ -102,10 +100,12 @@ export default {
 			return (this.tilldelning && this.tilldelning.status) === 'tilldelat'
 		},
 
-		/** Är ägaren nuvarande användare? Demo: agareNamn 'Anna' = "mig". */
+		/** Är ägaren nuvarande användare? Jämför UID mot inloggad session —
+		 * aldrig namnsträngar ('Anna'-buggen: fel attribution för alla). */
 		agareArMig() {
 			const a = this.tilldelning || {}
-			return a.agareNamn === DEMO_MIG_NAMN
+			const jag = getCurrentUser()
+			return !!(jag && a.agareUid && a.agareUid === jag.uid)
 		},
 
 		/** Ägarens visningsnamn — "mig" om det är jag, annars namnet. */

@@ -1,0 +1,246 @@
+{
+ "kapitel": 6,
+ "kapitelRubrik": "VERKSAMHETSMODULENS UI/UX & DEMOLÄGE",
+ "krav": [
+  {
+   "id": "K-6.1",
+   "rubrik": "MinaArenden.vue som enda container",
+   "beskrivning": "MinaArenden.vue ska vara enda containern för personan socialsekreterare: rendera de sju zonerna i flex-kolumn, äga summary-state och zonOf-fördelningen samt routa alla events till tjänster. Start.vue grenar med v-if på activePersona==='socialsekreterare' till <MinaArenden/>, annars befintlig grid — redesignen isoleras till en persona med minsta diff.",
+   "typ": "ux",
+   "statusIDok": "[FINNS] container; [KONFIG] vy-växel + feature-flag socialsekreterareNewView",
+   "beroenden": "Start.vue (persona-växel), feature-flag socialsekreterareNewView"
+  },
+  {
+   "id": "K-6.2",
+   "rubrik": "zonOf som ren selector",
+   "beskrivning": "zonOf(item) ska vara en ren selector utan fan-out: inflöde placeras på arendekoppling (nytt→attTaEmot, hor_till→attHantera, ej_kopplat→ejKopplad); ärendekort placeras på frist-ton/plikt/vantarPaMig/omnämnande i zonerna het/aktiv. Ska vara en testbar funktion över EN payload och fungera som deterministiskt compliance-ankare.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.3",
+   "rubrik": "NastaAtgardKnapp med state machine + fas-spärr",
+   "beskrivning": "NastaAtgardKnapp ska härleda sin etikett ur en state machine (steg, tillstånd)→åtgärd med vantar-overrides. Servern ska validera att åtgärden är tillåten i den aktuella fasen (fas-spärr) — servern är auktoritet, klienten speglar.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS] frontend; [BYGGS] server-side fas-validering",
+   "beroenden": "Server-side fas-validering i sdkmc/M0 (byggs)"
+  },
+  {
+   "id": "K-6.4",
+   "rubrik": "ProcessStepper med pliktspärr",
+   "beskrivning": "ProcessStepper (Förhandsbedömning→Utredning→Beslut→Uppföljning→Avslutat) ska vara rent presentational med ikon + text per steg (aldrig bara färg), aria-current=\"step\", pil-navigerbar, och ska blockera framåt-övergång om plikt är okvitterad. Pliktspärren är en strukturell fristgaranti.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.5",
+   "rubrik": "ArendeKort som kärnkomponent",
+   "beskrivning": "ArendeKort ska vara kärnkomponenten med två lägen utan sidbyte: kollapsat (Zon 3) respektive expanderat Quick View (Zon 2), med flikarna Dokument · Säkra meddelanden · Diskussion · Möten · Bevakningar · Beslut, lazy-laddat via fetchArende(ref). Samlar de gamla ~13 widgetarna per ärende.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": "fetchArende(ref)-aggregat (K-6.30)"
+  },
+  {
+   "id": "K-6.6",
+   "rubrik": "KorgValjare — behörighetsfiltrerade korg-piller",
+   "beskrivning": "KorgValjare.vue ska visa korg-piller med NcCounterBubble plus typ-filter-rad (8 messageType), kombinera korg ∩ typ, vara knapp-/tangentbordsstyrd (aria-pressed, WCAG 2.5.7) och bara rendera behöriga korgar — server-filtrerat utgör OSL-gränsen; en korg man inte får läsa renderas inte alls. Default aktivKorg=null.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]; [EXTERN] behörighetsfiltrerade korgar ur fetchInflodeSummary()",
+   "beroenden": "Server-side behörighetsfiltrering via fetchInflodeSummary() (sdkmc)"
+  },
+  {
+   "id": "K-6.7",
+   "rubrik": "Tre band med samma datakälla",
+   "beskrivning": "De tre banden ska dela samma datakälla (InflodeRad-shape) och samma filter men separeras på kognitiv uppgift: 1a AttTaEmotSektion (nytt), 1b AttHanteraSektion (hor_till, grupperat per ärende), 1c EjKoppladSektion (ej_kopplat). Triage, ärendearbete och löst inflöde är skilda uppgifter.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.8",
+   "rubrik": "Kollapsbara tomma band + röd-när-gammal",
+   "beskrivning": "Banden 1b/1c ska vara kollapsbara och tomma-som-default med undervisande NcEmptyContent som compliance-kvitto och aria-live=\"polite\". Räknaren i 1c ska bli röd när rader är äldre än 1 arbetsdag (OSL 5:1) — en compliance-KPI mot registreringsplikten; tom skärm är trygghetssignal.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.9",
+   "rubrik": "EjKoppladSektion — de sex åtgärderna",
+   "beskrivning": "EjKoppladSektion ska exponera de sex åtgärderna (Koppla · Skapa nytt · Besvara · Vidarebefordra · Gallra · Registrera) plus auto-förslag och synligt \"varför\". Ingen rad får försvinna utan att kopplas, registreras eller gallras med dokumenterat stöd — sektionen är den juridiska mellanstationen.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS] UI; [EXTERN] riktiga effekter i sdkmc",
+   "beroenden": "sdkmc/M0 för verkliga åtgärdseffekter"
+  },
+  {
+   "id": "K-6.10",
+   "rubrik": "GallringsGrind — DHP-tvingat gallringsbeslut",
+   "beskrivning": "GallringsGrind.vue ska tvinga val av handlingstyp ur kommunens dokumenthanteringsplan (DHP), visa gallrings-/bevarandebeslutet och först därefter aktivera \"Gallra\"; saknas gallringsgrund erbjuds \"Registrera utan ärende\". Bekräftelsen loggas i activity — \"Gallra\" får aldrig vara ett naket klick (arkivlag 1990:782 §10; OSL 5:1).",
+   "typ": "juridik",
+   "statusIDok": "[FINNS]; [KONFIG] DHP-källa; [BESLUT KRÄVS] DHP-källa",
+   "beroenden": "DHP-källa per kommun — öppet beslut ([BESLUT KRÄVS], samlas i §9 beslutslogg); activity-loggning"
+  },
+  {
+   "id": "K-6.11",
+   "rubrik": "KopplingBadge — tre tillstånd",
+   "beskrivning": "KopplingBadge.vue ska visa tre tillstånd, alltid med ikon + text + färg: kopplad, foreslagen (bekräfta/avvisa endast om användaren har åtkomst till målärendet, annars \"eskalera till gruppledare\") och ej. Gör ärende-identiteten synlig på objektet utan att exponera rå hubsCaseId — UUID är join-nyckel, pseudonym är det människan ser.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.12",
+   "rubrik": "KopplingBadge — samma grammatik överallt",
+   "beskrivning": "KopplingBadge ska ha samma visuella grammatik överallt (WCAG 3.2.4): på InflodeRad och på objekt i ArendeKorts flikar. Tekniskt mappar den till case:{id}-tagg respektive registerpekare; i demo gäller konfidens≥0.9 → kopplad.",
+   "typ": "ux",
+   "statusIDok": "[FINNS] UI; [EXTERN] case:-tagg [FINNS], ArendeMatchService [BYGGS]",
+   "beroenden": "case:{id}-taggmotorn (finns), ArendeMatchService (byggs, kap 3/4)"
+  },
+  {
+   "id": "K-6.13",
+   "rubrik": "Dagspulsen — femte räknare omnämnanden",
+   "beskrivning": "Dagspulsen ska ha en femte räknare 💬 omnämnanden (mentions + 1:1 riktade till mig) — aldrig råa olästa. Klick filtrerar \"väntar på mig\". Chatt är pull, inte push; enda push-signalen är omnämnande riktat till mig.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.14",
+   "rubrik": "DiskussionChip på kollapsat kort",
+   "beskrivning": "DiskussionChip ska visa 💬 3 (olästa) eller 💬 @1 (omnämnande-till-mig) på kollapsat ArendeKort. Endast omnamnandeTillMig===true lyfter kortet till Zon 2; aldrig röda badge-moln. Surfar ärende-chatten på ärendet utan inkorgskänsla.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.15",
+   "rubrik": "Delad meddelandeyta: Säkra meddelanden vs Diskussion",
+   "beskrivning": "ArendeKorts meddelandeyta ska delas i \"Säkra meddelanden\" (extern, kvittensbärande) och \"Diskussion\" (ArendeDiskussion.vue, intern). Diskussion-fliken ska ha SekretessRad överst, trådvy med @-omnämnanden, per-meddelande-åtgärden \"Gör detta till en handling\" (mall → human-in-the-loop → CommitGrind → systemkvitto) samt \"Lyft till enhetschatt\". Intern medbedömning hör hemma på ärendet men committas aldrig tyst.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]; [EXTERN] rummet = spreed-rum via talkToken-pekare [BYGGS]",
+   "beroenden": "Spreed-rum via talkToken-pekare i registret (byggs, kap 3); CommitGrind (K-6.25)"
+  },
+  {
+   "id": "K-6.16",
+   "rubrik": "ArendeDiskussion — lättviktig trådvy",
+   "beskrivning": "ArendeDiskussion ska rendera en lättviktig trådvy — inte bädda in hela Talk-UI:t. I demo hämtas data via fetchArende(ref).diskussion; i produktion via talkToken ur registret. Designvakt: \"ingen kanal-först\".",
+   "typ": "ux",
+   "statusIDok": "[FINNS] demo; [EXTERN] prod via talkToken",
+   "beroenden": "talkToken-pekare i ärenderegistret (kap 3)"
+  },
+  {
+   "id": "K-6.17",
+   "rubrik": "EnhetschattPanel — lugn sidoyta",
+   "beskrivning": "EnhetschattPanel.vue ska vara en lugn sidoyta (Zon 5-ingång), aldrig kort i ärendeströmmen. Innehåller team-trådar (Circles-team), SekretessRad per tråd och \"Starta fördelningsmöte\". Team-/enhetschatt får inte tävla med ärendekorten.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]; [EXTERN] Circles-team + spreed",
+   "beroenden": "Circles-team och Spreed (externa moduler M2)"
+  },
+  {
+   "id": "K-6.18",
+   "rubrik": "TilldelningBand — diskret tilldelningsrad",
+   "beskrivning": "TilldelningBand.vue ska vara en diskret rad på ArendeKort: tilldelat-text (\"Tilldelad mig av Eva 14/6\"), accent-markören \"NY\" under första 24 timmarna (nyFor24h) samt ursprungschip fran:'mottagning'. En nyfördelning får inte drunkna och ursprunget ska synas utan att fråga.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.19",
+   "rubrik": "Fördelningsläget rollgrindat",
+   "beskrivning": "Roll-läget fordelning ska aktiveras via läge-växel i Zon 0 och endast renderas för den som har fördelarroll i korgens team — åtkomstgränsen ÄR OSL-gränsen. FordelningsVy.vue ersätter zon-listan men bygger ovanpå samma zonOf/ArendeKort/FristChip.",
+   "typ": "sakerhet",
+   "statusIDok": "[FINNS]; [EXTERN] rollkälla (RoleService + team-medlemskap)",
+   "beroenden": "RoleService + team-medlemskap som rollkälla (extern/byggs)"
+  },
+  {
+   "id": "K-6.20",
+   "rubrik": "FordelningsVy Zon A — Att fördela",
+   "beskrivning": "FordelningsVy Zon A \"Att fördela\" ska bära FordelaTill.vue (utredar-väljare med belastning i parentes, t.ex. \"Sara (8)\"), mottagningssekreterarens förslag och \"ofördelad i N dagar\". Räknaren får aldrig nå noll medan kort finns kvar — inget barn mellan stolarna.",
+   "typ": "ux",
+   "statusIDok": "[FINNS]; [EXTERN] fetchFordelningSummary()",
+   "beroenden": "fetchFordelningSummary()-aggregat server-side (K-6.30)"
+  },
+  {
+   "id": "K-6.21",
+   "rubrik": "UtredarLast — aggregat utan PII",
+   "beskrivning": "FordelningsVy Zon B UtredarLast.vue ska visa tal + frist-färg + \"nära tak\"-markör per utredare men ALDRIG innehåll eller vilka barn — gruppledaren har inte automatiskt sekretess-åtkomst (OSL 26 kap.). Siffrorna hämtas ur fetchFordelningSummary(). Detta är den hårdaste sekretessgränsen i UI:t; chefsvyn får inte läcka innehåll.",
+   "typ": "sakerhet",
+   "statusIDok": "[FINNS] UI; [EXTERN] server-aggregat utan PII",
+   "beroenden": "Server-aggregat utan PII via fetchFordelningSummary()"
+  },
+  {
+   "id": "K-6.22",
+   "rubrik": "Atomär fördelningshandling",
+   "beskrivning": "Fördelningshandlingen ska gå genom en bekräftelse-dialog som stavar ut konsekvensen, därefter @fordela(arende, uid), varpå servern orkestrerar atomärt: assignee + ACL-omskrivning + Deck-kort + flytt + notis. En halvgenomförd tilldelning är ett sekretess- och spårbarhetshaveri (GAP-057).",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] UI; [BYGGS] atomär saga-orkestrering (kritisk, GAP-057)",
+   "beroenden": "GAP-057 atomär fördelning/saga-orkestrering i motorn (kap 3, P0-byggsteg 6 i §0.6/§10)"
+  },
+  {
+   "id": "K-6.23",
+   "rubrik": "FavoritValjare — pekare ovanpå Kontakter",
+   "beskrivning": "FavoritValjare.vue ska i Besvara/Vidarebefordra visa resolvad union [Mina favoriter] ∪ [funktions-delad lista] ovanpå Kontakter som-den-är, varje rad med klass-markör + ProvenansChip. En favorit är en pekare, inte en post (X-HUBS-SDK-REF + visningscache; föränderliga fält resolvas färskt ur DIGG). Listan får bara innehålla funktion/myndighet/fax — aldrig en medborgare; borttagen DIGG-källa visas överstruken (removed:true). Favoriten taggas aldrig med hubsCaseId.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]; [EXTERN] sdkmc-resolverlager mot DIGG + Kontakter (ingen fork)",
+   "beroenden": "sdkmc-resolverlager mot DIGG och Kontakter-appen (K-2.7-mönstret, ingen fork)"
+  },
+  {
+   "id": "K-6.24",
+   "rubrik": "TreservaKvittens — read-only kvittensyta",
+   "beskrivning": "TreservaKvittens.vue ska vara en read-only kvittens-/retention-yta som visar verifierade Treserva-commits och gallringsklockan för Hubs-kopian. Ingen rad får antyda gallring på kryssruta; signalen är ikon + text (\"Verifierad\", CheckDecagram) och identiteten barnRef + dnr. Materialiserar principen Hubs = mellanlagring, facksystemet = slutlagring (GAP-007).",
+   "typ": "ux",
+   "statusIDok": "[FINNS]; [EXTERN] verifierad commit-callback via Frends/FacksystemCommitService [BYGGS]",
+   "beroenden": "FacksystemCommitService med verifierad callback (GAP-019/GAP-007, kap 3)"
+  },
+  {
+   "id": "K-6.25",
+   "rubrik": "CommitGrind — det synliga verifierade commit-ögonblicket",
+   "beskrivning": "CommitGrind.vue ska vara det synliga, verifierade commit-ögonblicket (Skickat → bekräftat API-svar → Registrerat). Vid bekräftat svar flippar ProvenansChip, steppern flyttas fram, pliktmarkören släcks och retention-countdown startar — aldrig vid kryssruta. Vid fel stannar tillståndet på \"skickat\". Ersätter tyst auto-flip och kopplar stepper-framsteg + retention-start till verifierad commit (GAP-007/019).",
+   "typ": "funktion",
+   "statusIDok": "[FINNS] UI; [EXTERN] commitToTreserva → Frends [BYGGS]",
+   "beroenden": "commitToTreserva via Frends/FacksystemCommitService (GAP-019, kap 3); retention-bindning (GAP-007, kap 7)"
+  },
+  {
+   "id": "K-6.26",
+   "rubrik": "KategoriBadge SKA byggas",
+   "beskrivning": "KategoriBadge.vue ska byggas (saknas idag) som atom i FristChip/ProvenansChip/KopplingBadge-familjen med .hs-chip-grammatik (ikon + text + färg) och visa ärendekategori/messageType (en av 8) konsekvent på InflodeRad och kortobjekt (WCAG 3.2.4). Dokumentet pekar ut den som den enda uttryckligt efterfrågade komponenten som inte finns.",
+   "typ": "ux",
+   "statusIDok": "[BYGGS] — enda obyggda av de efterfrågade komponenterna (34 övriga Vue-komponenter LIVE enligt kapitelingressen)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.27",
+   "rubrik": "FristChip/FristPanel — server-beräknad fristton",
+   "beskrivning": "FristChip/FristPanel ska visa fristtyp + dagar kvar + datum med eskaleringsfärg grå→gul(≤3 dagar)→röd(förfallen), där tone är server-beräknad och speglad ur Treserva — Hubs räknar aldrig frister själv, så ingen falsk-röd uppstår vid förlängning (GAP-018). ProvenansChip visar ej_registrerad/registrerad med dubbel countdown.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]; [EXTERN] frist-spegling via Frends",
+   "beroenden": "Frist-spegling ur Treserva via Frends (GAP-018, kap 3 K-3.5 fristDue)"
+  },
+  {
+   "id": "K-6.28",
+   "rubrik": "WCAG 2.2 AA tvärgående",
+   "beskrivning": "Alla chips/knappar/räknare ska ha Target Size ≥24×24 px; filtrering via knapp/tangentbord (aldrig drag, WCAG 2.5.7); aria-live=\"polite\" på de tre banden; aria-pressed på piller; aria-current=\"step\" i steppern; färg får aldrig vara enda informationsbärare; reflow i porträtt/400 %; Focus Not Obscured (WCAG 2.4.11). Lagstadgad tillgänglighet för fältarbete/hembesök i porträttläge.",
+   "typ": "ux",
+   "statusIDok": "[FINNS] mönstret; [KONFIG] verifiera per ny komponent",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.29",
+   "rubrik": "Varumärkesregel i UI-text (enforced)",
+   "beskrivning": "UI-text får aldrig säga \"Nextcloud\"/\"Talk\"/\"Circles\". Tillåtna ord: korg, funktionsadress, säkert meddelande, ärendechatt, enhetschatt, team, omnämnande, ärenderum, bevakning, ärende-koppling, fördela, säkert möte, e-underskrift, facksystemet/Treserva. Alla strängar går via t('hubs_start', …) — leverantörsnamn når aldrig slutanvändaren.",
+   "typ": "ux",
+   "statusIDok": "[FINNS] regel; [KONFIG] lint av nya strängar",
+   "beroenden": ""
+  },
+  {
+   "id": "K-6.30",
+   "rubrik": "Server-side aggregat — ingen klient-fan-out",
+   "beskrivning": "Hela vyn ska drivas av server-side aggregat via exakt fyra funktioner: fetchInflodeSummary(), fetchArendeSummary(), fetchArende(ref) (lazy) och fetchFordelningSummary(). Demo-seams ligger i demo/socialsekreterare.js, treserva.js och favoriter.js; produktion = OCS-routes i sdkmc/M0. Frontend-kontraktet är låst mot dessa fyra funktioner så att routes kan byggas bakom seamen utan att röra UI:t.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] demo-feeds; [EXTERN] riktiga OCS-routes [BYGGS]",
+   "beroenden": "OCS-routes i sdkmc/M0 (K-3.27 /api/v2/-konventionen, kap 3)"
+  }
+ ]
+}

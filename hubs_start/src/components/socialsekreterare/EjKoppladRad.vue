@@ -56,15 +56,20 @@
 
 			<!-- Chips: typ-chip + koppling + ärvd frist -->
 			<div class="ej-kopplad-rad__chips">
-				<span class="ej-kopplad-rad__typ-chip" :title="messageTypeLabel">
-					<TagOutlineIcon :size="13" />
-					{{ messageTypeLabel }}
+				<span
+					class="ej-kopplad-rad__typ-chip"
+					:class="{ 'ej-kopplad-rad__typ-chip--oklassad': !arKlassad }"
+					:title="typChipTitle">
+					<TagOutlineIcon v-if="arKlassad" :size="13" />
+					<HelpRhombusOutlineIcon v-else :size="13" />
+					<span>{{ messageTypeLabel }}</span>
+					<span v-if="!arKlassad" class="ej-kopplad-rad__sr-only"> — {{ t('hubs_start', 'oklassad') }}</span>
 				</span>
 				<KopplingBadge
 					:koppling="rad.koppling"
 					@open-arende="$emit('koppla', rad)"
-					@bekrafta="$emit('koppla', rad)"
-					@avvisa="$emit('skapa', rad)" />
+					@bekrafta="$emit('koppla', { rad, hubsCaseId: (rad.koppling && rad.koppling.hubsCaseId) || null })"
+					@avvisa="$emit('avvisa-forslag', rad)" />
 				<FristChip v-if="rad.frist" :frist="rad.frist" />
 			</div>
 
@@ -119,6 +124,7 @@ import TagOutlineIcon from 'vue-material-design-icons/TagOutline.vue'
 import ClockOutlineIcon from 'vue-material-design-icons/ClockOutline.vue'
 import ClockAlertOutlineIcon from 'vue-material-design-icons/ClockAlertOutline.vue'
 import LightbulbOnOutlineIcon from 'vue-material-design-icons/LightbulbOnOutline.vue'
+import HelpRhombusOutlineIcon from 'vue-material-design-icons/HelpRhombusOutline.vue'
 import DotsHorizontalIcon from 'vue-material-design-icons/DotsHorizontal.vue'
 import ShieldCheckIcon from 'vue-material-design-icons/ShieldCheck.vue'
 import AccountQuestionIcon from 'vue-material-design-icons/AccountQuestion.vue'
@@ -134,6 +140,7 @@ import ArchiveArrowDownOutlineIcon from 'vue-material-design-icons/ArchiveArrowD
 import { translate as t } from '@nextcloud/l10n'
 
 import { channelMeta } from '../../services/channels.js'
+import { typLabel } from '../../services/messageTypes.js'
 import KopplingBadge from './KopplingBadge.vue'
 import FristChip from './FristChip.vue'
 
@@ -161,6 +168,7 @@ export default {
 		ClockOutlineIcon,
 		ClockAlertOutlineIcon,
 		LightbulbOnOutlineIcon,
+		HelpRhombusOutlineIcon,
 		DotsHorizontalIcon,
 		ShieldCheckIcon,
 		AccountQuestionIcon,
@@ -251,19 +259,36 @@ export default {
 			return this.t('hubs_start', '{n} dagar gammal', { n: dagar })
 		},
 
-		/** Människovänlig etikett för meddelandetypen. */
+		/** Kanal-etikett (server-lokaliserad om den finns, annars channelMeta-fallback).
+		 * Används som typ-chip-fallback för oklassade rader. */
+		channelLabel() {
+			return (this.rad.channel && this.rad.channel.channelLabel) || this.channel.label
+		},
+
+		/** Delad svensk typ-etikett (services/messageTypes.js); null = okänd/oklassad typ. */
+		typEtikett() {
+			return typLabel(this.rad.messageType)
+		},
+
+		/** Raden är klassad bara när typen har en känd etikett. */
+		arKlassad() {
+			return this.typEtikett !== null
+		},
+
+		/** Människovänlig etikett för meddelandetypen. Faller ALDRIG tillbaka till ett
+		 * rått maskin-id: en oklassad rad visar kanal-etiketten i stället. */
 		messageTypeLabel() {
-			const map = {
-				orosanmalan: this.t('hubs_start', 'Orosanmälan'),
-				komplettering: this.t('hubs_start', 'Komplettering'),
-				fraga: this.t('hubs_start', 'Fråga'),
-				remiss: this.t('hubs_start', 'Remiss'),
-				internpost: this.t('hubs_start', 'Internpost'),
-				fax: this.t('hubs_start', 'Fax'),
-				sdk_myndighet: this.t('hubs_start', 'Myndighetspost'),
-				skrap: this.t('hubs_start', 'Skräp'),
+			if (this.arKlassad) {
+				return this.typEtikett
 			}
-			return map[this.rad.messageType] || this.rad.messageType || this.t('hubs_start', 'Okänd typ')
+			return this.channelLabel || this.t('hubs_start', 'Oklassad')
+		},
+
+		/** Tooltip för typ-chippet — markerar oklassad utan att hitta på en typ. */
+		typChipTitle() {
+			return this.arKlassad
+				? this.messageTypeLabel
+				: this.t('hubs_start', 'Oklassad — {kanal}', { kanal: this.channelLabel })
 		},
 
 		/** Synligt "varför" ur klassningen — gör förslaget granskbart. */
@@ -413,6 +438,13 @@ export default {
 		font-size: 0.76rem;
 		font-weight: 600;
 		white-space: nowrap;
+
+		// Oklassad = provisoriskt tillstånd (ej fel): streckad ram + dämpad ton +
+		// ikon + sr-only-ord bär signalen (aldrig enbart färg). Samma mönster som InflodeRad.
+		&--oklassad {
+			border-style: dashed;
+			color: var(--color-text-maxcontrast);
+		}
 	}
 
 	&__varfor {

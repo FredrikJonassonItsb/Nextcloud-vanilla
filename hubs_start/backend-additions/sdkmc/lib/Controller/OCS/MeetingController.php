@@ -64,4 +64,25 @@ class MeetingController extends OCSController {
         }
         return new DataResponse($this->meetingService->getLobby($token));
     }
+
+    // >>> HUBS-START-ADD (upstream-kandidat) ─ möten per ärende ──────────────
+    /**
+     * Ärendets bokade möten (kommande + genomförda), matchade på bokningens
+     * dnr-märkning (X-HUBS-DNR / CATEGORIES hubs-dnr-*). Route:
+     *   ['name' => 'OCS\\Meeting#forCase', 'url' => '/api/v1/arende-meetings', 'verb' => 'GET'],
+     * (frontend: GET /api/v1/arende-meetings?refs=dnr,hubsCaseId)
+     *
+     * @param string $refs Kommaseparerade ärendereferenser (dnr + hubsCaseId).
+     * @return DataResponse<array{kommande: list<array<string,mixed>>, genomforda: list<array<string,mixed>>}>
+     */
+    #[NoAdminRequired]
+    public function forCase(string $refs = ''): DataResponse {
+        $user = $this->userSession->getUser();
+        if (!$user instanceof IUser) {
+            return new DataResponse(['kommande' => [], 'genomforda' => []]);
+        }
+        $refList = array_values(array_filter(array_map('trim', explode(',', $refs))));
+        return new DataResponse($this->meetingService->getCaseMeetings($user->getUID(), $refList));
+    }
+    // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
 }

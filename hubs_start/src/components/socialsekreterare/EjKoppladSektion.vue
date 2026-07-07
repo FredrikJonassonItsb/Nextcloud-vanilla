@@ -16,7 +16,7 @@
 				type="button"
 				:aria-expanded="String(!kollapsad)"
 				:aria-controls="listId"
-				@click="kollapsad = !kollapsad">
+				@click="kollapsad = !kollapsad; anvandarStyrd = true">
 				<ChevronDownIcon v-if="!kollapsad" :size="20" />
 				<ChevronRightIcon v-else :size="20" />
 			</button>
@@ -49,11 +49,12 @@
 				@besvara="onBesvara"
 				@vidarebefordra="onVidarebefordra"
 				@gallra="onGallra"
-				@registrera="onRegistrera" />
+				@registrera="onRegistrera"
+				@avvisa-forslag="$emit('avvisa-forslag', $event)" />
 		</ul>
 
 		<NcEmptyContent
-			v-if="!items.length"
+			v-if="!items.length && !kollapsad"
 			class="ej-kopplad__empty"
 			:name="t('hubs_start', 'Ej ärendekopplat: 0 — allt inflöde triagerat.')"
 			:description="emptyDescription">
@@ -126,10 +127,21 @@ export default {
 
 	data() {
 		return {
-			kollapsad: false,
+			// TOM panel startar kollapsad (en rad + räknare 0); auto-expanderar när
+			// innehåll kommer, tills användaren själv togglar. Samma mönster som
+			// AttHanteraSektion.
+			kollapsad: (this.items || []).length === 0,
+			anvandarStyrd: false,
 			// Raden vars gallring väntar i grinden (null = grinden stängd).
 			gallringsRad: null,
 		}
+	},
+	watch: {
+		items(nya) {
+			if (!this.anvandarStyrd) {
+				this.kollapsad = (nya || []).length === 0
+			}
+		},
 	},
 
 	computed: {
@@ -138,7 +150,7 @@ export default {
 			return this.items.filter((rad) => rad && rad.alder && rad.alder.overSla).length
 		},
 
-		/** Räknartext: "7" eller "7 — 2 äldre än 3 dagar". */
+		/** Räknartext: "7" eller "7 — 2 över SLA · äldsta 3 dagar" (två sanna mått). */
 		raknareText() {
 			const totalt = this.items.length
 			if (!this.antalGamla) {
@@ -150,8 +162,8 @@ export default {
 			}, 0)
 			const aldreText = this.n(
 				'hubs_start',
-				'{n} äldre än {dagar} dag',
-				'{n} äldre än {dagar} dagar',
+				'{n} över SLA · äldsta {dagar} dag',
+				'{n} över SLA · äldsta {dagar} dagar',
 				maxDagar,
 				{ n: this.antalGamla, dagar: maxDagar },
 			)
@@ -194,19 +206,23 @@ export default {
 			this.gallringsRad = rad
 		},
 
+		// KONTRAKT mot föräldern (MinaArenden): @registrera och @gallra emittar
+		// ETT objekt { rad, handlingstyp } där handlingstyp är
+		// { id, label, gallringsbeslut } eller null (okänd/ej vald typ).
+
 		onRegistrera(rad) {
-			this.$emit('registrera', rad)
+			this.$emit('registrera', { rad, handlingstyp: null })
 		},
 
 		/** Grinden gav grönt ljus för gallring med vald handlingstyp. */
 		onGrindGallra(payload) {
-			this.$emit('gallra', payload)
+			this.$emit('gallra', { rad: payload.rad, handlingstyp: payload.handlingstyp || null })
 			this.gallringsRad = null
 		},
 
 		/** Grinden styrde om till registrering (tvingande väg för ej-ringa handling). */
 		onGrindRegistrera(payload) {
-			this.$emit('registrera', payload.rad, payload.handlingstyp)
+			this.$emit('registrera', { rad: payload.rad, handlingstyp: payload.handlingstyp || null })
 			this.gallringsRad = null
 		},
 	},

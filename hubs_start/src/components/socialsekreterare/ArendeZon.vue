@@ -17,11 +17,13 @@
 
 		<!-- Zon 3: segment-filter på processteg -->
 		<div v-if="!pinned" class="arende-zon__filter" role="tablist" :aria-label="t('hubs_start', 'Filtrera på processteg')">
+			<!-- AGGREGAT-chipen ("Alla") har egen gråton (--aggregat) — den är
+			     SUMMAN av stegen, inte ett eget steg-val (jfr KorgValjare). -->
 			<button
 				v-for="seg in segment"
 				:key="seg.id || 'alla'"
 				class="arende-zon__seg hs-target"
-				:class="{ 'arende-zon__seg--active': filterSteg === seg.id }"
+				:class="{ 'arende-zon__seg--active': filterSteg === seg.id, 'arende-zon__seg--aggregat': seg.id === null }"
 				role="tab"
 				:aria-selected="String(filterSteg === seg.id)"
 				@click="$emit('filter-steg', seg.id)">
@@ -39,12 +41,18 @@
 		<div v-else class="arende-zon__kort">
 			<ArendeKort
 				v-for="a in arenden"
-				:key="a.dnr || a.triageRef"
+				:key="a.hubsCaseId || a.dnr || a.triageRef"
 				:arende="a"
-				:pinned="pinned"
+				:pinned="pinned || arVarslad(a)"
+				:markerad="a.triageRef === markeradRef"
 				:keyboard-mode="keyboardMode"
 				@nasta-atgard="bubble('nasta-atgard', $event)"
 				@open-rum="bubble('open-rum', $event)"
+				@open-team="bubble('open-team', $event)"
+				@ny-chatt="bubble('ny-chatt', $event)"
+				@skapa-handling="bubble('skapa-handling', $event)"
+				@omfordela-kollega="bubble('omfordela-kollega', $event)"
+				@omfordela-begaran="bubble('omfordela-kollega', $event)"
 				@skicka="bubble('skicka', $event)"
 				@boka-mote="bubble('boka-mote', $event)"
 				@signera="bubble('signera', $event)"
@@ -73,6 +81,10 @@ export default {
 		title: { type: String, default: '' },
 		filterSteg: { type: String, default: null },
 		keyboardMode: { type: Boolean, default: false },
+		/** triageRef för kortet som varsel-länken pekar på (scroll + markering). */
+		markeradRef: { type: String, default: null },
+		/** triageRefs med aktiva varsel — de korten får het-ram i listan. */
+		varsladeRefs: { type: Array, default: () => [] },
 	},
 	computed: {
 		segment() {
@@ -93,6 +105,9 @@ export default {
 	},
 	methods: {
 		t,
+		arVarslad(a) {
+			return this.varsladeRefs.includes(a.triageRef)
+		},
 		bubble(name, payload) {
 			this.$emit(name, payload)
 		},
@@ -120,6 +135,22 @@ export default {
 		cursor: pointer;
 		&:hover { background: var(--color-background-hover); }
 		&--active { background: var(--color-primary-element); color: var(--color-primary-element-text); border-color: var(--color-primary-element); }
+
+		// AGGREGAT-chipen ("Alla"): egen gråton + streckad ram som signalerar
+		// "summan av stegen", inte ett eget steg-val (samma mönster som KorgValjare).
+		&--aggregat:not(&--active) {
+			background: var(--color-background-dark);
+			border-style: dashed;
+			font-weight: 500;
+
+			&:hover {
+				background: var(--color-background-hover);
+			}
+		}
+
+		&--aggregat#{&}--active {
+			border-style: dashed;
+		}
 	}
 	&__seg-n { font-size: 0.75rem; opacity: 0.8; }
 

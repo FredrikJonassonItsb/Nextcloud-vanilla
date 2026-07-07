@@ -1,0 +1,136 @@
+{
+ "omrade": "Baslinje: nulägesdokumentens påståenden (byggt/verifierat/stubbar/kända gap) för Hubs — hubs_arende, hubs_start, sdkmc backend-additions",
+ "sammanfattning": "Dokumenten beskriver Hubs som en smal-men-djup, skarpt byggd vertikal för socialsekreterar-flödet (orosanmälan) ovanpå ett medvetet stubbat externt integrationslager, deployad på dev15 (NC 31.0.8.1). Senast påstådda versioner är hubs_arende 0.8.2 + hubs_start 1.3.4 + patchad apps/sdkmc (HANDOVER-FORTSATTNING.md session 5c, 2026-07-04) med grindar jest 95, phpunit 87, smoke grön. Motorn kör hela livscykeln — saga R0–R10 + team-steg T med kompensering, fail-closed säkerhetsskyddsgrind, pliktgrind, verifierad-commit-mönster (GAP-007), GDPR-gallring, händelsejournal — och alla 8 ärendetyper går end-to-end på motornivå; orosanmälan är dessutom GUI-E2E-verifierad flera gånger med riktig data (sessionerna 2b, 4, 5b, 5c). Dashboarden hubs_start är live-wirad mot motorn och sdkmc:s OCS-läsytor (inflöde, case-messages, arende-meetings, note-to-self, enrichment). Samtliga tre integrationsportar (Frends/Treserva, Inera-signering, e-diarium/FGS) är enbart stubbar utan live-adaptrar, med dokumenterat TYST fallback från 'live'-läge till stub (Application.php:125 enligt KOMPLETT-ANALYS §5). Kända huvudrisker: sdkmc-tilläggen på dev15 är efemära (raderas vid container-restart, har inträffat), o-gatad demodata i skarpt läge (Anna-buggen fixad i session 5, men GallringsGrind-listan, widget-descriptors och NyttaWidget kvarstod per 2026-07-02), och GUI-verifiering är strukturellt blockerad av BankID-login-förbudet. Gap-läget: av GAP-ANALYSIS 55 gap är blockerarna GAP-019 (Treserva-konnektor), GAP-031 (retention-paus vid utlämnandebegäran), GAP-034 (Inera-AES) och GAP-052 (AI röd zon) öppna; av de 34 orosanmälan-gapen är ~22 stängda och ~10 kvar. Kravtäckningen av de 268 kraven skattas grovt (KOMPLETT-ANALYS §6): K-3 ~80 %, K-6 ~90 %, K-4 ~45 %, K-2 ~50 %, K-1 ~40 %, K-7 ~35 %, K-5 roller/SoR ~15 % (största luckan). Dokumenterad blind fläck: hela gap-analysen var scopad till orosanmälan-socialsekreterarflödet — de 7 andra ärendetyperna är bara motor-testade, 11 av 12 kommunroller saknar backend, och Δ-breddfälten saknas i schemat. OBS för nattanalysen: STATUS-OCH-ROADMAP (2026-06-17) är delvis inaktuell (Fas 0 + seam A/B stängda sedan dess) och KOMPLETT-ANALYS (2026-07-02) skrevs FÖRE sessionerna 5/5b/5c — flera av dess fynd (Anna, dnr-dubblett, gap17 frontend, NcActions-buggen) är åtgärdade per HANDOVER.",
+ "formagor": [
+  "[MOTOR] R0 fail-closed säkerhetsskyddsgrind före varje sidoeffekt — påstådd i STATUS-OCH-ROADMAP.md:35 (pekar på hubs_arende/lib/Service/ArendeService.php:138-159); smoke[7] personnummer avvisat",
+  "[MOTOR] R1 hubsCaseId UUIDv4 + R2 registerrad med NOT NULL-constraints, allowlist, TOCTOU-hantering — STATUS-OCH-ROADMAP.md:36 (ArendeService.php:215-254)",
+  "[MOTOR] R8 frist ankrad i inkomDatum + R10 commit-punkt — STATUS-OCH-ROADMAP.md:37 (ArendeService.php:421-470)",
+  "[MOTOR] never-SoR-invariant schema-enforcad i DB-migration — STATUS-OCH-ROADMAP.md:38 (Version…20260616…php:114-115)",
+  "[MOTOR] Livscykel-transitioner med tillåtna-övergångar-graf, authz via show(), ogiltig→400 — STATUS-OCH-ROADMAP.md:39 (ArendeLifecycleService)",
+  "[MOTOR] GDPR-gallring: GallringService + GallringJob (TimedJob 1×/dygn) med dubbel säkerhetsvakt; smoke[9] rad purgad — STATUS-OCH-ROADMAP.md:40",
+  "[MOTOR] GAP-007-mönstret: retention startar ENBART på verifierad callback — STATUS-OCH-ROADMAP.md:41 (FacksystemCommitPort.php:44-91, ArendeService.php:1001-1010)",
+  "[MOTOR] H1 objektnivå-authz fail-closed (deny=404), gatar create/show/commit/tilldela — STATUS-OCH-ROADMAP.md:44 (ArendeService.php:1079-1148)",
+  "[MOTOR] H2/H3: ArendeController::commit delegerar till ArendeService::commit med idempotens på provenanceState='registrerad' — STATUS-OCH-ROADMAP.md:45 (ArendeService.php:972-1042); smoke[6] andra commit = samma dnr",
+  "[MOTOR] Alla 8 ärendetyper kör createCase→hook→commit→livscykel end-to-end på motornivå — HANDOVER-FORTSATTNING.md:77-100 (session 2); smoke per-typ-loop 8/8",
+  "[MOTOR] Hook-infra: datadriven dispatchHook + hookHandlers()-map, EdiariumPort injicerad — HANDOVER-FORTSATTNING.md:81-83",
+  "[MOTOR] RT-1 kat6 diariefor_direkt: pre-saga-hook, ärendet föds 'registrerad'+dnr, idempotent, fail-closed utan port — HANDOVER-FORTSATTNING.md:84-86; live dnr SN-2026-0101",
+  "[MOTOR] FAM-1 kat8 post-commit-hook (best-effort, körs en gång) — HANDOVER-FORTSATTNING.md:87-88",
+  "[MOTOR] MODUL-FAILCLOSED: FacksystemCommitService::resolveModul kastar i st.f. tyst default ifo_barn — HANDOVER-FORTSATTNING.md:89-91",
+  "[MOTOR] ORO-1 pliktgrind: ArendeLifecycleService::transitionera blockerar förhandsbedömning→utredning utan explicit skyddsbedomningKvitterad — HANDOVER-FORTSATTNING.md:92-94; GUI-verifierad i session 2b",
+  "[MOTOR] Saga-steg T: ett Team (Circle) per ärende med per-case-gruppen som enda medlem; TeamClient all-or-nothing; teardown i saga-kompensation/GallringService/DemoSeedService/dev15-reset — HANDOVER-FORTSATTNING.md:207-247 (hubs_arende/lib/Integration/Client/TeamClient.php); GUI-klick-verifierat 2026-07-02",
+  "[MOTOR] R4: teamet extra applicable på ärenderums-groupfolder; R6: teamet Talk-deltagare via SpreedClient::addCircleParticipant; teams/resources listar rummet (live-verifierat) — HANDOVER-FORTSATTNING.md:223-227",
+  "[MOTOR] ArenderumTeamResourceProvider: team-sidan visar Akten via pekare (team→hubsCaseId→groupfolder); PekareMapper::findByTypAndObjektId — HANDOVER-FORTSATTNING.md:252-257 (hubs_arende/lib/Teams/); GUI-verifierat",
+  "[MOTOR] 'Ny chatt i ärendet': POST /arende/{ref}/talkrum, laggTillTalkrum lägger teamet som deltagare, bokförs som talk_room-pekare — HANDOVER-FORTSATTNING.md:257-262; GUI-verifierat ('Samverkan skola')",
+  "[MOTOR] Händelsejournal: tabell hubs_arende_handelse + Handelse/HandelseMapper, loggas vid skapad/steg/tilldelad/medlem±/registrerad/rum/kopplad; GET /arende/{ref}/historik; gallras med ärendet — HANDOVER-FORTSATTNING.md:276-278 (session 5, hubs_arende 0.8.0-migration); GUI-verifierad",
+  "[MOTOR] Medlemsbaserad summary ?mine=1 via MemberMapper::findCaseIdsByUid — HANDOVER-FORTSATTNING.md:279-280",
+  "[MOTOR] mapToFullCard pekare-block {talkToken,groupfolderId,conversationId,deckBoardId,deckCardId,calendarUri,bevakningBoardId} + talkRooms[] + medlemmar[]; mapToCard bär teamId/talkToken — HANDOVER-FORTSATTNING.md:150-153, 281-283",
+  "[MOTOR] GET /arende/{ref}/bevakningar: läsprojektion av Deck-kortet via DeckClient::getCard (ingen board-ACL krävs) — HANDOVER-FORTSATTNING.md:282-284; verifierad live; utökad med beskrivning i session 5c (HANDOVER:363-365)",
+  "[MOTOR] NC-notiser: Notifier (tilldelad/medlem/frist) + FristVarselJob (dagligen T-3 + förfallodag, registrerad i oc_jobs) — HANDOVER-FORTSATTNING.md:285-287",
+  "[MOTOR] createCase R9 skriver referensfil (.url + groupfolder_ref-pekare) till startmeddelandet — ärenderummet ej tomt vid födsel — HANDOVER-FORTSATTNING.md:131-133; DB-verifierat (case 225)",
+  "[MOTOR] assertRiktigAnvandare i tilldela/laggTillMedlem (400 vid okänd uid via IUserManager); enhets-grind fail-closed ('inte behörig för ärendets enhet') — HANDOVER-FORTSATTNING.md:366-369, 377-380; GUI-verifierat",
+  "[MOTOR] kortRef()/kortTitel: 'Ärende {6 hex}' som rubrik + konsekvent namngivning av Talk-rum/team/Deck-kort/mail-tagg — HANDOVER-FORTSATTNING.md:359-362, 370-373 (session 5c); GUI-verifierat",
+  "[MOTOR] Idempotent 'Ta emot' (conversation_id-UNIQUE) + AvslutaGrind/steg→avslutat; smoke [8b] hela resan utredning→beslut→uppföljning→avslutat — HANDOVER-FORTSATTNING.md:194, 353-355",
+  "[MOTOR] Fas E ärenderums-ACL: per-ärende-NC-grupp (hubs-case-{uuid}) speglad ur member-ledger med handoff-avsmalning — KOMPLETT-ANALYS-2026-07-02.md:98 (evidensnivå A)",
+  "[MOTOR] INTEGRATION_MODE-nyckelglappet fixat: en kanonisk nyckel, porten DI-konsumeras — KOMPLETT-ANALYS-2026-07-02.md:109 (supersedar STATUS-OCH-ROADMAP:70 som listade defekten)",
+  "[SDKMC] InflodeFeedService: dedup på thread_root_id (4→2), excerpt, kanal-härledd identitet-badge, messageType-kedja, conversationId-ankare — HANDOVER-FORTSATTNING.md:154-156; verifierad mot riktig data (session 3, KOMPLETT-ANALYS:95-97)",
+  "[SDKMC] 'Ta emot' taggar källmeddelandet i användarens session (case:{id}+behandlad, IDOR-säkert); feed exkluderar behandlade via sdkmc:s EGNA taggtabeller oc_sdkmc_itsl_message_tag/oc_sdkmc_itsl_tag — HANDOVER-FORTSATTNING.md:192; GUI-verifierat",
+  "[SDKMC] ItslTagService F2 (läsbara taggnamn) + F2b mirrorTagToMailApp (dubbelskrivning till oc_mail_tags så taggar syns i trådvyn) — HANDOVER-FORTSATTNING.md:324-332; GUI-verifierat; återställningskälla hubs_start/backend-additions/sdkmc/lib/Service/ItslTagService.php",
+  "[SDKMC] CaseMessagesService: GET /api/v1/case-messages?ref= — ärendets alla kopplade meddelanden via case:-taggen, mailbox-ACL-buret, threadLink per rad — HANDOVER-FORTSATTNING.md:289-291",
+  "[SDKMC] MeetingService::getCaseMeetings: GET /api/v1/arende-meetings?refs= — dnr-märkta bokningar ur användarens kalendrar — HANDOVER-FORTSATTNING.md:291-292",
+  "[SDKMC] NoteToSelf OCS GET/POST /api/v1/note-to-self + ArendeEnrichment GET /api/v1/arende-enrichment?talkToken= (diskussion-summary) + TeamService token-fält — HANDOVER-FORTSATTNING.md:157-160",
+  "[SDKMC] routes-ocs-snippet.php = komplett deploybart ocs-block (16 rutter) som wipe-återställningskälla — HANDOVER-FORTSATTNING.md:293-294; 14 routes 401-verifierade (KOMPLETT-ANALYS:108)",
+  "[SDKMC] Recipients (search+classify) + Summary (summary+receipts): skarp OCP/DB-backad kod, svarar 401 oautentiserat — STATUS-OCH-ROADMAP.md:49-50",
+  "[FRONTEND] Hela UI:t renderar: 64 Vue-komponenter, alla zoner/6 personas; PageController AUTO-demo-gating; 5 ärendefunktioner live-wirade — STATUS-OCH-ROADMAP.md:52-54 (api.js:274-372); KOMPLETT-ANALYS:42",
+  "[FRONTEND] Min dag-omgörningen (session 5): VarselLista ('Kräver åtgärd nu' = varsellista, kort flyttas aldrig), kortet som ärendenav (modulrad Team först + flikrad alltid synlig med räknare: Akten/Meddelanden/Rum/Möten/Bevakningar/Historik & beslut), medlemspanel + 'Lägg till kollega', Otilldelad-badge + 'Ta ärendet' (GUI-verifierad) — HANDOVER-FORTSATTNING.md:296-309; GUI-ANALYS-MINDAG.md:7-8 (P1+P2 byggda och deployade)",
+  "[FRONTEND] 'God morgon, {förnamn}' ur sessionen + ägar-attribution via uid (Anna-buggen borta); NcActions close-after-click; roll-styrd lägeväxel; dagspuls härledd ur laddad data; tomma paneler kollapsade — HANDOVER-FORTSATTNING.md:305-309 (session 5)",
+  "[FRONTEND] MeetingWizard skickar dnr (gap17 stängd på frontend-sidan) — HANDOVER-FORTSATTNING.md:309",
+  "[FRONTEND] CommitGrind med dokumenturval (payload.valdaDokument) + inbäddad signeringsbekräftelse (payload.kraverSignering, en modal — session 3-fixen av #6-hänget) — HANDOVER-FORTSATTNING.md:162-163, 193",
+  "[FRONTEND] Dubbelklicksskydd 'Ta emot' (store-dedup på hubsCaseId + taEmotPending-gard); Omfördela till kollega via OmfordelaModal → api.tilldela; agareNamn via displayName — HANDOVER-FORTSATTNING.md:353-383 (session 5c); GUI-verifierat",
+  "[FRONTEND] deepLinks: teamLink (/apps/contacts/direct/circle/{singleId}), deckLink (404-säker), composerLink med &case=, spreedRoomLink — HANDOVER-FORTSATTNING.md:127-129, 168-169, 231-233",
+  "[FRONTEND] Demo-styrning: isDemo() läser ?demo=1/0 (sessionStorage) ovanpå boot-flaggan; default AV på skarp instans — HANDOVER-FORTSATTNING.md:195",
+  "[E2E] Orosanmälan GUI-E2E med riktig data: riktigt meddelande → Ta emot → case + komplett ärenderum (groupfolder+Talk+Deck+kalender+medlemmar+team) → pliktgrind → kvittera → CommitGrind → registrerad + dnr + retention → utredning; DB-verifierat — HANDOVER-FORTSATTNING.md:102-116 (session 2b), 239-242 (session 4), 342-347 (5b ren runda med UNIKA dnr 0501/0502), 349-383 (5c); KOMPLETT-ANALYS:89-94",
+  "[DRIFT] dev15-reset.sh: idempotent återställning till känt testläge (2 otaggade orosanmälningar), river team/case-grupper/handelse — HANDOVER-FORTSATTNING.md:189, 227-230, 340 (scripts/dev15-reset.sh)",
+  "[DRIFT] occ hubs_arende:smoke: 9 djupsteg + per-typ 8/8 + pliktgrind + [8b] hela resan — HANDOVER-FORTSATTNING.md:95-98 (hubs_arende/lib/Command/Smoke.php)",
+  "[DRIFT] Testgrindar: jest 95 (komponent-tester med babel-bridge + ncvue-stub), phpunit 87; CI-workflow-fil finns (hubs_arende/.github/workflows/ci.yml) men körning mot remote obevisad — HANDOVER-FORTSATTNING.md:352; KOMPLETT-ANALYS:110-111",
+  "[DRIFT] Persistent stub-dnr-sekvens via app-config stub_dnr_seq (fix av dubblett-dnr) + triageRef=alltid hubsCaseId — HANDOVER-FORTSATTNING.md:333-335 (session 5b)"
+ ],
+ "filer": [
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/HANDOVER-FORTSATTNING.md",
+   "roll": "Auktoritativ operativ handover, sessionerna 1-5c (senast 2026-07-04); primärkälla för vad som är byggt+GUI-verifierat, deploy-recept, driftlärdomar, DESLUT/BESLUT-listan och återstående backlog"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/STATUS-OCH-ROADMAP.md",
+   "roll": "Kodförankrad audit 2026-06-17 med seam-tabellen A-K och fasplan; DELVIS INAKTUELL (Fas 0 + seam A/B stängda sedan dess enligt KOMPLETT-ANALYS dokumentkarta)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/GAP-ANALYSIS.md",
+   "roll": "Gap-registret med 55 gap (GAP-001..GAP-055) ur walkthrough 1-5, prioriterat blocker/major/minor; skrivet 2026-06-14 mot gamla premisser — dagsstatus per gap finns i KOMPLETT-ANALYS §6"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/GUI-ANALYS-MINDAG.md",
+   "roll": "GUI-analys av Min dag-vyn (2026-07-02); P1+P2 markerade BYGGDA/DEPLOYADE 2026-07-03; P3-produktbesluten kvarstår öppna"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/analysis-output/KOMPLETT-ANALYS-2026-07-02.md",
+   "roll": "8-agents totalanalys 2026-07-02 (FÖRE session 5/5b/5c): evidensnivåer A-E, demodata-skiktning 1-4, gap-/beslutskonsolidering, kravtäckningsskattning K-1..K-8, riskrangordning, 5-spårsplan"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/HUBS-KRAVSTALLNING-TOTAL.md",
+   "roll": "De 268 kraven K-1.1..K-8.55 som nattanalysens täckningsbedömning ska mappa mot (refereras i HANDOVER §5 som obligatorisk nästa läsning)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/HUBS-BESLUTSLOGG.md",
+   "roll": "Ratificerade beslut 2026-06-16 (22 låsta, bl.a. datalager=egen DB, Tables underkänd, B-MOD-1 utgår); KOMPLETT-ANALYS noterar diskrepans mot HANDOVER:s öppna-lista"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/DEMO-STUBS.md",
+   "roll": "Auktoritativt SEAM-register (SEAM[...]-markörer i kod) enligt KOMPLETT-ANALYS dokumentkarta"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/MANIFEST.md",
+   "roll": "Deploy-karta för sdkmc-tilläggen (efemära på dev15); kompletterad med fas 2d i session 5 men har historiskt släpat"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/analysis-output/agentrapporter-2026-07-02/",
+   "roll": "Råmaterial: de 8 detaljrapporterna med fil:rad-evidens bakom KOMPLETT-ANALYS"
+  }
+ ],
+ "stubbar": [
+  "FacksystemCommitStub — stubbar Frends iPaaS→Treserva/Lifecare/Viva (GAP-019): syntetisk dnr-sekvens (persisterad via app-config stub_dnr_seq sedan 5b), synkron 'verifierad' callback; ingen Integration/Live/-katalog finns — KOMPLETT-ANALYS §5 skikt 3; STATUS-OCH-ROADMAP seam D",
+  "SigneringStub — stubbar Inera Underskriftstjänst (PAdES): syntetisk signering; NOLL konsumenter i motorkoden per 2026-07-02 — KOMPLETT-ANALYS:165; STATUS-OCH-ROADMAP seam G",
+  "EdiariumStub — stubbar e-diarium/e-arkiv (FGS): SN-dnr; konsumeras av kat6/kat8-hooks sedan session 2, men ingen live-FGS-adapter — KOMPLETT-ANALYS:166; STATUS-OCH-ROADMAP seam H",
+  "TYST stub-fallback: Application::resolvePort (Application.php:125) mappar ENDAST 'stub' — värdet 'live' faller tillbaka till stubben utan exception/varning; felkonfigurerad prod skulle minta syntetiska dnr som ser verifierade ut; ingen HTTP-route för async-callback finns — KOMPLETT-ANALYS:168-173",
+  "LibreSign 11.6.0 på dev15 = demo-signering (självsignerad lokal rot-CA), dessutom efemär i containern; Inera är beslutad produktions-backend — KOMPLETT-ANALYS:173; GAP-034/035/037",
+  "CommitGrinds 3-stegs Frends-progress = ren setTimeout-animation, inte riktig callback — STATUS-OCH-ROADMAP:67; KOMPLETT-ANALYS:181",
+  "SPA-demo-fixtures för alla personas (src/services/demoData.js, demo/socialsekreterare.js, demo/treserva.js, demo/favoriter.js) — gated på hubs_start/demo_mode + ?demo=; api.js kortsluter 27+ funktioner, mutationer = optimistiska no-ops — KOMPLETT-ANALYS skikt 1",
+  "Syntetiskt inflöde 14 PII-bärande rader (backend-additions/demo-data/InflodeDemoData.php) — gated på sdkmc-config hubs_start_inflode_demo, default '0'; OBS admin-reseed-knappen (AdminController.php:74) sätter den till '1' — KOMPLETT-ANALYS:135, 157-159",
+  "DemoSeedService: 10 demo-case genom RIKTIGA motorn (occ hubs_arende:seed-demo [--purge], prefix demo-) + 11 syntetiska favorit-vCards — KOMPLETT-ANALYS:136-137",
+  "O-GATAD demodata per 2026-07-02 (skikt 2): GallringsGrind:s inbäddade 4-punkts handlingstypslista är den effektiva listan vid SKARPA gallringsbeslut (ingen DHP wirad); 30 persona-widget-descriptors renderas utan demoMode-koll (WidgetRenderer.vue:96); NyttaWidget PLACEHOLDER_VOLUME (318 fax/207 brev hårdkodat, state.nytta produceras aldrig); hårdkodat 'Anna' (MinDagHeader.vue:97-99, TilldelningBand.vue:67) — det sistnämnda ÅTGÄRDAT i session 5 enligt HANDOVER:307 — KOMPLETT-ANALYS:139-159",
+  "Ärliga nollor/TODO-förenklingar i skarp kod (skikt 4): resolveLoa()=LOA3 alltid; receipt updated_at=null; team-räknare olästa/omnämnanden=0, närvaro='unknown'; favoriter alltid stale:true (DIGG-resolver obyggd); registerPartHook()=null (SSN-matchning avstängd fail-closed); resolveInflodeRows()=[] i motorn (klassningslagret kör aldrig på riktig feed — riktiga feeden är sdkmc:s som saknar kat 1-8-klassning) — KOMPLETT-ANALYS:175-181; STATUS-OCH-ROADMAP:62-63",
+  "Byggt men inaktivt: 3 dashboard-widgets (AttHantera/Kvittenser/DagensMoten) färdig kod men aldrig registrerade i sdkmc Application.php; payload.valdaDokument skickas av frontend men motorn läser det aldrig; mail-overlayn initComposerDeepLink.js (hubs-code/mail/mail-main/overlay/src/itsl/utils/) wirad men EJ ombyggd/deployad — KOMPLETT-ANALYS:119-126; HANDOVER:200-201"
+ ],
+ "kandaBrister": [
+  "ÖPPNA BLOCKERARE (GAP-ANALYSIS + KOMPLETT-ANALYS §6): GAP-019 Treserva-konnektorn obyggd (grundorsak bakom GAP-003/004/007/043/048/050); GAP-031 retention-paus vid utlämnandebegäran obyggd; GAP-034 Inera-AES krävs för skarpa myndighetsbeslut (LibreSign räcker ej); GAP-052 AI på klientsamtal = röd zon (kör inte skarpt); GAP-001 delvis (pliktgrind byggd, kanonisk dokumentationsregel = öppet beslut); GAP-007 stängd som MÖNSTER men live-stängning kräver GAP-019",
+  "GAP-ANALYSIS majors kvarstående per registret: GAP-002/046 (fristens startpunkt), GAP-003 (kanonisk aktualiseringspunkt), GAP-004/048 (facksystem-API overifierat), GAP-005 (token↔dnr-mappning + syskonfall), GAP-012/032 (var skrivs utredningen/beslutet — produktbeslut ej taget), GAP-017 (maskering vid delning), GAP-018/047/044 (dubbelbevakning 4-mån, riv-mekanism), GAP-038/039 (delgivningslag/överklagandefrist), GAP-035/037/033 (LTV, extern signatär, Inera OOB), GAP-040 (FGS-ansvarsgräns), GAP-006/013 (fasvalidering), GAP-016 (Forms-brygga), GAP-021 (oautentiserad bokningssida), GAP-024 (BankID-lobby ej native), GAP-025 (recording server), GAP-029 (tvingad human-in-the-loop), GAP-009 (historik-läskonnektor), GAP-041 (ConversationId↔dnr), GAP-045 (Deck-påminnelsemotor), GAP-049 (inget tvingar registrering)",
+  "Av 34 orosanmälan-gap ~10 kvar (KOMPLETT-ANALYS:195-197): gap7/13 skyddsbedömnings-materialisering i sagan; gap26 persona-per-grupp; gap3 KategoriBadge (enda uttryckligt saknade UI-atomen); gap8/29/30 koppla/gallra-detaljer; gap9/10 Väg-A server-authz per-meddelande; gap11 Frends live-port; gap17 var öppen men frontend-sidan stängd i session 5 (HANDOVER:309)",
+  "DESLUT/BESLUT-listan (fixa EJ ensidigt, HANDOVER:396-398): FAM-2 partsmodell-datamodell; FAM-3 partsåtskild ACL (familjeratt_inre_sekretess, Δ5/GAP-058); AB-04/AB-06 (behörighetsgrind/diarieför-vid-start); KOMPL-07 (tillförs befintligt dnr); per-kommun funktionsadresser (ekonomi@ vs ekb@); B-MOD-1 (sdkmc M0/M1-split — enligt beslutslogg UTGÅTT), B-LIC-1 (proprietär ExApp — ratificerad), B-SEC-1 (säkerhetsskydd/retroaktiv karantän), B-PUB-1 (PuB-/laglig-grund-matris, 'osäljbart utan den'); OBS dokumenterad diskrepans HANDOVER vs beslutslogg (KOMPLETT-ANALYS:264)",
+  "AB-01 kat2 insats-sub-typ-router = utpekat top nästa byggsteg men byggs ej ensidigt (kräver insatsTyp-bekräftelse + migration; annars felrouting ansokan_bistand→ifo_vuxen) — HANDOVER:391-394",
+  "P3-produktbeslut ur GUI-ANALYS-MINDAG §4 (öppna): Deck-ACL-modellen (board-per-ärende vs permanent läsprojektion), beslutsloggens juridiska form (NEVER-SoR-spegel), roll-styrning av fördelningsläget, 'Enhetens ärenden'-flik (vem får se), signeringsmodulens yta före Inera",
+  "PERSISTENS (rankad risk #1): apps/sdkmc-tillägg + libresign + apk-paket raderas vid container-recreate/'itsl deploy'/docker restart (inträffat; F2-regressionen i 5b var exakt detta); inget upstreamat, inget i imagen — KOMPLETT-ANALYS:209-214; HANDOVER:187-188",
+  "GUI-verifiering strukturellt blockerad (BankID-login förbjudet för agenten): kvar att klicka per HANDOVER:316-318: Meddelanden-fliken mot riktig kopplad post, Möten-fliken efter dnr-märkt bokning, frist-notisen (occ background-job), 'Lägg till kollega' med riktig kollega-uid; mötesbokning end-to-end aldrig submittad (personnummer gated; medborgar-inbjudan via credential-lös loopback-OCS → sannolikt tyst 401, KOMPLETT-ANALYS:115-117)",
+  "Register-motståndskraft: ArendeReconciliationJob beslutad (BESLUT-19/GAP-056) men OBYGGD; arkivkritisk backup-rutin obyggd; gallringen river inte externa rum; ingen unik-constraint på vissa pekare — KOMPLETT-ANALYS:221-222",
+  "Skarp event-driven inflöde-feed saknas (seam C): MessageReceivedEvent finns inte (0 träffar), feeden är pull-baserad; klass/match-lagret (ArendeMatchService/InnehallsKlassService) kör aldrig på riktig data — STATUS-OCH-ROADMAP:80, 62; KOMPLETT-ANALYS:180",
+  "Externa seams öppna: E Bergsby-provisionering, F part-/personregister (registerPartHook=null), G Inera-anslutning, H FGS-live, I ExApp-paketering (app_api 3.2.0 kraschar på NC31), K AI/LLM (fas 10) — STATUS-OCH-ROADMAP seam-tabellen §4",
+  "Kravtäckningsluckor mot 268 krav (grovt, KOMPLETT-ANALYS:200-203): K-5 roller/SoR ~15 % är största luckan — Δ-breddfälten (Δ1-Δ6, Δ10-Δ17) saknas i schemat, 0 riktiga konnektorer, 11 av 12 kommunroller utan backend; K-7 juridik/signering ~35 %; K-1 ~40 %; K-4 klassning ~45 % (byggd men owirad mot riktig feed); K-2 ~50 %",
+  "Blind fläck (HANDOVER §5): all gap-analys scopad till orosanmälan; de 7 andra ärendetyperna bara motor-testade (ej GUI); commitDestination-variationen + No-SoR-fallen (46 fall, 4 utfall) otestade; komplettering/attach-vägen saknas helt (KOMPLETT-ANALYS:277)",
+  "Kvarvarande skönhetsfel efter 5c (HANDOVER:384-389): gamla Talk-rum från tidigare körningar kvar i sidopanelen (reset river ej Talk-rum); 'Fördela (gruppledare)'-vyn använder fortfarande inflodeAction('tilldela')-routing i st.f. api.tilldela",
+  "Kända gränser team-lagret (HANDOVER:243-247, 263-266): REMOVE av user ur NC-gruppen propagerar inte till Talk (cirklar fyrar inget event); admin kan flippa CFG_OPEN via Contacts-UI (mjukt skydd); rum skapade från Teams-hållet bokförs inte av motorn (ingen pekare ⇒ ingen gallring)",
+  "Oförklarad anomali (session 2c, aldrig rotorsakad): GUI-skapat case föddes beslut+registrerad — status 'bevaka' — HANDOVER:134-136; KOMPLETT-ANALYS:225",
+  "Dokumentdrift (KOMPLETT-ANALYS §3-tabellen): MANIFEST släpar, FAS-F-DESIGN-status fel ('ej byggd' men F1-F3 byggda), tests/README/Integration/README/provision-manifest/INSTALL har fel testantal/config-nycklar/version/NC-version; STATUS-OCH-ROADMAP delvis inaktuell; js/-byggartefakten är gitignorerad (finns bara lokalt)",
+  "Repo-hygien (KOMPLETT-ANALYS:241-242): döda kataloger 'hubs_arende;C'/'hubs_start;C', 6 redundanta zip-ar i roten, död gov-portal/docker-compose-prototyp, hubs-code/sdkmc-checkout 2.2.21 vs dev15 2.2.25, untracked analysis-output-filer",
+  "Versions-/EOL-risk: spreed-itsl hårdpinnad NC min=max=31 blockerar NC 32-lyft; dev15:s NC 31 har tidigast EOL — KOMPLETT-ANALYS:223-224",
+  "Monitoring saknas: ingen metrics/alerting/healthcheck/audit-tabell, bara on-demand-aggregat + PSR-3-logg — STATUS-OCH-ROADMAP:69",
+  "Anteckningar (#12) är per-användare, ej per-ärende (medvetet beslut, case-scoping flaggat som övervägande) — HANDOVER:181-182; #18 grupp→rum-mappning saknas på dev15 (token=null tills enhetschatt-rum provisioneras) — HANDOVER:180"
+ ]
+}

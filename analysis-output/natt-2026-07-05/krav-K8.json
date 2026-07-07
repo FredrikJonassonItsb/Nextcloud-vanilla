@@ -1,0 +1,446 @@
+{
+ "kapitel": 8,
+ "kapitelRubrik": "DEMO/STUBBAR, GAP/BLOCKERARE & PRIORITERAD BYGGPLAN (områdeskod BYGG)",
+ "krav": [
+  {
+   "id": "K-8.1",
+   "rubrik": "Demo/prod-separationen i api.js bevaras",
+   "beskrivning": "Den fysiska separationen demo-gren/prod-gren i api.js ska behållas: var och en av de 27 exportfunktionerna har 'if (DEMO) return <fixtur>' följt av en redan skriven 'await axios(<OCS-route>)'-gren. Att gå skarpt innebär enbart att DEMO (som läser boot.demoMode via isDemo()) blir false — ytan (funktioner/retur-shapes) får inte röras eftersom prod-grenarna redan pekar på avsedda sdkmc-OCS-routes.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (grind) / [BYGGS] (routes bakom)",
+   "beroenden": "K-8.11 (OCS-routes som prod-grenarna anropar)"
+  },
+  {
+   "id": "K-8.2",
+   "rubrik": "Tre-läges demo-grind i PageController",
+   "beskrivning": "PageController::isDemoMode() ska behålla tre lägen styrda av app-config hubs_start/demo_mode: '1' = forced ON, '0' = forced OFF, tomt = AUTO (ON när sdkmc saknas, detekterat via AppDetectionService). Detta gör att hela UI:t kan visas på vanilla Nextcloud utan syskon-apparna.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS]",
+   "beroenden": "AppDetectionService (K-2.6)"
+  },
+  {
+   "id": "K-8.3",
+   "rubrik": "Demo-affärslogik isolerad i src/services/demo/",
+   "beskrivning": "Stateful affärslogik som demoläget behöver ska förbli isolerad i src/services/demo/ (treserva.js, favoriter.js, socialsekreterare.js) och får aldrig smyga in i prod-grenarna. treserva.js håller in-memory REGISTER-Map + RECEIPTS-array; seedRegister/_dumpRegister faller bort i prod.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (endast demo)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.4",
+   "rubrik": "commitHandling-stubbens kontrakt är referens (retention endast på verifierad callback)",
+   "beskrivning": "Det kritiska mönstret i stubben commitHandling() — retention startar ENBART på verifierad commit-callback, aldrig på kryssruta — ska bevaras som referens-kontrakt (GAP-007). Store-actionen commitArende() konsumerar {ok, dnr, gallrasDatum, verifierad, receipt} och prod-backend ska returnera exakt samma shape så att frontend förblir oförändrad vid backend-byte.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (mönster) / [BYGGS] (skarp bindning)",
+   "beroenden": "GAP-007 (K-8.20), K-8.6"
+  },
+  {
+   "id": "K-8.5",
+   "rubrik": "Seam treserva + treserva.skapa → atomär skapa-saga via ett OCS-anrop",
+   "beskrivning": "Stubben för ärendeskapande ersätts i prod av POST {SDKMC_OCS}/arende med {rad} — ETT anrop som atomärt (via sagan) utför register-INSERT + ärenderum + ACL + Deck-kort + chattrum + 14-dagarsklocka.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (GAP-019/056/010)",
+   "beroenden": "GAP-019/056/010; sagan K-8.15/K-3.9-3.10"
+  },
+  {
+   "id": "K-8.6",
+   "rubrik": "Seam treserva.commit → Frends-flöde med verifierad callback",
+   "beskrivning": "Commit-stubben ersätts av POST {SDKMC_OCS}/treserva/commit → Frends → facksystem → verifierad callback; sdkmc flippar provenanceState='registrerad' och sätter retention-tagg FÖRST DÅ. Route-konventionen är /api/v2/.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] [EXTERN] (GAP-019/007)",
+   "beroenden": "GAP-019 (K-8.19), GAP-007 (K-8.20), K-8.17"
+  },
+  {
+   "id": "K-8.7",
+   "rubrik": "Seam treserva.koppla → koppla inflöde till ärende",
+   "beskrivning": "Koppla-stubben ersätts av POST {SDKMC_OCS}/inflode/koppla som sätter systemtaggen case:{id} på meddelandet och speglar filen till ärenderummet.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (GAP-019)",
+   "beroenden": "GAP-019; taggmotorn (K-8.12)"
+  },
+  {
+   "id": "K-8.8",
+   "rubrik": "Seam treserva.tombstone → reconciliation med deny-by-default",
+   "beskrivning": "Tombstone-stubben ersätts av reconciliation-jobb register↔objekt med integritets-larm samt deny-by-default i aggregeringen.",
+   "typ": "drift",
+   "statusIDok": "[BYGGS] (GAP-056)",
+   "beroenden": "GAP-056; K-8.18, K-8.25"
+  },
+  {
+   "id": "K-8.9",
+   "rubrik": "Seam favoriter + favoriter.tombstone → resolverlager med hård fail-closed",
+   "beskrivning": "Favorit-stubben ersätts av GET {SDKMC_OCS}/favoriter — ett tunt resolverlager: IManager::search över personlig ∪ funktions-delad favorit-adressbok + batch-resolve mot DIGG-cachen som returnerar {färska fält, resolvedAt, stale, removed}. HÅRD fail-closed när DIGG inte nås.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] (GAP-061/063/064)",
+   "beroenden": "GAP-061/063/064 (K-8.28, K-8.30, K-8.31); DIGG-synk (K-8.12)"
+  },
+  {
+   "id": "K-8.10",
+   "rubrik": "Rena demo-konstruktioner utan prod-ersättning",
+   "beskrivning": "Seams treserva.seed, demodata-fixtures, PageController demo-boot och 'deepLinks inerta i demo' är rena demo-konstruktioner — de har ingen prod-ersättning och ska inte byggas skarpt.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (endast demo)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.11",
+   "rubrik": "Övriga OCS-aggregat-routes som api.js redan anropar",
+   "beskrivning": "Följande routes som api.js redan kallar ska byggas: GET /arende-summary, /inflode-summary, /fordelning-summary, /treserva/receipts samt POST /arende/{ref}/tilldela — alla under apps/sdkmc/api/v2, i controllern lib/Controller/ArendeController.php bredvid itsl_tag#-routerna.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-3.27 (/api/v2-konventionen); refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.12",
+   "rubrik": "Bygg INTE om det som finns (återanvändningslista)",
+   "beskrivning": "Befintlig produktionskod ska återanvändas som-den-är: taggmotorn (ItslTagService + sdkmc_itsl_tag/sdkmc_itsl_message_tag + ItslTagController/TagFileController/TagSearchHelper), deterministisk typklassning (MessageTypeService, ingen LLM), trådning (MessageThread), kvittenser (MessageReceipt), retention/gallring (MailboxRetention/ExpungeService/ExpungeJob/DeleteTagsJob), Flow-registrering (RegisterOperationsListener/RegisterChecksListener/Loa3), DIGG-synk (UpdateAddressBookService), korgar (ConsolidateMailboxesService/ProvisionPersonligAccountsService) och viktig-klassning (MessageImportantClassifiedListener). Ny orkestrering anropar dessa; email-scopningen i ItslTag är medvetet rätt för delade ärenden.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.13",
+   "rubrik": "Bygg sdkmc_arende-registret med single-writer",
+   "beskrivning": "Registret sdkmc_arende ska byggas med rad-shapen definierad i K-3.5, med sdkmc som ENSAM skrivare (samma single-writer-disciplin som ItslTagService). Idag ger grep på sdkmc_arende 0 träffar — registret lever som in-memory REGISTER-Map i demo.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (GAP-056)",
+   "beroenden": "K-3.5 (rad-shape), K-3.6 (single-writer), GAP-056; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.14",
+   "rubrik": "BESLUT: datalager-valet (Tables vs sdkmc-app-DB vs ExApp)",
+   "beskrivning": "Beslut krävs om datalager för registret: Tables (rows-API) vs egen sdkmc-app-DB (lib/Db/Arende.php + ArendeMapper.php + Migration) vs AppAPI/ExApp. Single-writer-disciplinen är densamma men transaktions-/backup-/ACL-egenskaperna skiljer. Rekommendation: egen sdkmc-DB nu (alt. b), ExApp-rent schema, ExApp-DB (c) som mål. Ska fattas FÖRST — allt annat bygge hänger på det.",
+   "typ": "beslut",
+   "statusIDok": "[BESLUT KRÄVS]",
+   "beroenden": "Motsvarar B-DL-1 i beslutsloggen §9 (kapitel 9); K-2.13/K-2.14; blockerar §10-roadmapens P0-steg"
+  },
+  {
+   "id": "K-8.15",
+   "rubrik": "Bygg ArendeService::createCase() som distribuerad saga",
+   "beskrivning": "createCase() ska byggas som distribuerad saga med kompensering (enligt K-3.9/K-3.10) — ingen IDBConnection-transaktion kan rulla tillbaka ett Spreed-rum eller en mapp. Idempotensnyckel = utlösande conversationId; 14-dagarsfristen binds till inkom-datum (från conversationId), aldrig now().",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (GAP-010/057)",
+   "beroenden": "K-3.9/K-3.10/K-3.11, GAP-010/057; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.16",
+   "rubrik": "Bygg ArendeMatchService med deterministisk kaskad och server-side tröskel",
+   "beskrivning": "ArendeMatchService (lyssnar på MessageReceivedEvent) ska byggas med den deterministiska matchningskaskaden (se K-4.10); utfall bedöms mot SERVER-SIDE konfidenströskel och landar i hor_till/foreslagen/ej_kopplat/nytt. Bilaga speglas först vid bekräftelse, inte vid förslag. Ett LLM-lager är valfritt men alltid under tröskeln och aldrig autonomt på sekretess — felkoppling är en sekretessincident, därför default ej_kopplat.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (GAP-060)",
+   "beroenden": "K-4.10 (matchningskaskad), GAP-060"
+  },
+  {
+   "id": "K-8.17",
+   "rubrik": "Bygg FacksystemCommitService (generalisering av TreservaCommitService)",
+   "beskrivning": "TreservaCommitService ska byggas och generaliseras till FacksystemCommitService med per-produkt-konnektorer: Frends-flöde bakom POST /treserva/commit med verifierad callback som FÖRST DÅ flippar provenans, parar dnr 1:1 (1:n för syskonärenden), speglar fristDue och sätter retentionState='gallras_efter_commit'. dnr-parningen är INTE del av skapa-sagan utan sker asynkront vid CommitGrind. Nuvarande commitToTreserva() är hårdkodad stubb; Treserva-konnektorn blir mall för 5–10 produktkonnektorer (namnet 'Treserva' i servicen är därför fel).",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] [EXTERN] (GAP-019, tyngst)",
+   "beroenden": "GAP-019 (K-8.19), K-3.13, K-3.22, Δ13 (K-8.51); refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.18",
+   "rubrik": "Bygg ArendeReconciliationJob",
+   "beskrivning": "Ett bakgrundsjobb i lib/BackgroundJob/ ska periodiskt verifiera: (1) att varje pekare existerar, (2) att varje case:X-objekt har registerrad, (3) att conversationIds[] matchar sdkmc_itsl_message_tag. Mönster: ItslTagService->processAllPendingDeletions() driven av DeleteTagsJob. Deny-by-default vid divergens — token bärs på två ställen och kan driva isär.",
+   "typ": "drift",
+   "statusIDok": "[BYGGS] (GAP-056)",
+   "beroenden": "GAP-056, K-3.17; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.19",
+   "rubrik": "GAP-019 (tyngst blockerare): hela Frends/facksystem-flödet med verifierad callback",
+   "beskrivning": "Hela Frends/facksystem-integrationsflödet ska byggas med verifierad callback. Detta är den tyngsta blockeraren och grundorsaken bakom commit-, gallrings- och speglingsgapen.",
+   "typ": "integration",
+   "statusIDok": "Blockerare, [BYGGS] [EXTERN]",
+   "beroenden": "K-8.17, K-8.20, K-8.35; refereras i §9 (B-RET-1-kontext) och §10 roadmap P0"
+  },
+  {
+   "id": "K-8.20",
+   "rubrik": "GAP-007: retention-start flyttas till verifierad callback",
+   "beskrivning": "Retention-starten ska flyttas från tid/tagg (dagens ExpungeJob) till faktisk verifierad facksystem-callback. Gallring får aldrig triggas av tid eller kryssruta.",
+   "typ": "juridik",
+   "statusIDok": "Blockerare, [BYGGS]",
+   "beroenden": "GAP-019 (K-8.19), K-1.8, K-3.25; relaterar till B-RET-1 i §9; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.21",
+   "rubrik": "GAP-001: tvingande backend-grind för skyddsbedömningens commit",
+   "beskrivning": "En tvingande backend-grind ska byggas som säkerställer att skyddsbedömningen (11 kap. 1 a § SoL) faktiskt COMMITTAS till facksystemet. UI-pliktmarkören finns redan men backend-grinden saknas.",
+   "typ": "juridik",
+   "statusIDok": "Blockerare, [BYGGS]",
+   "beroenden": "Facksystem-commit (K-8.17/K-8.19)"
+  },
+  {
+   "id": "K-8.22",
+   "rubrik": "GAP-034/035/037/033: svensk myndighets-e-underskrift (Inera/Sweden Connect + LTV + tidsstämpel)",
+   "beskrivning": "Inera Underskriftstjänst / Sweden Connect-integration ska byggas med robust LTV och kvalificerad tidsstämpel. LibreSign-AES är inte likvärdig svensk myndighets-AES och dagens ltv:true är en demoflagga.",
+   "typ": "integration",
+   "statusIDok": "Blockerare, [BYGGS] [EXTERN]",
+   "beroenden": "Signeringskrav i §7"
+  },
+  {
+   "id": "K-8.23",
+   "rubrik": "GAP-052 (policy): ingen skarp AI/transkribering på sekretessbelagt innehåll",
+   "beskrivning": "AI/transkribering får INTE köras skarpt på sekretessbelagt innehåll förrän IMY/SKR/Socialstyrelsen gett vägledning. Tillåten väg: lokal KB-Whisper + human-in-the-loop.",
+   "typ": "juridik",
+   "statusIDok": "Blockerare (policy), [BYGGS] [EXTERN]",
+   "beroenden": "Refereras i §9 beslutslogg (rad 712) och §10 roadmap"
+  },
+  {
+   "id": "K-8.24",
+   "rubrik": "GAP-031 (drift): paus-hook för retention vid utlämnandebegäran (TF)",
+   "beskrivning": "En paus-hook ska byggas som pausar retention vid registrerad utlämnandebegäran enligt tryckfrihetsförordningen. retentionState='pausad' är idag ett enum-värde utan någon trigger.",
+   "typ": "drift",
+   "statusIDok": "Blockerare (drift), [BYGGS]",
+   "beroenden": "K-3.25 (retention-hook); refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.25",
+   "rubrik": "GAP-056: registret som single point of truth (saga + reconciliation + backup)",
+   "beskrivning": "Transaktionell saga/kompensering + reconciliation + integritets-larm + arkivkritisk backup/återställning av sdkmc_arende ska byggas. Om registret driftar tappar ALLA appar ärendekopplingen samtidigt.",
+   "typ": "arkitektur",
+   "statusIDok": "Arkitektur-blockerare, [BYGGS]",
+   "beroenden": "K-8.13, K-8.15, K-8.18; refereras i §10 roadmap P0"
+  },
+  {
+   "id": "K-8.26",
+   "rubrik": "GAP-057: atomär fördelning utan sekretessfönster",
+   "beskrivning": "tilldela/fördelning ska göras till atomär multi-objekt-commit med lås/idempotens på hubsCaseId: ACL revoke (mottagning) → grant (utredare) UTAN sekretessfönster; serialisera per ärende; verifiera ACL-slutläget innan kortet lämnar 'Att fördela'.",
+   "typ": "sakerhet",
+   "statusIDok": "Arkitektur-blockerare, [BYGGS]",
+   "beroenden": "K-3.11 (rad-lås/idempotens); refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.27",
+   "rubrik": "GAP-058: en kanonisk ACL-källa för tre-lagers-koherens",
+   "beskrivning": "EN kanonisk ACL-källa per enhet/funktionsadress ska generera alla tre lagren (case:-tagg ∩ Groupfolder-ACL ∩ Tables-vy = samma sanning), med automatiserat koherens-test och deny-by-default i aggregeringen. Circles-team↔ACL↔Talk-deltagare ska hållas synkade.",
+   "typ": "sakerhet",
+   "statusIDok": "Arkitektur-blockerare, [BYGGS]",
+   "beroenden": "K-8.26; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.28",
+   "rubrik": "GAP-061: favorit-resolverlager med obligatorisk färsk-resolve och fail-closed",
+   "beskrivning": "Tunt resolverlager GET /favoriter ska byggas med obligatorisk färsk-resolve-vid-läsning och HÅRD fail-closed när DIGG inte nås, samt tombstone-gallring mot skuggregister.",
+   "typ": "integration",
+   "statusIDok": "Major gap, [BYGGS]",
+   "beroenden": "K-8.9; refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.29",
+   "rubrik": "GAP-062: favoritlistor som handlingstyper i DHP",
+   "beskrivning": "Favoritlistor ska modelleras som egna handlingstyper i dokumenthanteringsplanen (arkivlag §10); funktions-ägare tvingas på klass (b) fax-vCard; årlig översyn; laglig grund GDPR art. 6.1.e.",
+   "typ": "juridik",
+   "statusIDok": "Major gap, [BYGGS] (policy+process)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.30",
+   "rubrik": "GAP-063: vidarebefordra-via-favorit grindas som gallring",
+   "beskrivning": "Vidarebefordran via favorit måste passera samma 'registrera först?'-bedömning som GallringsGrind; mottagar-LOA + provenans loggas; vidarebefordran av ej-resolvbar favorit blockeras.",
+   "typ": "sakerhet",
+   "statusIDok": "Major gap, [BYGGS]",
+   "beroenden": "K-8.9, K-8.28"
+  },
+  {
+   "id": "K-8.31",
+   "rubrik": "GAP-064: server-side klassvalidering av favoriter (avvisa medborgar-PII)",
+   "beskrivning": "Server-side klass-validering (a/b/c) ska byggas som AVVISAR fria medborgar-PII-favoriter och styr dem till ärendet i stället; villkorat ärenderums-scopat undantag; aktivitetslogg.",
+   "typ": "sakerhet",
+   "statusIDok": "Major gap, [BYGGS]",
+   "beroenden": "K-8.9"
+  },
+  {
+   "id": "K-8.32",
+   "rubrik": "GAP-010: atomär createArende()-orkestrering",
+   "beskrivning": "Atomär createArende()-orkestrering som ETT sdkmc-anrop. Delvis stängd på spec/UI-nivå; backend-sagan kvarstår att bygga.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (delvis stängd på spec/UI)",
+   "beroenden": "K-8.5, K-8.15"
+  },
+  {
+   "id": "K-8.33",
+   "rubrik": "GAP-059: ärendechatt-retention + handlingsgrind + avidentifiering",
+   "beskrivning": "Ärendechattens retention ska bindas till ärenderummet; en 'är detta en handling?'-grind ska köras vid avslut; server-side avidentifiering vid 'Lyft till enhetschatt'.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS] [FORK]",
+   "beroenden": "Spreed-fork (M2)"
+  },
+  {
+   "id": "K-8.34",
+   "rubrik": "GAP-038/039: delgivningssätt och överklagandefristens start",
+   "beskrivning": "Delgivningssätt ska modelleras och överklagandefristens startdatum härledas ur valt sätt. Läskvittens är INTE juridisk delgivning.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Refereras i §9 beslutslogg (rad 711)"
+  },
+  {
+   "id": "K-8.35",
+   "rubrik": "GAP-018/044/047: fristDue speglas ur facksystemet",
+   "beskrivning": "fristDue ska speglas ur facksystemet via läskonnektor, aldrig räknas självständigt i Hubs; Hubs-påminnelsen rivs när facksystemet tar över fristen.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "K-3.5 (fristDue speglad), K-8.19"
+  },
+  {
+   "id": "K-8.36",
+   "rubrik": "BESLUT (GAP-012/032/014): var skrivs utredningstexten",
+   "beskrivning": "Beslut krävs om var utredningstexten författas — Collabora-i-Hubs vs direkt i facksystemets journal. Dubbel-författande är risken som ska undvikas.",
+   "typ": "beslut",
+   "statusIDok": "[BESLUT KRÄVS]",
+   "beroenden": "Motsvarar B-DOK-1 i beslutsloggen §9 (kapitel 9)"
+  },
+  {
+   "id": "K-8.37",
+   "rubrik": "GAP-065/066: omnämnande-aggregat och globalt frist-larm",
+   "beskrivning": "Server-side omnämnande-aggregat + kvittensmodell ska byggas (pulsen får inte bli en andra inkorg), samt ett globalt frist-larm som överlever korg-/typ-filter.",
+   "typ": "ux",
+   "statusIDok": "[BYGGS] (minor)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.38",
+   "rubrik": "Samlade drift-/integrations-/per-kund-gap (GAP-016/021/024/025/030/045 + 040/011/023/036)",
+   "beskrivning": "Adresserbara ej skarp-blockerande gap: Forms-brygga, oautentiserad bokning, BankID-lobby (spreed-itsl-fork), recording-server, svensk live-STT, Deck-påminnelse-motor, samt FGS-e-arkivgräns, BBIC-licens och kravnivå-matris. Drift-, integrations- och per-kund-beroenden.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]/[KONFIG]/[EXTERN]",
+   "beroenden": "spreed-itsl-fork; externa parter (BankID, FGS/e-arkiv, BBIC-licensgivare)"
+  },
+  {
+   "id": "K-8.39",
+   "rubrik": "Δ1 systemOfRecord: commitDestination icke-null på varje ArendeTyp-rad",
+   "beskrivning": "Varje ArendeTyp-rad MÅSTE ha icke-null commitDestination ∈ {facksystem, diarium, e-arkiv, extern_myndighet, triage_forward, karantan, ingen}; implicit 'alltid Treserva' ersätts. Retention-flippen (R8) får aldrig ske utan registrerat utfall.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (motor+data)",
+   "beroenden": "K-1.6, K-2.19, K-3.23; motsvarar B-INV-1 i §9 (refereras rad 682)"
+  },
+  {
+   "id": "K-8.40",
+   "rubrik": "Δ2 sekretessGrund[] med temporalitet",
+   "beskrivning": "Skalära sekretessNiva ersätts med struct {grund, niva, temporal:{utgangsTrigger, utgangsDatum}} så att sekretessens rättsliga grund och tidsbundna upphörande blir datadrivna.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": "Δ10 temporal ACL (K-8.48); refereras i §10 roadmap"
+  },
+  {
+   "id": "K-8.41",
+   "rubrik": "Δ3 riskKlass ortogonal mot ärendetyp",
+   "beskrivning": "Risknivå ska modelleras ortogonalt mot ärendetyp och styra eskalering, inte bara åtgärdsknappar.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.42",
+   "rubrik": "Δ4 externMyndighetMottagare + commitMode",
+   "beskrivning": "Commit-mål utanför kommunen (IMY/MSB/JO) ska stödjas: commitMode='extern_myndighet' flippar INTE retentionState, ingen dnr-callback finns, frist-ankaret är vetskap, och PII-maskning krävs ofta.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": "commitDestination='extern_myndighet' (K-8.39)"
+  },
+  {
+   "id": "K-8.43",
+   "rubrik": "Δ5 verksamhetsgren + sekretessMur",
+   "beskrivning": "En sekretessMUR (binär gräns, inte gradient) ska modelleras mellan verksamhetsgrenar, t.ex. IFO↔skola och SoL↔HSL.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": ""
+  },
+  {
+   "id": "K-8.44",
+   "rubrik": "Δ6 partsModell utökad + joinNyckel",
+   "beskrivning": "partsModell utökas med värdena objektsärende (upphandlingsRef/avtalsRef/objektRef), flerpartsärende, anonym_begaran och handling_med_sekretessbilaga; joinNyckel generaliserar barnRef.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": "K-3.19 (partsModell i ArendeTyp-raden)"
+  },
+  {
+   "id": "K-8.45",
+   "rubrik": "Δ7 karantanKravs / säkerhetsskydds-grind (terminerande, före R2)",
+   "beskrivning": "karantanKravs=true ska ge terminerande preSagaHook='avvisa_sakerhetsskydd' FÖRE R2 — motorn vägrar minta hubsCaseId, skapa Spreed-rum och groupfolder. Säkerhetsskyddsklassat material får inte finnas i systemet alls; att behandla det som skyddade personuppgifter är lagbrott. Den enda Δ som berör motorn hårt. Gäller roll 1/3/5/8/9/10/11/12.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (motor)",
+   "beroenden": "K-1.10, K-3.24; motsvarar B-SEC-1-området i §9 (refereras rad 683) och §10 roadmap P0 (Δ7/Δ8/Δ9)"
+  },
+  {
+   "id": "K-8.46",
+   "rubrik": "Δ8 felmottaget_men_kansligt: karantän-grind + retroaktiv isolering",
+   "beskrivning": "En bool-flagga ska trigga karantän-vidarebefordra-grind (anti-saga) samt RETROAKTIV isolering som river redan satta taggar ur index/Spreed/Groupfolder/tag-DB. Farligaste vägen är inkommande material. Gäller roll 1/10/11/12.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (motor)",
+   "beroenden": "K-1.27 (retroaktiv karantän); §10 roadmap P0"
+  },
+  {
+   "id": "K-8.47",
+   "rubrik": "Δ9 visselblåsning som NON-route (medveten icke-integration)",
+   "beskrivning": "Visselblåsning ska ha tre hårda opt-outs: ur ArendeMatchService, ur ConsolidateMailboxesService och egen ACL-domän vissel_isolerad. Den får aldrig passera sagan. Integration mot Lantero/WhistleB ska medvetet UTEBLI. Gäller roll 1/3/9/11.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (motor, opt-out)",
+   "beroenden": "K-1.11; §10 roadmap P0"
+  },
+  {
+   "id": "K-8.48",
+   "rubrik": "Δ10 temporal ACL: släpp anbudssekretess för hela case-klustret",
+   "beskrivning": "postCommitHook='slapp_anbudssekretess' + temporal ACL-degradering av HELA case:-klustret (inklusive Spreed-historik och Deck-kort) vid extern händelse som tilldelningsbeslut. Skyddar mot bakåt-läckan. Gäller roll 1/8/9/11.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS] (motor)",
+   "beroenden": "Δ2 (K-8.40); refereras i §10 roadmap (rad 760)"
+  },
+  {
+   "id": "K-8.49",
+   "rubrik": "Δ11 fristPolicy med multi-milstolpe och ankare",
+   "beskrivning": "fristPolicy generaliseras till {typ, ankare, forlangningsbar} med ankare ∈ {inkom-datum, kännedom, komplett_ansokan, delgivning}; stöd för multi-milstolpe (NIS2 24/72/30), avtalslivscykel och 'skyndsamt' (TF 2:16). Gäller roll 5/8/9/11.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (data+motor)",
+   "beroenden": "K-3.19 (fristPolicy-fältet)"
+  },
+  {
+   "id": "K-8.50",
+   "rubrik": "Δ12 forstaAtgard-enum utökad",
+   "beskrivning": "forstaAtgard-enumen utökas med menprovning, radgivning, rattidsprovning, triage, karantan_vidarebefordra och sekretessprovning. Gäller roll 1/11/12.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": "K-3.19 (forstaAtgard-fältet)"
+  },
+  {
+   "id": "K-8.51",
+   "rubrik": "Δ13 frendsModul som öppen enum (per-system-konnektorer)",
+   "beskrivning": "frendsModul går från per-modul till per-system (2-dimensionellt: modul × produkt) med värden bortom socialtjänst: diarium, avtal, byggr, ecos_*, crm_kontaktcenter, ingen. FacksystemCommitService blir ett bibliotek av per-produkt-konnektorer (GAP-019-klass × 5–10). Gäller roll 1/8/9/11/12.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] [EXTERN]",
+   "beroenden": "K-8.17, K-8.19; refereras i §10 roadmap (rad 758-759)"
+  },
+  {
+   "id": "K-8.52",
+   "rubrik": "Δ14 diariePlikt med spårad icke-diarieföring",
+   "beskrivning": "diariePlikt ∈ {direkt, bedoms, villkorlig, registreringsbeslut}. Tyst icke-diarieföring ska vara en spårad åtgärd — annars otillåten gallring av allmän handling enligt TF. Gäller roll 1/8/11/12.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS] (data+grind)",
+   "beroenden": "K-3.19 (diariePlikt-fältet)"
+  },
+  {
+   "id": "K-8.53",
+   "rubrik": "Δ15 dubbel commit-destination (sekventiella commits utan akt-sammanslagning)",
+   "beskrivning": "Diarium → e-arkiv ska stödjas som sekventiella commits (postCommitHook='arkivera_fgs'); samordnad tillsyn PBL↔MB innebär TVÅ commits utan att akterna slås ihop. Gäller roll 1/8.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (motor)",
+   "beroenden": "K-1.15 (medmottagares akter slås aldrig ihop), K-8.17"
+  },
+  {
+   "id": "K-8.54",
+   "rubrik": "Δ16 sorFallback: datadriven fallback-SoR med exit-krav",
+   "beskrivning": "När en kategori saknar facksystem (DPIA, OSA, MBL-protokoll, RSA) ska en datadriven, granskningsbar fallback (diarium/e-arkiv) användas — UTTRYCKLIGEN flaggad och med tvingande exit-krav. Gäller roll 3/5/9/10/11.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS] (data+grind)",
+   "beroenden": "K-1.7 (fyrvägs-utfall); motsvarar B-SOR-1 i beslutsloggen §9 (refereras rad 702-703)"
+  },
+  {
+   "id": "K-8.55",
+   "rubrik": "Δ17 PuB/RoPA + leverantorskontroll-hook",
+   "beskrivning": "Datadriven hook för PuB-avtal/RoPA (roll 5) samt leverantörskontroll/Inyett-flagga (roll 9) som preSagaHook.",
+   "typ": "juridik",
+   "statusIDok": "[BYGGS] (data)",
+   "beroenden": "preSagaHook-mekanismen (K-3.19/K-3.20)"
+  }
+ ]
+}

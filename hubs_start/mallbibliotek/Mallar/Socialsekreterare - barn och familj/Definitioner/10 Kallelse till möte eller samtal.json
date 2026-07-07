@@ -1,0 +1,73 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/10 Kallelse till möte eller samtal.docx",
+    "titel": "10 Kallelse till möte eller samtal",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[Vårdnadshavare / barn / god man / nätverk / samverkanspart]",
+        "[hubsCaseId / Treserva-dnr — ange endast om kanalen är säker]",
+        "[Kort och neutralt, t.ex. \"Kallelse till möte hos socialtjänsten\"]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[hh:mm–hh:mm]",
+        "[Adress, våning/rum, ev. hänvisning i receptionen]",
+        "[Länk till säkert videomöte / instruktion för hur mottagaren ansluter]",
+        "[Ange vem som ringer vem och till vilket nummer]",
+        "[Beskriv kort och begripligt varför mötet hålls och vad ni ska prata om, utan onödiga detaljer.]",
+        "[Räkna upp deltagare och deras roll, t.ex. socialsekreterare, vårdnadshavare, barn, tolk.]",
+        "[Språk]",
+        "[ombud / stödperson / annan person du litar på]",
+        "[Ange vad mottagaren ev. ska ta med, t.ex. legitimation, handlingar]",
+        "[Ange ev. behov vi bör känna till — t.ex. hjälpmedel, rum på entréplan]",
+        "[Övrig praktisk information]",
+        "[Namn, titel]",
+        "[Telefon / säkert meddelande i e-tjänst — undvik att be om känsliga uppgifter via osäker kanal]",
+        "[ÅÅÅÅ-MM-DD, ev. klockslag]",
+        "[Mottagning / Barn och familj]",
+        "[Säkert meddelande i e-tjänst / brev / annat — ange vilket]",
+        "[Säkert meddelande / brev / annat]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "fysiskt-mote-plats",
+            "etikett": "Fysiskt möte — plats",
+            "token": "[Adress, våning/rum, ev. hänvisning i receptionen]"
+        },
+        {
+            "id": "digitalt-mote-saker-videolank",
+            "etikett": "Digitalt möte — säker videolänk",
+            "token": "[Länk till säkert videomöte / instruktion för hur mottagaren ansluter]"
+        },
+        {
+            "id": "telefonsamtal-vi-ringer-du-ringer",
+            "etikett": "Telefonsamtal — vi ringer / du ringer",
+            "token": "[Ange vem som ringer vem och till vilket nummer]"
+        },
+        {
+            "id": "syfte-med-motet-samtalet",
+            "etikett": "Syfte med mötet/samtalet",
+            "token": "[Beskriv kort och begripligt varför mötet hålls och vad ni ska prata om, utan onödiga detaljer.]"
+        },
+        {
+            "id": "foljande-ar-kallade-deltar",
+            "etikett": "Följande är kallade/deltar",
+            "token": "[Räkna upp deltagare och deras roll, t.ex. socialsekreterare, vårdnadshavare, barn, tolk.]"
+        },
+        {
+            "id": "medta",
+            "etikett": "Medta",
+            "token": "[Ange vad mottagaren ev. ska ta med, t.ex. legitimation, handlingar]"
+        },
+        {
+            "id": "tillganglighet",
+            "etikett": "Tillgänglighet",
+            "token": "[Ange ev. behov vi bör känna till — t.ex. hjälpmedel, rum på entréplan]"
+        },
+        {
+            "id": "annat",
+            "etikett": "Annat",
+            "token": "[Övrig praktisk information]"
+        }
+    ]
+}

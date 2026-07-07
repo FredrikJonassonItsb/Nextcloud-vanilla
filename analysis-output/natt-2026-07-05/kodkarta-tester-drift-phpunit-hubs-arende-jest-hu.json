@@ -1,0 +1,255 @@
+{
+ "omrade": "Tester + Drift: phpunit (hubs_arende), jest (hubs_start), occ-kommandon (smoke/status/seed-demo), bakgrundsjobb, scripts/dev15-reset.sh, deploy-/efemäritets-gotchas",
+ "sammanfattning": "Testytan består av tre lager: (1) en ren phpunit-enhetssvit för ärende-motorn — 17 testfiler under hubs_arende/tests/Unit med 88 testmetoder enligt grep av \"public function test\" (uppgiften angav 87; alla OCP-kollaboratörer mockas, ingen DB krävs, dual-mode-bootstrap i tests/bootstrap.php väljer NC-checkout eller standalone PSR-4), (2) en jest-svit för hubs_start — 95 tester i 13 spec-filer (jsdom, vue-jest, @nextcloud/*-paket mockade via jest.config.js moduleNameMapper), och (3) ett occ-baserat end-to-end-smoke (hubs_arende:smoke) som kör hela motorn mot in-memory-stubbarna: createCase→säkerhetsskyddsgrind→register→commit→verifierat kvitto→provenans-flip, idempotens, PII-validering, hela livscykeln till avslutat, GDPR-gallring och en per-typ-loop över alla 8 ärendetyper inkl. fail-closed ärv-modul och pliktGrind. phpunit-täckningen är koncentrerad till ArendeService-sagan, lifecycle, grindarna, registry, gallring och team-lagret — men controllers (4 st), integrationsklienter (7 st), bakgrundsjobb, Notifier, mappers och 5 hela services är helt otestade, och sdkmc backend-additions har noll automatiska tester. Jest-täckningen är koncentrerad till services (deepLinks/channels/sections/store) och 7 av ~90 komponenter; hela ärendekorts-/fördelnings-/widgetytan är otestad. Ingen automatiserad E2E/GUI-testning finns — GUI verifieras manuellt via Chrome-MCP och blockeras av att agenten inte kan BankID-logga in (HANDOVER §2). Driftverktygen är occ smoke/status/seed-demo, två dygnsvisa bakgrundsjobb (GallringJob, FristVarselJob) registrerade i info.xml, en admin-statussida, samt scripts/dev15-reset.sh som idempotent återställer dev15 till känt testläge (raderar team/ärenderum/per-case-grupper via occ, register+taggar via SQL, med inbyggd verifiering). Kritiska drift-gotchas i HANDOVER §1–2: alla apps/sdkmc-tillägg + libresign + apk-paket är EFEMÄRA i containern (försvinner vid container-recreate/itsl deploy), och deploy kräver info.xml-versionbump + occ upgrade för cache-bust med separerad tar-pipe.",
+ "formagor": [
+  "phpunit-svit: 17 testfiler / 88 testmetoder, rena enhetstester utan DB — hubs_arende/phpunit.xml:16 (testsuite Unit, failOnRisky+failOnWarning)",
+  "Dual-mode test-bootstrap: NC-checkout (dev15) ELLER standalone PSR-4 mot lib/ + nextcloud/ocp — hubs_arende/tests/bootstrap.php:31-96",
+  "createCase-sagans kärninvarianter testade: happy-path commit_destination — hubs_arende/tests/Unit/Service/ArendeServiceTest.php:80; okänd typ kastar — :120; NOT NULL-invariant — :143; idempotens på conversationId — :167; grind-avvisning utan INSERT — :199; retroaktiv karantän — :227; verifierat kvitto flippar provenans — :265; overifierat flippar EJ — :315",
+  "Authz-tester: null-session tillåten, fel grupp nekas som DoesNotExist (läcker ej enhet/403) — hubs_arende/tests/Unit/Service/ArendeServiceAuthzTest.php:82-161",
+  "Commit-idempotens (H3): andra commit dubbel-registrerar ej, redan registrerad hoppar commit-service — hubs_arende/tests/Unit/Service/ArendeServiceCommitIdempotensTest.php:99-161",
+  "Hook-tester: kat6 diariefor_direkt föds registrerad — hubs_arende/tests/Unit/Service/ArendeServiceHookTest.php:90; fail-closed utan port — :133; kat8 post-commit-yttrande — :204; graceful hook-fel — :235; idempotent commit refire:ar ej hook — :257",
+  "objektRef PII-validering: personnummer/klarnamn avvisas, UUID/frånvarande accepteras — hubs_arende/tests/Unit/Service/ArendeServiceObjektRefValideringTest.php:112-178",
+  "Pekare→dashboard-kort-mappning inkl. talkToken/bevakningBoardId — hubs_arende/tests/Unit/Service/ArendeServicePekareTest.php:64-174",
+  "Team-per-ärende (Fas T): circle skapas + pekare bokförs, graceful fail, skip utan per-case-grupp/klient, Talk-deltagare — hubs_arende/tests/Unit/Service/ArendeServiceTeamTest.php:115-195",
+  "Händelsejournal: skapad/tilldelad journalförs, journalfel fäller aldrig mutationen, historik läses via show-authz, mineOnly-filter — hubs_arende/tests/Unit/Service/ArendeServiceJournalTest.php:81-162",
+  "Lifecycle: giltig framåt-transition persisteras, bakåt kastar utan persist, samma steg no-op, pliktGrind ORO-1 (blockerar utredning utan kvitterad skyddsbedömning) — hubs_arende/tests/Unit/Service/ArendeLifecycleServiceTest.php:96-236",
+  "SakerhetsskyddGrind fail-closed: tom rad, nyckelord, sakerhetsklass=hemlig, visselblåsning, retroaktiv-flagga — hubs_arende/tests/Unit/Service/SakerhetsskyddGrindTest.php:37-100; M4: handlingskod/classification-fält/X-Protective-Marking-header — SakerhetsskyddGrindM4Test.php:69-138",
+  "ArendeTypRegistry: seed idempotent, 8 typer, alla har commit_destination, kat6/kat8-hooks — hubs_arende/tests/Unit/Service/ArendeTypRegistryTest.php:41-106",
+  "GallringService: förfallen rad + pekare raderas, rad utan gallras_datum raderas ALDRIG, framtida deadline lämnas, tom lista no-op — hubs_arende/tests/Unit/Service/GallringServiceTest.php:87-168",
+  "ArendeMatchService M5: anonym SSN/orgId hoppar partssteget utan allow-signal — hubs_arende/tests/Unit/Service/ArendeMatchServiceM5Test.php:97-165",
+  "FacksystemCommitStub GAP-007: retention startar enbart på verifierad callback, gallrasDatum=+retentionDays, callback idempotent — hubs_arende/tests/Unit/Integration/FacksystemCommitStubTest.php:30-107",
+  "FacksystemCommitService modul-routing: fail-closed utan frendsModul, explicit modul routas — hubs_arende/tests/Unit/Integration/FacksystemCommitServiceModulTest.php:44-58",
+  "Teams-resursprovider: akten resolvas via pekare, okänt team ger tomt (kastar aldrig) — hubs_arende/tests/Unit/Teams/ArenderumTeamResourceProviderTest.php:56-99",
+  "jest-svit: 95 tester/13 spec-filer, jsdom + vue-jest, @nextcloud/*-mocks — hubs_start/jest.config.js:13-27, mocks i hubs_start/tests/mocks/{nextcloud,ncvue,icon}.js",
+  "deepLinks-testerna (25 st): thread/composer/mailbox/call/deck/spreedRoom/team/loa3Upgrade/resolve — hubs_start/tests/unit/deepLinks.spec.js:21-127",
+  "Store-tester: applySummary cold/incremental, setActiveChannel, removeItem — hubs_start/tests/unit/store.spec.js:20-103; loadArende+enrichArende — storeEnrich.spec.js:28",
+  "Service-tester: channels (13) — hubs_start/tests/unit/channels.spec.js:14-87; sections/statusTone/statusLabel (9) — sections.spec.js:15-70",
+  "Komponenttester (7 komponenter): InflodeRad typ-chip/excerpt/brand-regel — hubs_start/tests/unit/inflodeRad.spec.js:28-85; CommitGrind dokumentval + inbäddad signeringsbekräftelse — commitGrind.spec.js:31-66; MinaAnteckningar — minaAnteckningar.spec.js:21; ArendeDiskussion — arendeDiskussion.spec.js:13; NyChattModal — nyChattModal.spec.js:9; AvslutaGrind — avslutaGrind.spec.js:8; VarselLista — varselLista.spec.js:9",
+  "api.skapaArende taggar källmeddelandet vid Ta emot — hubs_start/tests/unit/skapaArende.spec.js:28",
+  "occ hubs_arende:smoke — E2E mot stubbar med exit-kod: createCase/idempotens/commit/provenans-flip/grind/PII/livscykel till avslutat/GDPR-gallring — hubs_arende/lib/Command/Smoke.php:49-171; per-typ-loop 8 ärendetyper inkl. kat6 dnr@birth, kat8 yttrande, fail-closed ärv-modul, pliktGrind — :184-286",
+  "occ hubs_arende:status — PII-fri motorstatus: räknare, integrationsläge per port, ärendetyp-register, dashboard-kort — hubs_arende/lib/Command/Status.php:35-86",
+  "occ hubs_arende:seed-demo [--purge] — syntetiska demo-ärenden genom RIKTIGA motorn (idempotent, prefix demo-) — hubs_arende/lib/Command/SeedDemo.php:47-70, logik i lib/Service/DemoSeedService.php:44 (PREFIX='demo-')",
+  "GallringJob: dygnsvis GDPR-gallring, TIME_INSENSITIVE, fel kraschar aldrig cron — hubs_arende/lib/BackgroundJob/GallringJob.php:38-61",
+  "FristVarselJob: deterministiska varsel T-3 och T-0 till tilldelad handläggare eller mottagningskrets, PII-fri notis — hubs_arende/lib/BackgroundJob/FristVarselJob.php:55-133",
+  "Registrering i info.xml: 2 background-jobs — hubs_arende/appinfo/info.xml:40-43; repair-step RegisterArendeTyper — :44-48; 3 occ-kommandon — :49-53; admin-statussida — :54-57",
+  "scripts/dev15-reset.sh: idempotent återställning till känt testläge — team/circles via occ circles:manage:destroy (rad 51-65), register+sdkmc-taggar atomisk SQL (rad 68-86), ärenderum via occ groupfolders:delete -f med UUID-regex-skydd (rad 90-101), per-case-grupper via occ group:delete (rad 105-115), verifierings-query av känt läge (rad 118-136)",
+  "Lokala testrecept dokumenterade: jest via npm test, phpunit via composer:2-dockerimage (ingen php på host), smoke via ssh+occ — hubs_start/docs/HANDOVER-FORTSATTNING.md:66-69",
+  "Deploy-recept: webpack-bygge + tar-pipe till container + info.xml-bump + occ upgrade (cache-bust), separata pipes för sdkmc-tillägg och hubs_arende — hubs_start/docs/HANDOVER-FORTSATTNING.md:70-73",
+  "CI dokumenterad: GitHub Actions kör phpunit på PHP 8.1/8.2/8.3 — hubs_arende/tests/README.md:30-31 (workflow-filen ej verifierad i denna genomlysning)"
+ ],
+ "filer": [
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/phpunit.xml",
+   "roll": "phpunit-konfig: testsuite Unit, bootstrap, strikta flaggor (failOnRisky/failOnWarning)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/bootstrap.php",
+   "roll": "Dual-mode bootstrap: NC-checkout eller standalone PSR-4 (OCA\\HubsArende→lib, OCP/NCU→nextcloud/ocp)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/README.md",
+   "roll": "Körinstruktioner phpunit lokalt/CI — OBS inaktuell testräkning (säger 25 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceTest.php",
+   "roll": "Kärninvarianter createCase-sagan (8 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceAuthzTest.php",
+   "roll": "Åtkomstkontroll: grupp-deny som DoesNotExist utan läckage (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceCommitIdempotensTest.php",
+   "roll": "Commit-idempotens H3 (3 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceHookTest.php",
+   "roll": "Pre-saga/post-commit-hooks kat6/kat8 + fail-closed + graceful (7 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceObjektRefValideringTest.php",
+   "roll": "PII-validering av objektRef (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServicePekareTest.php",
+   "roll": "Pekare→kort-mappning (4 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceTeamTest.php",
+   "roll": "Team/circle per ärende, Fas T (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeServiceJournalTest.php",
+   "roll": "Händelsejournal + mineOnly-filter (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeLifecycleServiceTest.php",
+   "roll": "Steg-transitions + pliktGrind ORO-1 (9 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/SakerhetsskyddGrindTest.php",
+   "roll": "Fail-closed-grind R0 (6 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/SakerhetsskyddGrindM4Test.php",
+   "roll": "M4: strukturerade skyddssignaler handlingskod/classification/header (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeTypRegistryTest.php",
+   "roll": "Datadrivet typregister, 8 typer (7 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/GallringServiceTest.php",
+   "roll": "GDPR-gallring av register+pekare (4 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Service/ArendeMatchServiceM5Test.php",
+   "roll": "M5 anonym-skydd i matchning (4 tester) — övriga matchheuristiker OTESTADE"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Integration/FacksystemCommitStubTest.php",
+   "roll": "GAP-007 retention-på-verifierad-callback (4 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Integration/FacksystemCommitServiceModulTest.php",
+   "roll": "Modul-routing fail-closed (2 tester) — enda testerna av FacksystemCommitService"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/tests/Unit/Teams/ArenderumTeamResourceProviderTest.php",
+   "roll": "Teams-resursprovider (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/jest.config.js",
+   "roll": "jest-konfig: jsdom, vue-jest, @nextcloud/*-moduleNameMapper till mocks"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/mocks/nextcloud.js",
+   "roll": "Mock för @nextcloud/l10n,router,axios,dialogs,initial-state"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/mocks/ncvue.js",
+   "roll": "Render-null-stub för @nextcloud/vue-komponenter"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/deepLinks.spec.js",
+   "roll": "Största jest-filen (25 tester): alla deep-link-byggare + resolve"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/store.spec.js",
+   "roll": "Store: applySummary cold/incremental, removeItem (11 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/storeEnrich.spec.js",
+   "roll": "loadArende+enrichArende mot mockat api (5 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/channels.spec.js",
+   "roll": "channelMeta/CHANNEL_ORDER (13 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/sections.spec.js",
+   "roll": "SECTIONS/statusTone/statusLabel (9 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/inflodeRad.spec.js",
+   "roll": "InflodeRad: typ-chip-fallback, excerpt-badge, brand-regel (9 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/commitGrind.spec.js",
+   "roll": "CommitGrind: dokumentval + inbäddad signeringsbekräftelse fix #6 (6 tester)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/tests/unit/skapaArende.spec.js",
+   "roll": "api.skapaArende taggar källmeddelande (3 tester) — enda api.js-testet"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/Smoke.php",
+   "roll": "occ hubs_arende:smoke — E2E-motor-test mot stubbar, exit 1 vid fel, per-typ-loop 8 typer"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/Status.php",
+   "roll": "occ hubs_arende:status — PII-fri motorstatus (samma data som admin-sidan)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Command/SeedDemo.php",
+   "roll": "occ hubs_arende:seed-demo [--purge] — tunn yta över DemoSeedService"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Service/DemoSeedService.php",
+   "roll": "Demo-seed genom riktiga motorn, PREFIX='demo-' (rad 44), purge på demo-% (rad 153)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/BackgroundJob/GallringJob.php",
+   "roll": "Dygnsvis GDPR-gallring (TIME_INSENSITIVE) — otestad direkt"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/BackgroundJob/FristVarselJob.php",
+   "roll": "Dagligt fristvarsel T-3/T-0 via NC-notifikationer — helt otestad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/appinfo/info.xml",
+   "roll": "Registrering: 2 background-jobs (rad 40-43), repair-step (44-48), 3 occ-kommandon (49-53), admin-settings (54-57)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/scripts/dev15-reset.sh",
+   "roll": "ENDA skriptet i scripts/: idempotent dev15-återställning till känt testläge med verifiering"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/docs/HANDOVER-FORTSATTNING.md",
+   "roll": "Drift-bibeln: §1 miljö+efemäritet, §2 GUI-testrecept+auth-blocker, §3 bygg/deploy/test-recept, §6 gotchas"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/MANIFEST.md",
+   "roll": "sdkmc-additionernas deploy-state + boundary-tabell (vilket API hör vart)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/AppInfo/Application.php",
+   "roll": "Port-wiring: integration_mode_*-appconfig väljer stub/real, default stub (rad 48, 73-92)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php",
+   "roll": "Stateful Treserva-commit-stub med GAP-007 callback-retention"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/SigneringStub.php",
+   "roll": "Inera Underskriftstjänst-stub (PAdES, poll-simulering, fel-injektion) — otestad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_arende/lib/Integration/Stub/EdiariumStub.php",
+   "roll": "e-diarium/e-arkiv-stub (dnr, SIP) — endast indirekt testad via hook-tester/smoke"
+  }
+ ],
+ "stubbar": [
+  "FacksystemCommitStub — in-memory-stub av facksystem-commit (Treserva); retention startar enbart på verifierad callback (GAP-007), synchronousCallback-läge för demo — hubs_arende/lib/Integration/Stub/FacksystemCommitStub.php:39,122-160",
+  "SigneringStub — stateful stub av Inera Underskriftstjänst: pending→signed efter konfigurerbart antal poll, syntetisk PAdES-PDF, fel-injektion via rejectDocumentRefs — hubs_arende/lib/Integration/Stub/SigneringStub.php:29-50",
+  "EdiariumStub — stateful stub av e-diarium/e-arkiv (FGS): dnr-utdelning, SIP-paketering, fel-injektion via rejectHandlingstyper — hubs_arende/lib/Integration/Stub/EdiariumStub.php:26-45",
+  "Alla tre portarna defaultar till STUB via appconfig integration_mode_<port> — hubs_arende/lib/AppInfo/Application.php:73-92; occ hubs_arende:status visar aktivt läge per port (Status.php:43-46)",
+  "DemoSeedService + occ seed-demo — syntetiska demo-ärenden (prefix 'demo-') genom riktiga motorn; delas med AdminController#seedDemo — hubs_arende/lib/Service/DemoSeedService.php:44, lib/Command/SeedDemo.php:19-33",
+  "Frontend DEMO-läge — api.js short-circuitar VARJE funktion till in-memory-fixtures när isDemo(): demoData.js + src/services/demo/* (socialsekreterare.js, treserva.js som mintar hubsCaseId+dnr, favoriter.js, queues-a/b.js, newcases.js, files.js, stats.js, progress.js, extra.js) — hubs_start/src/services/api.js:52-60,306,390,420",
+  "SakerhetsskyddGrind — själva detekteringen är en TODO-hook (konservativa nyckelord som placeholder) och cross-app side-effect-removal vid retroaktiv avvisning är explicit STUB — hubs_arende/lib/Service/SakerhetsskyddGrind.php:35,59,240,355",
+  "ArendeMatchService — SSN/orgId-partsuppslag är TODO[register]-heuristik (riktigt SITHS/LOA3-partsregister saknas), fail-closed bakom allow-grind — hubs_arende/lib/Service/ArendeMatchService.php:32,310,342,594",
+  "InnehallsKlassService — org-registret är TODO[konfig]-hook (kundspecifik mappning via AppConfig, inbyggd default annars) — hubs_arende/lib/Service/InnehallsKlassService.php:49,91,365,562",
+  "Integrationsklienterna bär TODO[auth]: interna server-till-server-OCS-anrop saknar credential (service-account/app-password ej wirat) — GroupfolderClient.php:33,136,160,190; SdkmcClient.php:216,250,341; SpreedClient.php:33,69,291; ACL-enable och folder-delete i GroupfolderClient är TODO",
+  "hubs_arende/lib/Integration/Client/README.md — hela seam-katalogen över TODO[sdkmc.tag]/[groupfolders]/[deck]/[spreed]/[caldav]-blocken i sagan R3-R9 med färdiga ersättningssnuttar",
+  "Smoke-kommandot kör HELA motorn men enbart mot stubbarna — bevisar motor-logik, inte riktiga integrationer (Smoke.php:25-30)"
+ ],
+ "kandaBrister": [
+  "OTESTADE PHP-SERVICES (ingen testfil alls): StatusService, DemoSeedService, InnehallsKlassService, ReferensFilService, ArenderumGroupService (förekommer bara som mock i ArendeServiceTeamTest.php:58) — verifierat via grep i hubs_arende/tests",
+  "PARTIELLT TESTADE: FacksystemCommitService har bara 2 modul-routing-tester (FacksystemCommitServiceModulTest); ArendeMatchService har bara 4 M5-anonymtester — själva matchningsheuristiken (trådmatchning, funktionsadress-uppslag) är otestad",
+  "ALLA 4 CONTROLLERS OTESTADE: ArendeController, InfodeController, FordelningController, AdminController (hubs_arende/lib/Controller/) — ingen request-/routing-/felkodstestning",
+  "ALLA 7 INTEGRATIONSKLIENTER OTESTADE: SdkmcClient, GroupfolderClient, SpreedClient, DeckClient, CalendarClient, TeamClient, ServiceAccountAuth (hubs_arende/lib/Integration/Client/)",
+  "BAKGRUNDSJOBBEN OTESTADE DIREKT: FristVarselJob:s T-3/T-0-trösklar och mottagarlogik (FristVarselJob.php:55-133) har NOLL tester; GallringJob otestad (men GallringService är testad)",
+  "ÖVRIGT OTESTAT I hubs_arende: Notification/Notifier, alla Db-mappers (mockas alltid), alla Migrations, Settings/AdminStatus+AdminSection, SigneringStub (hela signeringsvägen saknar test), EdiariumStub (endast indirekt)",
+  "sdkmc BACKEND-ADDITIONS HAR NOLL AUTOMATISKA TESTER: inga test-kataloger under hubs_start/backend-additions (verifierat med glob) — SummaryService, MeetingService, SecureMeetingService, InflodeFeedService, TeamService, FavoriterService m.fl. testas enbart manuellt/via GUI",
+  "FRONTEND: ~83 av ~90 Vue-komponenter otestade — hela ärendekortsytan (ArendeKort, ArendeZon, MinaArenden, AttHanteraSektion, AttTaEmotSektion/Rad, TilldelningBand, NastaAtgardKnapp, MinDagHeader, EjKoppladSektion/Rad), fördelningsytan (FordelningsVy, OmfordelaModal, FordelaTill, UtredarLast, KorgValjare), grindar utom Commit/Avsluta (GallringsGrind, KopplaValjare, TreservaKvittens, FavoritValjare), MeetingWizard, OnboardingTour, ProcessStepper, FristPanel/FristChip, Dagspulsen, EnhetschattPanel, SekretessRad samt SAMTLIGA toppnivå-widgets (Widget*, QueueSection, DagensMoten, SystemHalsa, CommandPalette, PersonaSwitcher, HeaderBar, ActionBar, App.vue, Start.vue)",
+  "FRONTEND-SERVICES OTESTADE: api.js utom skapaArende (dvs. commitToTreserva, transitionsanrop, fetchArendeSummary m.m. otestade), icons.js, arendeFlow.js, personas/personaConfig, demoWidgets, appProvenance, tones, widgetApps",
+  "INGEN AUTOMATISERAD E2E/GUI-TESTNING: GUI verifieras manuellt via Chrome-MCP; agenten KAN INTE logga in (BankID/lösenord förbjudet) och notify-push fryser sidan sporadiskt — HANDOVER-FORTSATTNING.md:44-55 (§2)",
+  "SMOKE LÄMNAR SKRÄP SOM --purge INTE TAR: Smoke skapar rader med conversationId-prefix 'smoke-' (Smoke.php:50,197,267) men hänvisar till 'occ hubs_arende:seed-demo --purge' för städning (Smoke.php:290) — purge filtrerar dock ENBART 'demo-%' (DemoSeedService.php:44,153), så ca 9 smoke-rader per körning blir kvar tills dev15-reset.sh eller manuell SQL körs",
+  "EFEMÄRITETS-GOTCHA (HANDOVER §1, rad 40-42): libresign-appen, apk-paket (openjdk21, poppler-utils) och ALLA apps/sdkmc-tillägg försvinner vid container-recreate/itsl deploy — måste bakas in i imagen/upstream; sdkmc-additionerna är alltså deployade men INTE persistenta",
+  "DEPLOY-GOTCHAS (HANDOVER §3+§6): cache-bust kräver info.xml-versionbump + occ config:app:set installed_version + occ upgrade; tar-pipe och verify-anrop MÅSTE separeras (annars klobbras pipen); OCS terminal {action} binder ej på POST i NC31 (workaround actionFromUri); Deck/Calendar soft-delete kräver deleted_at IS NULL-filter; numerisk uid blir PHP-int-nyckel (array_map strval)",
+  "dev15-reset.sh LÄMNAR MEDVETET KVAR föräldralösa Talk-diskussionsrum, Deck-kort och kalenderobjekt (script-kommentar rad 32-34) — osynliga i klienten men kvar i DB; säker radering kräver motorns teardown som inte finns",
+  "INAKTUELL DOKUMENTATION AV TESTRÄKNING: HANDOVER §3 rad 66-67 säger '49 jest / 55 phpunit', tests/README.md:47 säger '25 tester' — verkligt läge: 95 jest-tester (13 spec-filer) och 88 phpunit-testmetoder (17 filer; uppgiftens siffra 87 kan bero på räknesätt, grep av 'public function test' ger 88)",
+  "phpunit körs lokalt endast via composer:2-dockerimage (ingen PHP på Windows-hosten) — HANDOVER §3 rad 67; sviten är helt mock-baserad, dvs. inga integrationstester mot riktig DB/NC någonstans",
+  "TODO[konfig] i produktion-kritisk väg: enhet→grupp-mappningen i authz är TODO med fail-closed-default (ArendeService.php:2044); externa forward-anropet i sagan har placeholder (ArendeService.php:2735)"
+ ]
+}

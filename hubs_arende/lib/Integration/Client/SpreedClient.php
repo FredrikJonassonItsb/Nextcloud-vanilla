@@ -126,6 +126,39 @@ class SpreedClient {
     }
 
     /**
+     * Add the case TEAM (circle) as a participant to the room — the presentation
+     * link that lists the room as a team resource (Contacts team view) and enables
+     * @team-mention. NO authorization widening: the team's only member is the
+     * per-case access group whose users are already direct participants; Talk adds
+     * a marker attendee (actorType='circles') + skips existing users.
+     * POST /room/{token}/participants {newParticipant: <circle singleId>, source: 'circles'}.
+     *
+     * @return bool true if attempted, false on NO-OP.
+     */
+    public function addCircleParticipant(string $talkToken, string $circleSingleId): bool {
+        if (!$this->isAvailable()) {
+            $this->noop('addCircleParticipant', $talkToken);
+            return false;
+        }
+        if ($circleSingleId === '') {
+            return false;
+        }
+
+        $this->ocsRequest('POST', self::API_BASE . '/' . rawurlencode($talkToken) . '/participants', [
+            'newParticipant' => $circleSingleId,
+            'source' => 'circles',
+        ], $talkToken);
+
+        $this->logger->info('hubs_arende: SpreedClient.addCircleParticipant', [
+            'app' => 'hubs_arende',
+            'talkToken' => $talkToken,
+            'teamId' => $circleSingleId,
+        ]);
+
+        return true;
+    }
+
+    /**
      * Remove a user from an existing room (revoke a co-handläggare). Talk removes
      * by attendeeId, so we look the user's attendeeId up first; an absent user is a
      * graceful no-op. DELETE /room/{token}/attendees.

@@ -200,8 +200,8 @@ const store = {
 	 * card reads another and the flikar render forever-empty). Components MUST call
 	 * with arende.triageRef || arende.dnr and read full[that same key].
 	 */
-	async loadArende(ref) {
-		if (state.arende.full[ref]) {
+	async loadArende(ref, force = false) {
+		if (!force && state.arende.full[ref]) {
 			return state.arende.full[ref]
 		}
 		try {
@@ -327,7 +327,11 @@ const store = {
 			const s = await api.fetchFordelningSummary()
 			state.arende.fordelning = { ...s, loading: false }
 		} catch (e) {
+			// Fel får inte sväljas tyst (audit 2026-07-07): en tom fördelningsvy
+			// utan förklaring ser ut som "inget att fördela". Fel-bannern i
+			// MinaArenden plockar upp state.error.
 			state.arende.fordelning.loading = false
+			state.error = e
 		}
 	},
 
@@ -375,7 +379,14 @@ const store = {
 			if (!nytt || !(nytt.hubsCaseId || nytt.id)) {
 				return { ok: false, error: (nytt && (nytt.error || nytt.reason)) || 'skapa_misslyckades' }
 			}
-			state.arende.arenden.unshift(nytt)
+			// DEDUP: motorn är idempotent (dubbelklick returnerar SAMMA ärende) —
+			// unshifta aldrig ett kort som redan ligger i listan, annars visas
+			// samma ärende som två kort tills nästa summary-poll.
+			const nyckel = nytt.hubsCaseId || nytt.id
+			const finnsRedan = state.arende.arenden.some((a) => (a.hubsCaseId || a.id) === nyckel)
+			if (!finnsRedan) {
+				state.arende.arenden.unshift(nytt)
+			}
 			if (payload.id) this.removeInflode(payload.id)
 			return { ok: true, arende: nytt }
 		}

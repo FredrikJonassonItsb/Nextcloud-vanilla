@@ -356,9 +356,12 @@ export async function fetchAppointmentConfigs() {
  */
 export async function fetchArendeSummary() {
 	if (DEMO) return ssDemo.fetchArendeSummary()
-	// 🔌 LIVE: hubs_arende OCS — GET /arende-summary (Arende#summary).
+	// 🔌 LIVE: hubs_arende OCS — GET /arende-summary?mine=1 (Arende#summary).
 	// Dashboard aggregate (counts + frist-färger, aldrig innehåll).
-	const res = await axios.get(HUBS_ARENDE_OCS('/arende-summary'))
+	// mine=1 ⇒ MEDLEMSBASERAT: "Mina ärenden" = ärenden där JAG finns i
+	// medlemsledgern (krets/handläggare/co/observatör) — inte hela enheten.
+	// Gruppledarens fördelningsvy läser hela enheten via /fordelning-summary.
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende-summary'), { params: { mine: '1' } })
 	return ocsData(res)
 }
 
@@ -589,6 +592,230 @@ export async function tilldela(ref, uid) {
 	// DEMO har ingen tilldela-stub → optimistisk no-op (samma mönster som inflodeAction).
 	if (DEMO) return { ok: true, ref, uid }
 	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/tilldela'), { uid })
+	return ocsData(res)
+}
+
+/**
+ * Skapa YTTERLIGARE en chatt i ärenderummet (1:n — t.ex. ett separat
+ * samverkansrum). Motorn skapar Talk-rummet med ärendets AKTIVA åtkomstlista
+ * som deltagare, registrerar en talk_room-pekare (gallras med ärendet) och
+ * lägger ärendets TEAM som deltagare så chatten listas på teamsidan.
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @param {?string} namn valfritt rumsnamn (pseudonymt hubsCaseId om utelämnat)
+ * @return {Promise<{ok:boolean, talkToken:?string}>}
+ */
+export async function skapaArendeChatt(ref, namn = null) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/talkrum (Arende#laggTillTalkrum).
+	if (DEMO) return { ok: true, talkToken: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/talkrum'), { namn })
+	return ocsData(res)
+}
+
+/**
+ * Sök användare via plattformens STANDARD-autocomplete (samma källa som
+ * delnings-/omnämnande-väljarna) — handläggaren ska aldrig behöva skriva
+ * ett exakt användar-id (Fredrik 2026-07-07).
+ * @param {string} search fritext (namn eller id)
+ * @return {Promise<Array<{uid:string, namn:string}>>}
+ */
+export async function sokAnvandare(search) {
+	if (DEMO) return []
+	const res = await axios.get(generateOcsUrl('core/autocomplete/get'), {
+		params: { search, itemType: '', itemId: '', shareTypes: [0], limit: 20 },
+	})
+	return (ocsData(res) || []).map((p) => ({ uid: p.id, namn: p.label || p.id }))
+}
+
+// ---------------------------------------------------------------------------
+// PARTSREGISTRET — ärendets parter (motorns enda PII-tabell; Parter-fliken).
+// PII i svaren är AVSEDD för behörig handläggare (authz i motorn via
+// ArendeService::show; invarianten är behörighetsgränsen, inte döljning).
+// Uppslag går via FolkbokforingPort (stub på dev15; Navet via Frends i prod).
+// ---------------------------------------------------------------------------
+
+/**
+ * Ärendets parter (barn, vårdnadshavare, anmälare …) ur partsregistret.
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @return {Promise<Array<object>>} parter (kan vara tom)
+ */
+export async function fetchArendeParter(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/parter (Part#parter).
+	if (DEMO) return []
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/parter'))
+	return (ocsData(res) || {}).parter || []
+}
+
+/**
+ * Slå upp en person i folkbokföringen (Navet) och skriv in i partsregistret.
+ * Ändamålet är obligatoriskt (journalförs; SoLPuL-nödvändighet, K-NAV-4.2).
+ * @param {string} ref ärendereferens
+ * @param {{personnummer:string, roll:string, andamal:string, inkluderaVardnadshavare?:boolean}} payload
+ * @return {Promise<{ok:boolean, part:?object, vardnadshavare:Array, relationer:Array}>}
+ */
+export async function uppslagPart(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/uppslag (Part#uppslag).
+	if (DEMO) return { ok: true, part: null, vardnadshavare: [], relationer: [] }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/uppslag'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Lägg till en part manuellt (utan folkbokföringsuppslag). Skydd är
+ * OBLIGATORISKT — fail-closed, motorn avvisar tomt/okänt värde.
+ * @param {string} ref ärendereferens
+ * @param {{roll:string, skydd:string, namn?:string, personnummer?:string, adress?:string, kontakt?:string}} data
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function skapaPartManuell(ref, data) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part (Part#laggTill).
+	if (DEMO) return { ok: true, part: { id: 0, ...data, kalla: 'manuell' } }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part'), data)
+	return ocsData(res)
+}
+
+/**
+ * Uppdatera en befintlig part mot folkbokföringen (re-uppslag på lagrat pnr) —
+ * rättelse-garantin K-NAV-4.4. Ändamålet är obligatoriskt.
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @param {string} andamal ändamål med uppslaget (journalförs)
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function uppdateraPartFranNavet(ref, id, andamal) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/{id}/uppdatera (Part#uppdatera).
+	if (DEMO) return { ok: true, part: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id)) + '/uppdatera'), { andamal })
+	return ocsData(res)
+}
+
+/**
+ * Ta bort en part ur partsregistret (journalförs).
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @return {Promise<{ok:boolean}>}
+ */
+export async function taBortPart(ref, id) {
+	// 🔌 LIVE: hubs_arende OCS — DELETE /arende/{ref}/part/{id} (Part#taBort).
+	if (DEMO) return { ok: true }
+	const res = await axios.delete(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id))))
+	return ocsData(res)
+}
+
+// ---------------------------------------------------------------------------
+// HANDLING-FRÅN-MALL (fas 1) — skapa en ifylld handling ur mallbiblioteket.
+// Motorn läser mallen ur den delade mallmappen, fyller ärendedata (register +
+// partsregister, skyddsgrindat) och lägger dokumentet i ärenderummets akt.
+// ---------------------------------------------------------------------------
+
+/**
+ * Mallbibliotekets dokumentmallar (för mall-väljaren).
+ * @param {string} ref ärendereferens (authz)
+ * @return {Promise<{ok:boolean, tillganglig:boolean, mallar:Array<{id:string, namn:string, mapp:string}>}>}
+ */
+export async function fetchArendeMallar(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/mallar (Handling#mallar).
+	if (DEMO) return { ok: true, tillganglig: false, mallar: [] }
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/mallar'))
+	return ocsData(res)
+}
+
+/**
+ * Förifyllnadsförslag för handlingen: fält ur registret + partsregistret,
+ * skyddsgrindade (K-NAV-6.1 — varnade fält är tomma med förklaring).
+ * @param {string} ref ärendereferens
+ * @return {Promise<{ok:boolean, falt:Array, skyddsniva:string, varningar:Array}>}
+ */
+export async function fetchHandlingUtkast(ref, mallId = null) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/handling-utkast (Handling#utkast).
+	// S4: med mallId filtreras utkastet till mallens FAKTISKA fält
+	// (malldefinitionen — dialogen visar aldrig fält mallen saknar).
+	if (DEMO) return { ok: true, falt: [], skyddsniva: 'ingen', varningar: [] }
+	const params = mallId ? { mallId } : {}
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling-utkast'), { params })
+	return ocsData(res)
+}
+
+/**
+ * Generera handlingen: mall + fält → ifylld .docx i ärenderummets akt
+ * (pekare + journal; gallras med ärendet enligt policy).
+ * @param {string} ref ärendereferens
+ * @param {{mallId:string, falt:Object<string,string>}} payload
+ * @return {Promise<{ok:boolean, filnamn:string, antalErsatta:number}>}
+ */
+export async function skapaHandling(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/handling (Handling#skapa).
+	if (DEMO) return { ok: true, filnamn: 'demo-handling.docx', antalErsatta: 0 }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Ärendets MEDDELANDEN (kortets Meddelanden-flik): alla meddelanden kopplade
+ * via case:-taggen, alla kanaler/riktningar, ACL-buret till mina korgar.
+ * @param {string} hubsCaseId
+ * @return {Promise<Array<{id:number, amne:string, inkom:?string, olast:boolean, kanal:?object, deepLink:object}>>}
+ */
+export async function fetchCaseMessages(hubsCaseId) {
+	// 🔌 LIVE: sdkmc OCS — GET /case-messages?ref= (OCS\CaseMessages#index).
+	// DEMO: fliken faller tillbaka på fixture-kortets inline-meddelanden.
+	if (DEMO) return []
+	const res = await axios.get(SDKMC_OCS('/case-messages'), { params: { ref: hubsCaseId } })
+	return ocsData(res).meddelanden || []
+}
+
+/**
+ * Ärendets bokade MÖTEN (kortets Möten-flik): kommande + genomförda, matchade
+ * på bokningens dnr-märkning i kalendern.
+ * @param {string[]} refs dnr + hubsCaseId
+ * @return {Promise<{kommande:object[], genomforda:object[]}>}
+ */
+export async function fetchArendeMeetings(refs) {
+	// 🔌 LIVE: sdkmc OCS — GET /arende-meetings?refs= (OCS\Meeting#forCase).
+	if (DEMO) return { kommande: [], genomforda: [] }
+	const res = await axios.get(SDKMC_OCS('/arende-meetings'), { params: { refs: (refs || []).filter(Boolean).join(',') } })
+	const d = ocsData(res)
+	return { kommande: d.kommande || [], genomforda: d.genomforda || [] }
+}
+
+/**
+ * Ärendets HÄNDELSEJOURNAL (kortets Historik & beslut-flik): motorns audit-spår
+ * (skapad/steg/tilldelad/medlem/registrerad/rum/kopplad), äldst först.
+ * @param {string} ref hubsCaseId eller dnr
+ * @return {Promise<Array<{typ:string, detalj:?object, aktorUid:string, tid:?string}>>}
+ */
+export async function fetchArendeHistorik(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/historik (Arende#historik).
+	if (DEMO) return []
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/historik'))
+	return ocsData(res).handelser || []
+}
+
+/**
+ * Ärendets BEVAKNINGAR (kortets Bevakningar-flik): läs-projektion av ärendets
+ * Deck-kort (titel/frist/kolumn/etiketter) via motorn — handläggaren behöver
+ * ingen egen Deck-behörighet.
+ * @param {string} ref hubsCaseId eller dnr
+ * @return {Promise<Array<{titel:string, frist:?string, kolumn:?string, etiketter:string[]}>>}
+ */
+export async function fetchArendeBevakningar(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/bevakningar (Arende#bevakningar).
+	if (DEMO) return []
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakningar'))
+	return ocsData(res).bevakningar || []
+}
+
+/**
+ * Lägg till en kollega i ärenderummet (co-handläggare/observatör) — motorn
+ * uppdaterar ledger, per-case-grupp, chattdeltagande och notifierar kollegan.
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {string} uid kollegans användar-id
+ * @param {string} [roll] co_handlaggare (default) | observator
+ * @return {Promise<{ok:boolean}>}
+ */
+export async function laggTillMedlem(ref, uid, roll = 'co_handlaggare') {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/medlem (Arende#laggTillMedlem).
+	if (DEMO) return { ok: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/medlem'), { uid, roll })
 	return ocsData(res)
 }
 

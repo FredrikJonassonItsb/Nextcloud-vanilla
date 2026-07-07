@@ -1,0 +1,58 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/18 Avslutning av utredning eller ärende.docx",
+    "titel": "18 Avslutning av utredning eller ärende",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Barn och familj / Mottagning]",
+        "[Namn, titel]",
+        "[ange vilken utredning och när den inleddes]",
+        "[ange vilken insats som upphör och beslutsdatum]",
+        "[samtliga insatser avslutade, inget kvarstående behov inom denna enhet]",
+        "[ÅÅÅÅ-MM-DD]",
+        "[ange insats]",
+        "[beskriv]",
+        "[Sammanfatta i sak vad som gjorts, vad bedömningen landat i och varför ärendet/utredningen kan avslutas. Håll det kort och sakligt — anteckningen ska kunna läsas fristående.]",
+        "[beskriv behovet och hur det ska mötas]",
+        "[ange mottagare, t.ex. annan kommun, region/hälso- och sjukvård, öppenvård]",
+        "[Vad lämnas över, till vem, när och på vilken grund. Ange kontaktväg och ansvarig hos mottagaren.]",
+        "[hur, när, barnets inställning]",
+        "[vilka, hur, när]",
+        "[ange skäl, t.ex. skydds- eller sekretesskäl]",
+        "[Återge barnets egna synpunkter, anpassat efter ålder och mognad. Om barnet inte kunnat/velat uttrycka sig, notera det.]",
+        "[ange handlingstyp och bevarandegrund]",
+        "[ange gallringsfrist och tidpunkt]",
+        "[Ange det utfall/beslut som registrerats i facksystemet]",
+        "[referens/tidpunkt]",
+        "[Ärendet/utredningen/insatsen avslutas enligt ovan]",
+        "[delegationspunkt/ordningsnr]",
+        "[Delegationspunkt / — om ej tillämpligt]",
+        "[Personakt / Treserva dnr]",
+        "[Bevaras / gallras enligt dokumenthanteringsplan]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "datum-for-avslut",
+            "etikett": "Datum för avslut",
+            "token": "[ÅÅÅÅ-MM-DD]"
+        },
+        {
+            "id": "kort-sammanfattning-av-arendet-och-grunden-for-avslutet",
+            "etikett": "Kort sammanfattning av ärendet och grunden för avslutet",
+            "token": "[Sammanfatta i sak vad som gjorts, vad bedömningen landat i och varför ärendet/utredningen kan avslutas. Håll det kort och sakligt — anteckningen ska kunna läsas fristående.]"
+        },
+        {
+            "id": "beskrivning-av-overlamning",
+            "etikett": "Beskrivning av överlämning",
+            "token": "[Vad lämnas över, till vem, när och på vilken grund. Ange kontaktväg och ansvarig hos mottagaren.]"
+        },
+        {
+            "id": "barnets-synpunkter-pa-avslutet",
+            "etikett": "Barnets synpunkter på avslutet",
+            "token": "[Återge barnets egna synpunkter, anpassat efter ålder och mognad. Om barnet inte kunnat/velat uttrycka sig, notera det.]"
+        }
+    ]
+}

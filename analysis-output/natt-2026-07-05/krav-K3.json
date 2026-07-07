@@ -1,0 +1,230 @@
+{
+ "kapitel": 3,
+ "kapitelRubrik": "ÄRENDE-MOTORN (register, saga, hålla-ihop, ArendeTyp)",
+ "krav": [
+  {
+   "id": "K-3.1",
+   "rubrik": "hubsCaseId som enda joinnyckel",
+   "beskrivning": "hubsCaseId (UUID v4) SKA vara enda joinnyckeln för hela stacken: mintas av motorn i saga-steg R1, är PK i registret, lever utan dnr och bärs av varje objekt. En token gör 'öppna ärende' till O(1)-uppslag i stället för fan-out över sju appar.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.2",
+   "rubrik": "Identitets-trippeln hålls isär",
+   "beskrivning": "Tre identiteter SKA hållas isär: conversationId (föds vid inflöde, ägs av sdkmc, provenans-ankare och 14-dagars-klockans start, finns som IMAP Message-Id/MessageThread), hubsCaseId (föds vid ärendeskapande) och dnr (föds vid facksystem-registrering). hubsCaseId↔dnr är 1:n — syskonfall ger ett hubsCaseId per barn som delar conversationId, vilket kräver conversationIds[] på varje registerrad.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] (conversationId) / [BYGGS]",
+   "beroenden": "Löser GAP-005 och GAP-002 (enligt K-1.2)"
+  },
+  {
+   "id": "K-3.3",
+   "rubrik": "Registret som proper relationell app-DB (inte Tables)",
+   "beskrivning": "Registret SKA implementeras som proper relationell app-DB via QBMapper/Migration/ISchemaWrapper — inte Nextcloud Tables, som underkänns. Mönstret finns redan att kopiera i sdkmc (ItslTagMapper extends QBMapper, Types::JSON, addUniqueIndex, soft-delete, getOrCreate).",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS] → ja",
+   "beroenden": "K-2.13 (Tables underkänns); beslut B-DL-1 i beslutsloggen §9"
+  },
+  {
+   "id": "K-3.4",
+   "rubrik": "Placering: starta i sdkmc-DB, ExApp-rent schema, mål ExApp-DB",
+   "beskrivning": "Registret SKA starta i alternativ (b) sdkmc:s NC-app-DB men med ExApp-rent schema (inga FK:er mot oc_*-tabeller, all skrivning via ETT service-lager) så att ett senare lyft till alternativ (c) egen ExApp-DB blir en data-/adapter-migrering, inte en omskrivning. Tidpunkten för (c) beror på affärs-/licensbeslut om proprietär M4.",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS] (start b, mål c)",
+   "beroenden": "Beslut B-DL-1 i beslutsloggen §9; licensbeslutet B-LIC-1 styr om/när lyft till (c) sker"
+  },
+  {
+   "id": "K-3.5",
+   "rubrik": "Registrets rad-shape",
+   "beskrivning": "Registerraden SKA bära: hubsCaseId (PK), triageRef, barnRef/objektRef (pseudonym — aldrig klartext-PII), enhet, agareUid, status, steg, dnr, provenanceState, conversationIds[], two-way-pekarna (groupfolderId/deckBoardId/deckCardId/talkToken/calendarObjUri/caseTagId), retentionState, fristDue (speglad ur facksystemet, ej självständigt räknad), flaggor[] och skapad. Pekarna gör NC-objekten till projektioner; fristDue får aldrig vara lokalt räknad sanning.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-018 (fristDue speglas ur facksystemet)"
+  },
+  {
+   "id": "K-3.6",
+   "rubrik": "Single-writer: endast ArendeService skriver registret",
+   "beskrivning": "Registret SKA skrivas uteslutande av motorn (ArendeService), aldrig av handläggaren rått eller av hubs_start, och controllers rör aldrig Mapper direkt. Single-writer-lagret gör dessutom lyftet (b)→(c) till en utbytt persistens-adapter.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Samma disciplin som befintliga taggmotorn; möjliggör K-3.4-lyftet"
+  },
+  {
+   "id": "K-3.7",
+   "rubrik": "Fältallokering intern DB vs Nextcloud (enradsregeln)",
+   "beskrivning": "Pekar-/koordinations-state, routing-/matchnings-state, ArendeTyp-config, frist-spegling, append-only kvittens-/audit-logg och idempotens-/lås-nycklar SKA bo i intern DB, medan användar-vänd data behålls i NC-objekten. Enradsregeln: det användaren rör → NC; det motorn räknar → intern DB. case:-taggen bor där objektet bor.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.8",
+   "rubrik": "Skapa ärende som distribuerad saga",
+   "beskrivning": "'Skapa ärende' SKA implementeras som en distribuerad saga, inte en DB-transaktion, eftersom stegen spänner över olika persistenslager — ingen IDBConnection-transaktion kan rulla tillbaka ett Spreed-rum eller en mapp.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Exakt innebörden av GAP-057"
+  },
+  {
+   "id": "K-3.9",
+   "rubrik": "Sagans led R1–R9",
+   "beskrivning": "Sagan SKA köra leden: mint → INSERT register-rad → systemtagg case:{id} → groupfolder+ACL+Automated-Tagging-regel → Deck-kort → Spreed-rum → kalender → 14-dagars-klocka bunden till inkom-datum → tagga utlösande meddelande via befintliga ItslTagService->tagMessage() → UPDATE registret med alla pekare (commit-punkt). Återanvänder maximalt det som redan finns (meddelandetaggning, TagFileController, native Deck/Spreed/groupfolders/CalDAV).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS] (R9 tagg-led [FINNS])",
+   "beroenden": "Deck, Spreed, Groupfolders, CalDAV, ItslTagService (sdkmc)"
+  },
+  {
+   "id": "K-3.10",
+   "rubrik": "Kompensering per forward-steg",
+   "beskrivning": "Varje forward-steg i sagan SKA ha en kompenserande motåtgärd; misslyckas steg n körs kompensering n-1…1 i omvänd ordning. Kompenseringen skrivs och verifieras en gång (en motor, inte åtta) — allt-eller-inget, eftersom halvskapade ärenden är en sekretess- och konsistensrisk.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.11",
+   "rubrik": "Idempotensnyckel + rad-lås",
+   "beskrivning": "Sagan SKA bära en idempotensnyckel (utlösande conversationId) så att dubbelklick/retry inte föder två ärenden. Idempotens plus rad-lås på hubsCaseId krävs även vid fördelning, vilket stänger GAP-057-fönstret. Mönstret finns redan (findUniqueImapLabel/getOrCreate).",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-057 (fördelnings-race)"
+  },
+  {
+   "id": "K-3.12",
+   "rubrik": "Graceful skip av grannberoende saga-steg",
+   "beskrivning": "Varje grannberoende saga-steg SKA hoppas över (graceful) om grannmodulen saknas, utan att invarianterna bryts; M4:s kärnlöfte kräver bara M0+M1. Bygger på det verifierade AppDetectionService-mönstret som måste utökas till funktions-detektering.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] / [BYGGS]",
+   "beroenden": "AppDetectionService (K-2.6-utökningen); modulmodellen M0–M4"
+  },
+  {
+   "id": "K-3.13",
+   "rubrik": "dnr-parning frikopplad från skapa-sagan",
+   "beskrivning": "dnr-parningen SKA INTE vara del av skapa-sagan utan ske senare/asynkront: vid 'För över' anropas facksystem-commit, och först vid verifierad callback {hubsCaseId, dnr} skrivs dnr + provenanceState='registrerad' + dnr-alias-tagg + speglad fristDue + retentionState='gallras_efter_commit'. Retention binds aldrig till tid eller kryssruta.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "FacksystemCommitService (K-3.22); GAP-007 (gallring bunden till verifierad commit)"
+  },
+  {
+   "id": "K-3.14",
+   "rubrik": "case:-propagering med två bärartyper",
+   "beskrivning": "case:{id} SKA propageras med två bärartyper: tagg på taggbara objekt (meddelande via ItslTagService, fil via TagFileController/ISystemTagManager, löpande via Flow Automated Tagging) samt register-pekare för icke-taggbara objekt (Deck-kort, Talk-rum, kalender), eftersom dessa inte kan fil-taggas.",
+   "typ": "funktion",
+   "statusIDok": "[FINNS] (taggbärare) / [BYGGS] (pekare)",
+   "beroenden": "ItslTagService, TagFileController, Flow Automated Tagging"
+  },
+  {
+   "id": "K-3.15",
+   "rubrik": "case:-taggen email-/funktionsadress-scopad",
+   "beskrivning": "case:-taggen SKA vara email-/funktionsadress-scopad, inte user-scopad, så att taggen delas av alla handläggare med korgen; trådsammanslagning gör en tagg på ett meddelande synlig på hela tråden. Verifierat: ItslTag extends Mail\\Tag byter userId mot emailAddress; tagMessage() dubbelskriver (IMAP-flagga + DB-spegling) och dispatchar MessageFlaggedEvent.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.16",
+   "rubrik": "Gränsdragning Flow vs programmatiskt",
+   "beskrivning": "Flow SKA användas för fil-/tagg-centriska, deklarativa uppgifter (auto-fil-taggning, retention-tagg vid commit, File Access Control, Talk-systemmeddelanden) medan icke-fil-objekt och fler-objekts-orkestrering görs programmatiskt (sagan, meddelandetaggning, fördelnings-ACL, facksystem-commit). Flow-registreringen finns men är smal — RegisterOperationsListener laddar idag bara loa3.",
+   "typ": "arkitektur",
+   "statusIDok": "[FINNS] / [KONFIG]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.17",
+   "rubrik": "Reconciliation-loop mot dinglande pekare",
+   "beskrivning": "En periodisk reconciliation-loop (GAP-056) SKA verifiera att (1) varje pekare existerar, (2) varje case:X-objekt har registerrad och (3) conversationIds[] matchar de meddelanden som bär case:X. Placering: lib/BackgroundJob/ArendeReconciliationJob.php, med mönster från ItslTagService->processAllPendingDeletions() driven av DeleteTagsJob. Motiv: token bärs på två ställen och kan driva isär.",
+   "typ": "drift",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "GAP-056; K-2.17 (BackgroundJob-mönstret)"
+  },
+  {
+   "id": "K-3.18",
+   "rubrik": "EN generisk motor parameteriserad av ArendeTyp-registry",
+   "beskrivning": "Det SKA vara EN generisk motor / EN saga, parameteriserad av en datadriven ArendeTyp-registry plus ortogonala flaggor — inte åtta kodflöden och inte ett odifferentierat flöde. Formel: en motor · en saga · N config-rader · ~3 hooks · M flaggor; ny ärendetyp = ny config-rad, inte ny PHP.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Symmetriskt med befintliga MessageTypeService"
+  },
+  {
+   "id": "K-3.19",
+   "rubrik": "ArendeTyp-radens fält (sdkmc_arende_typ)",
+   "beskrivning": "ArendeTyp-raden SKA bära: arendeTypId (PK), displayName, kanalHint[], defaultEnhet/funktionsadress, forstaAtgard + forstaAtgardMall + pliktGrind, kopplingDefault, fristPolicy{typ, ankare, speglasUrTreserva}, aclProfil + sekretessNiva, diariePlikt, dhpHandlingstyp + retentionMall, frendsModul + frendsMappning, preSagaHook/postCommitHook samt partsModell. Seedas med 8 rader; registry-raden ÄR dokumentationen av handläggningsregeln — reviderbar, versionerbar och granskningsbar av kommunjurist.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Refereras av K-4.20 (seed av 8 baskategorier); utökas med 7 fält enligt K-5.2/K-1.26"
+  },
+  {
+   "id": "K-3.20",
+   "rubrik": "Kat 6 och Kat 8 via deklarerade hooks",
+   "beskrivning": "Två kategorier SKA realiseras via deklarerade hooks i samma motor, ingen fork: Kat 6 (LVU/LVM) vänder ordningen med preSagaHook='diariefor_direkt' (led 0 före register-INSERT) + diariePlikt='direkt' + fristPolicy.typ='domstol'; Kat 8 (familjerätt) får partsModell='flerpartsärende' + aclProfil='familjeratt_inre_sekretess' + postCommitHook='familjeratt_yttrande'. Sagans kompensering förblir oförändrad.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.21",
+   "rubrik": "Cross-cutting-flaggor på instansen, inte typen",
+   "beskrivning": "Flaggorna akut_fara, barn_berörs, skyddade_personuppgifter, våld_hot och frist_kritisk SKA ligga på ärendeinstansen (flaggor[]), inte på typen, beräknas parallellt/oberoende och bäras som imap_label-taggar (t.ex. flag:akut_fara). Dubbelmärkning får aldrig tvinga ett kategorival, och skyddade_personuppgifter SKA överstyra ACL hårdare oavsett kategori.",
+   "typ": "funktion",
+   "statusIDok": "[BYGGS]",
+   "beroenden": ""
+  },
+  {
+   "id": "K-3.22",
+   "rubrik": "FacksystemCommitService med per-produkt-konnektorer",
+   "beskrivning": "TreservaCommitService SKA generaliseras till FacksystemCommitService med per-produkt-konnektorer; ArendeTyp.frendsModul väljer flöde och frendsMappning väljer payload-schema. Mönster: commitToFacksystem({hubsCaseId, arendetyp, payload}) → verifierad callback → provenans-flip + dnr-parning + retention. Per-produkt-konnektorerna motsvarar 5–10× GAP-019 och är de separat prissatta/licensierbara artefakterna.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS] / [EXTERN]",
+   "beroenden": "GAP-019 (Treserva-konnektorn som referens); K-3.13 (callback-flödet); vidareutvecklas i K-5.10–K-5.12"
+  },
+  {
+   "id": "K-3.23",
+   "rubrik": "commitDestination som NOT NULL-constraint",
+   "beskrivning": "commitDestination-invarianten SKA hävdas som NOT NULL-constraint i sdkmc_arende_typ — utan icke-null destination blir Hubs tyst de-facto-SoR (skuggregister utan gallringsklocka). Proper DB stärker invarianten på schemanivå.",
+   "typ": "arkitektur",
+   "statusIDok": "[BESLUT KRÄVS] → NOT NULL",
+   "beroenden": "Beslut B-INV-1 i beslutsloggen §9; samma invariant som K-1.6/K-2.19/K-4.21/K-5.6"
+  },
+  {
+   "id": "K-3.24",
+   "rubrik": "Terminerande 'föds inte'-utfall i motorn",
+   "beskrivning": "Motorn SKA stödja terminerande 'föds inte'-utfall: vissa inflöden (säkerhetsskydd, visselblåsning) dirigeras via commitDestination='triage_forward'/'karantan'/'extern_myndighet', sagan terminerar FÖRE register-INSERT och inflödet loggas som hanterat utan att ärende-objekt eller case:-tagg hamnar i fel akt. Felkoppling är en sekretessincident, inte ett UX-fel.",
+   "typ": "sakerhet",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Detaljeras i K-5.20–K-5.23 (säkerhetsskydd) och K-4.9/K-4.19; besluts-koppling B-SEC-1 §9"
+  },
+  {
+   "id": "K-3.25",
+   "rubrik": "Retention enbart via verifierad callback + TF-paus-hook",
+   "beskrivning": "Retention SKA sättas enbart av verifierad facksystem-callback (retentionState='gallras_efter_commit'), aldrig av tid eller kryssruta; Hubs-kopian gallras på tid efter commit medan originalet bevaras i facksystemet → e-arkiv. Retention-paus vid utlämnandebegäran (TF) SKA ha en faktisk hook — idag är det ett enum-värde utan trigger (GAP-031).",
+   "typ": "juridik",
+   "statusIDok": "[FINNS] (retention-motor) / [BYGGS] (bindning)",
+   "beroenden": "GAP-007, GAP-031; K-3.13 (callback); besluts-koppling B-RET-1 §9"
+  },
+  {
+   "id": "K-3.26",
+   "rubrik": "Kodplacering av motorns klasser",
+   "beskrivning": "Motorns klasser SKA placeras i M0/sdkmc-core: lib/Service/ArendeService.php (single writer + saga + kompensering + idempotens), ArendeMatchService.php (inkommande → ärende via kaskad case-tagg→conversationId→SSN + server-side konfidenströskel), FacksystemCommitService.php, lib/Db/Arende.php + ArendeMapper.php, lib/Controller/ArendeController.php, lib/BackgroundJob/ArendeReconciliationJob.php samt migration Version02xxxxCreateArendeTable.php.",
+   "typ": "arkitektur",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "Förutsätter M0-uppbrytningen (K-3.28)"
+  },
+  {
+   "id": "K-3.27",
+   "rubrik": "OCS-routes på /api/v2/-konventionen",
+   "beskrivning": "OCS-routes SKA registreras på den verifierade /api/v2/-konventionen: POST /api/v2/arende, GET /api/v2/arende/{hubsCaseId|dnr}, GET /api/v2/arende-summary, POST /api/v2/arende/{ref}/tilldela, POST /api/v2/treserva/commit. Designdokumentens /api/v1/-prefix är felaktigt. hubs_start ska anropa dessa — idag finns 27 OCS-anrop i api.js mot routes som ännu inte existerar.",
+   "typ": "integration",
+   "statusIDok": "[BYGGS]",
+   "beroenden": "hubs_start/src/services/api.js (klientsidan väntar på dessa routes)"
+  },
+  {
+   "id": "K-3.28",
+   "rubrik": "Bryt sdkmc i M0 + sdkmc-msg före M4-motorn",
+   "beskrivning": "sdkmc SKA brytas i M0 (sdkmc-core) + sdkmc-msg (M1) FÖRE M4-motorn byggs, och taggmotorn flyttar till M0. Det är en kod-refaktor, inte en data-migration.",
+   "typ": "beslut",
+   "statusIDok": "[BESLUT KRÄVS]",
+   "beroenden": "Beslut B-MOD-1 i beslutsloggen §9; samma krav som K-1.18/K-2.2; blockerar K-3.26-placeringen"
+  }
+ ]
+}

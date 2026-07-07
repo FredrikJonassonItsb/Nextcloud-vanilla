@@ -1,0 +1,73 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/01 Mottagen orosanmälan.docx",
+    "titel": "01 Mottagen orosanmälan",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Mottagning / Barn och familj]",
+        "[hubsCaseId / Treserva-dnr]",
+        "[Namn — eller \"okänd/anonym\", se handledning]",
+        "[T.ex. lärare, sjuksköterska, polis, granne, anhörig, barnet självt]",
+        "[Skola, hälso- och sjukvård, polis, privatperson m.m.]",
+        "[Telefon / e-post / adress om lämnad]",
+        "[ange vad som behöver klarläggas]",
+        "[ÅÅÅÅ-MM-DD hh:mm]",
+        "[beskriv]",
+        "[Namn, titel]",
+        "[Återge sakligt vad anmälaren berättar. Skriv vad som sagts/inkommit, inte din tolkning. Ta med det som är relevant för skyddsfrågan — vad har hänt, när, hur ofta, vem har uppmärksammat det, hur mår barnet.]",
+        "[Finns tidigare kännedom? Ange kortfattat]",
+        "[Öppenvård, placering, kontaktperson m.m.]",
+        "[namn, tid]",
+        "[Notera kort om något behöver beaktas direkt för barnets bästa och barnets rätt att komma till tals (Barnkonventionen).]",
+        "[Personakt / Treserva dnr]"
+    ],
+    "falt": [
+        {
+            "id": "syskon-ytterligare-barn",
+            "etikett": "Syskon/ytterligare barn",
+            "token": "[För- och efternamn]"
+        },
+        {
+            "id": "personnummer",
+            "etikett": "Personnummer",
+            "token": "[ÅÅÅÅMMDD-XXXX]"
+        },
+        {
+            "id": "arende-dnr",
+            "etikett": "Ärende/dnr",
+            "token": "[hubsCaseId / Treserva-dnr]"
+        },
+        {
+            "id": "datum-och-klockslag",
+            "etikett": "Datum och klockslag",
+            "token": "[ÅÅÅÅ-MM-DD hh:mm]"
+        },
+        {
+            "id": "mottagen-av",
+            "etikett": "Mottagen av",
+            "token": "[Namn, titel]"
+        },
+        {
+            "id": "referat-av-oron",
+            "etikett": "Referat av oron",
+            "token": "[Återge sakligt vad anmälaren berättar. Skriv vad som sagts/inkommit, inte din tolkning. Ta med det som är relevant för skyddsfrågan — vad har hänt, när, hur ofta, vem har uppmärksammat det, hur mår barnet.]"
+        },
+        {
+            "id": "tidigare-anmalningar-aktualiseringar",
+            "etikett": "Tidigare anmälningar/aktualiseringar",
+            "token": "[Finns tidigare kännedom? Ange kortfattat]"
+        },
+        {
+            "id": "pagaende-eller-avslutade-insatser",
+            "etikett": "Pågående eller avslutade insatser",
+            "token": "[Öppenvård, placering, kontaktperson m.m.]"
+        },
+        {
+            "id": "akut-kontakt-tagen-socialjour-bakjour-gruppledare",
+            "etikett": "Akut kontakt tagen (socialjour/bakjour/gruppledare)",
+            "token": "[namn, tid]"
+        }
+    ]
+}

@@ -1,0 +1,185 @@
+{
+ "omrade": "sdkmc backend-additions (hubs_start/backend-additions) — inflöde-feed, taggning/F2-spegling, case-messages, möten, summary, OCS-rutter, mailbox-ACL, efemäritet",
+ "sammanfattning": "backend-additions är additiva filer som deployas IN I den befintliga sdkmc-appen (apps/sdkmc i containern) och utgör hela server-sidan för hubs_start-dashboarden på meddelande/kontakt/möte-domänen (ärende-domänen ägs av hubs_arende; gränsen är ratificerad i MANIFEST.md rad 26-36 och sdkmc avvisar ärende-verben skapa/koppla med 400 agas_av_arende_motorn). Arkitekturen är konsekvent: tunna OCS-controllers (alla #[NoAdminRequired], 401 utan session) delegerar till en service per yta; varje läs-yta är \"graceful\" (fel ⇒ ärligt tom men giltig payload, aldrig 500, aldrig fabricerad PII). ACL-modellen är gemensam: funktionsbrevlådor via AccountItslMailboxMapper (direkt- + grupp-tilldelning) i InflodeFeedService/SummaryService/CaseMessagesService; ItslTagService är den ENDA in-place-ändrade uppströmsfilen (sdkmc 2.2.25) med F2 (läsbara namn/färg för case:-/behandlad-taggar) och F2b (best-effort-spegling till mail-appens oc_mail_tags så taggar syns i trådvyn). Kopplingskedjan är: \"Ta emot\"/koppla sätter case:-tagg i sdkmc:s egna taggtabeller (oc_sdkmc_itsl_tag/_message_tag) → inflöde-feedens filterHandled döljer raden → CaseMessagesService läser tillbaka samma taggar för kortets Meddelanden-flik. Mötesytan: SecureMeetingService orkestrerar Talk-rum (in-process RoomService, med o-autentiserad loopback-OCS som fallback) + CalDAV-event med /call/{token} i LOCATION + dnr-märkning (X-HUBS-DNR/CATEGORIES hubs-dnr-*), som MeetingService läser tillbaka för dagens möten, lobby-status och möten-per-ärende. EFEMÄRITET: apps/sdkmc RENSAS vid container-recreate/itsl deploy/docker restart; återställningskällan är hela backend-additions-katalogen (fil-för-fil med tar-receptet, MANIFEST rad 151-153), det kompletta 16-ruttersblocket i appinfo/routes-ocs-snippet.php (uttryckligen utpekad som ÅTERSTÄLLNINGS-KÄLLA, rad 11-15 — rekonstruera aldrig ur spridda snippets) samt hela ItslTagService.php (F2 förlorades i juni-wipen eftersom in-place-ändringen bara fanns i forken; uppgradering förbi 2.2.25 kräver om-applicering av F2-blocken). Application.php rörs medvetet INTE (OCS-controllers autowire:as); dashboard-widget-registreringen är utelämnad, så de tre widgetarna är i praktiken inerta tills de registreras.",
+ "formagor": [
+  "GET /api/v1/inflode-summary: rå inflöde-feed {korgar, inflode} ur användarens behöriga funktionskorgar, INBOX-only, mot mail_*-tabellerna — hubs_start/backend-additions/sdkmc/lib/Service/InflodeFeedService.php:174 (buildSummary), :269 (fetchIncomingRows)",
+  "Inflöde dedup: kollapsar dubbla INBOX-rader när en funktionskorg backas av två mail_accounts; behåller raden med preview_text, tiebreak lägsta db_id — InflodeFeedService.php:389 (dedupRows), :425 (preferRow)",
+  "Inflöde triage-filter: döljer rader som bär 'behandlad'- eller 'case:%'-tagg i sdkmc:s EGNA taggtabeller (sdkmc_itsl_message_tag ⋈ sdkmc_itsl_tag, soft-delete respekteras), FAIL-OPEN vid fel — InflodeFeedService.php:320 (filterHandled)",
+  "Inflöde innehållstyp (gap27+#19): korg-localpart auktoritativ ('orosanmalan@'→orosanmalan m.fl.), subject-heuristik som fallback (orosanm/komplett/bistånd/SIP), annars kanalens messageType — InflodeFeedService.php:524 (contentTypeFromKorg), :567 (contentTypeFromSubject)",
+  "Inflöde verified-source-badge per transportkanal (aldrig per-meddelande-LOA): SDK→'Myndighetskanal · verifierad', internal→verifierad, secure/övrigt→ej — InflodeFeedService.php:602 (identitetForChannel)",
+  "Inflöde excerpt + titel OSKRUBBADE till behörig handläggare (PII-principen: ACL är gränsen, inte maskning); endast whitespace-normalisering + 160-teckens-cap — InflodeFeedService.php:623 (previewExcerpt), :494 (titel)",
+  "Inflöde demo-gate: app-config sdkmc/hubs_start_inflode_demo='1' byter till syntetiskt dataset (14 rader, fiktiva personnummer, frist-toner) — InflodeFeedService.php:129+152 (isDemoEnabled), demo-data/InflodeDemoData.php:79 (summary)",
+  "POST /api/v1/inflode/{action}: endast meddelande-verben besvara|vidarebefordra (returnerar deepLink); ärende-verben skapa|koppla avvisas 400 {error:'agas_av_arende_motorn', owner:'hubs_arende'}; okänt verb 400 okand_atgard — Controller/OCS/InflodeFeedController.php:107-149",
+  "Taggning (in-place uppströmsfil): tagMessage/untagMessage/tagMessages/untagMessages/flagMessages med IMAP-store + MessageFlaggedEvent + sdkmc-DB — lib/Service/ItslTagService.php:246, :330, :1256, :1363, :1431",
+  "F2: itslTagMeta ger case:<uuid>→'Ärende <kort6>' (#2d7d46) och behandlad→'Behandlad' (#0969da) vid auto-create i båda create-platserna — ItslTagService.php:1245 (itslTagMeta), :263, :1282",
+  "F2b: mirrorTagToMailApp speglar Hubs-taggen in i mail-appens eget taggregister (OCA\\Mail\\Db\\TagMapper, per user) så den syns i trådvyns Taggar-sektion; best-effort, trailing-optional DI (null ⇒ enbart sdkmc-tabeller) — ItslTagService.php:85 (mirrorTagToMailApp), :71 (konstruktor-param), anropas :314 och :1331",
+  "GET /api/v1/case-messages?ref={hubsCaseId}: alla meddelanden med case:-taggen, alla kanaler/riktningar utom Trash, ACL-filtrerat till anroparens korgar (taggat meddelande i obehörig korg returneras ALDRIG), dedup på message_id, max 50 — lib/Service/CaseMessagesService.php:68 (getCaseMessages), :134 (taggedMessageIds), :161 (fetchMessageRows), Controller/OCS/CaseMessagesController.php:55",
+  "GET /api/v1/summary: DEN enda aggregationen bakom Start-vyn — counts/items/mailboxes(unread+unassigned)/watching(frånvaro-delegationer båda riktningar)/channelCoverage/maxSinceId, 20s distribuerad cache, inkrementell sinceIds-cursor — lib/Service/SummaryService.php:113 (getSummary), :199 (buildSummary), :519 (countUnread), :547 (countUnassigned), :448 (buildWatching)",
+  "GET /api/v1/receipts: kvittenser med RIKTIG MW-status mappad till skickat→levererat→läst→besvarat(+problem), ersätter 10-min-heuristiken; statusReason-felmarkör vinner alltid — Controller/OCS/SummaryController.php:152 (receipts), :237 (mapReceiptState), :57 (RECEIPT_STATE_MAP); parallell implementering i SummaryService.php:145 (buildReceipts), :808 (mapReceiptState)",
+  "GET /api/v1/recipients/search + /classify: Smart mottagare över cachad DIGG-adressbok (app-config addressBookOrganizations/Addresses) + interna korgar (ItslAccountService) + fritt värde (ssn/sms-prefill), allt server-klassificerat, max 50 — Controller/OCS/RecipientController.php:76 (search), :114 (classify), :132, :197, :248",
+  "Kanalklassificering (EN auktoritativ): suffix @sdk/@personlig/@gruppbox/@fax/@sms/.securemail → kanal+label+messageType; medborgarheuristik (e-post/personnummer→secure) — lib/Service/ChannelClassificationService.php:61 (classifyAddress), :98 (classifyRecipientValue)",
+  "POST /api/v1/secure-meeting: en server-operation = Talk-rum (in-process RoomService::createConversation, loopback-OCS-fallback) + CalDAV-VEVENT med /call/{token} i LOCATION + dnr-märkning + intents + e-post/kollega-deltagare — lib/Service/SecureMeetingService.php:92 (create), :181 (createTalkRoom), :258 (createCalendarEvent), :310 (buildIcs), Controller/OCS/SecureMeetingController.php:59",
+  "BankID-intent DURABELT per konversation (sdkmc_conv_bank_auth via ConversationBankIDAuthMapper, ej PHP-session; överlever parallella bokningar) — SecureMeetingService.php:379 (registerBankIdIntent)",
+  "GET /api/v1/meetings/today: CalDAV-sök (/call/ i LOCATION) ⋈ Talk-rumstillstånd (lobby/call-flagga/deltagare) ⋈ BankID-badge green/purple — lib/Service/MeetingService.php:71 (getTodaysMeetings), :443 (resolveRoomState), :527 (resolveBankIdState)",
+  "GET /api/v1/meetings/{token}/lobby: väntande gäster med verifierad-status ur ConversationBankIDAuth (verifierat displayName ersätter gästens) — MeetingService.php:117 (getLobby), :485 (resolveLobbyGuests)",
+  "GET /api/v1/arende-meetings?refs=dnr,hubsCaseId: ärendets möten (kommande+genomförda) ur anroparens EGNA kalendrar matchat på X-HUBS-DNR/CATEGORIES hubs-dnr-*, fönster -90/+365 dagar — MeetingService.php:163 (getCaseMeetings), :312 (extractDnr), Controller/OCS/MeetingController.php:79 (forCase)",
+  "GET /api/v1/team: enheter = NC-grupper med medlemmar (uid+displayName, roll jag/medlem), ärliga nollor för olästa/omnämnanden, best-effort enhetschatt-token via spreed getRoomByObject('room', gid) — lib/Service/TeamService.php:97 (getTeamsForUser), :215 (roomTokenForGroup)",
+  "GET /api/v1/favoriter: favorit = PEKARE (X-HUBS-SDK-REF/X-HUBS-USER-REF) i explicita favorit-adressböcker via OCP\\Contacts\\IManager; klasser a/b/c, stale-flaggning, fax-extraktion TEL;TYPE=fax — lib/Service/FavoriterService.php:102 (getFavoriter), :141 (favoriteAddressBooks), :277 (classOf), :392 (faxOf)",
+  "GET+POST /api/v1/note-to-self: egna anteckningar via spreeds NoteToSelfService/ChatManager, lazy-laddade klasser (class_exists + Server::get), läsning honest-empty, skrivning 503 när spreed saknas — lib/Service/NoteToSelfWrapperService.php:69 (list), :111 (add), Controller/OCS/NoteToSelfController.php:61, :93",
+  "GET /api/v1/arende-enrichment?talkToken=: PII-fri diskussions-summary (omnämnd-boolean via '@uid'-substring, max 2 opaka actorIds, olasta=0, aldrig meddelandekroppar) — lib/Service/ArendeEnrichmentService.php:74 (diskussionForToken)",
+  "Mailbox-ACL (gemensam modell): direkt-tilldelning findByAccountId + grupp-tilldelning findByGroupId via AccountItslMailboxMapper — InflodeFeedService.php:225, CaseMessagesService.php:191, SummaryService.php:296 (getAccessibleMailboxes)",
+  "16 OCS-rutter dokumenterade i den kompletta återställningskällan — appinfo/routes-ocs-snippet.php:22-50 (7 bas 2026-06-13, 4 fas2 2026-06-17, 3 fas2d 2026-06-19, 2 kort-flikar 2026-07-03)",
+  "3 standard-dashboard-widgets (Att hantera/Kvittenser/Dagens möten) som tunna projektioner över Summary-/MeetingService med deepLink-resolvers — lib/Dashboard/AttHanteraWidget.php:143, KvittenserWidget.php:138, DagensMotenWidget.php:141 (getItemsV2)",
+  "Mail-composer-deeplink /apps/mail/new?type=&to= — dokumenterat referens-snippet; livemodulen (i hubs-code-forken) parsar även &case= och kopplar vid send via hubs_arende /inflode/koppla — backend-additions/mail/initITSL-additions.js:1-60"
+ ],
+ "filer": [
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/MANIFEST.md",
+   "roll": "Integrationsmanifest: deploy-status (allt deployat dev15, sdkmc 2.2.25/NC 31.0.8), märknings-konvention, domängräns sdkmc vs hubs_arende, target-paths, wipe-återställningsanvisning"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/appinfo/routes-ocs-snippet.php",
+   "roll": "ÅTERSTÄLLNINGS-KÄLLAN för det kompletta 16-rutters 'ocs'-blocket som klistras in i containerns routes.php efter wipe (ej inkluderbar som fil)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/InflodeFeedService.php",
+   "roll": "Inflöde-feeden: ACL-korgar, INBOX-fetch mot mail_*, dedup, behandlad/case:-filter, innehållstyp, identitetsbadge, excerpt, deepLinks, demo-gate"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/InflodeFeedController.php",
+   "roll": "OCS: GET inflode-summary + POST inflode/{action} (besvara/vidarebefordra; skapa/koppla avvisas till hubs_arende)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/ItslTagService.php",
+   "roll": "IN-PLACE-ÄNDRAD uppströmsfil (2.2.25): all taggning IMAP+DB; F2 itslTagMeta (läsbara taggnamn/färg) + F2b mirrorTagToMailApp (spegling till oc_mail_tags)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/CaseMessagesService.php",
+   "roll": "Ärendets meddelanden via case:-taggen, ACL-filtrerat, dedup, max 50 — kortets Meddelanden-flik"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/CaseMessagesController.php",
+   "roll": "OCS: GET case-messages?ref={hubsCaseId} → {meddelanden}"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/SummaryService.php",
+   "roll": "DEN enda dashboard-aggregationen: counts/items/mailboxes/watching/LOA/cursor + buildReceipts; 20s cache; unread/unassigned-räknare mot mail_*"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/SummaryController.php",
+   "roll": "OCS: GET summary + GET receipts (egen MW-statusmappning RECEIPT_STATE_MAP, recipient/updatedAt ur receipt_data)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/ChannelClassificationService.php",
+   "roll": "Den ENDA auktoritativa kanalklassificeringen (suffixregler + medborgarheuristik)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/RecipientController.php",
+   "roll": "OCS: Smart mottagare — search (DIGG-adressbok + interna korgar + fritt värde) + classify"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/SecureMeetingService.php",
+   "roll": "Boka säkert möte i EN operation: Talk-rum + CalDAV-ICS (dnr-märkt) + BankID(DB)/SMS/securemail(session)-intents + deltagare"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/SecureMeetingController.php",
+   "roll": "OCS: POST secure-meeting → {token,eventUid,dnr,start,end,smsStatus,protection}"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/MeetingService.php",
+   "roll": "Dagens möten (CalDAV⋈Talk⋈BankID), lobby-status, möten-per-ärende (dnr-matchning X-HUBS-DNR/CATEGORIES)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/MeetingController.php",
+   "roll": "OCS: GET meetings/today, meetings/{token}/lobby, arende-meetings?refs="
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/TeamService.php",
+   "roll": "Enhetschatt-panelens data: NC-grupper som team, medlemmar, ärliga nollor, best-effort rum-token"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/TeamController.php",
+   "roll": "OCS: GET team"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/FavoriterService.php",
+   "roll": "Favoriter som pekare ur favorit-adressböcker (klass a/b/c, stale-flaggning, fax-extraktion)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/FavoriterController.php",
+   "roll": "OCS: GET favoriter?lista="
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/NoteToSelfWrapperService.php",
+   "roll": "Egna anteckningar via spreeds note-to-self (lazy-laddad; läs honest-empty, skriv kastar → 503)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/NoteToSelfController.php",
+   "roll": "OCS: GET+POST note-to-self"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Service/ArendeEnrichmentService.php",
+   "roll": "PII-fri diskussions-summary per talkToken (omnämnd, 2 deltagar-ids, aldrig kroppar)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Controller/OCS/ArendeEnrichmentController.php",
+   "roll": "OCS: GET arende-enrichment?talkToken="
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Dashboard/AttHanteraWidget.php",
+   "roll": "NC-dashboard-widget: triagekön (kraver_atgard+otilldelat) — EJ registrerad i Application.php"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Dashboard/KvittenserWidget.php",
+   "roll": "NC-dashboard-widget: kvittenser (problem först) — EJ registrerad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/sdkmc/lib/Dashboard/DagensMotenWidget.php",
+   "roll": "NC-dashboard-widget: dagens säkra möten med BankID-badge + join-länk — EJ registrerad"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/demo-data/InflodeDemoData.php",
+   "roll": "Config-gatad SYNTETISK inflöde-demo (14 rader, fiktiva personnummer med Luhn, frist-toner); target lib/Service/DemoData/"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/demo-data/favoriter/README.md",
+   "roll": "CardDAV-seed-recept för 11 syntetiska favorit-vCards (klass a/b/c + tombstone-fixtur)"
+  },
+  {
+   "path": "C:/Users/fredrik.jonasson/Cursor/Nextcloud-vanilla/hubs_start/backend-additions/mail/initITSL-additions.js",
+   "roll": "Dokumenterat referens-snippet för mail-overlay-routerhooken /apps/mail/new?type=&to= (INTEGRERAT i live-overlayn 2026-06-19; kräver overlay-rebuild)"
+  }
+ ],
+ "stubbar": [
+  "InflodeDemoData.php — helt syntetiskt inflöde (14 rader inkl. fiktiva personnummer), aktiveras endast av app-config sdkmc/hubs_start_inflode_demo='1' (InflodeFeedService.php:129); stubbar riktig SDK-inflow på dev15",
+  "SummaryService::resolveLoa (SummaryService.php:902) — hårdkodar 'LOA3' för alla användare; TODO att läsa riktig login-security/loa3Tag-state; headerns LOA-badge är alltså en stub",
+  "TeamService (TeamService.php:186-197) — olasta=0 och omnamnanden=0 alltid ('ärliga nollor', TODO wire mot Talk-unread), narvaro='unknown', status=null: hela närvaro-/chatträknar-skiktet är stubbat",
+  "FavoriterService — DIGG/användarkatalog-batch-resolve (steg 2 i KONTAKTER-FAVORITER §2.3) är INTE byggd (docblock rad 39-47): pekar-klasser (a/c) flaggas alltid stale:true med proveniens 'Kunde inte färskhetskontrolleras'; identitet-badge för a/c emitteras aldrig (identitetOf:323 returnerar null); t() är en no-op-passthrough utan l10n (:485)",
+  "FavoriterService 'removed' => false hårdkodat (:240) — tombstone-mekanismen (removed:true när orgId saknas i DIGG) kan aldrig triggas trots att seed-fixturen fav-a-tombstone-gammal-mottagning.vcf finns just för att testa den",
+  "SecureMeetingService SMS-/securemail-intents (:423, :444) — fortfarande PHP-SESSION-köade (sdkmc_sms_intents/sdkmc_securemail_invite_intents) och matchas på e-post, inte eventUid; endast BankID-intentet är durabelt i DB; TODO i koden att göra IntentProcessorService session-oberoende",
+  "SecureMeetingService loopback-OCS-fallback för rumskapande (:208-231) — bär ingen autentisering och ger 401 server-side (dokumenterat i fix-kommentaren :182-186); kvar endast som fallback när spreed-klasserna inte är laddbara",
+  "ArendeEnrichmentService — olasta alltid 0 (:124, ingen unread-källa), meddelanden/moten alltid tomma (ägs av ärende-motorn); omnämnande är best-effort substring '@uid' (:106)",
+  "SummaryService::fetchReceiptRows (:663-689) — updated_at alltid null (tabellen saknar kolumn, TODO migration); SummaryController::updatedAtOf (:304) gissar timestamp ur receipt_data",
+  "InflodeFeedService::anonymiseTitle + extractDnr (:700, :713) — DÖD KOD: titel använder numera rå subject (:494); kvarleva från den övergivna PII-skrubbnings-reflexen",
+  "backend-additions/mail/initITSL-additions.js — hela filen är ett dokumenterat referens-snippet, inte körbar kod (livemodulen bor i hubs-code-forken; send-tids-kopplingen &case= kräver GUI-verifiering enligt header rad 10-12)",
+  "Dashboard-widgets (3 st) — kompletta implementationer men registreras ALDRIG (registerDashboardWidget utelämnad medvetet, MANIFEST rad 23-24) ⇒ funktionellt inerta stubs tills registrering sker"
+ ],
+ "kandaBrister": [
+  "EFEMÄRITET (största operativa risken): apps/sdkmc i containern wipeas vid recreate/itsl deploy/docker restart (routes-ocs-snippet.php:11-15); routes.php-blocket och ItslTagService-F2 har redan förlorats en gång (juni-wipen, ItslTagService.php:12-16). Återställning = hela filer ur backend-additions + routes-snippet; ingen automatisk återdeploy finns — processen är manuell och beroende av att MANIFEST följs. Uppgradering av sdkmc förbi 2.2.25 kräver manuell om-applicering av F2-blocken på nya ItslTagService",
+  "AUKTORISATIONSLUCKA kvittenser: sdkmc_message_receipt är inte user-skopad och varken SummaryService::fetchReceiptRows (:658-663 'not user-scoped, return most recent rows') eller SummaryController::listRecentReceipts (:208) filtrerar på anroparen — alla inloggade ser senaste N kvittenser globalt, och SummaryController::recipientOf (:270) kan exponera mottagaradress ur receipt_data över den gränsen (bryter mot invarianten 'aldrig läckage över behörighetsgräns')",
+  "SecureMeetingService deltagar-adds (:498-546) använder fortfarande o-autentiserad loopback-OCS (samma bug som fixades in-process för rumskapandet) — addEmailParticipant/addUserParticipant får sannolikt 401 och felet bara loggas ⇒ medborgar-inbjudan/access-token mintas troligen aldrig; TODO-markerat :499, :524",
+  "SecureMeetingService::createCalendarEvent (:300-303): saknas skrivbar kalender loggas fel men eventUid returneras ändå ⇒ bokningen ser lyckad ut medan CalDAV-eventet (och därmed SMS/ICS-intent-kedjan och dagens-möten-synligheten) aldrig landar; TODO auto-provisionera kalender",
+  "Dubbla, divergerande MW-statusmappningar: SummaryController::RECEIPT_STATE_MAP (:57, exakt token-map) vs SummaryService::mapReceiptState (:808, str_contains-heuristik) — två sanningar för samma pill som kan glida isär; dessutom oconfirmed PENDING-semantik mot broker-teamet (TODO :228-236 resp :820-822)",
+  "InflodeFeedService::previewExcerpt: docblock (:613-622) beskriver PII-SKRUBBNING (personnummer/namn/sifferserier → '…') men implementationen (:623-638) skrubbar medvetet INGET (PII-principen) — vilseledande dokumentation i säkerhetskänslig kod",
+  "MeetingService::getCaseMeetings jämför genomförd via ISO-STRÄNG-jämförelse `$ar < $nu->format('c')` (:213) — tidsstämplar med olika UTC-offset sorteras/klassas fel lexikografiskt; getTodaysMeetings/usort har samma mönster (:105, :222-223)",
+  "TeamService::HIDDEN_GROUPS (:51) filtrerar bara 'admin' och 'guest_app' — ALLA andra NC-grupper visas som 'enheter', inklusive tekniska/per-ärende-grupper (ärenderum-modellen använder per-case-grupper) ⇒ team-panelen kan exponera ärendegruppsmedlemskap som 'team'",
+  "InflodeFeedController::action (:107) verifierar INTE att anroparen har korg-ACL för messageId innan deepLinkForMessage resolvas — endast en deep link läcker (inget innehåll), men länken bekräftar meddelandets existens utanför behörigheten",
+  "Demo-gaten hubs_start_inflode_demo är enbart config-styrd — ingen miljöspärr hindrar att syntetisk PII-bärande demo-data slås på i produktion (filens egen varning 'får ALDRIG nå produktion' är konvention, inte kod)",
+  "MeetingService::resolveBankIdState (:527) TODO i koden: inline-SQL mot sdkmc_conv_bank_auth i stället för mapper-metod (tabellnamnet duplicerat)",
+  "SummaryController::deepLinkOf (:334) TODO: itslMailboxId saknas i receipt-deeplinken tills receipt→mailbox-join finns; SummaryService::threadDeepLinkForMessage (:762) TODO: ospårbart meddelande ger itslMailboxId 0-fallback",
+  "SummaryService::fetchUnassignedThreads (:648-651) TODO: utan mail-appen degraderar kön till receipt-only; ingen IMailManager-kontrakt för delade korgar ännu (samma i countUnread :535-537)",
+  "CaseMessagesService: fetch-cap MAX_ROWS*4=200 rader före dedup (:172) — ärende med fler än ~200 meddelanderader kan tappa äldre träffar tyst; olast-flaggan tas från första (nyaste) dubblettraden vars flag_seen kan skilja mellan speglade konton (:94-107)",
+  "ChannelClassificationService::classifyRecipientValue (:117) klassar VARJE 10-13-siffrigt värde som personnummer→secure — svenska mobilnummer utan separatorer (10 siffror) felklassas som ssn i stället för sms (RecipientController kompenserar bara delvis :263-272)",
+  "Ingen enda enhetstest finns i backend-additions-trädet (inga tests/-filer för någon av de 26 PHP-filerna; hubs_arende har phpunit, sdkmc-additionerna har inget)"
+ ]
+}

@@ -1,0 +1,63 @@
+{
+    "mallId": "Socialsekreterare - barn och familj/02 Omedelbar skyddsbedömning.docx",
+    "titel": "02 Omedelbar skyddsbedömning",
+    "byggd": "2026-07-07",
+    "tokens": [
+        "[För- och efternamn]",
+        "[ÅÅÅÅMMDD-XXXX]",
+        "[hubsCaseId / Treserva-dnr om det finns]",
+        "[Mottagning / Barn och familj]",
+        "[ÅÅÅÅ-MM-DD klockslag]",
+        "[Namn/funktion — eller \"anonym\" om anmälaren är okänd/skyddad]",
+        "[Beskriv det som anmälts, i sak. Undvik värderingar. Ta bara med det som är relevant för skyddsfrågan.]",
+        "[Vad tyder på att barnet kan fara illa nu?]",
+        "[Tidigare anmälningar, pågående/avslutade insatser, skyddade uppgifter]",
+        "[Ålder, funktionsnedsättning, särskild utsatthet]",
+        "[Det som är känt och relevant för skyddet]",
+        "[ange vad som måste klarläggas och hur snabbt]",
+        "[Motivera kort varför barnet bedöms behöva/inte behöva omedelbart skydd. Koppla till det som beskrivits ovan.]",
+        "[namn, tid]",
+        "[motivering]",
+        "[beskriv]",
+        "[Beskriv konkret vad som görs nu, av vem och när.]",
+        "[Förhandsbedömning / utredningsgrupp / kvar i mottagning]",
+        "[Vad händer härnäst och vem ansvarar]",
+        "[Namn, titel]",
+        "[ÅÅÅÅ-MM-DD hh:mm]",
+        "[Ev. medbedömare/gruppledare]",
+        "[Personakt / Treserva dnr]",
+        "[hubsCaseId / Treserva-dnr]"
+    ],
+    "falt": [
+        {
+            "id": "aktuell-risk-orossignal",
+            "etikett": "Aktuell risk-/orossignal",
+            "token": "[Vad tyder på att barnet kan fara illa nu?]"
+        },
+        {
+            "id": "tidigare-kannedom",
+            "etikett": "Tidigare kännedom",
+            "token": "[Tidigare anmälningar, pågående/avslutade insatser, skyddade uppgifter]"
+        },
+        {
+            "id": "barnets-alder-och-sarbarhet",
+            "etikett": "Barnets ålder och sårbarhet",
+            "token": "[Ålder, funktionsnedsättning, särskild utsatthet]"
+        },
+        {
+            "id": "vardnadshavares-situation",
+            "etikett": "Vårdnadshavares situation",
+            "token": "[Det som är känt och relevant för skyddet]"
+        },
+        {
+            "id": "motivering-till-bedomningen",
+            "etikett": "Motivering till bedömningen",
+            "token": "[Motivera kort varför barnet bedöms behöva/inte behöva omedelbart skydd. Koppla till det som beskrivits ovan.]"
+        },
+        {
+            "id": "vidtagna-planerade-atgarder-och-tidsplan",
+            "etikett": "Vidtagna/planerade åtgärder och tidsplan",
+            "token": "[Beskriv konkret vad som görs nu, av vem och när.]"
+        }
+    ]
+}

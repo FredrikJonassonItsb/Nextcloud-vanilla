@@ -23,9 +23,12 @@
 			<template #icon>
 				<DotsHorizontalIcon :size="20" />
 			</template>
+			<!-- close-after-click: menyn får ALDRIG ligga kvar ovanpå en modal som
+			     menyvalet öppnar (Ny chatt/Boka möte) — hittad i live-test. -->
 			<NcActionButton
 				v-for="a in ovrigaAtgarder"
 				:key="a.key"
+				:close-after-click="true"
 				@click="$emit('action', a.key)">
 				<template #icon>
 					<component :is="iconFor(a.icon)" :size="20" />
@@ -60,11 +63,16 @@ export default {
 			// Övriga lagliga åtgärder i fasen (utöver den ledande).
 			return [
 				{ key: 'open-rum', label: t('hubs_start', 'Öppna ärenderum'), icon: 'FolderLock' },
+				{ key: 'ny-chatt', label: t('hubs_start', 'Ny chatt i ärendet'), icon: 'Forum' },
 				{ key: 'skicka', label: t('hubs_start', 'Skicka säkert meddelande'), icon: 'EmailFast' },
 				{ key: 'boka-mote', label: t('hubs_start', 'Boka säkert möte'), icon: 'VideoPlus' },
+				{ key: 'skapa-handling', label: t('hubs_start', 'Skapa handling från mall'), icon: 'FileDocumentPlus' },
 				{ key: 'signera', label: t('hubs_start', 'Skicka för underskrift'), icon: 'FileSign' },
 				{ key: 'commit', label: t('hubs_start', 'För till Treserva'), icon: 'FileExport' },
 				{ key: 'bevakning', label: t('hubs_start', 'Skapa bevakning'), icon: 'BellPlus' },
+				// Omfördelning bor här i menyn (inte som huvudknapp): ett ägt ärende
+				// TAS inte — det omfördelas medvetet till en namngiven kollega.
+				{ key: 'omfordela-kollega', label: t('hubs_start', 'Omfördela till kollega'), icon: 'AccountSwitch' },
 			]
 		},
 	},
