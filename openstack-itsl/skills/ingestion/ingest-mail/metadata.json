@@ -1,7 +1,0 @@
-{
-  "category": "ingestion",
-  "requires_skills": ["source-connector-contract", "evidence-normalize", "pii-pseudonymize"],
-  "requires": { "env": ["MS_TENANT_ID", "MS_CLIENT_ID", "MS_CLIENT_SECRET"], "consent": "Mail.Read application + admin-consent", "alt": "NC Mail app (IMAP/REST)" },
-  "tags": ["ingest", "mail", "outlook", "m365", "graph", "draft-only"],
-  "version": "1.0"
-}

@@ -1,7 +1,0 @@
-{
-  "category": "ingestion",
-  "core": true,
-  "requires_skills": [],
-  "tags": ["pii", "gdpr", "pseudonymize", "redact", "egress"],
-  "version": "1.0"
-}

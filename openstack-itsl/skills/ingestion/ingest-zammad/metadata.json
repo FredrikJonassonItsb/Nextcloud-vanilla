@@ -1,7 +1,0 @@
-{
-  "category": "ingestion",
-  "requires_skills": ["source-connector-contract", "evidence-normalize"],
-  "requires": { "env": ["ZAMMAD_TOKEN"], "scope": "ticket.agent (ingest), knowledge_base.editor (publish)" },
-  "tags": ["ingest", "zammad", "support", "tickets", "incident"],
-  "version": "1.0"
-}
