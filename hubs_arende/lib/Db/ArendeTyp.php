@@ -52,6 +52,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setPostCommitHook(?string $postCommitHook)
  * @method string|null getPartsModell()
  * @method void setPartsModell(?string $partsModell)
+ * @method string|null getBevakningsmallar()
+ * @method void setBevakningsmallar(?string $bevakningsmallar)
  */
 class ArendeTyp extends Entity implements \JsonSerializable {
     protected string $arendeTypId = '';
@@ -75,6 +77,14 @@ class ArendeTyp extends Entity implements \JsonSerializable {
     protected ?string $postCommitHook = null;
     /** e.g. 'flerpartsärende' for familjerätt. */
     protected ?string $partsModell = null;
+    /**
+     * Datadrivna standardbevakningar (JSON-array) — ersätter det oanvända
+     * perStegFrist. Varje post: {typ,titel,villkorTyp,villkorArg,ankare,
+     * ankareDagar,recurringDagar,lagstadgad,vidSteg}. BevakningService
+     * instansierar dem vid födelse (vidSteg='fodelse') och steg-övergång
+     * (vidSteg=stegnamn). Null = inga standardbevakningar.
+     */
+    protected ?string $bevakningsmallar = null;
 
     public function __construct() {
         // arende_typ_id is the string PK; tell the framework it is the id field.
@@ -94,6 +104,7 @@ class ArendeTyp extends Entity implements \JsonSerializable {
         $this->addType('preSagaHook', 'string');
         $this->addType('postCommitHook', 'string');
         $this->addType('partsModell', 'string');
+        $this->addType('bevakningsmallar', 'string');
     }
 
     #[\ReturnTypeWillChange]
@@ -115,6 +126,7 @@ class ArendeTyp extends Entity implements \JsonSerializable {
             'preSagaHook' => $this->preSagaHook,
             'postCommitHook' => $this->postCommitHook,
             'partsModell' => $this->partsModell,
+            'bevakningsmallar' => $this->bevakningsmallar,
         ];
     }
 }

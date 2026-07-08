@@ -61,11 +61,35 @@ return [
             'url' => '/api/v1/arende/{ref}/historik',
             'verb' => 'GET',
         ],
-        // GET    /arende/{ref}/bevakningar    -> läs-projektion av ärendets Deck-kort
+        // GET    /arende/{ref}/bevakningar    -> läs-projektion av bevaknings-registret
         [
             'name' => 'Arende#bevakningar',
             'url' => '/api/v1/arende/{ref}/bevakningar',
             'verb' => 'GET',
+        ],
+        // POST   /arende/{ref}/bevakning      -> skapa ad hoc-bevakning (manuell)
+        [
+            'name' => 'Arende#skapaBevakning',
+            'url' => '/api/v1/arende/{ref}/bevakning',
+            'verb' => 'POST',
+        ],
+        // POST   /arende/{ref}/bevakning/{id}/kvittera -> klarmarkera (manuell_kvittering)
+        [
+            'name' => 'Arende#kvitteraBevakning',
+            'url' => '/api/v1/arende/{ref}/bevakning/{id}/kvittera',
+            'verb' => 'POST',
+        ],
+        // DELETE /arende/{ref}/bevakning/{id} -> avbryt bevakning (ej längre relevant)
+        [
+            'name' => 'Arende#avbrytBevakning',
+            'url' => '/api/v1/arende/{ref}/bevakning/{id}',
+            'verb' => 'DELETE',
+        ],
+        // POST   /arende/{ref}/delgivning     -> sätt delgivningsdatum (→ överklagandebevakning)
+        [
+            'name' => 'Arende#setDelgivning',
+            'url' => '/api/v1/arende/{ref}/delgivning',
+            'verb' => 'POST',
         ],
         // POST   /arende/{ref}/medlem         -> lägg till co-handläggare/observatör
         [

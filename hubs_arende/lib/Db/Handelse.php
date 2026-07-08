@@ -64,6 +64,13 @@ class Handelse extends Entity implements \JsonSerializable {
      * ALDRIG fältvärden (namn/pnr/adress bor ENBART i dokumentet/partsregistret).
      */
     public const TYP_HANDLING = 'handling';
+    /**
+     * Bevaknings-livscykelhändelse. detalj.handling ∈ skapad | uppnadd |
+     * uppnadd_forsenad | passerad | avbruten:{orsak} | recurring_ny |
+     * delgivning_satt. detalj: {handling, typ, villkor, status, bevakningId,
+     * lagstadgad} — ALDRIG bevakningens titel-fritext (koordinationsdata utan PII).
+     */
+    public const TYP_BEVAKNING = 'bevakning';
 
     /** FK -> hubs_arende_case.hubs_case_id (UUID v4). */
     protected string $hubsCaseId = '';

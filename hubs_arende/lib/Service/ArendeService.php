@@ -177,6 +177,11 @@ class ArendeService {
         // NC-notiser (klockan): tilldelning/medlemskap/frist-varsel. BEST-EFFORT —
         // en notis får aldrig fälla mutationen. TRAILING OPTIONAL.
         private ?INotificationManager $notificationManager = null,
+        // BEVAKNINGS-LIVSCYKELN: föder standardbevakningarna vid födelse (R5→post-frist),
+        // utvärderar villkor vid koppling, och äger de ref-baserade bevaknings-
+        // mutationerna. TRAILING OPTIONAL — null ⇒ createCase faller tillbaka på den
+        // gamla engångs-frist-beräkningen (computeFristDue) och bevaknings-API:t är dött.
+        private ?BevakningService $bevakningService = null,
     ) {
     }
 
@@ -576,37 +581,21 @@ class ArendeService {
             ];
 
             // ========================================================== //
-            //  R5 — Deck card (board=enhet, label case:, due=frist).
+            //  R5 — Bevaknings-Deck-korten (ETT kort per bevakning).
             // ========================================================== //
-            // 2-step create (POST card -> PUT label case:{id}); store a pekare
-            // (objekt_typ='deck_card', boardId stashed in riktning so the
-            // compensation can DELETE on the right board). R5 sits before R8, so the
-            // frist is not yet computed; pass null due (the register carries the
-            // authoritative frist after R8). isAvailable()-gated graceful skip.
-            if ($this->deckClient !== null && $this->pekareMapper !== null) {
-                // M2 — pseudonym korttitel; KORT ref för läsbarhet på tavlan
-                // (hela UUID:t är oläsbart och sa ingenting om vad bevakningen gäller).
-                $card = $this->deckClient->createCard(
-                    (string)$arende->getEnhet(),
-                    'Ärende ' . self::kortRef($hubsCaseId),
-                    null,
-                    'Bevakning för ärende ' . self::kortRef($hubsCaseId) . ' (' . $typ->getArendeTypId() . '). Fristen bärs av ärendekortet i Hubs Start.',
-                );
-                if ($card !== null) {
-                    $this->deckClient->addLabel($card['boardId'], $card['cardId'], 'case:' . $hubsCaseId);
-                    $this->pekareMapper->record(
-                        $hubsCaseId,
-                        'deck_card',
-                        (string)$card['cardId'],
-                        (string)$card['boardId'],
-                    );
-                }
-            } else {
-                $this->skipStep('R5', $hubsCaseId);
-            }
+            // Den gamla modellen skapade HÄR ett enda generiskt, inert kort
+            // (due=null) per ärende. Nu skapas i stället ETT Deck-kort per
+            // standardbevakning — men först EFTER att fristen beräknats (R8) och
+            // steget satts (R10), av BevakningService::skapaStandardForFodelse
+            // längre ned. Varje sådant kort registreras som en deck_card-pekare,
+            // så kompensationen nedan (och gallringen) river dem uniformt.
+            $this->skipStep('R5', $hubsCaseId);
             $compensations[] = [
-                'name' => 'R5:delete-deck-card',
+                'name' => 'R5:delete-deck-cards+bevakningar',
                 'fn' => function () use ($hubsCaseId): void {
+                    // Riv bevakningsraderna (koordinationsdata) …
+                    $this->bevakningService?->rensaForKompensation($hubsCaseId);
+                    // … och deras Deck-kort via deck_card-pekarna.
                     if ($this->deckClient === null || $this->pekareMapper === null) {
                         $this->noopCompensation('R5', $hubsCaseId);
                         return;
@@ -761,6 +750,16 @@ class ArendeService {
                     'vidFodsel' => true,
                 ]);
             }
+
+            // BEVAKNINGSKEDJAN föds här — EFTER att register-raden är komplett (frist
+            // R8, steg R10) så att fristprojektionen inte klottras över av senare
+            // lokala $arende-uppdateringar. Instansierar ärendetypens vidSteg='fodelse'-
+            // mallar (t.ex. orosanmälans 14-dagars förhandsbedömning), skapar deras
+            // Deck-kort (deck_card-pekare → R5-kompensation/gallring river dem) och
+            // projicerar registrets fristDue = tidigaste aktiva bevakning. Best-effort;
+            // ett fel fäller inte det redan födda ärendet. null-service (testharness)
+            // ⇒ computeFristDue (R8) står kvar som frist.
+            $this->bevakningService?->skapaStandardForFodelse($hubsCaseId, $typ, $rad);
 
             $this->logger->info('hubs_arende: createCase OK', [
                 'app' => 'hubs_arende',
@@ -1603,37 +1602,83 @@ class ArendeService {
     }
 
     /**
-     * Ärendets BEVAKNINGAR — läs-projektion av ärendets Deck-kort (titel, frist,
-     * kolumn, etiketter). Byggd för kortets Bevakningar-flik: handläggaren saknar
-     * i regel Deck-board-behörighet (boarden är enhets-/SA-ägd), så motorn läser
-     * kortet via service-kontot och visar PROJEKTIONEN — aldrig en skriv-yta.
-     * H1-authz via show(). Graceful: ingen deck-pekare/klient ⇒ tom lista.
+     * Ärendets BEVAKNINGAR — läs-projektion av bevaknings-REGISTRET (typ, villkor,
+     * status, frist), det förstaklassiga watch-lagret. Byggt för kortets
+     * Bevakningar-flik. H1-authz via show(). Koordinationsdata utan PII.
+     * Graceful: ingen BevakningService (testharness) ⇒ tom lista.
      *
      * @return list<array<string,mixed>>
      * @throws DoesNotExistException
      */
     public function bevakningar(string $ref): array {
         $arende = $this->show($ref);
-        $hubsCaseId = $arende->getHubsCaseId();
-        if ($this->deckClient === null || $this->pekareMapper === null) {
+        if ($this->bevakningService === null) {
             return [];
         }
-        $out = [];
-        try {
-            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'deck_card') as $p) {
-                $card = $this->deckClient->getCard((int)$p->getRiktning(), (int)$p->getObjektId());
-                if ($card !== null) {
-                    $out[] = $card;
-                }
-            }
-        } catch (\Throwable $e) {
-            $this->logger->warning('hubs_arende: bevaknings-läsning misslyckades (graceful)', [
-                'app' => 'hubs_arende',
-                'hubsCaseId' => $hubsCaseId,
-                'exception' => $e->getMessage(),
-            ]);
+        $ut = [];
+        foreach ($this->bevakningService->listaForCase($arende->getHubsCaseId()) as $b) {
+            $ut[] = $b->jsonSerialize();
         }
-        return $out;
+        return $ut;
+    }
+
+    /**
+     * Handläggarskapad ad hoc-bevakning (den tidigare döda "skapa bevakning").
+     * H1-authz via show(); aktör = inloggad handläggare.
+     *
+     * @param array<string,mixed> $data {titel, fristDue?, recurringDagar?, lagstadgad?}
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function laggTillBevakning(string $ref, array $data): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->laggTillManuell($arende->getHubsCaseId(), $data, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Manuell klarmarkering (kvittering) av en bevakning. H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function kvitteraBevakning(string $ref, int $id): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->kvittera($arende->getHubsCaseId(), $id, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Avbryt en bevakning (ej längre relevant). H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function avbrytBevakning(string $ref, int $id): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->avbryt($arende->getHubsCaseId(), $id, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Sätt delgivningsdatum → föder/uppdaterar överklagandebevakningen (3 v → laga
+     * kraft). H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function setDelgivningsdatum(string $ref, string $datum): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->setDelgivningsdatum($arende->getHubsCaseId(), $datum, $uid)->jsonSerialize();
     }
 
     /**
@@ -1751,6 +1796,12 @@ class ArendeService {
                 $this->referensFilService->skrivMeddelandeReferens($hubsCaseId, (string)$mid);
             }
             $this->loggaHandelse($hubsCaseId, Handelse::TYP_KOPPLAD, ['antal' => count($ids)]);
+        }
+
+        // BEVAKNING: en kopplad komplettering släcker en komplettering_kopplad-
+        // bevakning ("inväntar komplettering"). Best-effort, koordinationsdata.
+        if ($ids !== []) {
+            $this->bevakningService?->utvardera($hubsCaseId, 'komplettering', ['antal' => count($ids)]);
         }
 
         // SÄKERHET (IDOR): tagMessage kör server-till-server som SERVICE-KONTOT, som
@@ -1898,6 +1949,15 @@ class ArendeService {
                 'dnr' => (string)($kvitto['dnr'] ?? ''),
                 'destination' => (string)$arende->getCommitDestination(),
             ]);
+
+            // GAP-044 ÄGARSKIFTE: registreringen är VERIFIERAD ⇒ facksystemet äger nu
+            // fristerna. Släck commit_registrerad-bevakningar (uppnådda) och avbryt
+            // Hubs lagstadgade speglingar så dubbelbevakningen upphör (kortet visar
+            // "bevakas i facksystemet"). Interna/manuella bevakningar behålls.
+            // Best-effort — ett fel här får aldrig fälla den verifierade commiten.
+            if (!empty($kvitto['dnr'])) {
+                $this->bevakningService?->bevakasIFacksystem($hubsCaseId, (string)$kvitto['dnr']);
+            }
 
             // gap24 — steg-advancering sker INTE här. Commit = Treserva-registrering
             // (provenans/dnr/retention) och är ORTOGONAL mot livscykel-steget: en

@@ -253,9 +253,9 @@ class ArendeController extends OCSController {
     }
 
     /**
-     * The case's BEVAKNINGAR — a read-only projection of the case's Deck card
-     * (title, due, column, labels), read via the service account since the
-     * handläggare typically lacks board access.
+     * The case's BEVAKNINGAR — a read-only projection of the bevaknings-REGISTER
+     * (typ, villkor, status, frist): the first-class watch layer. Koordinations-
+     * data without PII. Authz via the service's show()-gate.
      *
      * GET /api/v1/arende/{ref}/bevakningar
      */
@@ -272,6 +272,116 @@ class ArendeController extends OCSController {
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende bevakningar failed', ['exception' => $e, 'ref' => $ref]);
             return new DataResponse(['error' => 'bevakningar_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Skapa en ad hoc-bevakning (den tidigare döda "skapa bevakning"). Manuell
+     * klarmarkering (villkor manuell_kvittering). Rubriken får ALDRIG bära PII.
+     *
+     * POST /api/v1/arende/{ref}/bevakning  {titel, fristDue?, recurringDagar?, lagstadgad?}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function skapaBevakning(
+        string $ref,
+        string $titel = '',
+        ?string $fristDue = null,
+        ?int $recurringDagar = null,
+        bool $lagstadgad = false,
+    ): DataResponse {
+        if ($ref === '' || trim($titel) === '') {
+            return new DataResponse(['error' => 'ref_eller_titel_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $bevakning = $this->arendeService->laggTillBevakning($ref, [
+                'titel' => $titel,
+                'fristDue' => $fristDue,
+                'recurringDagar' => $recurringDagar,
+                'lagstadgad' => $lagstadgad,
+            ]);
+            return new DataResponse(['ok' => true, 'bevakning' => $bevakning], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende skapaBevakning failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'skapa_bevakning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Klarmarkera (kvittera) en bevakning — villkor manuell_kvittering. Recurring
+     * föder en ny cykel; övriga slocknar.
+     *
+     * POST /api/v1/arende/{ref}/bevakning/{id}/kvittera
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function kvitteraBevakning(string $ref, int $id): DataResponse {
+        if ($ref === '' || $id <= 0) {
+            return new DataResponse(['error' => 'ref_eller_id_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $bevakning = $this->arendeService->kvitteraBevakning($ref, $id);
+            return new DataResponse(['ok' => true, 'bevakning' => $bevakning], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende kvitteraBevakning failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'kvittera_bevakning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Avbryt en bevakning (ej längre relevant). Monotont slutläge.
+     *
+     * DELETE /api/v1/arende/{ref}/bevakning/{id}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function avbrytBevakning(string $ref, int $id): DataResponse {
+        if ($ref === '' || $id <= 0) {
+            return new DataResponse(['error' => 'ref_eller_id_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $bevakning = $this->arendeService->avbrytBevakning($ref, $id);
+            return new DataResponse(['ok' => true, 'bevakning' => $bevakning], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende avbrytBevakning failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'avbryt_bevakning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Sätt delgivningsdatum (FL 33 §) → föder/uppdaterar överklagandebevakningen
+     * (3 v → laga kraft).
+     *
+     * POST /api/v1/arende/{ref}/delgivning  {datum: 'YYYY-MM-DD'}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function setDelgivning(string $ref, string $datum = ''): DataResponse {
+        if ($ref === '' || trim($datum) === '') {
+            return new DataResponse(['error' => 'ref_eller_datum_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $bevakning = $this->arendeService->setDelgivningsdatum($ref, $datum);
+            return new DataResponse(['ok' => true, 'bevakning' => $bevakning], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende setDelgivning failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'set_delgivning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
