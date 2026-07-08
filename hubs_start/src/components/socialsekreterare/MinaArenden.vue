@@ -98,7 +98,7 @@
 				:aktiv-typ="A.aktivTyp"
 				@satt-gruppering="attHanteraGruppering = $event"
 				@spara-i-rum="onInflode('spara-i-rum', $event)"
-				@skapa-bevakning="onInflode('skapa-bevakning', $event)"
+				@skapa-bevakning="onSkapaBevakningInflode"
 				@besvara="onInflode('besvara', $event)"
 				@open-arende="onOpenKoppling" />
 
@@ -672,7 +672,6 @@ export default {
 			}
 			const msg = {
 				'spara-i-rum': this.t('hubs_start', 'Sparat i ärenderummet — speglat till ärendet.'),
-				'skapa-bevakning': this.t('hubs_start', 'Bevakning skapad.'),
 				besvara: this.t('hubs_start', 'Besvarat — hålls ordnat.'),
 				vidarebefordra: this.t('hubs_start', 'Vidarebefordrat — säker överlämning loggad.'),
 				gallra: this.t('hubs_start', 'Gallrat med dokumenterat stöd — loggat.'),
@@ -729,6 +728,27 @@ export default {
 				this.gaTillArende(kort.triageRef || kort.hubsCaseId)
 			} else {
 				showInfo(this.t('hubs_start', 'Ärendet {ref} finns inte i din lista — det kan tillhöra en annan handläggare.', { ref: dnr || hubsCaseId || '—' }))
+			}
+		},
+
+		/**
+		 * "Skapa bevakning" på en inflöde-rad (1b). Bevakningar skapas nu mot
+		 * MOTORN (skapaBevakning() → /arende/{ref}/bevakning), inte via det döda
+		 * sdkmc-verbet 'skapa-bevakning' som föll till ett obefintligt endpoint
+		 * bakom en falsk "Bevakning skapad."-toast (audit 2026-07-07). Vi öppnar
+		 * radens ärendekort så handläggaren skapar bevakningen i Bevakningar-fliken
+		 * (samma landningsmekanik som "Öppna ärendet" — ett ärende = ett kort).
+		 */
+		onSkapaBevakningInflode(rad) {
+			const koppling = (rad && (rad.koppling || (rad.rad && rad.rad.koppling))) || {}
+			const dnr = koppling.dnr || (rad && rad.dnr)
+			const hubsCaseId = koppling.hubsCaseId || (rad && rad.hubsCaseId)
+			const kort = (this.A.arenden || []).find((a) =>
+				(hubsCaseId && a.hubsCaseId === hubsCaseId) || (dnr && a.dnr === dnr))
+			if (kort) {
+				this.gaTillArende(kort.triageRef || kort.hubsCaseId)
+			} else {
+				showInfo(this.t('hubs_start', 'Ärendet {ref} finns inte i din lista — öppna ärendet för att skapa en bevakning.', { ref: dnr || hubsCaseId || '—' }))
 			}
 		},
 

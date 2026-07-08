@@ -791,17 +791,75 @@ export async function fetchArendeHistorik(ref) {
 }
 
 /**
- * Ärendets BEVAKNINGAR (kortets Bevakningar-flik): läs-projektion av ärendets
- * Deck-kort (titel/frist/kolumn/etiketter) via motorn — handläggaren behöver
- * ingen egen Deck-behörighet.
+ * Ärendets BEVAKNINGAR (kortets Bevakningar-flik): REGISTER-RADER ur bevaknings-
+ * registret via motorn (förstaklassiga watches — titel/villkor/status/frist), inte
+ * längre läs-projektioner av Deck-kort. Handläggaren behöver ingen Deck-behörighet.
  * @param {string} ref hubsCaseId eller dnr
- * @return {Promise<Array<{titel:string, frist:?string, kolumn:?string, etiketter:string[]}>>}
+ * @return {Promise<Array<object>>} bevakningar (register-rader; se Bevakning-shapen)
  */
 export async function fetchArendeBevakningar(ref) {
 	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/bevakningar (Arende#bevakningar).
 	if (DEMO) return []
 	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakningar'))
 	return ocsData(res).bevakningar || []
+}
+
+/**
+ * Skapa en ad hoc-bevakning på ett ärende (den tidigare döda "skapa bevakning" —
+ * villkor manuell_kvittering). Rubriken får ALDRIG bära PII. Kvitto först på
+ * verifierat svar (aldrig optimistisk succé).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {{titel:string, fristDue?:?string, recurringDagar?:?number, lagstadgad?:boolean}} data
+ * @return {Promise<object>} den skapade bevakningen (register-rad)
+ */
+export async function skapaBevakning(ref, { titel, fristDue = null, recurringDagar = null, lagstadgad = false }) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/bevakning (Arende#skapaBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning'), {
+		titel, fristDue, recurringDagar, lagstadgad,
+	})
+	return ocsData(res)
+}
+
+/**
+ * Kvittera (klarmarkera) en manuell bevakning. Recurring föder en ny cykel; övriga
+ * slocknar. Endast tillåtet på aktiv + manuell_kvittering (motorn validerar).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {number} id bevakningens id
+ * @return {Promise<object>} den uppdaterade bevakningen
+ */
+export async function kvitteraBevakning(ref, id) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/bevakning/{id}/kvittera (Arende#kvitteraBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning/' + encodeURIComponent(String(id)) + '/kvittera'))
+	return ocsData(res)
+}
+
+/**
+ * Avbryt en bevakning (ej längre relevant) — monotont slutläge.
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {number} id bevakningens id
+ * @return {Promise<object>} den avbrutna bevakningen
+ */
+export async function avbrytBevakning(ref, id) {
+	// 🔌 LIVE: hubs_arende OCS — DELETE /arende/{ref}/bevakning/{id} (Arende#avbrytBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.delete(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning/' + encodeURIComponent(String(id))))
+	return ocsData(res)
+}
+
+/**
+ * Sätt delgivningsdatum (FL 33 §) → föder/uppdaterar överklagandebevakningen
+ * (3 veckor → laga kraft).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {string} datum 'YYYY-MM-DD'
+ * @return {Promise<object>} överklagande-bevakningen
+ */
+export async function setDelgivningsdatum(ref, datum) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/delgivning (Arende#setDelgivning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/delgivning'), { datum })
+	return ocsData(res)
 }
 
 /**
@@ -874,6 +932,10 @@ export async function inflodeAction(action, payload) {
 	// Boundary-routing: ärende-verben (skapa/koppla/registrera/gallra) ägs av hubs_arende-
 	// motorn; meddelande-verben (besvara/vidarebefordra) av sdkmc. sdkmc avvisar ärende-verb
 	// med 400 'agas_av_arende_motorn' och vice versa, så routningen måste ske här.
+	// OBS: 'skapa-bevakning' är INTE ett inflöde-verb — det routades tidigare hit och
+	// föll till ett obefintligt sdkmc-endpoint (/inflode/skapa-bevakning) medan UI:t
+	// visade en falsk "Bevakning skapad."-toast. Bevakningar skapas nu via skapaBevakning()
+	// mot motorns /arende/{ref}/bevakning; callern öppnar ärendets Bevakningar-flik i st.f.
 	const ARENDE_VERB = ['skapa', 'koppla', 'registrera', 'gallra']
 	const base = ARENDE_VERB.includes(action) ? HUBS_ARENDE_OCS : SDKMC_OCS
 	const res = await axios.post(base('/inflode/' + encodeURIComponent(action)), payload)
@@ -911,4 +973,9 @@ export default {
 	fetchNotes,
 	addNote,
 	fetchArendeEnrichment,
+	fetchArendeBevakningar,
+	skapaBevakning,
+	kvitteraBevakning,
+	avbrytBevakning,
+	setDelgivningsdatum,
 }
