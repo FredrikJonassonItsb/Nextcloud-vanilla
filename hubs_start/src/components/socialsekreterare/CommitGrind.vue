@@ -17,13 +17,49 @@
 			<section v-if="kraverSignering" class="commit-grind__section commit-grind__sign">
 				<p class="commit-grind__sign-lead">
 					<DrawPenIcon :size="18" />
-					<span>{{ t('hubs_start', 'Har du signerat dokumentet i underskriftstjänsten? Bekräfta nedan så går vi vidare till överföringen.') }}</span>
+					<span>{{ t('hubs_start', 'Beslutet signeras i facksystemet, inte här. Bekräfta att det redan är signerat innan vi för över det.') }}</span>
 				</p>
 				<NcCheckboxRadioSwitch
 					:checked.sync="signeradBekraftad"
 					:disabled="isRunning || committed">
-					{{ t('hubs_start', 'Jag har signerat dokumentet') }}
+					{{ t('hubs_start', 'Jag bekräftar att beslutet signerats i facksystemet') }}
 				</NcCheckboxRadioSwitch>
+			</section>
+
+			<!-- A9b — kommunicering före beslut (FL 25 §). RÅDGIVANDE checklista: parterna
+			     ska normalt ha fått ta del och yttra sig innan beslut fattas. Grinden är
+			     mjuk (inget hårt stopp): handläggaren bekräftar att kommunicering skett,
+			     eller anger varför den inte behövs. Valet skickas som kommuniceringVal i
+			     steg-kontexten (utredning→beslut) och journalförs enum-kodat i motorn. -->
+			<section v-if="visaKommunicering" class="commit-grind__section commit-grind__komm">
+				<h3 class="commit-grind__heading">
+					<AccountVoiceIcon :size="18" />
+					{{ t('hubs_start', 'Kommunicering med parterna') }}
+				</h3>
+				<p class="commit-grind__komm-lead">
+					{{ t('hubs_start', 'Innan beslut ska parterna normalt ha fått ta del av underlaget och möjlighet att yttra sig (FL 25 §).') }}
+				</p>
+				<NcCheckboxRadioSwitch
+					:checked.sync="kommuniceringGjord"
+					:disabled="isRunning || committed">
+					{{ t('hubs_start', 'Parterna har kommunicerats och fått yttra sig') }}
+				</NcCheckboxRadioSwitch>
+				<!-- Inte gjort? Då anges skälet (radioval, aldrig fri text). -->
+				<fieldset v-if="!kommuniceringGjord" class="commit-grind__komm-skal">
+					<legend class="commit-grind__komm-legend">
+						{{ t('hubs_start', 'Om kommunicering inte skett – ange skäl') }}
+					</legend>
+					<NcCheckboxRadioSwitch
+						v-for="s in kommuniceringSkal"
+						:key="s.value"
+						:value="s.value"
+						:checked.sync="kommuniceringSkalVal"
+						name="commit-kommunicering-skal"
+						type="radio"
+						:disabled="isRunning || committed">
+						{{ s.label }}
+					</NcCheckboxRadioSwitch>
+				</fieldset>
 			</section>
 
 			<!-- Vad som förs över -->
@@ -79,6 +115,12 @@
 				</p>
 				<p v-if="valda.length" class="commit-grind__docs-hint">
 					{{ t('hubs_start', 'Avmarkera dokument du inte vill föra över (t.ex. utkast).') }}
+				</p>
+				<!-- A9b — beslut-committet kräver minst ett dokument. Förklarar den
+				     nedtonade "För över"-knappen i st.f. en tyst spärr. -->
+				<p v-if="kraverSignering && valda.length && !nagotValt" class="commit-grind__docs-krav" role="status">
+					<AlertIcon :size="14" />
+					<span>{{ t('hubs_start', 'Välj minst ett dokument att föra över.') }}</span>
 				</p>
 			</section>
 
@@ -163,7 +205,7 @@
 				<NcButton
 					v-if="!committed"
 					type="primary"
-					:disabled="isRunning || (kraverSignering && !signeradBekraftad)"
+					:disabled="!kanForaOver"
 					class="commit-grind__commit"
 					@click="onCommit">
 					<template #icon>
@@ -189,6 +231,7 @@ import InfoIcon from 'vue-material-design-icons/InformationOutline.vue'
 import FileExportIcon from 'vue-material-design-icons/FileExport.vue'
 import DatabaseIcon from 'vue-material-design-icons/DatabaseArrowRight.vue'
 import DrawPenIcon from 'vue-material-design-icons/DrawPen.vue'
+import AccountVoiceIcon from 'vue-material-design-icons/AccountVoice.vue'
 import TransferIcon from 'vue-material-design-icons/Transfer.vue'
 import SendIcon from 'vue-material-design-icons/Send.vue'
 import ServerNetworkIcon from 'vue-material-design-icons/ServerNetwork.vue'
@@ -223,7 +266,7 @@ export default {
 	components: {
 		NcModal, NcButton, NcLoadingIcon, NcCheckboxRadioSwitch,
 		CheckIcon, AlertIcon, InfoIcon, FileExportIcon, DatabaseIcon,
-		DrawPenIcon, TransferIcon,
+		DrawPenIcon, AccountVoiceIcon, TransferIcon,
 	},
 
 	props: {
@@ -260,6 +303,11 @@ export default {
 			demoLage: isDemo(),
 			// #6 — signerings-bekräftelse (gateas "För över" när kraverSignering).
 			signeradBekraftad: false,
+			// A9b — rådgivande kommunicerings-checklista (visas vid utredning→beslut).
+			// Förvald "gjord" = det förväntade normalläget (kommunicering SKA ha skett);
+			// bockas av → skäl (radioval) krävs. Skickas som kommuniceringVal i kontexten.
+			kommuniceringGjord: true,
+			kommuniceringSkalVal: null,
 			// #5 — granskbar dokumentlista (alla förvalda). Normaliserar både
 			// {namn,fileid}-objekt (riktig data) och strängar (demo).
 			// TODO[per-arendetyp-dokumentpolicy]: framtid — härled initial `vald`
@@ -282,6 +330,56 @@ export default {
 		/** #6 — kräver detta commit en signerings-bekräftelse först (signerat-beslut)? */
 		kraverSignering() {
 			return !!(this.payload && this.payload.kraverSignering)
+		},
+		/** Är minst ett dokument valt att föra över? (A9b — gate för beslut-committet.) */
+		nagotValt() {
+			return this.valda.some((d) => d.vald)
+		},
+		/**
+		 * A9b — visa den rådgivande kommunicerings-checklistan vid utredning→beslut.
+		 * Triggern är ärendets steg 'utredning' (då nästa övergång är utredning→beslut,
+		 * där FL 25 §-kommuniceringen är relevant). Oberoende av exakt payload.typ-sträng.
+		 */
+		visaKommunicering() {
+			return (this.arende && this.arende.steg) === 'utredning'
+		},
+		/** A9b — skäl att inte kommunicera (enum ur kontraktet: kommuniceringVal.skal). */
+		kommuniceringSkal() {
+			return [
+				{ value: 'sker_i_beslut', label: t('hubs_start', 'Kommunicering sker i samband med beslutet') },
+				{ value: 'ej_relevant', label: t('hubs_start', 'Ej relevant i detta ärende') },
+				{ value: 'bradskande', label: t('hubs_start', 'Brådskande – kan inte inväntas') },
+			]
+		},
+		/**
+		 * A9b — kommuniceringVal i EXAKT kontrakts-form {gjord, skal?}. Bara relevant
+		 * vid utredning→beslut (visaKommunicering); annars null så föräldern vet att
+		 * detta commit inte bär något kommuniceringsval. skal tas bara med när gjord=false.
+		 */
+		kommuniceringVal() {
+			if (!this.visaKommunicering) {
+				return null
+			}
+			if (this.kommuniceringGjord) {
+				return { gjord: true }
+			}
+			return this.kommuniceringSkalVal
+				? { gjord: false, skal: this.kommuniceringSkalVal }
+				: { gjord: false }
+		},
+		/**
+		 * Får "För över" tryckas? Grunden: inte redan igång. Signering-committet kräver
+		 * dessutom bekräftad signering OCH minst ett valt dokument (A9b). Kommunicerings-
+		 * checklistan är RÅDGIVANDE och blockerar aldrig (mjuk grind).
+		 */
+		kanForaOver() {
+			if (this.isRunning) {
+				return false
+			}
+			if (this.kraverSignering && (!this.signeradBekraftad || !this.nagotValt)) {
+				return false
+			}
+			return true
 		},
 		handlingLabel() {
 			return t('hubs_start', TYP_LABEL[this.payload.typ] || 'Handling')
@@ -391,7 +489,9 @@ export default {
 			}
 			// #6 — gate: kräver signering men ej bekräftad → gör inget (knappen är
 			// redan disablad; detta är en defensiv spärr även i logiken).
-			if (this.kraverSignering && !this.signeradBekraftad) {
+			// A9b — beslut-committet kräver även minst ett valt dokument (defensiv spärr;
+			// knappen är redan disablad via kanForaOver).
+			if (this.kraverSignering && (!this.signeradBekraftad || !this.nagotValt)) {
 				return
 			}
 			this.failed = false
@@ -422,8 +522,11 @@ export default {
 				this.committed = true
 				this.isRunning = false
 				// Andra argumentet låter föräldern tråda valdaDokument vidare till sitt
-				// (idempotenta) andra store-commit, så urvalet är identiskt i båda.
-				this.$emit('committed', this.result, valdaDokument)
+				// (idempotenta) andra store-commit, så urvalet är identiskt i båda. Tredje
+				// argumentet (A9b) är kommuniceringVal i kontrakts-form — MinaArenden trådar
+				// det in i utredning→beslut-transitionens kontext. null när ej relevant
+				// (committet gäller inte utredning→beslut) så föräldern kan skilja fallen åt.
+				this.$emit('committed', this.result, valdaDokument, this.kommuniceringVal)
 			} catch (e) {
 				// Failure: stay at "Skickat", show fel-tone. No move. (Demo: never.)
 				// Motorns orsak sväljs ALDRIG tyst — OCS-felet (eller ok:false-svarets
@@ -530,6 +633,46 @@ export default {
 		margin: 2px 0 0;
 		color: var(--color-text-maxcontrast);
 		font-size: 0.82rem;
+	}
+
+	// A9b — obligatoriskt-dokument-kravet: samma varningston som övriga mjuka grindar.
+	&__docs-krav {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 4px 0 0;
+		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		font-size: 0.82rem;
+		font-weight: 600;
+
+		svg {
+			flex-shrink: 0;
+		}
+	}
+
+	// A9b — rådgivande kommunicerings-checklista.
+	&__komm-lead {
+		margin: 0;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.9rem;
+	}
+
+	&__komm-skal {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		margin: 6px 0 0;
+		padding: 8px 0 0;
+		border: none;
+		border-top: 1px solid var(--color-border);
+	}
+
+	&__komm-legend {
+		margin: 0 0 4px;
+		padding: 0;
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: var(--color-text-maxcontrast);
 	}
 
 	&__sign-lead {

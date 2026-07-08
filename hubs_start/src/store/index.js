@@ -53,6 +53,17 @@ const state = Vue.observable({
 		pulsFilter: null,
 		stegFilter: null,
 		full: {},
+		/**
+		 * A6 — evidens-bundlar per ärende (cache-nyckel = triageRef|ref). Byggs ur
+		 * REDAN hämtade signaler (historik/bevakningar/parter) så processteppern kan
+		 * härleda delmoment-status (arendeFlow.harledStatus) utan ny backend. Fylls
+		 * av loadStegEvidens(); läses synkront via stegEvidens(). Se docs/CONTRACTS.md.
+		 */
+		historikCache: {},
+		bevakningarCache: {},
+		parterCache: {},
+		/** Refs vars evidens-laddning pågår (dedup mot parallella stepper-hovers). */
+		stegEvidensLaddar: {},
 		/** Multi-korg inflöde (KorgValjare + de tre banden 1a/1b/1c). */
 		korgar: [],
 		inflode: [],
@@ -242,6 +253,87 @@ const store = {
 	},
 
 	/**
+	 * A6 — bygg evidens-bundeln {journal, commit, bevakningar, parter} för ett ärende
+	 * ur REDAN hämtad data (historik-/bevaknings-/parts-cache + full-registret). Ingen
+	 * ny backend: signalerna finns i journalen/registret, de projiceras bara till den
+	 * form arendeFlow.harledStatus/stegNodState läser. Synkron (returnerar tomma listor
+	 * tills loadStegEvidens() fyllt cachen) så processteppern kan rendera direkt.
+	 * @param {string} ref cache-nyckeln (triageRef|dnr|hubsCaseId)
+	 * @return {{journal:Array, commit:{registrerad:boolean, verifierad:boolean, dnr:?string}, bevakningar:Array, parter:Array}}
+	 */
+	stegEvidens(ref) {
+		const full = (ref && state.arende.full[ref]) || {}
+		const journal = state.arende.historikCache[ref] || []
+		const bevakningar = state.arende.bevakningarCache[ref] || []
+		const parter = state.arende.parterCache[ref] || []
+		// Commit-signalen härleds ur motorns provenance (registrerad = verifierad
+		// commit i facksystemet). full.beslut finns bara på ett committat ärende, så
+		// dess närvaro är ett andra (svagare) registrerad-tecken. Aldrig fabricerat.
+		const prov = full.provenance || {}
+		const registrerad = prov.state === 'registrerad' || !!full.beslut
+		const commit = {
+			registrerad,
+			// harledStatus 'commit'-grenen kräver verifierad för 'klar'. Motorns
+			// provenance flippas till 'registrerad' först på det VERIFIERADE kvittot
+			// (se store.commitArende/gap12), så registrerad ⇒ verifierad här.
+			verifierad: registrerad,
+			dnr: prov.dnr || full.dnr || null,
+		}
+		return { journal, commit, bevakningar, parter }
+	},
+
+	/**
+	 * A6 — hämta och cacha de signaler stegEvidens() bygger på (historik + bevakningar
+	 * + parter) för ETT ärende. Återanvänder samma OCS-läsytor som kortets flikar
+	 * (fetchArendeHistorik/-Bevakningar/-Parter) — ingen ny backend. Best-effort per
+	 * källa (en tom lista är ärligare än en spinner) och deduplicerad så samtidiga
+	 * stepper-hovers bara ger EN hämtning. Idempotent: hoppar över när cachen finns
+	 * och force ej satt.
+	 * @param {string} ref cache-nyckeln (triageRef|dnr|hubsCaseId)
+	 * @param {boolean} [force] tvinga omhämtning (efter en mutation)
+	 */
+	async loadStegEvidens(ref, force = false) {
+		if (!ref) return
+		if (!force && state.arende.historikCache[ref] && state.arende.bevakningarCache[ref]) {
+			return
+		}
+		if (state.arende.stegEvidensLaddar[ref]) {
+			return
+		}
+		Vue.set(state.arende.stegEvidensLaddar, ref, true)
+		try {
+			const [journal, bevakningar, parter] = await Promise.all([
+				api.fetchArendeHistorik(ref).catch(() => []),
+				api.fetchArendeBevakningar(ref).catch(() => []),
+				api.fetchArendeParter(ref).catch(() => []),
+			])
+			Vue.set(state.arende.historikCache, ref, Array.isArray(journal) ? journal : [])
+			Vue.set(state.arende.bevakningarCache, ref, Array.isArray(bevakningar) ? bevakningar : [])
+			Vue.set(state.arende.parterCache, ref, Array.isArray(parter) ? parter : [])
+		} finally {
+			Vue.set(state.arende.stegEvidensLaddar, ref, false)
+		}
+	},
+
+	/**
+	 * A6 — write-through av redan hämtad flik-data till evidens-cachen. ArendeKort
+	 * hämtar historik/bevakningar/parter för sina flikar; genom att spegla in dem här
+	 * slipper processteppern en andra hämtning (och ser samma färska data). Best-effort:
+	 * ignorerar icke-arrayer.
+	 * @param {string} ref cache-nyckeln
+	 * @param {string} slag 'historik' | 'bevakningar' | 'parter'
+	 * @param {Array} data
+	 */
+	setStegEvidensDel(ref, slag, data) {
+		if (!ref || !Array.isArray(data)) return
+		const karta = { historik: 'historikCache', bevakningar: 'bevakningarCache', parter: 'parterCache' }
+		const nyckel = karta[slag]
+		if (nyckel) {
+			Vue.set(state.arende[nyckel], ref, data)
+		}
+	},
+
+	/**
 	 * Commit a handling to Treserva (via Frends-stubben). På VERIFIERAT kvitto:
 	 * flippar provenans, kvitterar plikt, startar retention och lägger kvittot på
 	 * kvittens-ytan. 🔌 SEAM[treserva.commit] — se docs/DEMO-STUBS.md.
@@ -277,12 +369,19 @@ const store = {
 	},
 
 	/**
-	 * Avancera ett ärendes steg i livscykel-grafen (gap1/gap15). Anropas av
-	 * MinaArenden efter en VERIFIERAD commit. Patchar lokalt steg på det matchade
-	 * ärendet vid ok-svar. 🔌 SEAM[arende.steg] — POST .../arende/{ref}/steg.
+	 * Avancera ett ärendes steg i livscykel-grafen (gap1/gap15 + A7/A9). Anropas av
+	 * MinaArenden efter en VERIFIERAD commit ELLER direkt via nästa-åtgärd. Hela
+	 * grind-KONTEXTEN trådas vidare till motorn (override/inteInledaVal/
+	 * kommuniceringVal/avslutsmotiv) — se api.transitionSteg. Patchar lokalt steg på
+	 * det matchade ärendet vid ok-svar. Ett grind-krav (400) propageras som kastat
+	 * fel så callern kan öppna rätt grind-dialog (api.grindKravFel). 🔌 SEAM[arende.steg].
+	 * @param {string} ref hubsCaseId, dnr eller triageRef
+	 * @param {string} nyttSteg målsteget
+	 * @param {(object|boolean)} [kontext] grind-kontexten (boolean = legacy
+	 *        skyddsbedomningKvitterad; se api.transitionSteg)
 	 */
-	async transitionSteg(ref, nyttSteg, skyddsbedomningKvitterad = false) {
-		const r = await api.transitionSteg(ref, nyttSteg, skyddsbedomningKvitterad)
+	async transitionSteg(ref, nyttSteg, kontext = {}) {
+		const r = await api.transitionSteg(ref, nyttSteg, kontext)
 		if (r && (r.ok !== false)) {
 			const a = state.arende.arenden.find((x) => x.hubsCaseId === ref || x.dnr === ref || x.triageRef === ref)
 			if (a) a.steg = (r.steg || nyttSteg)

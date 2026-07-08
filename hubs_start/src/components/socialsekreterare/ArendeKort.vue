@@ -37,8 +37,10 @@
 			</span>
 		</header>
 
-		<!-- Processteg -->
+		<!-- Processteg. Hela ärendet skickas (A1/A5) så steppern kan härleda
+		     nod-states + rik hover ur STEG_INNEHALL/stegNodState + evidensen. -->
 		<ProcessStepper
+			:arende="arende"
 			:steg="arende.steg"
 			:substeg="arende.substeg"
 			:plikt="arende.plikt"
@@ -315,8 +317,14 @@
 					<ol class="arende-kort__tidslinje">
 						<li v-for="(h, i) in historik" :key="'h' + i">
 							<span class="arende-kort__tid">{{ fmtTime(h.tid) }}</span>
-							<span>{{ historikLabel(h) }}</span>
-							<span v-if="h.aktorUid" class="arende-kort__muted"> · {{ h.aktorUid }}</span>
+							<span class="arende-kort__handelse">
+								{{ historikLabel(h) }}
+								<span v-if="h.aktorUid" class="arende-kort__muted"> · {{ h.aktorUid }}</span>
+								<a
+									v-if="historikLank(h)"
+									class="arende-kort__fillank arende-kort__handelse-lank"
+									:href="historikLank(h)"><FileDocumentIcon :size="14" /> {{ t('hubs_start', 'öppna') }}</a>
+							</span>
 						</li>
 					</ol>
 					<p v-if="!tabLaddar.historik && !historik.length" class="arende-kort__muted">{{ t('hubs_start', 'Ingen historik än.') }}</p>
@@ -396,6 +404,28 @@ const STATUS_LABEL = {
 	uppnadd: t('hubs_start', 'Uppnådd'),
 	passerad: t('hubs_start', 'Passerad'),
 	avbruten: t('hubs_start', 'Avbruten'),
+}
+
+/** A2 — grind-namn (TYP_GRINDVAL.grind) → läsbar svensk etikett (aldrig rå token). */
+const GRIND_LABEL = {
+	skyddsbedomning: t('hubs_start', 'skyddsbedömning'),
+	inte_inleda: t('hubs_start', 'inte inleda utredning'),
+	kommunicering: t('hubs_start', 'kommunicering'),
+	avslut: t('hubs_start', 'avslut'),
+}
+
+/** A2 — grindval (TYP_GRINDVAL.val) → läsbar etikett. */
+const GRINDVAL_LABEL = {
+	godkand: t('hubs_start', 'godkänt'),
+	override: t('hubs_start', 'åsidosatt (dokumenterat skäl)'),
+	vald: t('hubs_start', 'valt'),
+}
+
+/** A2 — kvittens-/grind-moment (TYP_KVITTENS.moment) → läsbar etikett. */
+const MOMENT_LABEL = {
+	skyddsbedomning: t('hubs_start', 'skyddsbedömning'),
+	kommunicering: t('hubs_start', 'kommunicering'),
+	beslut: t('hubs_start', 'beslut'),
 }
 
 export default {
@@ -576,6 +606,9 @@ export default {
 			this.localExpanded = !this.localExpanded
 			if (this.localExpanded && this.cacheKey) {
 				store.loadArende(this.cacheKey)
+				// A6 — ge processteppern evidens (historik/bevakningar/parter) så dess
+				// nod-states blir exakta (klar/lucka/överhoppat) i det expanderade läget.
+				store.loadStegEvidens(this.cacheKey)
 				this.loadFlikData(this.activeFlik)
 			}
 			this.$emit('expand', this.arende)
@@ -611,10 +644,13 @@ export default {
 					this.tabLaddar.bevakningar = true
 					this.tabBevakningar = await fetchArendeBevakningar(ref)
 					this.tabLaddar.bevakningar = false
+					// A6 — spegla in i evidens-cachen så steppern återanvänder datat.
+					store.setStegEvidensDel(this.cacheKey, 'bevakningar', this.tabBevakningar)
 				} else if (id === 'historik' && this.tabHistorik === null && !this.tabLaddar.historik) {
 					this.tabLaddar.historik = true
 					this.tabHistorik = await fetchArendeHistorik(ref)
 					this.tabLaddar.historik = false
+					store.setStegEvidensDel(this.cacheKey, 'historik', this.tabHistorik)
 				}
 			} catch (e) {
 				// Ärligt tom flik i stället för evig spinner.
@@ -674,9 +710,15 @@ export default {
 			}
 			return i === 0 ? t('hubs_start', 'Ärendets diskussion') : t('hubs_start', 'Chatt {n}', { n: i + 1 })
 		},
-		/** Tidslinjens radtext ur journalens typ + detalj (koordination, aldrig PII). */
+		/**
+		 * Tidslinjens radtext ur journalens typ + detalj (koordination, aldrig PII).
+		 * Beviset finns i detaljen — A2 lägger till case för handling/part/bevakning/
+		 * grindval/kvittens så raden aldrig faller till det råa typnamnet. Aktör + datum
+		 * renderas separat av raden (h.aktorUid + fmtTime(h.tid)); ev. artefakt-länk
+		 * via historikLank().
+		 */
 		historikLabel(h) {
-			const d = h.detalj || {}
+			const d = this.historikDetalj(h)
 			switch (h.typ) {
 			case 'skapad':
 				return t('hubs_start', 'Ärendet skapades ({typ})', { typ: d.arendeTyp || '' })
@@ -694,9 +736,133 @@ export default {
 				return t('hubs_start', 'Ny chatt skapades i ärendet')
 			case 'kopplad':
 				return n('hubs_start', '%n meddelande kopplades', '%n meddelanden kopplades', d.antal || 1)
+			case 'handling': {
+				// Handling skapad ur mall (mall-nyckeln, aldrig innehåll). Filnamnet
+				// visas när det finns; annars bara mallen.
+				const mall = d.mall || d.mallNamn || d.mallId || ''
+				const fil = this.handelseFil(h)
+				if (mall && fil) {
+					return t('hubs_start', 'Handling skapad ur mall: {mall} → {fil}', { mall, fil })
+				}
+				if (mall) {
+					return t('hubs_start', 'Handling skapad ur mall: {mall}', { mall })
+				}
+				return fil
+					? t('hubs_start', 'Handling skapad: {fil}', { fil })
+					: t('hubs_start', 'Handling skapad')
+			}
+			case 'part': {
+				// Partsregister-händelse: roll + riktning (aldrig namn/pnr).
+				const roll = this.rollLabel(d.roll) || t('hubs_start', 'part')
+				if (d.riktning === 'ut' || d.borttagen) {
+					return t('hubs_start', 'Part borttagen: {roll}', { roll })
+				}
+				if (d.kalla === 'navet' || d.uppdaterad) {
+					return t('hubs_start', 'Part uppdaterad mot folkbokföringen: {roll}', { roll })
+				}
+				return t('hubs_start', 'Part tillagd: {roll}', { roll })
+			}
+			case 'bevakning': {
+				// Bevaknings-livscykel: typ/titel + status (register-koordination).
+				const titel = d.titel || this.bevakningTypLabel(d.typ) || t('hubs_start', 'bevakning')
+				const status = d.status ? this.statusLabel(d.status) : ''
+				return status
+					? t('hubs_start', 'Bevakning: {titel} ({status})', { titel, status })
+					: t('hubs_start', 'Bevakning: {titel}', { titel })
+			}
+			case 'grindval': {
+				// A2 — grind-beslut: vilken grind + vilket val (+ ev. skäl-enum).
+				const grind = GRIND_LABEL[d.grind] || d.grind || ''
+				const val = GRINDVAL_LABEL[d.val] || d.val || ''
+				const skal = this.grindvalSkal(d)
+				const bas = t('hubs_start', 'Grindval: {grind} — {val}', { grind, val })
+				return skal ? bas + ' · ' + skal : bas
+			}
+			case 'kvittens': {
+				// A2 — kvittens av ett moment (t.ex. skyddsbedömning).
+				const moment = MOMENT_LABEL[d.moment] || d.moment || ''
+				return t('hubs_start', 'Kvitterat: {moment}', { moment })
+			}
 			default:
 				return h.typ
 			}
+		},
+		/** Normalisera journal-detaljen (objekt eller JSON-sträng) → objekt. */
+		historikDetalj(h) {
+			if (h && typeof h.detalj === 'object' && h.detalj) {
+				return h.detalj
+			}
+			if (h && typeof h.detalj === 'string') {
+				try {
+					return JSON.parse(h.detalj)
+				} catch (e) {
+					return {}
+				}
+			}
+			return {}
+		},
+		/** Filnamnet för en journal-händelse om detaljen bär en (handling/artefakt). */
+		handelseFil(h) {
+			const d = this.historikDetalj(h)
+			return d.fil || d.filnamn || d.artefakt || d.artefaktRef || ''
+		},
+		/**
+		 * A2 — artefakt-länk för en journalrad (återanvänder fileHref-mönstret): en
+		 * skapad handling/artefakt i akten öppnas i Filer. null när raden saknar fil.
+		 */
+		historikLank(h) {
+			const fil = this.handelseFil(h)
+			const caseId = this.arende.hubsCaseId
+			if (fil && caseId) {
+				return deepLinks.fileLink('/' + caseId + '/' + fil)
+			}
+			return null
+		},
+		/** Grindvalets skäl-enum → läsbar text (orsak/skal/utfall + beslutsfattare). */
+		grindvalSkal(d) {
+			const delar = []
+			const koder = {
+				// A7 override-skäl
+				gjord_i_facksystem: t('hubs_start', 'skyddsbedömning gjord i facksystemet'),
+				gjord_utanfor_hubs: t('hubs_start', 'skyddsbedömning gjord utanför Hubs'),
+				bradskande: t('hubs_start', 'brådskande'),
+				// A9a inte-inleda-orsak
+				ingen_grund: t('hubs_start', 'ingen grund för utredning'),
+				annan_huvudman: t('hubs_start', 'annan huvudman'),
+				redan_aktuell: t('hubs_start', 'redan aktuell'),
+				avskrivs: t('hubs_start', 'avskrivs'),
+				// A9b kommunicerings-skäl
+				sker_i_beslut: t('hubs_start', 'kommunicering sker i beslutet'),
+				ej_relevant: t('hubs_start', 'ej relevant'),
+				// A9c avslutsutfall
+				behov_tillgodosett: t('hubs_start', 'behov tillgodosett'),
+				flyttat: t('hubs_start', 'flyttat'),
+				avbojt: t('hubs_start', 'tackat nej'),
+				annan_insats: t('hubs_start', 'annan insats'),
+				overford_facksystem: t('hubs_start', 'överförd till facksystemet'),
+			}
+			const kod = d.orsak || d.skal || d.utfall
+			if (kod && koder[kod]) {
+				delar.push(koder[kod])
+			}
+			if (d.kvarstaende) {
+				delar.push(t('hubs_start', 'kvarstående behov'))
+			}
+			return delar.join(', ')
+		},
+		/** Bevaknings-typens läsbara etikett (fallback när titel saknas). */
+		bevakningTypLabel(typ) {
+			if (!typ) {
+				return ''
+			}
+			const s = String(typ).toLowerCase()
+			if (s.includes('overvagande') || s.includes('omprovning')) {
+				return t('hubs_start', 'övervägande/omprövning')
+			}
+			if (s.includes('overklagande')) {
+				return t('hubs_start', 'överklagandefrist')
+			}
+			return typ
 		},
 		rollLabel(roll) {
 			const map = {
@@ -952,6 +1118,8 @@ export default {
 			this.tabLaddar.bevakningar = true
 			try {
 				this.tabBevakningar = await fetchArendeBevakningar(ref)
+				// A6 — håll evidens-cachen (och därmed steppern) i synk efter mutationen.
+				store.setStegEvidensDel(this.cacheKey, 'bevakningar', this.tabBevakningar)
 			} catch (e) {
 				// Ärligt tom flik i stället för evig spinner.
 			} finally {
@@ -1151,6 +1319,8 @@ export default {
 		li { display: flex; gap: 10px; align-items: baseline; }
 	}
 	&__tid { color: var(--color-text-maxcontrast); font-size: 0.78rem; min-width: 96px; font-variant-numeric: tabular-nums; }
+	&__handelse { min-width: 0; }
+	&__handelse-lank { margin-left: 6px; font-size: 0.82rem; font-weight: 600; }
 	&__medlemmar {
 		display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
 		border-top: 1px solid var(--color-border); padding-top: 10px; margin-top: 10px;

@@ -71,6 +71,25 @@ const HUBS_ARENDE_OCS = (path) => generateOcsUrl('apps/hubs_arende/api/v1' + pat
 /** Unwrap an OCS response body. */
 const ocsData = (response) => response?.data?.ocs?.data
 
+/**
+ * A7/A9 — plocka fram motorns grind-krav ur ett kastat OCS-fel. transitionSteg()
+ * (och commit-flödet) svarar 400 med { error, grindKravs:true } när ett obligatoriskt
+ * grindval saknas OCH flaggan är på (ArendeLifecycleService kastar
+ * \InvalidArgumentException → controller 400). Returnerar { grindKravs, error } så
+ * callern kan avgöra OM en grind-dialog ska öppnas (grindKravs===true) och visa
+ * motorns orsak. grindKravs=false för alla andra fel (transport/403/…), som då
+ * hanteras som vanliga fel. PII-fritt: error bär enum-koder, aldrig fri text.
+ * @param {*} e ett kastat axios-/OCS-fel
+ * @return {{grindKravs:boolean, error:?string}}
+ */
+export function grindKravFel(e) {
+	const data = e && e.response && e.response.data && e.response.data.ocs && e.response.data.ocs.data
+	if (data && data.grindKravs) {
+		return { grindKravs: true, error: data.error || null }
+	}
+	return { grindKravs: false, error: (data && data.error) || null }
+}
+
 // ---------------------------------------------------------------------------
 // Boot / identity
 // ---------------------------------------------------------------------------
@@ -565,17 +584,30 @@ export async function skapaArende(rad) {
 
 /**
  * Avancera ett ärende ett steg i livscykel-grafen (inflode→forhandsbedomning→
- * utredning→beslut→uppfoljning→avslutat). Körs efter en verifierad commit.
+ * utredning→beslut→uppfoljning→avslutat). Kör grindarna server-side (A7/A9):
+ * hela KONTEXT-objektet skickas med så motorn kan konsumera override/inteInledaVal/
+ * kommuniceringVal/avslutsmotiv (se ArendeLifecycleService::transitionera). Ett
+ * saknat obligatoriskt grindval ger 400 { error, grindKravs } så callern kan visa
+ * rätt grind-dialog och skicka om.
+ *
  * @param {string} ref hubsCaseId, dnr eller triageRef
  * @param {string} nyttSteg målsteget enligt ArendeLifecycleService-grafen
- * @param {boolean} [skyddsbedomningKvitterad] ORO-1: plikt-grinden kräver detta för
- *        förhandsbedömning→utredning på en pliktGrind-typ (orosanmälan). Sätts true
- *        när handläggaren fattat beslutet (verifierad commit av skyddsbedömningen).
+ * @param {(object|boolean)} [kontext] grind-kontexten (alla nycklar valfria):
+ *        { skyddsbedomningKvitterad?, override?:{skal}, inteInledaVal?:{orsak,beslutsfattare},
+ *          kommuniceringVal?:{gjord,skal?}, avslutsmotiv?:{utfall,kvarstaende?} }.
+ *        BAKÅTKOMPAT: en boolean tolkas som legacy-{skyddsbedomningKvitterad}
+ *        (den enda tredje-arg som fanns innan grindarna wirades).
  * @return {Promise<{ok:boolean, steg:string}>}
  */
-export async function transitionSteg(ref, nyttSteg, skyddsbedomningKvitterad = false) {
+export async function transitionSteg(ref, nyttSteg, kontext = {}) {
+	// Normalisera legacy-boolean → kontext-objekt (bakåtkompatibilitet).
+	const ctx = (typeof kontext === 'boolean')
+		? { skyddsbedomningKvitterad: kontext }
+		: (kontext || {})
 	if (DEMO) return { ok: true, steg: nyttSteg }
-	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/steg'), { nyttSteg, skyddsbedomningKvitterad })
+	// Hela kontexten läggs bredvid nyttSteg i bodyn (controllern plockar ut de
+	// enskilda nycklarna och trådar dem in i lifecycleService->transitionera).
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/steg'), { nyttSteg, ...ctx })
 	return ocsData(res)
 }
 
@@ -952,6 +984,7 @@ export default {
 	fetchTreservaReceipts,
 	skapaArende,
 	transitionSteg,
+	grindKravFel,
 	tilldela,
 	inflodeAction,
 	commitToTreserva,
@@ -973,6 +1006,8 @@ export default {
 	fetchNotes,
 	addNote,
 	fetchArendeEnrichment,
+	fetchArendeHistorik,
+	fetchArendeParter,
 	fetchArendeBevakningar,
 	skapaBevakning,
 	kvitteraBevakning,

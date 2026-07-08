@@ -64,17 +64,27 @@ describe('CommitGrind #5 — document selection', () => {
 })
 
 describe('CommitGrind #6 — embedded signing confirmation (no modal stacking)', () => {
-	it('kraverSignering gates the commit until "Jag har signerat" is checked', async () => {
-		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true })
+	it('kraverSignering gates the commit until signed AND ≥1 doc is chosen (A9b)', async () => {
+		// A9b — signering-committet kräver bekräftad signering OCH minst ett dokument.
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
 		expect(w.vm.kraverSignering).toBe(true)
 		// Not confirmed yet → onCommit is a no-op (the button is also disabled).
 		await w.vm.onCommit()
 		expect(api.commitToTreserva).not.toHaveBeenCalled()
-		// Confirm signed → commit proceeds.
+		// Confirm signed → commit proceeds (a doc is selected by default).
 		w.vm.signeradBekraftad = true
 		await w.vm.onCommit()
 		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
 		expect(w.emitted('committed')).toBeTruthy()
+	})
+
+	it('A9b — signed but no doc selected stays gated', async () => {
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
+		w.vm.signeradBekraftad = true
+		w.vm.valda[0].vald = false // avmarkerar det enda dokumentet
+		expect(w.vm.kanForaOver).toBe(false)
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).not.toHaveBeenCalled()
 	})
 
 	it('a normal commit (no kraverSignering) is never gated', async () => {
@@ -84,3 +94,40 @@ describe('CommitGrind #6 — embedded signing confirmation (no modal stacking)',
 		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
 	})
 })
+
+describe('CommitGrind #A9b — advisory kommunicering (utredning→beslut)', () => {
+	it('shows the checklist only in the utredning step', () => {
+		// visaKommunicering härleds ur arende.steg.
+		expect(shallowMountWithSteg('utredning').vm.visaKommunicering).toBe(true)
+		expect(shallowMountWithSteg('beslut').vm.visaKommunicering).toBe(false)
+	})
+
+	it('emits kommuniceringVal {gjord:true} by default at utredning→beslut', async () => {
+		const w = shallowMountWithSteg('utredning', { typ: 'utredning', dokument: [{ fileid: 1, namn: 'Utredning' }] })
+		await w.vm.onCommit()
+		expect(w.emitted('committed')[0][2]).toEqual({ gjord: true })
+	})
+
+	it('emits kommuniceringVal {gjord:false, skal} when not communicated', async () => {
+		const w = shallowMountWithSteg('utredning', { typ: 'utredning', dokument: [{ fileid: 1, namn: 'Utredning' }] })
+		w.vm.kommuniceringGjord = false
+		w.vm.kommuniceringSkalVal = 'sker_i_beslut'
+		await w.vm.onCommit()
+		expect(w.emitted('committed')[0][2]).toEqual({ gjord: false, skal: 'sker_i_beslut' })
+	})
+
+	it('carries null kommuniceringVal outside the utredning step', async () => {
+		const w = shallowMountWithSteg('beslut', { typ: 'beslut', dokument: [{ fileid: 1, namn: 'X' }] })
+		await w.vm.onCommit()
+		expect(w.emitted('committed')[0][2]).toBeNull()
+	})
+})
+
+/** Mount-hjälp med ett givet ärende-steg (driver visaKommunicering) + skippade timers. */
+function shallowMountWithSteg(steg, payload = { typ: 'utredning' }) {
+	const w = shallowMount(CommitGrind, {
+		propsData: { arende: { dnr: '2026-IFO-0502', triageRef: '2026-IFO-0502', provenance: {}, steg }, payload },
+	})
+	w.vm.advanceTo = () => Promise.resolve()
+	return w
+}

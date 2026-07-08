@@ -197,13 +197,73 @@
 			:payload="commitPayload"
 			@committed="onCommitted"
 			@close="commitOpen = false" />
-		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång) -->
+		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång).
+		     A9a/A9c: grinden samlar inteInledaVal/avslutsmotiv och emittar dem. -->
 		<AvslutaGrind
 			v-if="avslutaOpen"
 			:arende="avslutaArende"
 			:is-running="avslutaRunning"
+			:bevakningar="avslutaBevakningar"
 			@avsluta="onAvslutaConfirmed"
 			@close="avslutaOpen = false" />
+
+		<!-- A7 — skyddsbedömnings-override-grind (inline). Öppnas när motorn spärrar
+		     forhandsbedomning→utredning för att skyddsbedömningen saknas som artefakt.
+		     Handläggaren anger ett dokumenterat skäl (enum) → kontext.override.skal.
+		     3 klick, ingen uppsats; skälet journalförs PII-fritt av motorn. -->
+		<NcModal
+			v-if="overrideOpen"
+			:show="true"
+			:name="t('hubs_start', 'Skyddsbedömning saknas')"
+			size="small"
+			:can-close="!overrideRunning"
+			@close="overrideOpen = false">
+			<div class="mina-arenden__override">
+				<p class="mina-arenden__override-lead">
+					<ShieldAlertIcon :size="18" />
+					<span>{{ t('hubs_start', 'Ingen omedelbar skyddsbedömning är dokumenterad i Hubs. Utredning får bara inledas när skyddsbedömningen finns. Ange varför den kan anses gjord — skälet journalförs.') }}</span>
+				</p>
+				<fieldset class="mina-arenden__override-val">
+					<legend class="mina-arenden__override-legend">{{ t('hubs_start', 'Skäl') }}</legend>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="gjord_i_facksystem"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Skyddsbedömningen är gjord och dokumenterad i facksystemet') }}
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="gjord_utanfor_hubs"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Skyddsbedömningen är gjord utanför Hubs (t.ex. på papper/annat system)') }}
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="bradskande"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Brådskande — skyddsbedömning görs omgående och dokumenteras') }}
+					</NcCheckboxRadioSwitch>
+				</fieldset>
+				<div class="mina-arenden__override-foot">
+					<NcButton :disabled="overrideRunning" @click="overrideOpen = false">
+						{{ t('hubs_start', 'Avbryt') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="overrideRunning || !overrideSkal" @click="onOverrideConfirmed">
+						<template #icon>
+							<NcLoadingIcon v-if="overrideRunning" :size="18" />
+							<ArrowRightIcon v-else :size="18" />
+						</template>
+						{{ t('hubs_start', 'Dokumentera & gå vidare') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 		<!-- Ny chatt i ärenderummet (1:n — motorn kopplar team + åtkomstlista) -->
 		<NyChattModal
 			v-if="nyChattOpen"
@@ -269,6 +329,9 @@
 <script>
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcCounterBubble from '@nextcloud/vue/dist/Components/NcCounterBubble.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import BookOpenIcon from 'vue-material-design-icons/BookOpenVariant.vue'
 import ForumIcon from 'vue-material-design-icons/Forum.vue'
@@ -276,13 +339,15 @@ import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import AccountSupervisorIcon from 'vue-material-design-icons/AccountSupervisor.vue'
 import FlaskOutlineIcon from 'vue-material-design-icons/FlaskOutline.vue'
+import ShieldAlertIcon from 'vue-material-design-icons/ShieldAlert.vue'
+import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import { showSuccess, showInfo, showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 
 import store from '../../store/index.js'
 import deepLinks from '../../services/deepLinks.js'
-import { skapaArendeChatt, skapaHandling, tilldela } from '../../services/api.js'
+import { skapaArendeChatt, skapaHandling, tilldela, grindKravFel } from '../../services/api.js'
 import { NASTA_ATGARD, PROCESS_STEG } from '../../services/arendeFlow.js'
 import { typLabel } from '../../services/messageTypes.js'
 
@@ -321,8 +386,9 @@ export default {
 	name: 'MinaArenden',
 
 	components: {
-		NcLoadingIcon, NcCounterBubble, CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
-		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon,
+		NcLoadingIcon, NcCounterBubble, NcModal, NcButton, NcCheckboxRadioSwitch,
+		CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
+		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon, ShieldAlertIcon, ArrowRightIcon,
 		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, ArendeZon,
@@ -362,6 +428,15 @@ export default {
 			favoritRad: null,
 			// Fas F3 — inflöde-raden vars koppling väntar i KopplaValjare (null = stängd).
 			kopplaRad: null,
+			// A7 — skyddsbedömnings-override-grind (inline modal). Öppnas när motorn
+			// 400:ar forhandsbedomning→utredning för att skyddsbedömningen saknas som
+			// artefakt/kvittens. Handläggaren anger ett dokumenterat skäl (enum) som
+			// skickas som kontext.override {skal} vid omförsöket.
+			overrideOpen: false,
+			overrideArende: null,
+			overrideNyttSteg: null,
+			overrideSkal: 'gjord_i_facksystem',
+			overrideRunning: false,
 		}
 	},
 
@@ -451,6 +526,16 @@ export default {
 		/** Fördelarrollen (gruppledare/förvaltare) får läge-växeln även i skarpt läge. */
 		arFordelare() {
 			return this.state.profile === 'forvaltare'
+		},
+		/**
+		 * A9 — bevakningarna för det ärende som håller på att avslutas (ur A6-cachen),
+		 * så AvslutaGrind kan visa den mjuka varningen om aktiv övervägande/omprövning.
+		 * Tom lista när cachen ännu ej fyllts (ingen falsk varning).
+		 */
+		avslutaBevakningar() {
+			const a = this.avslutaArende
+			const ref = a && (a.triageRef || a.dnr || a.hubsCaseId)
+			return (ref && this.A.bevakningarCache && this.A.bevakningarCache[ref]) || []
 		},
 		/** Dagspuls HÄRLEDD ur laddad data — döda motor-nollor visas aldrig som sanning. */
 		pulsBeriknad() {
@@ -601,6 +686,114 @@ export default {
 				return this.onOpenRum(arende)
 			default:
 				return this.onExpand(arende, target.flik)
+			}
+		},
+
+		/**
+		 * A7/A9 — vilken grind kräver övergången (fromSteg → nyttSteg)? Rutas på
+		 * grafens deterministiska kanter (inte på felmeddelandets text), så nyckeln
+		 * matchar kontrakt-tabellen exakt:
+		 *  - forhandsbedomning→utredning  → 'override'      (skyddsbedömning saknas, A7)
+		 *  - forhandsbedomning→avslutat   → 'inteInleda'    (A9a)
+		 *  - utredning→beslut             → 'kommunicering' (A9b)
+		 *  - X→avslutat (ej forhb.)       → 'avslutsmotiv'  (A9c)
+		 * @return {?string}
+		 */
+		grindForTransition(fromSteg, nyttSteg) {
+			if (nyttSteg === 'avslutat') {
+				return fromSteg === 'forhandsbedomning' ? 'inteInleda' : 'avslutsmotiv'
+			}
+			if (fromSteg === 'forhandsbedomning' && nyttSteg === 'utredning') {
+				return 'override'
+			}
+			if (fromSteg === 'utredning' && nyttSteg === 'beslut') {
+				return 'kommunicering'
+			}
+			return null
+		},
+		/**
+		 * A7/A9 — kör en steg-övergång och HANTERA grind-kravet. Skickar hela kontexten
+		 * (override/inteInledaVal/kommuniceringVal/avslutsmotiv) till motorn; om motorn
+		 * 400:ar med grindKravs öppnas rätt grind-dialog så handläggaren kan komplettera
+		 * och skicka om. Returnerar { ok } eller { grind } (dialogen öppnad, väntar val).
+		 * Andra fel bubblar som vanligt (callern visar sitt eget felmeddelande).
+		 * @param {object} arende
+		 * @param {string} nyttSteg
+		 * @param {object} [kontext] grind-kontext (kan vara tom vid första försöket)
+		 * @return {Promise<{ok?:boolean, grind?:string, error?:string, r?:object}>}
+		 */
+		async transitionMedGrind(arende, nyttSteg, kontext = {}) {
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref) {
+				return { ok: false }
+			}
+			try {
+				const r = await store.transitionSteg(ref, nyttSteg, kontext)
+				return { ok: !!(r && r.ok !== false), r }
+			} catch (e) {
+				const grindFel = grindKravFel(e)
+				if (grindFel.grindKravs) {
+					// Öppna rätt dialog för det som fattas och kom ihåg målsteget.
+					const grind = this.grindForTransition(arende.steg, nyttSteg)
+					this.oppnaGrindDialog(grind, arende, nyttSteg)
+					return { grind: grind || 'okand', error: grindFel.error }
+				}
+				throw e
+			}
+		},
+		/**
+		 * A7/A9 — öppna grind-dialogen som motsvarar ett grind-krav. Skyddsbedömnings-
+		 * override sköts av den inline-modalen här; inte-inleda/avslutsmotiv av
+		 * AvslutaGrind; kommunicering av CommitGrind (beslut-committet).
+		 */
+		oppnaGrindDialog(grind, arende, nyttSteg) {
+			switch (grind) {
+			case 'override':
+				this.overrideArende = arende
+				this.overrideNyttSteg = nyttSteg
+				this.overrideSkal = 'gjord_i_facksystem'
+				this.overrideRunning = false
+				this.overrideOpen = true
+				break
+			case 'inteInleda':
+			case 'avslutsmotiv':
+				// AvslutaGrind samlar rätt fält utifrån ärendets steg (forhandsbedomning
+				// ⇒ inteInledaVal; annars avslutsmotiv). Öppna den.
+				this.avslutaArende = arende
+				this.avslutaRunning = false
+				this.avslutaOpen = true
+				break
+			case 'kommunicering':
+				// Beslut-committet (CommitGrind) bär kommuniceringVal. Öppna commit-grinden.
+				this.onCommit(arende, { typ: 'beslut', arende })
+				break
+			default:
+				showInfo(this.t('hubs_start', 'Ett obligatoriskt beslut saknas för att gå vidare.'))
+			}
+		},
+		/** A7 — bekräfta skyddsbedömnings-overriden: skicka om med kontext.override. */
+		async onOverrideConfirmed() {
+			const arende = this.overrideArende
+			const nyttSteg = this.overrideNyttSteg
+			if (!arende || !nyttSteg || this.overrideRunning) {
+				return
+			}
+			this.overrideRunning = true
+			try {
+				const res = await this.transitionMedGrind(arende, nyttSteg, { override: { skal: this.overrideSkal } })
+				if (res.ok) {
+					showSuccess(this.t('hubs_start', 'Skyddsbedömningen är dokumenterad — ärendet gick vidare till utredning.'))
+					this.overrideOpen = false
+				} else if (res.grind) {
+					// Motorn krävde ännu ett val (ska normalt inte hända med giltigt skäl)
+					// — transitionMedGrind har återöppnat rätt dialog; lämna den öppen.
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte gå vidare: {orsak}', { orsak: res.error || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.t('hubs_start', 'Kunde inte gå vidare. Försök igen.'))
+			} finally {
+				this.overrideRunning = false
 			}
 		},
 
@@ -958,36 +1151,67 @@ export default {
 			// över" gateas tills handläggaren kryssat "Jag har signerat dokumentet".
 			this.onCommit(arende, { typ: 'signerat-beslut', arende, kraverSignering: true })
 		},
-		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse). */
+		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse + A9-motiv). */
 		onAvsluta(arende) {
 			this.avslutaArende = arende
 			this.avslutaRunning = false
 			this.avslutaOpen = true
+			// A9 — ladda evidensen så AvslutaGrindens mjuka omprövnings-varning blir
+			// korrekt (bevakningarna hamnar i A6-cachen som avslutaBevakningar läser).
+			const ref = arende && (arende.triageRef || arende.dnr || arende.hubsCaseId)
+			if (ref) {
+				store.loadStegEvidens(ref)
+			}
 		},
 		/**
-		 * #5 — bekräftat avslut: en REN steg-övergång till 'avslutat' (ingen ny
-		 * Treserva-commit — akten är redan registrerad; avslut ≠ registrering). På ok
-		 * patchar store det lokala steget och kortet faller till terminal-läget.
+		 * #5 + A9a/A9c — bekräftat avslut: en REN steg-övergång till 'avslutat' (ingen ny
+		 * Treserva-commit — akten är redan registrerad; avslut ≠ registrering). AvslutaGrind
+		 * samlar in grind-kontexten utifrån ärendets steg och emittar den:
+		 *  - forhandsbedomning ⇒ { inteInledaVal: { orsak, beslutsfattare } }  (A9a)
+		 *  - annars            ⇒ { avslutsmotiv: { utfall, kvarstaende? } }     (A9c)
+		 * Vi trådar hela payloaden som kontext till motorn. Bakåtkompatibelt: en
+		 * payload utan grind-fält (t.ex. flaggan AV) ger en ren övergång som förut.
+		 * Om motorn ändå 400:ar med grindKravs öppnas rätt dialog av transitionMedGrind.
+		 *
+		 * Robust mot AvslutaGrindens emit-form: ärendet tas ur komponentens state
+		 * (this.avslutaArende), och kontexten letas fram bland emit-argumenten oavsett
+		 * om grinden emittar (arende, kontext), (kontext) eller bara (arende).
+		 * @param {...*} args emit-argument från AvslutaGrind
 		 */
-		async onAvslutaConfirmed(arende) {
+		async onAvslutaConfirmed(...args) {
+			const arende = this.avslutaArende
 			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
 			if (!ref) {
 				this.avslutaOpen = false
 				return
 			}
+			// Hitta grind-payloaden (det arg som bär inteInledaVal/avslutsmotiv) och
+			// plocka bara ut de kontrakt-nycklar motorn förstår — aldrig hela objektet.
+			const payload = args.find((a) => a && typeof a === 'object' && (a.inteInledaVal || a.avslutsmotiv)) || {}
+			const kontext = {}
+			if (payload.inteInledaVal) {
+				kontext.inteInledaVal = payload.inteInledaVal
+			}
+			if (payload.avslutsmotiv) {
+				kontext.avslutsmotiv = payload.avslutsmotiv
+			}
 			this.avslutaRunning = true
 			try {
-				const r = await store.transitionSteg(ref, 'avslutat')
-				if (r && r.ok !== false) {
+				const res = await this.transitionMedGrind(arende, 'avslutat', kontext)
+				if (res.ok) {
 					showSuccess(this.t('hubs_start', 'Ärendet avslutat — gallringen av Hubs-rummet har startat.'))
+					this.avslutaOpen = false
+				} else if (res.grind) {
+					// Grind-dialogen är (åter)öppnad av transitionMedGrind — lämna den.
 				} else {
-					showError(this.t('hubs_start', 'Kunde inte avsluta ärendet: {orsak}', { orsak: (r && (r.error || r.reason)) || this.t('hubs_start', 'okänt fel') }))
+					showError(this.t('hubs_start', 'Kunde inte avsluta ärendet: {orsak}', { orsak: res.error || this.t('hubs_start', 'okänt fel') }))
+					this.avslutaOpen = false
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte avsluta ärendet. Försök igen.'))
+				this.avslutaOpen = false
 			} finally {
 				this.avslutaRunning = false
-				this.avslutaOpen = false
 			}
 		},
 		onBevakning(arende) {
@@ -1011,9 +1235,25 @@ export default {
 			this.commitPayload = { ...bas, arende, dokument: (payload && payload.dokument) || [] }
 			this.commitOpen = true
 		},
-		async onCommitted(result, valdaDokument) {
+		/**
+		 * @param {object} result CommitGrindens verifierade kvitto
+		 * @param {Array} [valdaDokument] granskade dokument (trådas till andra committet)
+		 * @param {?object} [kommuniceringValArg] A9b — CommitGrind emittar kommunicerings-
+		 *        valet {gjord, skal?} (eller null) som TREDJE arg inför utredning→beslut.
+		 */
+		async onCommitted(result, valdaDokument, kommuniceringValArg) {
 			this.commitOpen = false
 			const arende = this.commitArende
+			// A9b — bygg kontexten under rätt nyckel (kommuniceringVal). CommitGrind
+			// skickar valet som rått {gjord, skal?}-objekt; var ändå robust mot en ev.
+			// {kommuniceringVal:{…}}-inpackning (grindens emit-form kan variera).
+			const grindKontext = {}
+			const kv = (kommuniceringValArg && kommuniceringValArg.kommuniceringVal)
+				|| kommuniceringValArg
+				|| (result && result.kommuniceringVal)
+			if (kv && typeof kv === 'object') {
+				grindKontext.kommuniceringVal = kv
+			}
 			// "Hela vägen": commit to the facksystem (Treserva via Frends). Only show
 			// the registered-kvittens on a VERIFIED receipt (r.ok && r.verifierad); a
 			// backend failure previously either threw silently (no feedback) or — on a
@@ -1025,19 +1265,20 @@ export default {
 				const r = await store.commitArende({ ...this.commitPayload, arende, valdaDokument: valdaDokument || (this.commitPayload && this.commitPayload.valdaDokument) })
 				if (r && r.ok && r.verifierad) {
 					showSuccess(this.t('hubs_start', 'Fört till Treserva — registrerat i akten.'))
-					// gap1 — efter en VERIFIERAD commit: advancera ärendet ett steg i grafen
-					// (forhandsbedomning→utredning→beslut→uppfoljning→avslutat).
+					// gap1/A7/A9 — efter en VERIFIERAD commit: advancera ärendet ett steg
+					// i grafen (forhandsbedomning→utredning→beslut→uppfoljning→avslutat).
 					const next = this.nextSteg(arende && arende.steg)
 					if (arende && next) {
-						const ref = arende.hubsCaseId || arende.dnr
-						if (ref) {
-							try {
-								// ORO-1: en VERIFIERAD commit av skyddsbedömningen ÄR kvitteringen
-								// av plikt-grinden — skicka kvittensen så förhandsbedömning→utredning
-								// släpps förbi fas-spärren för pliktGrind-typer (orosanmälan).
-								await store.transitionSteg(ref, next, true)
-							} catch (e) { /* steg-advance är best-effort; commit är redan verifierad */ }
-						}
+						try {
+							// A7: den hårdkodade skyddsbedomningKvitterad=true är BORTTAGEN —
+							// grinden sköts server-side. En VERIFIERAD commit av skyddsbedöm-
+							// ningen skapar artefakten som A7-grinden läser, så övergången
+							// släpps utan override. A9b: kommuniceringVal (från CommitGrind)
+							// trådas som kontext inför utredning→beslut. Saknas ett obligato-
+							// riskt grind-val 400:ar motorn och transitionMedGrind öppnar rätt
+							// dialog. Best-effort: commiten är redan verifierad oavsett.
+							await this.transitionMedGrind(arende, next, grindKontext)
+						} catch (e) { /* steg-advance är best-effort; commit är redan verifierad */ }
 					}
 				} else {
 					showError(this.t('hubs_start', 'Treserva bekräftade inte registreringen — inget kvitto skapades. Försök igen.'))
@@ -1282,6 +1523,41 @@ export default {
 		text-decoration: none;
 
 		&:hover { color: var(--color-main-text); text-decoration: underline; }
+	}
+
+	// A7 — inline skyddsbedömnings-override-grind.
+	&__override {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 8px 4px;
+	}
+	&__override-lead {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin: 0;
+		svg { flex-shrink: 0; margin-top: 1px; color: var(--hs-status-error); }
+	}
+	&__override-val {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin: 0;
+		padding: 0;
+		border: none;
+	}
+	&__override-legend {
+		font-weight: 600;
+		font-size: 0.9rem;
+		margin-bottom: 2px;
+		padding: 0;
+	}
+	&__override-foot {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+		padding-top: 4px;
 	}
 }
 </style>

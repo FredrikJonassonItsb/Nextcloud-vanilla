@@ -39,13 +39,19 @@
 					{{ t('hubs_start', 'Inga mallar finns i mallbiblioteket ännu.') }}
 				</p>
 
-				<div v-else class="handling-modal__mallista" role="radiogroup" :aria-label="t('hubs_start', 'Välj mall')">
-					<template v-for="grupp in mallarPerMapp">
-						<p :key="'mapp-' + grupp.mapp" class="handling-modal__mapp">
-							{{ grupp.mapp }}
+				<!-- A10 — mallarna grupperade efter RELEVANS för det aktuella steget, inte
+				     platt per mapp: "För detta steg" (mallar vars artefakt-klass matchar
+				     stegets delmoment) först, sedan tvärgående stöd ("Används ofta här"),
+				     och till sist ALLA övriga i en hopfälld men FULLT nåbar <details> —
+				     icke-linjärt arbete är legitimt, inget döljs. -->
+				<div class="handling-modal__mallista" role="radiogroup" :aria-label="t('hubs_start', 'Välj mall')">
+					<!-- För detta steg -->
+					<template v-if="mallForDettaSteg.length">
+						<p class="handling-modal__mapp handling-modal__mapp--primar">
+							{{ stegLabel ? t('hubs_start', 'För detta steg — {steg}', { steg: stegLabel }) : t('hubs_start', 'För detta steg') }}
 						</p>
 						<label
-							v-for="mall in grupp.mallar"
+							v-for="mall in mallForDettaSteg"
 							:key="mall.id"
 							class="handling-modal__mall"
 							:class="{ 'handling-modal__mall--vald': valdMallId === mall.id }">
@@ -58,6 +64,49 @@
 							<span class="handling-modal__mall-namn">{{ mall.namn }}</span>
 						</label>
 					</template>
+
+					<!-- Används ofta här (tvärgående stöd) -->
+					<template v-if="mallAnvandsOfta.length">
+						<p class="handling-modal__mapp">
+							{{ t('hubs_start', 'Används ofta här') }}
+						</p>
+						<label
+							v-for="mall in mallAnvandsOfta"
+							:key="mall.id"
+							class="handling-modal__mall"
+							:class="{ 'handling-modal__mall--vald': valdMallId === mall.id }">
+							<input
+								v-model="valdMallId"
+								class="handling-modal__mall-radio"
+								type="radio"
+								name="handling-mall"
+								:value="mall.id">
+							<span class="handling-modal__mall-namn">{{ mall.namn }}</span>
+						</label>
+					</template>
+
+					<!-- Andra steg — hopfälld men FULLT nåbar (aldrig dold). Öppnas
+					     automatiskt om inga steg-relevanta mallar kunde härledas, så listan
+					     aldrig ser tom ut. -->
+					<details v-if="mallAndraSteg.length" class="handling-modal__andra" :open="!mallForDettaSteg.length && !mallAnvandsOfta.length">
+						<summary class="handling-modal__andra-sum">
+							{{ t('hubs_start', 'Andra steg ({n})', { n: mallAndraSteg.length }) }}
+						</summary>
+						<label
+							v-for="mall in mallAndraSteg"
+							:key="mall.id"
+							class="handling-modal__mall"
+							:class="{ 'handling-modal__mall--vald': valdMallId === mall.id }">
+							<input
+								v-model="valdMallId"
+								class="handling-modal__mall-radio"
+								type="radio"
+								name="handling-mall"
+								:value="mall.id">
+							<span class="handling-modal__mall-namn">{{ mall.namn }}</span>
+							<span v-if="mall.mapp" class="handling-modal__mall-mapp">{{ mall.mapp }}</span>
+						</label>
+					</details>
 				</div>
 
 				<div class="handling-modal__footer">
@@ -145,6 +194,62 @@ import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
 
 import { fetchArendeMallar, fetchHandlingUtkast } from '../../services/api.js'
+import { STEG_INNEHALL } from '../../services/arendeFlow.js'
+
+/**
+ * A10 — semantisk artefakt-klass → nyckelord (skiftlägesokänslig substring) som
+ * identifierar klassen i ett mall-id/namn. SPEGLAR EvidensService.KLASS_NYCKELORD
+ * (hubs_arende) så steppern, backend-grinden och den här mall-grupperingen aldrig
+ * divergerar. Extraröster (samtycke/kallelse/begäran m.fl.) täcker de tvärgående
+ * stödmallar som inte är egna delmoment i STEG_INNEHALL men ändå används ofta.
+ *
+ * Matchningen sker mot en FOLDAD stam (å→a, ä→a, ö→o) — samma translitterering
+ * som HandlingService.mallBasnamn() gör innan mallnamnet journalförs — så de
+ * folddade nyckelorden (t.ex. 'skyddsbedom') träffar även råa mallnamn med ö.
+ */
+const KLASS_NYCKELORD = {
+	'mottagen-orosanmalan': ['orosanmalan', 'mottagen'],
+	skyddsbedomning: ['skyddsbedom'],
+	forhandsbedomning: ['forhandsbedom'],
+	utredningsplan: ['utredningsplan'],
+	'bbic-utredning': ['bbic', 'barnavardsutredning'],
+	barnsamtal: ['barnsamtal', 'barnets-installning', 'barnets-rost', 'delaktighet'],
+	kommunicering: ['kommunicer'],
+	journalanteckning: ['journal'],
+	genomforandeplan: ['genomforande'],
+	avslutsanteckning: ['avslut'],
+	// Avsiktligt SPECIFIKT ('beslut-om-bistand', inte bara 'beslut') så att t.ex.
+	// "Förhandsbedömning och beslut att inleda …" inte felaktigt fångas i beslut-steget.
+	beslut: ['beslut-om-bistand', 'beslut-bistand', 'bistand-eller-insats'],
+	delgivning: ['underrattelse', 'overklagande', 'delgivning'],
+	// Tvärgående stöd (ingen egen delmoment-klass men egna mallar i biblioteket).
+	samtycke: ['samtycke'],
+	kallelse: ['kallelse'],
+	begaran: ['begaran-om-uppgifter', 'begaran'],
+	vardplan: ['vardplan'],
+	sip: ['sip', 'samordnad-individuell'],
+	motesanteckning: ['samtals-och-motesanteckning', 'motesanteckning'],
+}
+
+/** Tvärgående stöd-klasser som visas under "Används ofta här" i ALLA steg. */
+const STOD_KLASSER = ['journalanteckning', 'samtycke', 'kallelse', 'begaran', 'motesanteckning', 'vardplan', 'sip']
+
+/**
+ * Folda + slugga ett mall-id/namn till samma stam som journalen bär (mirror av
+ * HandlingService.mallBasnamn): gemener, svenska tecken translittererade, allt
+ * utanför [a-z0-9] → '-'. Ger stabil substring-matchning mot nyckelorden.
+ * @param {string} s
+ * @return {string}
+ */
+function foldaStam(s) {
+	return String(s || '')
+		.toLowerCase()
+		.replace(/[åä]/g, 'a')
+		.replace(/ö/g, 'o')
+		.replace(/é/g, 'e')
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+}
 
 export default {
 	name: 'HandlingModal',
@@ -183,19 +288,72 @@ export default {
 			return this.arende.hubsCaseId || this.arende.dnr || this.arende.triageRef
 		},
 
-		/** Mallarna grupperade per mapp (mappordning = första förekomst). */
-		mallarPerMapp() {
-			const grupper = []
-			const perMapp = {}
-			for (const mall of this.mallar) {
-				const mapp = mall.mapp || t('hubs_start', 'Övrigt')
-				if (!perMapp[mapp]) {
-					perMapp[mapp] = { mapp, mallar: [] }
-					grupper.push(perMapp[mapp])
-				}
-				perMapp[mapp].mallar.push(mall)
+		/** Ärendets aktuella steg (för A10-relevansgrupperingen). */
+		arendeSteg() {
+			return (this.arende && this.arende.steg) || null
+		},
+
+		/** Svensk etikett för aktuellt steg (ur STEG_INNEHALL) — aldrig rå token. */
+		stegLabel() {
+			const modell = this.arendeSteg && STEG_INNEHALL[this.arendeSteg]
+			return modell ? modell.label : ''
+		},
+
+		/**
+		 * De artefakt-klasser som aktuellt steg producerar (ur STEG_INNEHALL[steg]
+		 * .delmoment[].artefakt). Dessa driver "För detta steg"-matchningen.
+		 * @return {string[]}
+		 */
+		stegKlasser() {
+			const modell = this.arendeSteg && STEG_INNEHALL[this.arendeSteg]
+			if (!modell) {
+				return []
 			}
-			return grupper
+			return modell.delmoment
+				.map((d) => d.artefakt)
+				.filter((k) => !!k)
+		},
+
+		/** Mall + folddad stam (beräknas en gång per mall). */
+		mallarMedStam() {
+			return this.mallar.map((m) => ({ ...m, _stam: foldaStam(m.id || m.namn) }))
+		},
+
+		/**
+		 * A10 — "För detta steg": mallar vars folddade stam matchar något nyckelord
+		 * för någon av stegets artefakt-klasser. Icke-tvärgående stödmallar hamnar
+		 * aldrig här (de bor under "Används ofta här").
+		 */
+		mallForDettaSteg() {
+			const klasser = this.stegKlasser.filter((k) => !STOD_KLASSER.includes(k))
+			if (!klasser.length) {
+				return []
+			}
+			const nyckelord = this.nyckelordForKlasser(klasser)
+			return this.mallarMedStam.filter((m) => this.stamMatchar(m._stam, nyckelord))
+		},
+
+		/**
+		 * A10 — "Används ofta här": tvärgående stödmallar (journal, samtycke, kallelse,
+		 * m.fl.), minus det som redan visas under "För detta steg".
+		 */
+		mallAnvandsOfta() {
+			const primaraIds = new Set(this.mallForDettaSteg.map((m) => m.id))
+			const nyckelord = this.nyckelordForKlasser(STOD_KLASSER)
+			return this.mallarMedStam.filter((m) =>
+				!primaraIds.has(m.id) && this.stamMatchar(m._stam, nyckelord))
+		},
+
+		/**
+		 * A10 — "Andra steg": allt som varken är steg-relevant eller tvärgående stöd.
+		 * Hopfälld i template men FULLT nåbar — icke-linjärt arbete är legitimt.
+		 */
+		mallAndraSteg() {
+			const visade = new Set([
+				...this.mallForDettaSteg.map((m) => m.id),
+				...this.mallAnvandsOfta.map((m) => m.id),
+			])
+			return this.mallarMedStam.filter((m) => !visade.has(m.id))
 		},
 
 		valdMall() {
@@ -299,6 +457,29 @@ export default {
 			return map[kalla] || kalla
 		},
 
+		/**
+		 * A10 — samla nyckelorden (folddade substrings) för en uppsättning
+		 * artefakt-klasser. Okända klasser bidrar med klassnamnet självt som
+		 * fallback (samma disciplin som EvidensService.harArtefakt).
+		 * @param {string[]} klasser
+		 * @return {string[]}
+		 */
+		nyckelordForKlasser(klasser) {
+			const ord = []
+			for (const k of klasser) {
+				const kws = KLASS_NYCKELORD[k] || [k]
+				for (const kw of kws) {
+					ord.push(foldaStam(kw))
+				}
+			}
+			return ord
+		},
+
+		/** Matchar en folddad mall-stam något av nyckelorden (substring)? */
+		stamMatchar(stam, nyckelord) {
+			return nyckelord.some((kw) => kw && stam.includes(kw))
+		},
+
 		/** Motorns felorsak ur ett OCS-fel (husets mönster). */
 		motorFel(e, fallback) {
 			const d = e && e.response && e.response.data
@@ -351,6 +532,39 @@ export default {
 		&:first-child {
 			margin-top: 0;
 		}
+
+		// A10 — "För detta steg" lyfts fram (primärfärg) som den rekommenderade ingången.
+		&--primar {
+			color: var(--color-primary-element);
+		}
+	}
+
+	// A10 — "Andra steg": hopfälld men fullt nåbar. summary bär samma vikt som en
+	// mapp-rubrik; innehållet är identiska mall-rader.
+	&__andra {
+		margin-top: 8px;
+
+		&-sum {
+			cursor: pointer;
+			padding: 4px 0;
+			font-size: 0.8rem;
+			font-weight: 700;
+			color: var(--color-text-maxcontrast);
+			list-style: revert; // behåll den inbyggda triangeln (fullt nåbar affordance)
+
+			&:hover,
+			&:focus-visible {
+				color: var(--color-main-text);
+			}
+		}
+	}
+
+	// Mappens namn på en "Andra steg"-rad (kontext utan att stjäla fokus).
+	&__mall-mapp {
+		margin-left: auto;
+		font-size: 0.72rem;
+		color: var(--color-text-maxcontrast);
+		white-space: nowrap;
 	}
 
 	&__mall {
