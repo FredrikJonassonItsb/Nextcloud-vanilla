@@ -69,6 +69,10 @@ class ArendeLifecycleService {
         // aldrig fälla övergången. TRAILING OPTIONAL (positionell testharness).
         private ?HandelseMapper $handelseMapper = null,
         private ?IUserSession $userSession = null,
+        // BEVAKNINGS-KEDJAN: steg-övergången släcker det lämnade stegets mål och
+        // föder nästa (14d→4mån-nollställningen); avslut avbryter allt. BEST-EFFORT,
+        // TRAILING OPTIONAL — null ⇒ ingen bevakningsnollställning (testharness).
+        private ?BevakningService $bevakningService = null,
     ) {
     }
 
@@ -153,6 +157,24 @@ class ArendeLifecycleService {
                     'hubsCaseId' => $arende->getHubsCaseId(),
                     'exception' => $e->getMessage(),
                 ]);
+            }
+        }
+
+        // BEVAKNINGS-NOLLSTÄLLNINGEN: släck det lämnade stegets mål (t.ex. 14 d
+        // förhandsbedömning när utredning inleds) och föd nästa stegs mallar (4 mån
+        // utredning) — själva "nollställningen". Avslut avbryter alla aktiva
+        // bevakningar (ingenting kvar att bevaka). Best-effort. Re-hämta registret
+        // efteråt så den projicerade fristen speglas i svaret.
+        if ($this->bevakningService !== null) {
+            if ($nyttSteg === 'avslutat') {
+                $this->bevakningService->utvardera($arende->getHubsCaseId(), 'avslut');
+            } else {
+                $this->bevakningService->skapaStandardForSteg($arende->getHubsCaseId(), $nyttSteg);
+            }
+            try {
+                $arende = $this->arendeMapper->findByCaseId($arende->getHubsCaseId());
+            } catch (\Throwable) {
+                // behåll den lokala kopian om re-hämtningen fallerar
             }
         }
 

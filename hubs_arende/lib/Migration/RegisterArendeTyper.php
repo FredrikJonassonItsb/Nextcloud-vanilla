@@ -33,5 +33,9 @@ class RegisterArendeTyper implements IRepairStep {
 	public function run(IOutput $output): void {
 		$inserted = $this->registry->seedDefaults();
 		$output->info(sprintf('hubs_arende: seedade %d ärendetyper.', $inserted));
+		// Patcha bevakningsmallar på redan befintliga typrader (kolumnen är ny) —
+		// annars får gamla orosanmalan-rader aldrig sin 14d→4mån-kedja.
+		$patchade = $this->registry->synkaBevakningsmallar();
+		$output->info(sprintf('hubs_arende: patchade bevakningsmallar på %d typrader.', $patchade));
 	}
 }

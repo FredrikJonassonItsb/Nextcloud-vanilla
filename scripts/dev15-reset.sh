@@ -73,6 +73,7 @@ DELETE FROM oc_hubs_arende_pekare;
 DELETE FROM oc_hubs_arende_member;
 DELETE FROM oc_hubs_arende_flagga;
 DELETE FROM oc_hubs_arende_handelse;
+DELETE FROM oc_hubs_arende_bevakning;
 DELETE FROM oc_hubs_arende_case;
 -- sdkmc per-meddelande-taggar: case:* / behandlad / $dnr_* (mappningar + per-ärende-defs).
 DELETE FROM oc_sdkmc_itsl_message_tag

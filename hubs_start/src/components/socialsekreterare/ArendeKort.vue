@@ -192,21 +192,111 @@
 					</NcButton>
 				</div>
 
-				<!-- Bevakningar: läs-projektion av ärendets kort på enhetens tavla.
-				     Varje rad visar VAD bevakningen gäller (beskrivning + kolumn + frist). -->
+				<!-- Bevakningar: förstaklassiga register-rader (motorns bevaknings-register).
+				     Varje rad har egen livscykel (aktiv→uppnadd|passerad|avbruten), villkor,
+				     frist och taggar. Lagstadgade/passerade läses som brådskande (rött). -->
 				<div v-else-if="activeFlik === 'bevakningar'" class="arende-kort__flik-body">
 					<p v-if="tabLaddar.bevakningar" class="arende-kort__muted">{{ t('hubs_start', 'Hämtar bevakningar…') }}</p>
-					<div v-for="(b, i) in bevakningar" :key="'bv' + i" class="arende-kort__bevakning">
+					<div
+						v-for="b in bevakningar"
+						:key="'bv' + b.id"
+						class="arende-kort__bevakning"
+						:class="{ 'arende-kort__bevakning--bradskande': arBradskande(b) }">
 						<p class="arende-kort__bevakning-titel">
 							<BellRingIcon :size="16" /> <strong>{{ b.titel }}</strong>
-							<span class="arende-kort__muted"> · {{ b.kolumn || '' }}<template v-if="b.frist"> · {{ t('hubs_start', 'frist') }} {{ fmtTime(b.frist) }}</template></span>
+							<span class="arende-kort__chip" :class="statusKlass(b.status)">{{ statusLabel(b.status) }}</span>
+							<span v-if="b.lagstadgad" class="arende-kort__chip arende-kort__chip--rod">{{ t('hubs_start', 'Lagstadgad') }}</span>
+							<span v-if="b.recurringDagar" class="arende-kort__chip arende-kort__chip--neutral">{{ t('hubs_start', 'Återkommande') }}</span>
+							<span v-if="b.forsenad" class="arende-kort__chip arende-kort__chip--rod">{{ t('hubs_start', 'Försenad') }}</span>
 						</p>
-						<p v-if="b.beskrivning" class="arende-kort__muted arende-kort__bevakning-besk">{{ b.beskrivning }}</p>
+						<p class="arende-kort__bevakning-meta arende-kort__muted">
+							<span>{{ villkorLabel(b.villkorTyp) }}</span>
+							<template v-if="b.fristDue"><span> · {{ t('hubs_start', 'frist') }} {{ fmtDatum(b.fristDue) }} ({{ relativFrist(b.fristDue) }})</span></template>
+						</p>
+						<div v-if="b.kanKvittera || b.status === 'aktiv'" class="arende-kort__bevakning-actions">
+							<NcButton
+								v-if="b.kanKvittera"
+								type="secondary"
+								:disabled="bevakningPending.includes(b.id)"
+								@click="kvitteraBevak(b)">
+								<template #icon><CheckCircleIcon :size="16" /></template>
+								{{ t('hubs_start', 'Kvittera klar') }}
+							</NcButton>
+							<NcButton
+								v-if="b.status === 'aktiv'"
+								type="tertiary"
+								:disabled="bevakningPending.includes(b.id)"
+								@click="avbrytBevak(b)">
+								{{ t('hubs_start', 'Ta bort') }}
+							</NcButton>
+						</div>
 					</div>
-					<ul class="arende-kort__list">
-						<li v-for="(b, i) in full.bevakningar || []" :key="'fx' + i"><BellRingIcon :size="16" /> {{ b.titel }} <span class="arende-kort__muted">· {{ b.delad ? t('hubs_start', 'delad') : t('hubs_start', 'personlig') }}</span></li>
-					</ul>
-					<p v-if="!tabLaddar.bevakningar && !bevakningar.length && !(full.bevakningar && full.bevakningar.length)" class="arende-kort__muted">{{ t('hubs_start', 'Inga bevakningar.') }}</p>
+					<p v-if="!tabLaddar.bevakningar && !bevakningar.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga bevakningar.') }}</p>
+
+					<!-- Ny bevakning: titel (ingen PII i rubriken) + valfri frist + valfri cykel. -->
+					<div class="arende-kort__bevakning-ny">
+						<p class="arende-kort__flikrubrik">{{ t('hubs_start', 'Ny bevakning') }}</p>
+						<label class="arende-kort__falt">
+							<span class="arende-kort__falt-label">{{ t('hubs_start', 'Rubrik') }}</span>
+							<input
+								v-model="nyBevakning.titel"
+								type="text"
+								class="arende-kort__input"
+								:placeholder="t('hubs_start', 'Kort rubrik — ingen känslig information')"
+								:disabled="nyBevakningSparar"
+								@keyup.enter="skapaBevak">
+						</label>
+						<p class="arende-kort__muted arende-kort__falt-hint">{{ t('hubs_start', 'Ingen känslig information i rubriken.') }}</p>
+						<div class="arende-kort__falt-rad">
+							<label class="arende-kort__falt">
+								<span class="arende-kort__falt-label">{{ t('hubs_start', 'Frist (valfri)') }}</span>
+								<input
+									v-model="nyBevakning.fristDue"
+									type="date"
+									class="arende-kort__input"
+									:disabled="nyBevakningSparar">
+							</label>
+							<label class="arende-kort__falt">
+								<span class="arende-kort__falt-label">{{ t('hubs_start', 'Återkommande var (dagar, valfri)') }}</span>
+								<input
+									v-model.number="nyBevakning.recurringDagar"
+									type="number"
+									min="1"
+									class="arende-kort__input arende-kort__input--kort"
+									:disabled="nyBevakningSparar">
+							</label>
+						</div>
+						<NcButton
+							type="primary"
+							:disabled="!nyBevakning.titel.trim() || nyBevakningSparar"
+							@click="skapaBevak">
+							<template #icon><BellRingIcon :size="16" /></template>
+							{{ t('hubs_start', 'Skapa bevakning') }}
+						</NcButton>
+					</div>
+
+					<!-- Delgivningsdatum: sätter FL 33 §-datumet → föder överklagandebevakningen
+					     (3 veckor → laga kraft). Visar ärendets nuvarande datum om satt. -->
+					<div class="arende-kort__delgivning">
+						<p class="arende-kort__flikrubrik">{{ t('hubs_start', 'Sätt delgivningsdatum') }}</p>
+						<p class="arende-kort__muted arende-kort__falt-hint">
+							{{ t('hubs_start', 'Skapar överklagandefrist-bevakningen (3 veckor → laga kraft).') }}
+							<template v-if="full.delgivningsdatum"> · {{ t('hubs_start', 'Nuvarande: {datum}', { datum: fmtDatum(full.delgivningsdatum) }) }}</template>
+						</p>
+						<div class="arende-kort__falt-rad">
+							<input
+								v-model="delgivningsdatum"
+								type="date"
+								class="arende-kort__input"
+								:disabled="delgivningSparar">
+							<NcButton
+								type="secondary"
+								:disabled="!delgivningsdatum || delgivningSparar"
+								@click="sattDelgivning">
+								{{ t('hubs_start', 'Spara delgivningsdatum') }}
+							</NcButton>
+						</div>
+					</div>
 				</div>
 
 				<!-- Historik & beslut: motorns händelsejournal som tidslinje.
@@ -280,7 +370,7 @@ import { showSuccess, showError } from '@nextcloud/dialogs'
 import store from '../../store/index.js'
 import { iconFor } from '../../services/icons.js'
 import deepLinks from '../../services/deepLinks.js'
-import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, tilldela, laggTillMedlem } from '../../services/api.js'
+import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, tilldela, laggTillMedlem, skapaBevakning, kvitteraBevakning, avbrytBevakning, setDelgivningsdatum } from '../../services/api.js'
 import ProcessStepper from './ProcessStepper.vue'
 import FristChip from './FristChip.vue'
 import ProvenansChip from './ProvenansChip.vue'
@@ -289,6 +379,24 @@ import DiskussionChip from './DiskussionChip.vue'
 import TilldelningBand from './TilldelningBand.vue'
 import PartsPanel from './PartsPanel.vue'
 import AnvandarValjare from './AnvandarValjare.vue'
+
+/** Svenska etiketter för bevakningens villkorstyp (aldrig rå maskintoken i UI). */
+const VILLKOR_LABEL = {
+	steg_uppnatt: t('hubs_start', 'Släcks när ärendet når ett målsteg'),
+	komplettering_kopplad: t('hubs_start', 'Släcks när en komplettering kopplas'),
+	commit_registrerad: t('hubs_start', 'Släcks vid registrering i facksystemet'),
+	signering_kvitterad: t('hubs_start', 'Släcks vid signeringskvittens'),
+	datum_passerat: t('hubs_start', 'Datumbevakning — släcks när fristdagen nås'),
+	manuell_kvittering: t('hubs_start', 'Kvitteras manuellt när klar'),
+}
+
+/** Svenska etiketter för bevakningens status. */
+const STATUS_LABEL = {
+	aktiv: t('hubs_start', 'Aktiv'),
+	uppnadd: t('hubs_start', 'Uppnådd'),
+	passerad: t('hubs_start', 'Passerad'),
+	avbruten: t('hubs_start', 'Avbruten'),
+}
 
 export default {
 	name: 'ArendeKort',
@@ -322,6 +430,12 @@ export default {
 			laggerTillKollega: false,
 			tarArendet: false,
 			togsNyss: false,
+			// Bevaknings-flikens formulär + åtgärdsstatus.
+			nyBevakning: { titel: '', fristDue: '', recurringDagar: null },
+			nyBevakningSparar: false,
+			delgivningsdatum: '',
+			delgivningSparar: false,
+			bevakningPending: [],
 		}
 	},
 	computed: {
@@ -685,6 +799,165 @@ export default {
 				return s
 			}
 		},
+		/** Datum utan klockslag (bevakningens fristDue/delgivningsdatum är YYYY-MM-DD). */
+		fmtDatum(s) {
+			try {
+				return new Date(s).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short', year: 'numeric' })
+			} catch (e) {
+				return s
+			}
+		},
+		/** Svensk villkors-/status-etikett (aldrig rå maskintoken). */
+		villkorLabel(v) {
+			return VILLKOR_LABEL[v] || v
+		},
+		statusLabel(s) {
+			return STATUS_LABEL[s] || s
+		},
+		statusKlass(s) {
+			const map = {
+				aktiv: 'arende-kort__chip--neutral',
+				uppnadd: 'arende-kort__chip--gron',
+				passerad: 'arende-kort__chip--rod',
+				avbruten: 'arende-kort__chip--gra',
+			}
+			return map[s] || 'arende-kort__chip--neutral'
+		},
+		/** Brådskande läsning: en passerad ELLER lagstadgad+aktiv bevakning är röd. */
+		arBradskande(b) {
+			return b.status === 'passerad' || (b.lagstadgad && b.status === 'aktiv')
+		},
+		/** Relativ frist-hint: "om N dagar" / "N dagar sen" / "idag" (YYYY-MM-DD). */
+		relativFrist(due) {
+			if (!due) {
+				return ''
+			}
+			const idag = new Date()
+			idag.setHours(0, 0, 0, 0)
+			const d = new Date(due + 'T00:00:00')
+			const dagar = Math.round((d - idag) / 86400000)
+			if (dagar === 0) {
+				return this.t('hubs_start', 'idag')
+			}
+			if (dagar > 0) {
+				return this.n('hubs_start', 'om %n dag', 'om %n dagar', dagar)
+			}
+			return this.n('hubs_start', '%n dag sen', '%n dagar sen', Math.abs(dagar))
+		},
+		/** Kvittera en manuell bevakning (klarmarkering) → ladda om fliken. */
+		async kvitteraBevak(b) {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref || !b || this.bevakningPending.includes(b.id)) {
+				return
+			}
+			this.bevakningPending = this.bevakningPending.concat([b.id])
+			try {
+				const r = await kvitteraBevakning(ref, b.id)
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Bevakningen är klarmarkerad.'))
+					await this.reloadBevakningar()
+				} else {
+					showError(t('hubs_start', 'Kunde inte kvittera bevakningen: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Kunde inte kvittera bevakningen. Försök igen.')))
+			} finally {
+				this.bevakningPending = this.bevakningPending.filter((id) => id !== b.id)
+			}
+		},
+		/** Avbryt (ta bort) en aktiv bevakning efter bekräftelse → ladda om fliken. */
+		async avbrytBevak(b) {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref || !b || this.bevakningPending.includes(b.id)) {
+				return
+			}
+			// eslint-disable-next-line no-alert
+			if (!window.confirm(t('hubs_start', 'Ta bort bevakningen "{titel}"?', { titel: b.titel }))) {
+				return
+			}
+			this.bevakningPending = this.bevakningPending.concat([b.id])
+			try {
+				const r = await avbrytBevakning(ref, b.id)
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Bevakningen är borttagen.'))
+					await this.reloadBevakningar()
+				} else {
+					showError(t('hubs_start', 'Kunde inte ta bort bevakningen: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Kunde inte ta bort bevakningen. Försök igen.')))
+			} finally {
+				this.bevakningPending = this.bevakningPending.filter((id) => id !== b.id)
+			}
+		},
+		/** Skapa en ny ad hoc-bevakning (titel obligatorisk; ingen PII) → ladda om. */
+		async skapaBevak() {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			const titel = this.nyBevakning.titel.trim()
+			if (!ref || !titel || this.nyBevakningSparar) {
+				return
+			}
+			this.nyBevakningSparar = true
+			try {
+				const r = await skapaBevakning(ref, {
+					titel,
+					fristDue: this.nyBevakning.fristDue || null,
+					recurringDagar: this.nyBevakning.recurringDagar || null,
+				})
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Bevakningen är skapad.'))
+					this.nyBevakning = { titel: '', fristDue: '', recurringDagar: null }
+					await this.reloadBevakningar()
+				} else {
+					showError(t('hubs_start', 'Kunde inte skapa bevakningen: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Kunde inte skapa bevakningen. Försök igen.')))
+			} finally {
+				this.nyBevakningSparar = false
+			}
+		},
+		/** Sätt delgivningsdatum → föder överklagandebevakningen; ladda om fliken. */
+		async sattDelgivning() {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref || !this.delgivningsdatum || this.delgivningSparar) {
+				return
+			}
+			this.delgivningSparar = true
+			try {
+				const r = await setDelgivningsdatum(ref, this.delgivningsdatum)
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Delgivningsdatum satt — överklagandebevakningen är skapad.'))
+					this.delgivningsdatum = ''
+					// Datumet lever på ärendet (arende.delgivningsdatum) — läs om kortet.
+					if (this.cacheKey) {
+						store.loadArende(this.cacheKey, true)
+					}
+					await this.reloadBevakningar()
+				} else {
+					showError(t('hubs_start', 'Kunde inte sätta delgivningsdatum: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Kunde inte sätta delgivningsdatum. Försök igen.')))
+			} finally {
+				this.delgivningSparar = false
+			}
+		},
+		/** Tvinga en omhämtning av bevaknings-fliken (efter en mutation). */
+		async reloadBevakningar() {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref) {
+				return
+			}
+			this.tabLaddar.bevakningar = true
+			try {
+				this.tabBevakningar = await fetchArendeBevakningar(ref)
+			} catch (e) {
+				// Ärligt tom flik i stället för evig spinner.
+			} finally {
+				this.tabLaddar.bevakningar = false
+			}
+		},
 	},
 }
 </script>
@@ -830,9 +1103,48 @@ export default {
 		background: var(--color-primary-element-light, #e7f1f7); color: var(--color-primary-element);
 	}
 	&__flikrubrik { margin: 8px 0 4px; font-weight: 700; font-size: 0.82rem; }
-	&__bevakning { margin-bottom: 8px; }
+	&__bevakning {
+		margin-bottom: 10px;
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius-large, 12px);
+		background: var(--color-main-background);
+		&--bradskande { border-color: var(--hs-status-error); background: color-mix(in srgb, var(--hs-status-error) 6%, var(--color-main-background)); }
+	}
 	&__bevakning-titel { display: flex; align-items: center; gap: 6px; margin: 0; flex-wrap: wrap; }
+	&__bevakning-meta { margin: 4px 0 0 22px; display: flex; flex-wrap: wrap; gap: 4px; }
+	&__bevakning-actions { display: flex; gap: 6px; margin: 6px 0 0 22px; }
 	&__bevakning-besk { margin: 2px 0 0 22px; }
+
+	&__chip {
+		font-size: 0.7rem; font-weight: 600; padding: 1px 8px;
+		border-radius: var(--border-radius-pill, 16px);
+		background: var(--color-background-dark); color: var(--color-text-maxcontrast);
+		white-space: nowrap;
+		&--neutral { background: var(--color-primary-element-light, #e7f1f7); color: var(--color-primary-element); }
+		&--gron { background: color-mix(in srgb, var(--hs-status-success) 16%, var(--color-main-background)); color: var(--hs-status-success); }
+		&--rod { background: var(--hs-status-error); color: #fff; }
+		&--gra { background: var(--color-background-dark); color: var(--color-text-maxcontrast); }
+	}
+
+	&__bevakning-ny, &__delgivning {
+		border-top: 1px solid var(--color-border);
+		margin-top: 10px;
+		padding-top: 10px;
+	}
+	&__falt { display: flex; flex-direction: column; gap: 3px; margin-bottom: 6px; }
+	&__falt-label { font-size: 0.8rem; color: var(--color-text-maxcontrast); }
+	&__falt-hint { margin: 0 0 6px; }
+	&__falt-rad { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px; margin-bottom: 8px; }
+	&__input {
+		padding: 5px 8px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius, 8px);
+		background: var(--color-main-background);
+		color: var(--color-main-text);
+		font: inherit;
+		&--kort { max-width: 120px; }
+	}
 	&__tidslinje {
 		list-style: none; margin: 6px 0 0; padding: 0;
 		display: flex; flex-direction: column; gap: 5px; font-size: 0.88rem;

@@ -114,6 +114,57 @@ class ArendeTypRegistry {
     }
 
     /**
+     * Patcha bevakningsmallar-kolumnen på REDAN BEFINTLIGA typrader (t.ex. på en
+     * miljö som seedades innan kolumnen fanns). seedDefaults() rör bara frånvarande
+     * rader, så utan detta får aldrig gamla orosanmalan-rader sin 14d→4mån-kedja.
+     *
+     * Sätter endast bevakningsmallar där den är NULL (kommun-anpassningar bevaras),
+     * och endast för defaultrader som deklarerar mallar. Idempotent. Returnerar
+     * antalet rader som uppdaterades.
+     */
+    public function synkaBevakningsmallar(): int {
+        $uppdaterade = 0;
+        foreach ($this->defaultRows() as $row) {
+            $mallar = $row['bevakningsMallar'] ?? null;
+            if (!is_array($mallar) || $mallar === []) {
+                continue;
+            }
+            $id = (string)$row['arendeTypId'];
+            try {
+                $typ = $this->mapper->findByTypId($id);
+            } catch (DoesNotExistException) {
+                continue; // saknas → seedDefaults() skapar den (med mallar via hydrate)
+            } catch (DBException $e) {
+                $this->logger->warning('ArendeTypRegistry::synkaBevakningsmallar läsfel', [
+                    'app' => 'hubs_arende', 'arendeTypId' => $id, 'exception' => $e,
+                ]);
+                continue;
+            }
+            if ($typ->getBevakningsmallar() !== null && $typ->getBevakningsmallar() !== '') {
+                continue; // redan satt (default eller kommun-anpassad) — rör inte
+            }
+            // Riktad UPDATE by string-PK (QBMapper::update kräver int-id som saknas här).
+            try {
+                $this->mapper->setBevakningsmallar(
+                    $id,
+                    json_encode($mallar, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                );
+                $uppdaterade++;
+            } catch (DBException $e) {
+                $this->logger->warning('ArendeTypRegistry::synkaBevakningsmallar skrivfel', [
+                    'app' => 'hubs_arende', 'arendeTypId' => $id, 'exception' => $e,
+                ]);
+            }
+        }
+        if ($uppdaterade > 0) {
+            $this->logger->info('ArendeTypRegistry::synkaBevakningsmallar klar', [
+                'app' => 'hubs_arende', 'uppdaterade' => $uppdaterade,
+            ]);
+        }
+        return $uppdaterade;
+    }
+
+    /**
      * Build an ArendeTyp entity from a config array.
      *
      * @param array<string,mixed> $row
@@ -140,6 +191,11 @@ class ArendeTypRegistry {
         $typ->setPreSagaHook($row['preSagaHook'] !== null ? (string)$row['preSagaHook'] : null);
         $typ->setPostCommitHook($row['postCommitHook'] !== null ? (string)$row['postCommitHook'] : null);
         $typ->setPartsModell($row['partsModell'] !== null ? (string)$row['partsModell'] : null);
+        // bevakningsMallar stored as JSON text (null = inga standardbevakningar).
+        $mallar = $row['bevakningsMallar'] ?? null;
+        $typ->setBevakningsmallar(is_array($mallar) && $mallar !== []
+            ? json_encode($mallar, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+            : null);
         return $typ;
     }
 
@@ -181,6 +237,44 @@ class ArendeTypRegistry {
                 'preSagaHook' => null,
                 'postCommitHook' => null,
                 'partsModell' => 'enskild_klient',
+                // KEDJAN: förhandsbedömning (14 d, SoL 11:1a) släcks när utredning
+                // inleds → utredningsbevakningen (4 mån, SoL 11:2) föds i samma steg
+                // = själva nollställningen. Placerat barn ⇒ övervägande var 6:e mån.
+                'bevakningsMallar' => [
+                    [
+                        'typ' => 'forhandsbedomning_14d',
+                        'titel' => 'Förhandsbedömning klar (senast 14 dagar)',
+                        'villkorTyp' => 'steg_uppnatt',
+                        'villkorArg' => 'utredning',
+                        'ankare' => 'inkom_datum',
+                        'ankareDagar' => 14,
+                        'recurringDagar' => null,
+                        'lagstadgad' => true,
+                        'vidSteg' => 'fodelse',
+                    ],
+                    [
+                        'typ' => 'utredning_4man',
+                        'titel' => 'Utredning klar (senast 4 månader)',
+                        'villkorTyp' => 'steg_uppnatt',
+                        'villkorArg' => 'beslut',
+                        'ankare' => 'steg_datum',
+                        'ankareDagar' => 120,
+                        'recurringDagar' => null,
+                        'lagstadgad' => true,
+                        'vidSteg' => 'utredning',
+                    ],
+                    [
+                        'typ' => 'overvagande_6man',
+                        'titel' => 'Övervägande av vården (var 6:e månad)',
+                        'villkorTyp' => 'manuell_kvittering',
+                        'villkorArg' => 'uppfoljning',
+                        'ankare' => 'steg_datum',
+                        'ankareDagar' => 180,
+                        'recurringDagar' => 180,
+                        'lagstadgad' => true,
+                        'vidSteg' => 'uppfoljning',
+                    ],
+                ],
             ],
 
             // 2 — Ansökan/begäran om insats. Behovsbedömning + behörighet; routing
@@ -305,6 +399,23 @@ class ArendeTypRegistry {
                 'preSagaHook' => 'diariefor_direkt', // §2.5 hook
                 'postCommitHook' => null,
                 'partsModell' => 'enskild_klient',
+                // Domstolsfristerna speglas ur facksystemet (speglasUrTreserva) —
+                // Hubs dubbelbevakar dem INTE. Men övervägandet/omprövningen av
+                // vården var 6:e månad (LVU §13) är en Hubs-egen rytm som facksystemet
+                // inte påminner om; recurring under uppföljningssteget.
+                'bevakningsMallar' => [
+                    [
+                        'typ' => 'omprovning_6man',
+                        'titel' => 'Övervägande/omprövning av vården (var 6:e månad)',
+                        'villkorTyp' => 'manuell_kvittering',
+                        'villkorArg' => 'uppfoljning',
+                        'ankare' => 'steg_datum',
+                        'ankareDagar' => 180,
+                        'recurringDagar' => 180,
+                        'lagstadgad' => true,
+                        'vidSteg' => 'uppfoljning',
+                    ],
+                ],
             ],
 
             // 7 — Verkställighet / placering / uppföljning. ALLTID attach; dubbel-

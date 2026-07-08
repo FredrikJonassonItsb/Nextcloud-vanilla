@@ -289,6 +289,93 @@ class DeckClient {
         return null;
     }
 
+    /**
+     * BEVAKNINGSPROJEKTION — uppdatera ett korts fält (typiskt duedate när en
+     * bevaknings frist ändras). Deck OCS-uppdateringen (PUT) kräver title+type+
+     * owner, så kortet hämtas först och $fields mergas ovanpå. Best-effort.
+     *
+     * @param array<string,mixed> $fields Delmängd: duedate (ISO|null), done (ISO|null),
+     *                                     archived (bool), title, description.
+     * @return bool true om PUT försöktes, false på NO-OP/skip.
+     */
+    public function updateCard(int $boardId, int $cardId, array $fields): bool {
+        if (!$this->isAvailable() || $boardId <= 0 || $cardId <= 0) {
+            $this->noop('updateCard', (string)$cardId);
+            return false;
+        }
+
+        $stackId = $this->findStackIdForCard($boardId, $cardId);
+        if ($stackId === null) {
+            $this->logger->warning('hubs_arende: DeckClient.updateCard hittade ingen stack för kortet (graceful skip)', [
+                'app' => 'hubs_arende', 'boardId' => $boardId, 'cardId' => $cardId,
+            ]);
+            return false;
+        }
+
+        $current = $this->ocsRequest(
+            'GET',
+            self::API_BASE . '/boards/' . $boardId . '/stacks/' . $stackId . '/cards/' . $cardId,
+            null,
+            (string)$cardId,
+        );
+        $card = $this->unwrap($current);
+        if (!is_array($card)) {
+            $this->logger->warning('hubs_arende: DeckClient.updateCard kunde inte läsa kortet (graceful skip)', [
+                'app' => 'hubs_arende', 'boardId' => $boardId, 'cardId' => $cardId,
+            ]);
+            return false;
+        }
+
+        // Deck kräver title/type/owner i uppdateringen — bevara befintliga.
+        $ownerRaw = $card['owner'] ?? '';
+        $owner = is_array($ownerRaw) ? (string)($ownerRaw['uid'] ?? $ownerRaw['primaryKey'] ?? '') : (string)$ownerRaw;
+        $payload = array_merge([
+            'title' => (string)($card['title'] ?? ''),
+            'type' => (string)($card['type'] ?? self::CARD_TYPE_PLAIN),
+            'owner' => $owner,
+            'order' => (int)($card['order'] ?? 0),
+        ], $fields);
+
+        $this->ocsRequest(
+            'PUT',
+            self::API_BASE . '/boards/' . $boardId . '/stacks/' . $stackId . '/cards/' . $cardId,
+            $payload,
+            (string)$cardId,
+        );
+
+        $this->logger->info('hubs_arende: DeckClient.updateCard', [
+            'app' => 'hubs_arende', 'boardId' => $boardId, 'stackId' => $stackId, 'cardId' => $cardId,
+            'fields' => array_keys($fields),
+        ]);
+        return true;
+    }
+
+    /**
+     * Markera kortet KLART (bevakningen uppnådd). Sätter `done`-tidsstämpeln;
+     * Deck-versioner utan done-fält ignorerar den graceful (kortet blir kvar).
+     */
+    public function markDone(int $boardId, int $cardId): bool {
+        return $this->updateCard($boardId, $cardId, ['done' => $this->nowIso()]);
+    }
+
+    /** Ångra klarmarkering (recurring/backfill). */
+    public function markUndone(int $boardId, int $cardId): bool {
+        return $this->updateCard($boardId, $cardId, ['done' => null]);
+    }
+
+    /**
+     * Arkivera kortet (bevakningen avbruten) så det försvinner från tavlan utan
+     * att raderas — gallringen river det slutgiltigt med ärendet.
+     */
+    public function archiveCard(int $boardId, int $cardId): bool {
+        return $this->updateCard($boardId, $cardId, ['archived' => true]);
+    }
+
+    /** ISO-8601 nu (Deck done/duedate-format). */
+    private function nowIso(): string {
+        return (new \DateTime())->format('c');
+    }
+
     // ================================================================== //
     //  Internal helpers — resolution
     // ================================================================== //

@@ -11,11 +11,13 @@ namespace OCA\HubsArende\Service;
 
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
+use OCA\HubsArende\Db\BevakningMapper;
 use OCA\HubsArende\Db\HandelseMapper;
 use OCA\HubsArende\Db\MemberMapper;
 use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Db\SakuppgiftMapper;
+use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Psr\Log\LoggerInterface;
@@ -83,6 +85,15 @@ class GallringService {
         // minne — bekräftade sakuppgifter, kan bära PII) gallras OVILLKORLIGEN
         // med ärendet (GDPR art. 5.1.e; samma regler som partsregistret).
         private ?SakuppgiftMapper $sakuppgiftMapper = null,
+        // TRAILING OPTIONAL (autowired): DeckClient. FIX P1-orphan — gallringen
+        // raderade tidigare deck_card-PEKARRADEN men ALDRIG själva Deck-kortet, så
+        // kortet blev kvar för evigt ("gallring river kartan men inte datat"). Här
+        // rivs kortet via pekaren INNAN pekarraden tas bort. Graceful (Deck saknas).
+        private ?DeckClient $deckClient = null,
+        // TRAILING OPTIONAL (autowired): bevaknings-REGISTRET (koordinationsdata)
+        // gallras OVILLKORLIGEN med ärendet (K-BEV-2.2) — annars kvarlämnade
+        // watch-rader efter en stängd akt.
+        private ?BevakningMapper $bevakningMapper = null,
     ) {
     }
 
@@ -142,13 +153,27 @@ class GallringService {
                 }
             }
 
-            // Pekarna FÖRST (routing-/koordinations-pekare till externa objekt), så
+            // FIX P1-ORPHAN: riv de faktiska DECK-KORTEN via deck_card-pekarna INNAN
+            // pekarraderna tas bort — annars gallras kartan (pekaren) men inte datat
+            // (kortet), och bevaknings-/ärendekorten blir kvar för evigt på tavlan.
+            // riktning bär boardId, objekt_id är cardId (samma modell som R5/bevakning).
+            // Graceful: Deck saknas ⇒ hoppas över (pekarraden tas ändå bort nedan).
+            if ($this->deckClient !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'deck_card') as $deckPekare) {
+                    $this->deckClient->deleteCard((int)$deckPekare->getRiktning(), (int)$deckPekare->getObjektId());
+                }
+            }
+
+            // Pekarna (routing-/koordinations-pekare till externa objekt), så
             // ingen orphan-pekare överlever register-raden. findByCaseId + delete-loop
             // över ALLA objekt_typ:er (vi äger inte PekareMapper, så vi använder dess
             // befintliga QBMapper-API). Idempotent — en re-körning hittar 0 pekare.
             foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $pekare) {
                 $this->pekareMapper->delete($pekare);
             }
+
+            // Bevaknings-registret (koordinationsdata) gallras med ärendet (K-BEV-2.2).
+            $this->bevakningMapper?->deleteByCaseId($hubsCaseId);
 
             // Ärenderummets förstaklassiga medlemmar (uid+roll = personal-PII) MÅSTE
             // gallras med rummet — annars kvarlämnad PII-rest (GDPR art. 5.1.e).
