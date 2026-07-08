@@ -182,6 +182,12 @@ class ArendeService {
         // mutationerna. TRAILING OPTIONAL — null ⇒ createCase faller tillbaka på den
         // gamla engångs-frist-beräkningen (computeFristDue) och bevaknings-API:t är dött.
         private ?BevakningService $bevakningService = null,
+        // A7 — EVIDENS ur journalen som bryter den cirkulära plikt-härledningen:
+        // pliktForArende() läser skyddsbedömningens FAKTISKA artefakt/kvittens i
+        // stället för att gissa ur steget (som grinden själv flyttar). TRAILING
+        // OPTIONAL — null ⇒ fail-open till det gamla steg-baserade beteendet så den
+        // positionella testharnessen förblir grön. Autowirad i drift.
+        private ?EvidensService $evidensService = null,
     ) {
     }
 
@@ -1120,7 +1126,10 @@ class ArendeService {
             'meddelanden' => [],
             'moten' => [],
             'bevakningar' => [],
-            'beslut' => null,
+            // A11 — BEVARANDE-panelen: härled beslut+signatur-provenans ur den PERSISTERADE
+            // journalen (TYP_REGISTRERAD) så panelen renderas live vid varje fetch, inte
+            // bara i commit-svaret. null när ärendet ännu inte är registrerat.
+            'beslut' => $this->beslutForCard($arende),
             'medlemmar' => $medlemmar,
             // SAGA-koordinationspekare for deep-länkning (ärenderum/diskussion/
             // ärendekort/kalender). THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
@@ -1945,10 +1954,19 @@ class ArendeService {
             }
 
             // Journal: verifierad facksystem-registrering (dnr + destination).
-            $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, [
+            // A11 — SIGNATUR-PROVENANS: när facksystemet signerat beslutet (kraverSignering)
+            // returnerar kvittot ett 'signatur'-block; bär in dess metadata i journalen så
+            // bevarande-panelen (mapToFullCard.beslut) kan renderas live vid varje fetch —
+            // inte bara i commit-svaret. PII-fritt: signeratAv = uid/roll-ref, aldrig namn.
+            $registreradDetalj = [
                 'dnr' => (string)($kvitto['dnr'] ?? ''),
                 'destination' => (string)$arende->getCommitDestination(),
-            ]);
+            ];
+            $signaturDetalj = $this->signaturDetaljFromKvitto($kvitto);
+            if ($signaturDetalj !== null) {
+                $registreradDetalj['signatur'] = $signaturDetalj;
+            }
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, $registreradDetalj);
 
             // GAP-044 ÄGARSKIFTE: registreringen är VERIFIERAD ⇒ facksystemet äger nu
             // fristerna. Släck commit_registrerad-bevakningar (uppnådda) och avbryt
@@ -1982,6 +2000,36 @@ class ArendeService {
                         'exception' => $e->getMessage(),
                     ]);
                 }
+            }
+
+            // A12 — PERMANENT PROVENANS: journalen (hubs_handelser) gallras TILLSAMMANS
+            // med ärendet, så noten om att beslutet registrerades måste bo utanför
+            // Hubs-gallringen. Spegla den verifierade commiten som provenans i
+            // facksystemet/e-arkivet (rättskällan vid gallring). BEST-EFFORT — får
+            // ALDRIG fälla det redan verifierade kvittot (sparaProvenans returnerar
+            // false i stället för att kasta, men vi omsluter ändå defensivt).
+            try {
+                $signaturDetalj = $this->signaturDetaljFromKvitto($kvitto);
+                $provenans = [
+                    'moment' => 'beslut',
+                    'lagrum' => 'SoL/FL',
+                    'utfall' => 'registrerad',
+                    'harCommit' => true,
+                    'aktorUid' => $this->userSession?->getUser()?->getUID() ?? '',
+                    'dnr' => (string)($kvitto['dnr'] ?? ''),
+                ];
+                // Bär signaturens artefakt-referens (t.ex. PAdES-PDF-pekare) om den finns —
+                // aldrig PII, bara en referens.
+                if ($signaturDetalj !== null && isset($signaturDetalj['artefaktRef'])) {
+                    $provenans['artefaktRef'] = (string)$signaturDetalj['artefaktRef'];
+                }
+                $this->commitService->sparaProvenans($hubsCaseId, $provenans);
+            } catch (\Throwable $e) {
+                $this->logger->warning('hubs_arende: commit-provenans misslyckades (graceful)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $hubsCaseId,
+                    'exception' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -2330,14 +2378,22 @@ class ArendeService {
     }
 
     /**
-     * gap21 — plikt-grinden för kortet. Om ärendetypen deklarerar pliktGrind=true OCH
-     * en skyddsbedömning ännu inte är gjord ⇒ {typ:'skyddsbedomning', kvitterad:false},
+     * gap21 / A7 — plikt-grinden för kortet. Om ärendetypen deklarerar pliktGrind=true
+     * OCH en skyddsbedömning ännu inte är gjord ⇒ {typ:'skyddsbedomning', kvitterad:false},
      * annars null.
      *
-     * Motorn lagrar ingen separat skyddsbedömnings-kvittens; honest härledning: en
-     * skyddsbedömning anses ANNU EJ GJORD så länge ärendet är i ett tidigt steg
-     * ('inflode'/'forhandsbedomning'). Så snart ärendet avancerats förbi
-     * förhandsbedömningen anses plikten infriad ⇒ null (ingen kvarvarande grind).
+     * A7 — CIRKULARITETEN BRUTEN (GAP-U1): tidigare härleddes "skyddsbedömning gjord"
+     * ur STEGET (`!in_array(getSteg(),['inflode','forhandsbedomning'])`) — men steget
+     * flyttas just genom den grind som plikten ska skydda, så beviset var cirkulärt och
+     * kortets röda pliktmarkör ljög. Nu läses beviset ur journalen via EvidensService:
+     * skyddsbedömningen anses gjord om det finns en ARTEFAKT ur mall (handling vars
+     * mall-id matchar 'skyddsbedom') ELLER en journalförd KVITTENS/grindval för momentet.
+     * Detta speglar frontendens harledStatus (arendeFlow.js) så kort och stepper aldrig
+     * divergerar.
+     *
+     * FAIL-OPEN: saknas evidensService (positionell testharness) faller vi tillbaka på
+     * det gamla steg-baserade beteendet så de befintliga testerna förblir gröna.
+     * EvidensService är i sig fail-open vid läsfel (låser aldrig ute en handläggare).
      *
      * @return array{typ:string, kvitterad:bool}|null
      */
@@ -2346,11 +2402,117 @@ class ArendeService {
         if ($typ === null || $typ->getPliktGrind() !== true) {
             return null;
         }
-        $skyddsbedomningGjord = !in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true);
+        $hubsCaseId = $arende->getHubsCaseId();
+        if ($this->evidensService !== null) {
+            // A7 — honest bevis ur journalen (artefakt ur mall ELLER kvittens/grindval).
+            $skyddsbedomningGjord =
+                $this->evidensService->harArtefakt($hubsCaseId, 'skyddsbedomning')
+                || $this->evidensService->harKvittens($hubsCaseId, 'skyddsbedomning');
+        } else {
+            // Fail-open: gammalt steg-baserat beteende när evidensService ej wirad
+            // (behåller den positionella testharnessen grön).
+            $skyddsbedomningGjord = !in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true);
+        }
         if ($skyddsbedomningGjord) {
             return null;
         }
         return ['typ' => 'skyddsbedomning', 'kvitterad' => false];
+    }
+
+    /**
+     * A11 — normalisera signatur-metadatan ur ett verifierat commit-kvitto till den
+     * form som journalförs i TYP_REGISTRERAD.detalj.signatur och renderas i
+     * bevarande-panelen. Facksystemet returnerar blocket när beslutet krävde signering
+     * (kraverSignering). Honest null när kvittot saknar signatur.
+     *
+     * PII-invariant: signeratAv är en uid-/roll-referens, ALDRIG ett namn. Endast
+     * kända, PII-fria nycklar plockas in (format/pdfa/ltv/signeratAv/tid[/artefaktRef]).
+     *
+     * @param array<string,mixed> $kvitto
+     * @return array<string,mixed>|null
+     */
+    private function signaturDetaljFromKvitto(array $kvitto): ?array {
+        $sig = $kvitto['signatur'] ?? null;
+        if (!is_array($sig) || $sig === []) {
+            return null;
+        }
+        $detalj = [
+            'format' => (string)($sig['format'] ?? ''),
+            'pdfa' => (bool)($sig['pdfa'] ?? false),
+            'ltv' => (bool)($sig['ltv'] ?? false),
+            'signeratAv' => (string)($sig['signeratAv'] ?? ''),
+            'tid' => (string)($sig['tid'] ?? ''),
+        ];
+        // Valfri artefakt-referens (t.ex. PAdES-PDF-pekare) — aldrig PII, bara en referens.
+        if (isset($sig['artefaktRef']) && $sig['artefaktRef'] !== '') {
+            $detalj['artefaktRef'] = (string)$sig['artefaktRef'];
+        }
+        return $detalj;
+    }
+
+    /**
+     * A11 — bevarande-panelens beslutsblock för mapToFullCard, härlett ur den
+     * PERSISTERADE journalen (senaste TYP_REGISTRERAD) + register-raden så panelen
+     * renderas live vid varje fetch (inte bara i commit-svaret). Honest null när
+     * ärendet ännu inte är registrerat (ingen commit ⇒ inget beslut att bevara).
+     *
+     * Signatur-provenansen (om beslutet signerats) plockas ur samma journalrad så
+     * "signerat / PDF/A / LTV"-chippen speglar det facksystemet faktiskt kvitterade.
+     * THIN + NEVER-SoR: enbart koordinations-/provenansvärden, aldrig PII/sakinnehåll.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function beslutForCard(Arende $arende): ?array {
+        // Ett beslut att bevara existerar först när ärendet är verifierat registrerat.
+        if ($arende->getProvenanceState() !== 'registrerad') {
+            return null;
+        }
+        $signatur = null;
+        if ($this->handelseMapper !== null) {
+            try {
+                // findByCaseId är ASC (äldst först) ⇒ sista sedda TYP_REGISTRERAD vinner
+                // (nyaste registreringen), samma "sista vinner"-mönster som pekarBlock.
+                foreach ($this->handelseMapper->findByCaseId($arende->getHubsCaseId(), 500) as $h) {
+                    if ($h->getTyp() !== Handelse::TYP_REGISTRERAD) {
+                        continue;
+                    }
+                    $d = $this->handelseDetalj($h);
+                    if (isset($d['signatur']) && is_array($d['signatur'])) {
+                        $signatur = $d['signatur'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Graceful — panel utan signatur-chip hellre än ett fällt kort.
+                $this->logger->warning('hubs_arende: beslutForCard journal-läsfel (graceful)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $arende->getHubsCaseId(),
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+        return [
+            'dnr' => $arende->getDnr(),
+            'destination' => $arende->getCommitDestination(),
+            'provenans' => $arende->getProvenanceState(),
+            // Signatur-provenans (null när beslutet inte krävde/har signering).
+            'signatur' => $signatur,
+            'signerat' => $signatur !== null,
+        ];
+    }
+
+    /**
+     * Avkoda en journalrads detalj-JSON till en array (tomt vid saknad/ogiltig JSON).
+     * Speglar EvidensService::detalj — ingen ny lagring, bara avläsning.
+     *
+     * @return array<string,mixed>
+     */
+    private function handelseDetalj(Handelse $h): array {
+        $raw = $h->getDetalj();
+        if (!is_string($raw) || $raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**

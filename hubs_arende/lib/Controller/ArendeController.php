@@ -201,29 +201,66 @@ class ArendeController extends OCSController {
      * updated case (unchanged on an idempotent same-step no-op).
      *
      * POST /api/v1/arende/{hubsCaseId}/steg
+     *
+     * Kontext-nycklar (alla valfria, PII-fria enum-koder — se KONTRAKT):
+     *  - skyddsbedomningKvitterad (bool): legacy, endast när skyddsbedömnings-flaggan är AV.
+     *  - override            {skal}: A7-override när skyddsbedömning saknas.
+     *  - inteInledaVal       {orsak, beslutsfattare}: A9a (förhandsbedömning→avslutat).
+     *  - kommuniceringVal    {gjord, skal?}: A9b (utredning→beslut).
+     *  - avslutsmotiv        {utfall, kvarstaende?}: A9c (X→avslutat, utom förhandsbedömning).
+     *
+     * Grinden i transitionera() kastar \InvalidArgumentException när ett obligatoriskt
+     * grind-val saknas OCH grind-flaggan är på → 400 {error, grindKravs:true} så att
+     * frontend kan öppna rätt grind-dialog och skicka om med rätt kontext-nyckel.
+     *
+     * @param array<string, mixed>|null $override        A7-override {skal}
+     * @param array<string, mixed>|null $inteInledaVal    A9a {orsak, beslutsfattare}
+     * @param array<string, mixed>|null $kommuniceringVal A9b {gjord, skal?}
+     * @param array<string, mixed>|null $avslutsmotiv     A9c {utfall, kvarstaende?}
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
-    public function steg(string $hubsCaseId, string $nyttSteg, bool $skyddsbedomningKvitterad = false): DataResponse {
+    public function steg(
+        string $hubsCaseId,
+        string $nyttSteg,
+        bool $skyddsbedomningKvitterad = false,
+        ?array $override = null,
+        ?array $inteInledaVal = null,
+        ?array $kommuniceringVal = null,
+        ?array $avslutsmotiv = null,
+    ): DataResponse {
         if ($hubsCaseId === '' || $nyttSteg === '') {
             return new DataResponse(['error' => 'hubsCaseId_eller_nyttSteg_saknas'], Http::STATUS_BAD_REQUEST);
         }
         try {
-            // ORO-1: vidarebefordra ev. skyddsbedömnings-kvittens som kontext. Plikt-
-            // grinden i transitionera() kräver detta för förhandsbedömning→utredning på
-            // en pliktGrind-typ (orosanmälan). Frontend sätter true när handläggaren
-            // fattat beslutet (verifierad commit av skyddsbedömningen = kvittering).
-            $arende = $this->lifecycleService->transitionera(
-                $hubsCaseId,
-                $nyttSteg,
-                ['skyddsbedomningKvitterad' => $skyddsbedomningKvitterad],
-            );
+            // Bygg kontext-bunten till transitionera(). Legacy-kvittensen skickas
+            // alltid (grinden ignorerar den när flaggan är på); grind-valen skickas
+            // bara när de faktiskt levererats så att default-beteendet är oförändrat.
+            $kontext = ['skyddsbedomningKvitterad' => $skyddsbedomningKvitterad];
+            if ($override !== null) {
+                $kontext['override'] = $override;
+            }
+            if ($inteInledaVal !== null) {
+                $kontext['inteInledaVal'] = $inteInledaVal;
+            }
+            if ($kommuniceringVal !== null) {
+                $kontext['kommuniceringVal'] = $kommuniceringVal;
+            }
+            if ($avslutsmotiv !== null) {
+                $kontext['avslutsmotiv'] = $avslutsmotiv;
+            }
+            $arende = $this->lifecycleService->transitionera($hubsCaseId, $nyttSteg, $kontext);
             return new DataResponse($arende->jsonSerialize(), Http::STATUS_OK);
         } catch (DoesNotExistException) {
             // Covers both a missing case and an unauthorised enhet (existence not leaked).
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
         } catch (\InvalidArgumentException $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            // Grind-krav ej uppfyllt (saknat obligatoriskt val medan flaggan är på) ELLER
+            // otillåten övergång. grindKravs-flaggan låter frontend öppna rätt grind-dialog.
+            return new DataResponse(
+                ['error' => $e->getMessage(), 'grindKravs' => true],
+                Http::STATUS_BAD_REQUEST,
+            );
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende steg failed', ['exception' => $e, 'hubsCaseId' => $hubsCaseId]);
             return new DataResponse(['error' => 'steg_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);

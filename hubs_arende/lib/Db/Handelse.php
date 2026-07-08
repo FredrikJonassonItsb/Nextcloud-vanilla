@@ -71,6 +71,20 @@ class Handelse extends Entity implements \JsonSerializable {
      * lagstadgad} — ALDRIG bevakningens titel-fritext (koordinationsdata utan PII).
      */
     public const TYP_BEVAKNING = 'bevakning';
+    /**
+     * Grind-beslut i utredningskedjan (A9): ett medvetet, journalfört val vid en
+     * grind — legitimt utfall eller override av en hård grind. detalj:
+     * {grind, val, skal?, beslutsfattare?, utfall?} där grind ∈ skyddsbedomning |
+     * inte_inleda | kommunicering | avslut, val ∈ godkand | override | vald.
+     * ALDRIG fritext-motivering/PII — skal är en ENUM-kod, aldrig fri prosa.
+     */
+    public const TYP_GRINDVAL = 'grindval';
+    /**
+     * Kvittens av ett lagstadgat moment (A7): handläggaren intygar att momentet
+     * (t.ex. skyddsbedömningen) utförts. detalj: {moment, artefaktRef?} —
+     * koordinationsdata, aldrig sakinnehåll.
+     */
+    public const TYP_KVITTENS = 'kvittens';
 
     /** FK -> hubs_arende_case.hubs_case_id (UUID v4). */
     protected string $hubsCaseId = '';

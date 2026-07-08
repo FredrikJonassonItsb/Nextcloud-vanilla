@@ -37,5 +37,9 @@ class RegisterArendeTyper implements IRepairStep {
 		// annars får gamla orosanmalan-rader aldrig sin 14d→4mån-kedja.
 		$patchade = $this->registry->synkaBevakningsmallar();
 		$output->info(sprintf('hubs_arende: patchade bevakningsmallar på %d typrader.', $patchade));
+		// A8 — patcha omprovningskrav på befintliga typrader (kolumnen är ny) så
+		// LVU/orosanmälan får automatisk lagstadgad omprövningsbevakning.
+		$omprovning = $this->registry->synkaOmprovningskrav();
+		$output->info(sprintf('hubs_arende: patchade omprovningskrav på %d typrader.', $omprovning));
 	}
 }

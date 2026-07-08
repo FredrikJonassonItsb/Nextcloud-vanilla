@@ -60,6 +60,8 @@ class BevakningService {
         private readonly ?DeckClient $deckClient = null,
         private readonly ?PekareMapper $pekareMapper = null,
         private readonly ?HandelseMapper $handelseMapper = null,
+        // A8 — trailing-optional (positionell testharness ⇒ null ⇒ auto-omprövning AV).
+        private readonly ?GrindConfig $grindConfig = null,
     ) {
     }
 
@@ -137,6 +139,15 @@ class BevakningService {
                     $this->instansiera($arende, $mall, $aktor);
                 }
             }
+
+            // (4) A8 — lagstadgad omprövning/övervägande: vid inträde i uppföljning
+            // för en ärendetyp med omprovningskrav SÄKERSTÄLLS en aktiv
+            // omprövningsbevakning. Den ska ALDRIG vila på att handläggaren råkar
+            // skapa den, eller på att typens mall råkar vara korrekt seedad.
+            // Idempotent: körs bara om ingen aktiv overvägande/omprövning finns (mall
+            // i steg (3) ovan täcker normalfallet — detta är säkerhetsnätet).
+            $this->sakerstallOmprovningsbevakning($hubsCaseId, $nyttSteg, $typ, $arende, $aktor);
+
             $this->projicieraFrist($hubsCaseId);
         } catch (\Throwable $e) {
             $this->logger->warning('hubs_arende: skapaStandardForSteg misslyckades (graceful)', [
@@ -639,6 +650,56 @@ class BevakningService {
         $ny = $this->bevakningMapper->insert($ny);
         $this->skapaDeckKort($arende, $ny);
         $this->loggaBev($ny->getHubsCaseId(), 'recurring_ny', $ny, $aktor);
+    }
+
+    /**
+     * A8 — säkerställ att en aktiv lagstadgad omprövnings-/övervägandebevakning
+     * finns när ett omprövningspliktigt ärende går in i uppföljning.
+     *
+     * Gate: bara vid nyttSteg='uppfoljning', bara om typen har omprovningskrav OCH
+     * GrindConfig.autoOmprovning() är på (kod-default AV ⇒ testharness/prod orörda).
+     * Idempotent: om steg (3):s mall redan skapat en aktiv overvägande/omprövning
+     * (typ innehåller 'overvagande'/'omprovning') görs ingenting. Annars instansieras
+     * en bevakning med SAMMA form som de seedade mallarna (manuell_kvittering,
+     * recurring 180 d, lagstadgad, villkorArg='uppfoljning').
+     */
+    private function sakerstallOmprovningsbevakning(
+        string $hubsCaseId,
+        string $nyttSteg,
+        ?ArendeTyp $typ,
+        Arende $arende,
+        string $aktor,
+    ): void {
+        if ($nyttSteg !== 'uppfoljning') {
+            return;
+        }
+        if ($typ === null || $typ->getOmprovningskrav() !== true) {
+            return;
+        }
+        if ($this->grindConfig === null || !$this->grindConfig->autoOmprovning()) {
+            return; // flaggan AV (kod-default) ⇒ gammalt beteende, ingen autoskapning
+        }
+        // Idempotens: finns redan en aktiv overvägande/omprövning? (t.ex. skapad av
+        // typens mall i steg (3), eller av en tidigare uppföljningsövergång).
+        foreach ($this->bevakningMapper->findAktivaByCaseId($hubsCaseId) as $b) {
+            $t = $b->getTyp();
+            if (str_contains($t, 'overvagande') || str_contains($t, 'omprovning')) {
+                return;
+            }
+        }
+        // Ingen fanns → skapa säkerhetsnätet med samma form som seedmallarna.
+        $mall = [
+            'typ' => 'omprovning_6man',
+            'titel' => 'Övervägande/omprövning av vården (var 6:e månad)',
+            'villkorTyp' => Bevakning::VILLKOR_MANUELL_KVITTERING,
+            'villkorArg' => 'uppfoljning',
+            'ankare' => Bevakning::ANKARE_STEG,
+            'ankareDagar' => 180,
+            'recurringDagar' => 180,
+            'lagstadgad' => true,
+            'vidSteg' => 'uppfoljning',
+        ];
+        $this->instansiera($arende, $mall, $aktor);
     }
 
     /**

@@ -13,6 +13,8 @@ use OCA\HubsArende\Db\ArendeTyp;
 use OCA\HubsArende\Db\ArendeTypMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception as DBException;
+use OCP\DB\QueryBuilder\IQueryBuilder;
+use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -35,6 +37,10 @@ class ArendeTypRegistry {
     public function __construct(
         private ArendeTypMapper $mapper,
         private LoggerInterface $logger,
+        // A8 — trailing-optional (positionell testharness): behövs bara av
+        // synkaOmprovningskrav() som patchar befintliga rader via rå UPDATE
+        // (ArendeTypMapper ägs av annan agent, så vi kan inte lägga en metod där).
+        private ?IDBConnection $db = null,
     ) {
     }
 
@@ -165,6 +171,67 @@ class ArendeTypRegistry {
     }
 
     /**
+     * A8 — patcha omprovningskrav-kolumnen på REDAN BEFINTLIGA typrader (t.ex. en
+     * miljö som seedades innan kolumnen fanns). seedDefaults() rör bara frånvarande
+     * rader, så utan detta får aldrig gamla orosanmalan-/rattsligt_tvang-rader sitt
+     * lagstadgade omprövningskrav → omprövningsbevakningen skulle aldrig autoskapas.
+     *
+     * Sätter endast kravet för de defaultrader som deklarerar omprovningskrav=true,
+     * och endast där kolumnen ännu är false/NULL (kommun-anpassning bevaras — vi
+     * höjer bara AV→PÅ, sänker aldrig). Idempotent. Rå UPDATE via IDBConnection
+     * eftersom ArendeTypMapper ägs av en annan agent (string-PK ⇒ QBMapper::update
+     * funkar ändå inte) och synkar bara defaultradernas krav.
+     *
+     * @return int Antalet rader som uppdaterades.
+     */
+    public function synkaOmprovningskrav(): int {
+        if ($this->db === null) {
+            return 0; // testharness utan DB-koppling — inget att synka
+        }
+        $uppdaterade = 0;
+        foreach ($this->defaultRows() as $row) {
+            if (($row['omprovningskrav'] ?? false) !== true) {
+                continue; // bara rader som SKA ha kravet
+            }
+            $id = (string)$row['arendeTypId'];
+            try {
+                $typ = $this->mapper->findByTypId($id);
+            } catch (DoesNotExistException) {
+                continue; // saknas → seedDefaults() skapar den (med kravet via hydrate)
+            } catch (DBException $e) {
+                $this->logger->warning('ArendeTypRegistry::synkaOmprovningskrav läsfel', [
+                    'app' => 'hubs_arende', 'arendeTypId' => $id, 'exception' => $e,
+                ]);
+                continue;
+            }
+            if ($typ->getOmprovningskrav() === true) {
+                continue; // redan satt — rör inte (idempotent)
+            }
+            // Riktad UPDATE by string-PK (QBMapper::update kräver int-id som saknas här).
+            try {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update('hubs_arende_typ')
+                    ->set('omprovningskrav', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL))
+                    ->where(
+                        $qb->expr()->eq('arende_typ_id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_STR))
+                    );
+                $qb->executeStatement();
+                $uppdaterade++;
+            } catch (DBException $e) {
+                $this->logger->warning('ArendeTypRegistry::synkaOmprovningskrav skrivfel', [
+                    'app' => 'hubs_arende', 'arendeTypId' => $id, 'exception' => $e,
+                ]);
+            }
+        }
+        if ($uppdaterade > 0) {
+            $this->logger->info('ArendeTypRegistry::synkaOmprovningskrav klar', [
+                'app' => 'hubs_arende', 'uppdaterade' => $uppdaterade,
+            ]);
+        }
+        return $uppdaterade;
+    }
+
+    /**
      * Build an ArendeTyp entity from a config array.
      *
      * @param array<string,mixed> $row
@@ -196,6 +263,8 @@ class ArendeTypRegistry {
         $typ->setBevakningsmallar(is_array($mallar) && $mallar !== []
             ? json_encode($mallar, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
             : null);
+        // A8 — lagstadgat omprövnings-/övervägandekrav (LVU 13 §, SoL övervägande).
+        $typ->setOmprovningskrav((bool)($row['omprovningskrav'] ?? false));
         return $typ;
     }
 
@@ -237,6 +306,9 @@ class ArendeTypRegistry {
                 'preSagaHook' => null,
                 'postCommitHook' => null,
                 'partsModell' => 'enskild_klient',
+                // A8 — placerat barn ⇒ lagstadgat övervägande var 6:e mån; motorn
+                // säkerställer omprövningsbevakningen automatiskt vid uppföljning.
+                'omprovningskrav' => true,
                 // KEDJAN: förhandsbedömning (14 d, SoL 11:1a) släcks när utredning
                 // inleds → utredningsbevakningen (4 mån, SoL 11:2) föds i samma steg
                 // = själva nollställningen. Placerat barn ⇒ övervägande var 6:e mån.
@@ -399,6 +471,9 @@ class ArendeTypRegistry {
                 'preSagaHook' => 'diariefor_direkt', // §2.5 hook
                 'postCommitHook' => null,
                 'partsModell' => 'enskild_klient',
+                // A8 — LVU/LVM ⇒ lagstadgad omprövning/övervägande var 6:e mån
+                // (LVU 13 §); motorn säkerställer bevakningen automatiskt vid uppföljning.
+                'omprovningskrav' => true,
                 // Domstolsfristerna speglas ur facksystemet (speglasUrTreserva) —
                 // Hubs dubbelbevakar dem INTE. Men övervägandet/omprövningen av
                 // vården var 6:e månad (LVU §13) är en Hubs-egen rytm som facksystemet

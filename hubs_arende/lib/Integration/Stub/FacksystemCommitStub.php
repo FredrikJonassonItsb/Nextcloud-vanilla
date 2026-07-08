@@ -62,6 +62,15 @@ class FacksystemCommitStub implements FacksystemCommitPort {
     private int $dnrSeq = 500;
 
     /**
+     * Permanent provenans per hubsCaseId (A12) — den rättskälla som överlever gallring.
+     * Journalen gallras med ärendet; dessa noter ligger på facksystem-sidan (utanför
+     * Hubs-gallringen). In-memory i stubben; en live-port persisterar mot e-arkiv.
+     *
+     * @var array<string, array<int, array<string,mixed>>>
+     */
+    private array $provenans = [];
+
+    /**
      * @param bool   $synchronousCallback true = kör callbacken in-process direkt i
      *               commit() (synkron demo); false = async, verifyCallback() krävs.
      * @param int    $retentionDays Antal dagar till gallrasDatum efter verifierad commit.
@@ -130,6 +139,12 @@ class FacksystemCommitStub implements FacksystemCommitPort {
         ];
         $this->register[$hubsCaseId] = $entry;
 
+        // A11: e-signatur-provenans. När committen kräver signering (beslut som
+        // ska signeras i facksystemet) returnerar facksystemet signatur-metadata i
+        // kvittot. Stubben syntetiserar den deterministiskt (PAdES-B-LT, PDF/A, LTV)
+        // så att bevarande-panelen kan renderas live utan riktig signeringstjänst.
+        $signatur = $this->syntetiseraSignatur($payload, $committedAt);
+
         $correlationId = (string)($payload['correlationId'] ?? ($hubsCaseId . ':' . $committedAt));
         $callbackToken = $this->registerCallback($hubsCaseId, $correlationId);
         $this->pending[$callbackToken] = [
@@ -139,6 +154,7 @@ class FacksystemCommitStub implements FacksystemCommitPort {
             'committedAt' => $committedAt,
             'typ'         => (string)($payload['typ'] ?? 'handling'),
             'arendetyp'   => (string)($payload['arendetyp'] ?? ''),
+            'signatur'    => $signatur,
         ];
 
         // Synkron demo: kör den verifierade callbacken direkt så att den röda tråden
@@ -149,7 +165,9 @@ class FacksystemCommitStub implements FacksystemCommitPort {
         }
 
         // Async: PRELIMINÄRT kvitto. verifierad=false, gallrasDatum=null tills callback.
-        return [
+        // Signaturen är dock redan känd (facksystemet signerar vid registrering) och
+        // följer med det preliminära kvittot så att bevarande-panelen kan visa den.
+        $preliminart = [
             'ok'            => true,
             'dnr'           => $dnr,
             'committedAt'   => $committedAt,
@@ -160,6 +178,10 @@ class FacksystemCommitStub implements FacksystemCommitPort {
             'callbackToken' => $callbackToken,
             'receipt'       => [],
         ];
+        if ($signatur !== null) {
+            $preliminart['signatur'] = $signatur;
+        }
+        return $preliminart;
     }
 
     public function registerCallback(string $hubsCaseId, string $correlationId): string {
@@ -216,6 +238,11 @@ class FacksystemCommitStub implements FacksystemCommitPort {
             'kalla'         => 'Frends → facksystem (stub)',
             'callbackToken' => $callbackToken,
         ];
+        // A11: bär e-signatur-provenansen in i kvittenspostens shape om committen krävde
+        // signering. Ligger bara med när den finns (bakåtkompatibelt för osignerade commits).
+        if (isset($pending['signatur']) && is_array($pending['signatur'])) {
+            $receipt['signatur'] = $pending['signatur'];
+        }
         array_unshift($this->receipts, $receipt);
 
         // Token förbrukad (idempotens).
@@ -224,9 +251,50 @@ class FacksystemCommitStub implements FacksystemCommitPort {
         return $this->kvittoFromReceipt($receipt);
     }
 
+    /**
+     * A12: spara permanent provenans om ett moment (rättskälla som överlever gallring).
+     *
+     * Best-effort: fångar allt och returnerar false i stället för att kasta, så att en
+     * redan verifierad commit aldrig fälls av provenans-skrivningen. Stubben håller noten
+     * in-memory (introspekteras via {@see listProvenans()}); en live-port persisterar mot
+     * facksystem/e-arkiv utanför Hubs-gallringen.
+     *
+     * @param array<string,mixed> $moment {moment,lagrum,utfall,aktorUid,tid?,artefaktRef?,harCommit?,dnr?}.
+     */
+    public function sparaProvenans(string $hubsCaseId, array $moment): bool {
+        try {
+            // PII-fri normalisering: enbart enum-koder + referenser bevaras.
+            $not = [
+                'moment'      => (string)($moment['moment'] ?? ''),
+                'lagrum'      => (string)($moment['lagrum'] ?? ''),
+                'utfall'      => (string)($moment['utfall'] ?? ''),
+                'aktorUid'    => (string)($moment['aktorUid'] ?? ''),
+                'harCommit'   => ($moment['harCommit'] ?? null) === true,
+                'dnr'         => isset($moment['dnr']) ? (string)$moment['dnr'] : null,
+                'artefaktRef' => isset($moment['artefaktRef']) ? (string)$moment['artefaktRef'] : null,
+                'tid'         => (string)($moment['tid'] ?? $this->isoNow()),
+            ];
+            $this->provenans[$hubsCaseId] ??= [];
+            $this->provenans[$hubsCaseId][] = $not;
+            return true;
+        } catch (\Throwable $e) {
+            // Best-effort: provenansen är sekundär spårbarhet, commiten är sanningen.
+            return false;
+        }
+    }
+
     // ------------------------------------------------------------------ //
     //  Introspektion för demo/tester (motsvarar _dumpRegister/listReceipts)
     // ------------------------------------------------------------------ //
+
+    /**
+     * Lista permanent provenans för ett ärende (A12-introspektion / tester).
+     *
+     * @return array<int, array<string,mixed>>
+     */
+    public function listProvenans(string $hubsCaseId): array {
+        return $this->provenans[$hubsCaseId] ?? [];
+    }
 
     /**
      * Hämta en registerpost (pekar-uppslag).
@@ -264,7 +332,7 @@ class FacksystemCommitStub implements FacksystemCommitPort {
      * @return array<string,mixed>
      */
     private function kvittoFromReceipt(array $receipt): array {
-        return [
+        $kvitto = [
             'ok'           => true,
             'dnr'          => $receipt['dnr'],
             'committedAt'  => $receipt['committedAt'],
@@ -273,6 +341,52 @@ class FacksystemCommitStub implements FacksystemCommitPort {
             'hubsCaseId'   => $receipt['hubsCaseId'],
             'modul'        => $receipt['modul'],
             'receipt'      => $receipt,
+        ];
+        // A11: lyft signaturen till kvittots toppnivå (ArendeService läser $kvitto['signatur']).
+        if (isset($receipt['signatur']) && is_array($receipt['signatur'])) {
+            $kvitto['signatur'] = $receipt['signatur'];
+        }
+        return $kvitto;
+    }
+
+    /**
+     * A11: syntetisera e-signatur-metadata deterministiskt.
+     *
+     * Facksystemet returnerar signatur-provenans först när committen kräver signering.
+     * Vi triggar på payload['kraverSignering'] === true ELLER närvaro av
+     * payload['signeratBeslut']. Annars null (osignerad handling → ingen signatur).
+     *
+     * signeratAv är en uid/roll-REFERENS ur payloaden (handlaggareUid/aktorUid), aldrig
+     * ett namn (PII-fri). Saknas uid syntetiseras en deterministisk placeholder-ref.
+     *
+     * @param array<string,mixed> $payload
+     * @return array<string,mixed>|null {format,pdfa,ltv,signeratAv,tid} eller null.
+     */
+    private function syntetiseraSignatur(array $payload, string $committedAt): ?array {
+        $kraver = ($payload['kraverSignering'] ?? false) === true
+            || isset($payload['signeratBeslut']);
+        if (!$kraver) {
+            return null;
+        }
+
+        // uid/roll-referens ur payloaden (PII-fri). Fallback: deterministisk placeholder.
+        $signeratAv = (string)(
+            $payload['handlaggareUid']
+            ?? $payload['aktorUid']
+            ?? $payload['signeratAv']
+            ?? ''
+        );
+        if ($signeratAv === '') {
+            $hubsCaseId = (string)($payload['hubsCaseId'] ?? '');
+            $signeratAv = 'uid:' . substr(hash('sha256', 'signatur|' . $hubsCaseId), 0, 12);
+        }
+
+        return [
+            'format'     => 'PAdES-B-LT',
+            'pdfa'       => true,
+            'ltv'        => true,
+            'signeratAv' => $signeratAv,
+            'tid'        => $committedAt,
         ];
     }
 

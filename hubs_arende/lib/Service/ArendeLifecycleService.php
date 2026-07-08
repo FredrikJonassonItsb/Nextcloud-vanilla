@@ -73,6 +73,15 @@ class ArendeLifecycleService {
         // föder nästa (14d→4mån-nollställningen); avslut avbryter allt. BEST-EFFORT,
         // TRAILING OPTIONAL — null ⇒ ingen bevakningsnollställning (testharness).
         private ?BevakningService $bevakningService = null,
+        // UTREDNINGSKEDJANS GRINDAR (A7/A9). GrindConfig avgör om enforcement är PÅ
+        // (config-flaggor, på i dev/av i prod); EvidensService avläser om ett
+        // lagstadgat moment (skyddsbedömning/kommunicering) faktiskt producerats.
+        // TRAILING OPTIONAL — null ⇒ grindarna degraderar till gammalt beteende.
+        private ?GrindConfig $grindConfig = null,
+        private ?EvidensService $evidensService = null,
+        // A12 — provenans-kanal mot facksystemet vid avslut (best-effort, får aldrig
+        // fälla övergången). TRAILING OPTIONAL — null ⇒ ingen extern provenans.
+        private ?FacksystemCommitService $commitService = null,
     ) {
     }
 
@@ -113,24 +122,97 @@ class ArendeLifecycleService {
             );
         }
 
-        // PLIKT-GRIND (fas-spärr, ORO-1 / spec §3.2 kat1 + §2.3 pliktGrind): en typ
-        // som deklarerar pliktGrind=true (orosanmälan) får INTE inleda utredning
-        // (forhandsbedomning→utredning) förrän skyddsbedömningen är KVITTERAD. "Inte
-        // inleda" (forhandsbedomning→avslutat) förblir ogated. Config-driven — ingen
-        // if(kategori===1)-gren. Kvittensen är ett EXPLICIT signal i $kontext (frontend
-        // skickar den när handläggaren kvitterat skyddsbedömningen); den får INTE
-        // härledas ur 'steg' (cirkulärt — det är just steg-flytten som gateas).
-        if (
-            $franSteg === 'forhandsbedomning'
-            && $nyttSteg === 'utredning'
-            && ($kontext['skyddsbedomningKvitterad'] ?? false) !== true
-        ) {
+        // ============================================================== //
+        //  UTREDNINGSKEDJANS GRINDAR (A7/A9). Kastar FÖRE setSteg — en blockerad
+        //  övergång persisteras aldrig. Enforcement är config-gatead (GrindConfig,
+        //  på i dev/av i prod); när en flagga är AV degraderar grinden till sitt
+        //  gamla, icke-tvingande beteende. Legitima men okontrollerbara utfall går
+        //  smidigt men LÄMNAR SPÅR (journalförd TYP_GRINDVAL).
+        // ============================================================== //
+
+        // A7 — SKYDDSBEDÖMNINGS-EXISTENS-GRIND (forhandsbedomning→utredning).
+        // Bryter den cirkulära härledningen (GAP-U1): grinden kräver att en verklig
+        // skyddsbedömning (handling ur mall) EXISTERAR — inte en klient-boolean.
+        // Hård grind med journalförd override (beslut 2026-07-08): handläggaren kan
+        // medvetet passera med ett strukturerat skäl (t.ex. gjord i Treserva).
+        if ($franSteg === 'forhandsbedomning' && $nyttSteg === 'utredning') {
             $typ = $this->typRegistry->get($arende->getArendeTyp());
             if ($typ !== null && $typ->getPliktGrind() === true) {
+                if ($this->grindConfig !== null && $this->grindConfig->skyddsbedomningGrind()) {
+                    // fail-open: null EvidensService (testharness) ⇒ anses uppfyllt.
+                    $harBedomning = $this->evidensService === null
+                        || $this->evidensService->harArtefakt($arende->getHubsCaseId(), 'skyddsbedomning');
+                    if (!$harBedomning) {
+                        $skal = (string)($kontext['override']['skal'] ?? '');
+                        if ($skal === '') {
+                            throw new \InvalidArgumentException(
+                                'Plikt-grind: en skyddsbedömning måste finnas (eller anges som gjord utanför Hubs) innan utredning inleds.'
+                            );
+                        }
+                        $this->journalGrindval($arende->getHubsCaseId(), 'skyddsbedomning', 'override', ['skal' => $skal]);
+                    } else {
+                        $this->journalGrindval($arende->getHubsCaseId(), 'skyddsbedomning', 'godkand', []);
+                    }
+                } elseif (($kontext['skyddsbedomningKvitterad'] ?? false) !== true) {
+                    // Flagga AV → gammalt beteende (klient-boolean), bakåtkompatibelt.
+                    throw new \InvalidArgumentException(
+                        'Plikt-grind: skyddsbedömningen måste kvitteras innan utredning inleds.'
+                    );
+                }
+            }
+        }
+
+        // A9a — INTE-INLEDA-MOTIV (forhandsbedomning→avslutat). "Inte inleda" är ett
+        // legitimt utfall men får inte vara ett tyst förbi-klick: kräver strukturerat
+        // {orsak, beslutsfattare}. Journalförs så beslut skiljs från slarv.
+        if ($franSteg === 'forhandsbedomning' && $nyttSteg === 'avslutat'
+            && $this->grindConfig !== null && $this->grindConfig->inteInledaMotiv()) {
+            $orsak = (string)($kontext['inteInledaVal']['orsak'] ?? '');
+            if ($orsak === '') {
                 throw new \InvalidArgumentException(
-                    'Plikt-grind: skyddsbedömningen måste kvitteras innan utredning inleds.'
+                    'Beslut om att inte inleda utredning måste ange en orsak.'
                 );
             }
+            $this->journalGrindval($arende->getHubsCaseId(), 'inte_inleda', 'vald', [
+                'orsak' => $orsak,
+                'beslutsfattare' => (string)($kontext['inteInledaVal']['beslutsfattare'] ?? ''),
+            ]);
+        }
+
+        // A9b — KOMMUNICERINGS-CHECKPOINT (utredning→beslut). Kommunicering (FL 25 §)
+        // före beslut är en stark men överbryggbar kontroll — hård spärr → fejk.
+        // Kräver att en kommunicering finns ELLER ett medvetet override-skäl.
+        if ($franSteg === 'utredning' && $nyttSteg === 'beslut'
+            && $this->grindConfig !== null && $this->grindConfig->beslutDokument()) {
+            $harKomm = $this->evidensService === null
+                || $this->evidensService->harArtefakt($arende->getHubsCaseId(), 'kommunicering');
+            if (!$harKomm) {
+                $val = $kontext['kommuniceringVal'] ?? null;
+                $gjord = is_array($val) && ($val['gjord'] ?? false) === true;
+                $skal = is_array($val) ? (string)($val['skal'] ?? '') : '';
+                if (!$gjord && $skal === '') {
+                    throw new \InvalidArgumentException(
+                        'Kommunicering med parterna (FL 25 §) saknas — bekräfta att den gjorts eller ange varför den utelämnas.'
+                    );
+                }
+                $this->journalGrindval($arende->getHubsCaseId(), 'kommunicering', $gjord ? 'godkand' : 'override', ['skal' => $skal]);
+            }
+        }
+
+        // A9c — AVSLUTSMOTIV (X→avslutat, ej forhandsbedomning som har A9a). Avslut
+        // kräver ett strukturerat utfall så ett ärende inte bara klickas bort.
+        if ($nyttSteg === 'avslutat' && $franSteg !== 'forhandsbedomning'
+            && $this->grindConfig !== null && $this->grindConfig->avslutMotiv()) {
+            $utfall = (string)($kontext['avslutsmotiv']['utfall'] ?? '');
+            if ($utfall === '') {
+                throw new \InvalidArgumentException(
+                    'Avslut kräver ett angivet utfall.'
+                );
+            }
+            $this->journalGrindval($arende->getHubsCaseId(), 'avslut', 'vald', [
+                'utfall' => $utfall,
+                'kvarstaende' => (bool)($kontext['avslutsmotiv']['kvarstaende'] ?? false),
+            ]);
         }
 
         // Apply the move.
@@ -178,6 +260,26 @@ class ArendeLifecycleService {
             }
         }
 
+        // A12 — BEVARANDE VID AVSLUT: spegla avslutet som provenans i facksystemet
+        // (journalen gallras MED ärendet, så rättskällan måste bo externt). Best-
+        // effort — får aldrig fälla den redan genomförda övergången.
+        if ($nyttSteg === 'avslutat' && $this->commitService !== null) {
+            try {
+                $this->commitService->sparaProvenans($arende->getHubsCaseId(), [
+                    'moment' => 'avslut',
+                    'lagrum' => 'Arkivlagen',
+                    'utfall' => (string)($kontext['avslutsmotiv']['utfall'] ?? ($kontext['inteInledaVal']['orsak'] ?? '')),
+                    'harCommit' => $arende->getProvenanceState() === 'registrerad',
+                    'aktorUid' => $this->userSession?->getUser()?->getUID() ?? '',
+                ]);
+            } catch (\Throwable $e) {
+                $this->logger->warning('hubs_arende: avsluts-provenans misslyckades (graceful)', [
+                    'app' => 'hubs_arende', 'hubsCaseId' => $arende->getHubsCaseId(),
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+
         // Provenance log — hubsCaseId + från/till-steg only, NEVER PII.
         $this->logger->info('hubs_arende: steg-övergång', [
             'app' => 'hubs_arende',
@@ -187,6 +289,31 @@ class ArendeLifecycleService {
         ]);
 
         return $arende;
+    }
+
+    /**
+     * Journalför ett medvetet grind-val (A9) — koordinationsdata utan PII: grind +
+     * val + enum-koder (orsak/skäl/utfall), ALDRIG fri motiveringstext. Best-effort.
+     *
+     * @param array<string,mixed> $extra
+     */
+    private function journalGrindval(string $hubsCaseId, string $grind, string $val, array $extra): void {
+        if ($this->handelseMapper === null) {
+            return;
+        }
+        try {
+            $this->handelseMapper->record(
+                $hubsCaseId,
+                Handelse::TYP_GRINDVAL,
+                array_merge(['grind' => $grind, 'val' => $val], $extra),
+                $this->userSession?->getUser()?->getUID() ?? '',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: grindval-journal misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'grind' => $grind,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
