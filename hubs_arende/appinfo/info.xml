@@ -41,6 +41,7 @@ Designad ExApp-rent (in-process NC-app nu → paketeras som ExApp senare).
         <job>OCA\HubsArende\BackgroundJob\GallringJob</job>
         <job>OCA\HubsArende\BackgroundJob\FristVarselJob</job>
         <job>OCA\HubsArende\BackgroundJob\BevakningVarselJob</job>
+        <job>OCA\HubsArende\BackgroundJob\BrainProvisionRetryJob</job>
     </background-jobs>
     <repair-steps>
         <post-migration>

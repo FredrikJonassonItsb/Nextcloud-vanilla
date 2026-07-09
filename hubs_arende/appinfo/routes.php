@@ -220,5 +220,18 @@ return [
             'url' => '/api/v1/admin/seed-demo',
             'verb' => 'POST',
         ],
+
+        // --- Brain-per-ärende: gateway-authz (server-till-server) ------------
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/authz/check
+        //   -> AuthzController::check(). Anropas av brain-gw (Node) UTAN NC-session
+        //      för varje MCP-/funktionsanrop: {uid, hubs_case_id, funktion} →
+        //      {allow, roll, skal, skydd}. #[PublicPage] + eget gateway-secret
+        //      (fail-closed), se AuthzController. Ruttnamnet 'Authz#check' resolvar
+        //      till OCA\HubsArende\Controller\AuthzController (platt namespace).
+        [
+            'name' => 'Authz#check',
+            'url' => '/api/v1/authz/check',
+            'verb' => 'POST',
+        ],
     ],
 ];

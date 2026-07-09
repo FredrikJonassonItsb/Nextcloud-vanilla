@@ -14,6 +14,9 @@ use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\ArendeTyp;
 use OCA\HubsArende\Db\Handelse;
 use OCA\HubsArende\Db\HandelseMapper;
+use OCA\HubsArende\Db\PekareMapper;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
+use OCA\HubsArende\Service\Brain\HandelseTypAi;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IUserSession;
@@ -82,6 +85,13 @@ class ArendeLifecycleService {
         // A12 — provenans-kanal mot facksystemet vid avslut (best-effort, får aldrig
         // fälla övergången). TRAILING OPTIONAL — null ⇒ ingen extern provenans.
         private ?FacksystemCommitService $commitService = null,
+        // BRAIN-LIVSCYKEL (SPEC-BRAIN-PER-ARENDE kap 3.4/9.2): vid avslut FRYSES
+        // ärendets brain-tenant (dödad skrivnyckel + REVOKE på PG-nivå) så den blir
+        // read-only. pekareMapper resolverar hubs_case_id → tenant_id (pekartyp
+        // 'brain_tenant'). BÄGGE TRAILING OPTIONAL — null ⇒ frysningen är en no-op
+        // (får ALDRIG fälla den redan genomförda övergången). Autowiras i drift.
+        private ?PekareMapper $pekareMapper = null,
+        private ?BrainProvisionService $brainProvisionService = null,
     ) {
     }
 
@@ -280,6 +290,13 @@ class ArendeLifecycleService {
             }
         }
 
+        // BRAIN-FRYSNING VID AVSLUT (SPEC-BRAIN-PER-ARENDE kap 3.4/9.2): ett avslutat
+        // ärendes brain görs read-only (skrivnyckeln dödas). Best-effort — får ALDRIG
+        // fälla den redan persisterade övergången. No-op utan brain/pekare/konfig.
+        if ($nyttSteg === 'avslutat') {
+            $this->frysBrainVidAvslut($arende->getHubsCaseId());
+        }
+
         // Provenance log — hubsCaseId + från/till-steg only, NEVER PII.
         $this->logger->info('hubs_arende: steg-övergång', [
             'app' => 'hubs_arende',
@@ -311,6 +328,60 @@ class ArendeLifecycleService {
         } catch (\Throwable $e) {
             $this->logger->warning('hubs_arende: grindval-journal misslyckades (graceful)', [
                 'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'grind' => $grind,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Frys ärendets brain-tenant(er) vid avslut (SPEC kap 3.4/9.2). BEST-EFFORT och
+     * defensiv: hela metoden sväljer allt och får ALDRIG fälla den övergång den följer.
+     * Resolverar tenant_id ur pekar-registret (pekartyp 'brain_tenant') och kallar
+     * {@see BrainProvisionService::freeze()} (dödar skrivnyckeln + REVOKE). En lyckad
+     * frysning journalförs som TYP_AI/fryst (koordinationsdata utan ärendeinnehåll).
+     * No-op när brain/pekare saknas (testharness/icke-brainmiljö) eller inget rum finns.
+     */
+    private function frysBrainVidAvslut(string $hubsCaseId): void {
+        if ($this->brainProvisionService === null || $this->pekareMapper === null) {
+            return;
+        }
+        try {
+            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'brain_tenant') as $p) {
+                $tenantId = $p->getObjektId();
+                if ($tenantId === '') {
+                    continue;
+                }
+                if ($this->brainProvisionService->freeze($tenantId, $hubsCaseId, 'avslut')) {
+                    $this->journalfor($hubsCaseId, HandelseTypAi::FRYST);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: brain-frysning vid avslut misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $hubsCaseId,
+                'exception' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Journalför en AI-livscykelhändelse (TYP_AI) — koordinationsdata utan PII:
+     * enbart {handling}. Best-effort; ett journal-fel får aldrig fälla övergången.
+     */
+    private function journalfor(string $hubsCaseId, string $handling): void {
+        if ($this->handelseMapper === null) {
+            return;
+        }
+        try {
+            $this->handelseMapper->record(
+                $hubsCaseId,
+                HandelseTypAi::typVarde(),
+                ['handling' => $handling],
+                $this->userSession?->getUser()?->getUID() ?? '',
+            );
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: TYP_AI-journal misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'handling' => $handling,
                 'exception' => $e->getMessage(),
             ]);
         }

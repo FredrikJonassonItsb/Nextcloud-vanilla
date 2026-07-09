@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\HubsArende\Service;
 
 use OCA\HubsArende\Db\Arende;
+use OCA\HubsArende\Db\AiUtkastMapper;
 use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\BevakningMapper;
 use OCA\HubsArende\Db\HandelseMapper;
@@ -19,6 +20,9 @@ use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Db\SakuppgiftMapper;
 use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
+use OCA\HubsArende\Service\Brain\BrainProvisionRetryService;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
+use OCA\HubsArende\Service\Brain\HandelseTypAi;
 use OCP\AppFramework\Utility\ITimeFactory;
 use Psr\Log\LoggerInterface;
 
@@ -94,6 +98,17 @@ class GallringService {
         // gallras OVILLKORLIGEN med ärendet (K-BEV-2.2) — annars kvarlämnade
         // watch-rader efter en stängd akt.
         private ?BevakningMapper $bevakningMapper = null,
+        // TRAILING OPTIONAL (autowired): BRAIN-TENANTEN gallras (DROP SCHEMA CASCADE)
+        // via provisionern FÖRE den lokala raden — provisionern kräver protokoll +
+        // händelse-ref (SPEC-BRAIN-PER-ARENDE kap 9.3). Onåbar provisioner ⇒ radens
+        // gallring SKJUTS UPP (nästa svep) hellre än att lämna en föräldralös brain.
+        private ?BrainProvisionService $brainProvisionService = null,
+        // TRAILING OPTIONAL (autowired): AI-utkastregistret (rått AI-innehåll +
+        // provenans) gallras OVILLKORLIGEN med ärendet (NEVER-SoR, kap 8.0.4).
+        private ?AiUtkastMapper $aiUtkastMapper = null,
+        // TRAILING OPTIONAL (autowired): brain-provisionerings-retrykön töms så inget
+        // efterprovisioneringsförsök överlever ett gallrat ärende (kap 3.3).
+        private ?BrainProvisionRetryService $brainProvisionRetryService = null,
     ) {
     }
 
@@ -136,6 +151,18 @@ class GallringService {
             }
 
             $hubsCaseId = $rad->getHubsCaseId();
+
+            // BRAIN-TENANTEN gallras FÖRST — INNAN de lokala pekar-/register-raderna,
+            // eftersom brain_tenant-pekaren (hubs_case_id → tenant_id) rivs i pekar-
+            // loopen nedan. Provisionern kräver protokoll + händelse-ref FÖRE DROP
+            // SCHEMA (SPEC kap 9.3): gallringsprotokollet skrivs i journalen (TYP_AI/
+            // gallrad) och dess ref + protokoll skickas till DELETE. Om brainen INTE
+            // kunde gallras (provisioner onåbar / pekare oläsbar) skjuts HELA radens
+            // gallring upp till nästa svep (idempotent) hellre än att lämna en
+            // föräldralös brain utan lokal pekare. No-op utan brain-integration.
+            if (!$this->gallraBrain($hubsCaseId, $rad)) {
+                continue;
+            }
 
             // Referens-filer i ärendemappen FÖRST (+ deras pekare) — fysiska .url-pekare
             // till meddelanden måste bort med akten (annars kvarlämnad fil).
@@ -190,6 +217,14 @@ class GallringService {
             // med ärendet — bekräftade uppgifter är transient arbetsminne.
             $this->sakuppgiftMapper?->deleteByCaseId($hubsCaseId);
 
+            // AI-UTKASTREGISTRET (rått AI-innehåll + provenans) gallras OVILLKORLIGEN
+            // med ärendet — får aldrig överleva koordinationsraden (NEVER-SoR, kap 8.0.4).
+            $this->aiUtkastMapper?->deleteByCaseId($hubsCaseId);
+
+            // Brain-provisionerings-retrykön töms så inget efterprovisioneringsförsök
+            // överlever ett gallrat ärende (kap 3.3).
+            $this->brainProvisionRetryService?->deleteByCase($hubsCaseId);
+
             // Per-case-åtkomstgruppen raderas så ingen tom grupp blir kvar.
             $this->arenderumGroupService?->delete($hubsCaseId);
 
@@ -226,5 +261,88 @@ class GallringService {
         return $rad->getProvenanceState() === 'registrerad'
             && $deadline !== null
             && $deadline <= $now;
+    }
+
+    /**
+     * Gallra ärendets brain-tenant(er) via provisionern (SPEC kap 9.3). Skriver
+     * gallringsprotokollet i journalen (TYP_AI/gallrad) FÖRE borttag och skickar dess
+     * händelse-ref + protokoll till {@see BrainProvisionService::delete()} (DROP SCHEMA
+     * CASCADE + revokerade nycklar). Provisionern kräver protokoll + ref vid riktig
+     * gallring (reason=null), annars 409.
+     *
+     * @return bool true = säkert att gallra de lokala raderna (ingen brain, eller
+     *   brainen är gallrad). false = brainen KUNDE inte gallras (provisioner onåbar
+     *   eller pekar-registret oläsbart) ⇒ anroparen skjuter upp radens lokala gallring
+     *   till nästa svep hellre än att lämna en föräldralös brain.
+     */
+    private function gallraBrain(string $hubsCaseId, Arende $rad): bool {
+        // Ingen brain-integration i denna miljö/testharness ⇒ inget att gallra.
+        if ($this->brainProvisionService === null || $this->pekareMapper === null) {
+            return true;
+        }
+        try {
+            $tenanter = $this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'brain_tenant');
+        } catch (\Throwable $e) {
+            // Pekar-registret oläsbart ⇒ skjut upp (orphana aldrig en brain).
+            $this->logger->warning('hubs_arende: brain-gallring kunde ej läsa pekare (skjuter upp)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $hubsCaseId,
+                'exception' => $e->getMessage(),
+            ]);
+            return false;
+        }
+        if ($tenanter === []) {
+            return true; // inget ärende-brain (icke-brainärende eller redan gallrat).
+        }
+
+        $allaGallrade = true;
+        foreach ($tenanter as $p) {
+            $tenantId = $p->getObjektId();
+            if ($tenantId === '') {
+                continue;
+            }
+            // Gallringsprotokoll i journalen FÖRE borttag (facit) — ref korrelerar
+            // den lokala posten mot provisionerns durabla gallringsbevis.
+            $handelseRef = $this->journalGallrad($hubsCaseId, $tenantId);
+            $protokoll = [
+                'typ' => 'gallring',
+                'grund' => 'retention_efter_commit',
+                'gallras_datum' => $rad->getGallrasDatum()?->format('c'),
+            ];
+            if (!$this->brainProvisionService->delete($tenantId, 'gallring', null, $handelseRef, $protokoll)) {
+                $allaGallrade = false;
+                $this->logger->warning('hubs_arende: brain-gallring (DELETE tenant) misslyckades — skjuter upp lokal gallring', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $hubsCaseId,
+                ]);
+            }
+        }
+        return $allaGallrade;
+    }
+
+    /**
+     * Skriv gallringsprotokollet i journalen (TYP_AI/gallrad) — koordinationsdata utan
+     * PII/ärendeinnehåll. Returnerar radens id som händelse-ref (null om journalen
+     * saknas eller skrivningen fallerar; best-effort — får aldrig fälla gallringen).
+     */
+    private function journalGallrad(string $hubsCaseId, string $tenantId): ?string {
+        if ($this->handelseMapper === null) {
+            return null;
+        }
+        try {
+            $handelse = $this->handelseMapper->record($hubsCaseId, HandelseTypAi::typVarde(), [
+                'handling' => HandelseTypAi::GALLRAD,
+                'orsak_kategori' => 'retention_efter_commit',
+            ]);
+            $id = $handelse->getId();
+            return $id !== null ? (string)$id : null;
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: gallringsprotokoll-journal misslyckades (graceful)', [
+                'app' => 'hubs_arende',
+                'hubsCaseId' => $hubsCaseId,
+                'exception' => $e->getMessage(),
+            ]);
+            return null;
+        }
     }
 }

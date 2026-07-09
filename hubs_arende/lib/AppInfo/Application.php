@@ -127,6 +127,24 @@ class Application extends App implements IBootstrap {
 
         // --- NC-notiser (klockan): tilldelning/medlemskap/frist-varsel ----
         $context->registerNotifierService(Notifier::class);
+
+        // --- Brain-per-ärende (SPEC-BRAIN-PER-ARENDE) --------------------------
+        // INGEN explicit registrering krävs: hela brain-integrationen är
+        // konstruktor-autowirad av NC-containern, precis som motorns övriga
+        // tjänster (ovan är bara portar/notifier/team som behöver en manuell seam).
+        //   - Service\Brain\AuthzService, BrainProvisionService,
+        //     BrainProvisionRetryService, AiUtkastService  → autowiras per typ.
+        //   - Controller\AuthzController (POST /api/v1/authz/check, se
+        //     appinfo/routes.php) → byggs av DI via rutt-konventionen.
+        //   - De brain-injektionerna i ArendeService/ArendeLifecycleService/
+        //     SakerhetsskyddGrind/GallringService är TRAILING OPTIONAL (?T=null)
+        //     och fylls av autowiring i drift (null i den positionella testharnessen).
+        //   - BackgroundJob\BrainProvisionRetryJob → registrerad i appinfo/info.xml
+        //     <background-jobs> (durabel R2b-retry).
+        //   - App-config (per kommun-stack): openbrain_provision_url,
+        //     brain_provision_secret, kommun_slug, authz_gateway_secret,
+        //     ork_fn_enabled — seedas out-of-band; saknas de degraderar tjänsterna
+        //     till graceful no-op / fail-closed (aldrig en default-öppning).
     }
 
     public function boot(IBootContext $context): void {

@@ -14,6 +14,7 @@ use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
 use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -149,6 +150,12 @@ class SakerhetsskyddGrind {
         private ?SdkmcClient $sdkmcClient = null,
         private ?SpreedClient $spreedClient = null,
         private ?GroupfolderClient $groupfolderClient = null,
+        // R0-SPEGELN mot brain-gw (SPEC-BRAIN-PER-ARENDE kap 3.5/5.3): när ett
+        // ärende med en provisionerad brain karantänsätts retroaktivt måste
+        // provisionern PATCH:as (r0_karantan=true) så gw:ns R0-spegel underhålls
+        // (ALLTID deny). TRAILING OPTIONAL — null i testharnessen/icke-brainmiljöer
+        // ⇒ steget är en loggad no-op (försvagar aldrig karantänen).
+        private ?BrainProvisionService $brainProvisionService = null,
     ) {
     }
 
@@ -266,6 +273,7 @@ class SakerhetsskyddGrind {
             'groupfolder_last' => false,
             'case_tag_borttagen' => false,
             'register_karantan' => false,
+            'brain_karantan' => false,
         ];
 
         // R-retro-1: Remove from the inflow/triage index so it stops surfacing.
@@ -330,6 +338,22 @@ class SakerhetsskyddGrind {
             $arende->setRetentionState('pausad');
             $this->arendeMapper->update($arende);
             return true;
+        });
+
+        // R-retro-6: SPEGLA karantänen till brain-gw (SPEC kap 3.5/5.3). Om ärendet
+        //   har en provisionerad brain-tenant sätts dess R0-flagga (PATCH r0_karantan=
+        //   true) så att gw:ns authz-grind ALLTID nekar (deny_r0_karantan). Best-effort
+        //   via retroSafe: en onåbar provisioner får ALDRIG försvaga register-karantänen
+        //   ovan (den lokala, auktoritativa staten). Saknas brain/pekare ⇒ false (no-op).
+        $atgarder['brain_karantan'] = $this->retroSafe('brain_karantan', $hubsCaseId, function () use ($hubsCaseId): bool {
+            if ($this->brainProvisionService === null || $this->pekareMapper === null) {
+                return false;
+            }
+            $done = false;
+            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'brain_tenant') as $p) {
+                $done = $this->brainProvisionService->setKarantan($p->getObjektId(), true) || $done;
+            }
+            return $done;
         });
 
         $kvitto = [

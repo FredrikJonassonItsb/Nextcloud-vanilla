@@ -85,10 +85,20 @@ class Handelse extends Entity implements \JsonSerializable {
      * koordinationsdata, aldrig sakinnehåll.
      */
     public const TYP_KVITTENS = 'kvittens';
+    /**
+     * AI-koordination (brain-per-ärende, SPEC-BRAIN-PER-ARENDE kap 8.0.4). En
+     * livscykel-/HITL-händelse för ärendets brain-tenant. detalj:
+     * {handling, funktion?, run_id?, modellversion?, prompt_version?, diff_pct?,
+     * orsak_kategori?, protokoll_ref?} där handling ∈ provisionerad | fryst |
+     * gallrad | utkast_skapat | utkast_godkant | utkast_avvisat | nodatkomst |
+     * ateroppnad ({@see \OCA\HubsArende\Service\Brain\HandelseTypAi}). ALDRIG
+     * ärendeinnehåll/PII — bara koordinationsvärden (facit: audit utan innehåll).
+     */
+    public const TYP_AI = 'ai';
 
     /** FK -> hubs_arende_case.hubs_case_id (UUID v4). */
     protected string $hubsCaseId = '';
-    /** skapad | steg | tilldelad | medlem | registrerad | rum | kopplad | part | handling */
+    /** skapad | steg | tilldelad | medlem | registrerad | rum | kopplad | part | handling | grindval | kvittens | ai */
     protected string $typ = '';
     /** Litet JSON-objekt med koordinationsvärden — aldrig fritext/PII. */
     protected ?string $detalj = null;

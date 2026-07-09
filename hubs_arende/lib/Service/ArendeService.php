@@ -25,6 +25,10 @@ use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
 use OCA\HubsArende\Integration\Port\EdiariumPort;
+use OCA\HubsArende\Service\Brain\BrainProvisionRetryService;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
+use OCA\HubsArende\Service\Brain\BrainProvisionUnavailable;
+use OCA\HubsArende\Service\Brain\HandelseTypAi;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -188,6 +192,13 @@ class ArendeService {
         // OPTIONAL — null ⇒ fail-open till det gamla steg-baserade beteendet så den
         // positionella testharnessen förblir grön. Autowirad i drift.
         private ?EvidensService $evidensService = null,
+        // R2b — BRAIN-PROVISIONERING (SPEC-BRAIN-PER-ARENDE kap 3.3). ICKE-FÄLLANDE
+        // saga-steg som provisionerar ärendets brain-tenant efter register-INSERT.
+        // TRAILING OPTIONAL — null i den positionella testharnessen (R2b hoppas helt)
+        // och autowiras i drift. INVARIANT (kap 1.2): ärendeskapande får ALDRIG
+        // blockeras av dessa; ett provisioneringsfel köas durabelt eller sväljs.
+        private ?BrainProvisionService $brainProvisionService = null,
+        private ?BrainProvisionRetryService $brainProvisionRetryService = null,
     ) {
     }
 
@@ -439,6 +450,92 @@ class ArendeService {
                     }
                 },
             ];
+
+            // ========================================================== //
+            //  R2b — BRAIN-PROVISIONERING (ICKE-FÄLLANDE, SPEC kap 1.2/3.3).
+            // ========================================================== //
+            // Provisionera ärendets brain-tenant DIREKT efter registret (R2) men
+            // FÖRE de externa saga-stegen. HÅRD INVARIANT (kap 1.2): ärendeskapande
+            // får ALDRIG blockeras av AI-infra — därför är HELA blocket icke-fällande:
+            //   - provision() kastar ENDAST BrainProvisionUnavailable (retrybart);
+            //     då köas ärendet durabelt (BrainProvisionRetryService) och skapandet
+            //     fortsätter UTAN brain (BrainProvisionRetryJob efterprovisionerar).
+            //   - permanent_fel (409/422) ⇒ ingen brain, ingen retry (loggas).
+            //   - noop (ej konfigurerad miljö) ⇒ tyst; ingen brain.
+            //   - lyckat ⇒ brain_tenant-pekare (hubs_case_id → tenant_id) + TYP_AI-
+            //     journal + kompensering 'R2b:drop-brain' som river tenanten om en
+            //     SENARE saga-fas (R3–R10) rullar tillbaka.
+            //   - belt-and-suspenders catch(\Throwable): INGET kast når saga-catch:en.
+            // Trailing-optional-injektionen ⇒ null i testharnessen ⇒ R2b hoppas helt.
+            if ($this->brainProvisionService !== null) {
+                try {
+                    $brainRes = $this->brainProvisionService->provision(
+                        $hubsCaseId,
+                        $typ->getArendeTypId(),
+                        // Normalt false — R0 fångade karantän-inflöden före R2. En typ
+                        // som EXPLICIT föds i karantän får en R0-speglad (fryst) brain.
+                        $commitDestination === 'karantan',
+                    );
+                    $tenantId = (string)($brainRes['tenant_id'] ?? '');
+                    if ($tenantId !== '') {
+                        // Kompenseringen pushas FÖRST (fångar tenantId per värde), så en
+                        // ev. pekar-skrivfel nedan inte tappar rollback-förmågan.
+                        $compensations[] = [
+                            'name' => 'R2b:drop-brain',
+                            'fn' => function () use ($tenantId, $hubsCaseId): void {
+                                try {
+                                    $this->brainProvisionService?->rollback($tenantId);
+                                    $this->pekareMapper?->deleteByCaseAndTyp($hubsCaseId, 'brain_tenant');
+                                } catch (\Throwable $e) {
+                                    $this->logCompensationFailure('R2b', $e);
+                                }
+                            },
+                        ];
+                        // brain_tenant-pekaren är enda vägen hubs_case_id → tenant_id
+                        // (frys/gallring/karantän-spegling resolverar tenanten härifrån).
+                        $this->pekareMapper?->record($hubsCaseId, 'brain_tenant', $tenantId);
+                        $this->loggaHandelse($hubsCaseId, HandelseTypAi::typVarde(), [
+                            'handling' => HandelseTypAi::PROVISIONERAD,
+                            'idempotent' => ($brainRes['idempotent'] ?? false) === true,
+                        ]);
+                    } elseif (($brainRes['permanent_fel'] ?? false) === true) {
+                        // 409/422 = terminalt (t.ex. schema-kollision). Ingen retry (kap 3.3).
+                        $this->logger->critical('hubs_arende: brain-provision permanent fel vid R2b (driftlarm)', [
+                            'app' => 'hubs_arende',
+                            'hubsCaseId' => $hubsCaseId,
+                            'kod' => (string)($brainRes['kod'] ?? ''),
+                        ]);
+                    }
+                    // noop (ej konfigurerad) faller igenom tyst: ingen brain i denna miljö.
+                } catch (BrainProvisionUnavailable $e) {
+                    // RETRYBART (provisionern onåbar/timeout/5xx): köa durabelt och
+                    // neutralisera kön om sagan senare rullar tillbaka (kap 3.3, spärr 1).
+                    $this->brainProvisionRetryService?->enqueue($hubsCaseId, $typ->getArendeTypId());
+                    $compensations[] = [
+                        'name' => 'R2b:retry-neutralisera',
+                        'fn' => function () use ($hubsCaseId): void {
+                            try {
+                                $this->brainProvisionRetryService?->neutralisera($hubsCaseId);
+                            } catch (\Throwable $e) {
+                                $this->logCompensationFailure('R2b', $e);
+                            }
+                        },
+                    ];
+                    $this->logger->warning('hubs_arende: brain-provision onåbar vid R2b — köad för durabel retry', [
+                        'app' => 'hubs_arende',
+                        'hubsCaseId' => $hubsCaseId,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Belt-and-suspenders (kap 3.3): INGET brain-fel får fälla skapandet.
+                    $this->logger->error('hubs_arende: brain-provision ohanterat fel vid R2b (sväljs, ärendet skapas)', [
+                        'app' => 'hubs_arende',
+                        'hubsCaseId' => $hubsCaseId,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                $this->skipStep('R2b', $hubsCaseId);
+            }
 
             // ========================================================== //
             //  R3 — case:{hubsCaseId} tag via sdkmc (carrier of the token).
