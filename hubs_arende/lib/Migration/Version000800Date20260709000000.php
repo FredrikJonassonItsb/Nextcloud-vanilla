@@ -82,7 +82,9 @@ class Version000800Date20260709000000 extends SimpleMigrationStep {
             'notnull' => true,
         ]);
 
-        $table->setPrimaryKey(['hubs_case_id']);
+        // Explicit KORT PK-namn: tabellen är 30 tecken (med oc_-prefix) ⇒ ett auto-genererat
+        // primärnyckel-indexnamn spränger NC:s 30-teckensgräns ("Primary index name too long").
+        $table->setPrimaryKey(['hubs_case_id'], 'hubs_ar_brain_prov_pk');
         // Claim-predikatet (BrainProvisionRetryJob): pending-rader vars fönster passerats.
         $table->addIndex(['status', 'nasta_forsok'], 'hubs_arende_brain_prov_due');
 
