@@ -109,6 +109,18 @@ return [
             'url' => '/api/v1/arende/{ref}/talkrum',
             'verb' => 'POST',
         ],
+        // GET    /rum/{token}                 -> reverse-lookup rum→ärende (P1.3b, bot läser registret)
+        [
+            'name' => 'Arende#rumLosning',
+            'url' => '/api/v1/rum/{token}',
+            'verb' => 'GET',
+        ],
+        // POST   /arende/{ref}/dokumentchatt  -> registrera filchatt-rum som pekare (P1.3b)
+        [
+            'name' => 'Arende#registreraDokumentchatt',
+            'url' => '/api/v1/arende/{ref}/dokumentchatt',
+            'verb' => 'POST',
+        ],
         // POST   /arende/{ref}/groupfolder    -> 1:n extra groupfolder (samma hubs_case_id)
         [
             'name' => 'Arende#laggTillGroupfolder',

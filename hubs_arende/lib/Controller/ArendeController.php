@@ -13,6 +13,7 @@ use OCA\HubsArende\AppInfo\Application;
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Service\ArendeLifecycleService;
 use OCA\HubsArende\Service\ArendeService;
+use OCA\HubsArende\Service\DokumenttypRegistry;
 use OCA\HubsArende\Exception\AvvisadException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -39,6 +40,9 @@ class ArendeController extends OCSController {
         private readonly ArendeService $arendeService,
         private readonly ArendeLifecycleService $lifecycleService,
         private readonly LoggerInterface $logger,
+        // Kanoniska dokumenttyps-registret (P1.3b): reverse-lookupen returnerar
+        // dokumenttypen så boten slutar regex-matcha filnamn.
+        private readonly ?DokumenttypRegistry $dokumenttypRegistry = null,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -441,6 +445,59 @@ class ArendeController extends OCSController {
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende medlemmar failed', ['exception' => $e, 'ref' => $ref]);
             return new DataResponse(['error' => 'medlemmar_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * REVERSE-lookup rum→ärende (P1.3b/T1): ett Talk-rums token → dess ärende via
+     * PEKARREGISTRET, så boten läser EN sanningskälla i stället för sin rooms.json-
+     * skuggfil. System-uppslagning (SA-auth), returnerar koordinationsdata +
+     * kanonisk dokumenttyp (så boten slutar regex-matcha filnamn).
+     *
+     * GET /api/v1/rum/{token}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function rumLosning(string $token): DataResponse {
+        if ($token === '') {
+            return new DataResponse(['error' => 'token_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $res = $this->arendeService->losRum($token);
+            if ($res === null) {
+                return new DataResponse(['error' => 'okant_rum'], Http::STATUS_NOT_FOUND);
+            }
+            $fil = $res['fil'] ?? null;
+            $res['dokumenttyp'] = ($fil !== null && $fil !== '' && $this->dokumenttypRegistry !== null)
+                ? $this->dokumenttypRegistry->klassForMall($fil)
+                : null;
+            return new DataResponse($res, Http::STATUS_OK);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende rumLosning failed', ['exception' => $e]);
+            return new DataResponse(['error' => 'rum_losning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Registrera ett dokumentchatt-rum (Collaboras dela→chatt) som förstaklassig
+     * pekare (P1.3b) — gör AI-närvaron inventerbar och rummet gallringsbart.
+     *
+     * POST /api/v1/arende/{ref}/dokumentchatt  {token, fil?}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function registreraDokumentchatt(string $ref, string $token = '', string $fil = ''): DataResponse {
+        if ($ref === '' || $token === '') {
+            return new DataResponse(['error' => 'ref_eller_token_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $this->arendeService->registreraDokumentchatt($ref, $token, $fil);
+            return new DataResponse(['ok' => true], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende registreraDokumentchatt failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'dokumentchatt_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 

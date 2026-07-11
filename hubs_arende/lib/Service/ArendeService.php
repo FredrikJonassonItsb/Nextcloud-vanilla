@@ -109,6 +109,10 @@ class ArendeService {
         // ALLA ärendets chattrum (1:n) — saga-originalet först; namn = riktning
         // (null för originalet ⇒ frontendens etikett "Ärendets diskussion").
         'talkRooms' => [],
+        // Dokumentchatt-rum (Collaboras dela→chatt) som förstaklassiga pekare
+        // (P1.3b/T1): objektId=talkToken, riktning=fil-slug. Gör dem enumererbara
+        // för gallringen (rivs MED ärendet) och tar bort rooms.json-skuggregistret.
+        'dokumentchattar' => [],
     ];
 
     /**
@@ -1680,6 +1684,52 @@ class ArendeService {
     }
 
     /**
+     * REVERSE-lookup rum→ärende (P1.3b/T1): resolvar ett Talk-rums token till dess
+     * ärende via PEKARREGISTRET — samma sanningskälla som allt annat, i stället för
+     * botens rooms.json-skuggregister. Prövar ärenderum (talk_room) och
+     * dokumentchatt-rum (Collaboras dela→chatt). System-uppslagning (SA-only
+     * endpoint); returnerar bara koordinationsdata (aldrig PII/innehåll).
+     *
+     * @return array{hubsCaseId:string, typ:string, fil:?string}|null
+     */
+    public function losRum(string $token): ?array {
+        if ($this->pekareMapper === null || $token === '') {
+            return null;
+        }
+        foreach (['talk_room', 'dokumentchatt'] as $typ) {
+            foreach ($this->pekareMapper->findByTypAndObjektId($typ, $token) as $p) {
+                return [
+                    'hubsCaseId' => $p->getHubsCaseId(),
+                    'typ' => $typ,
+                    'fil' => $typ === 'dokumentchatt' ? $p->getRiktning() : null,
+                ];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Registrera ett dokumentchatt-rum (Collaboras dela→chatt) som förstaklassig
+     * pekare (P1.3b) — gör AI-närvaron inventerbar och rummet gallringsbart via
+     * pekarregistret (Fas 3-destruktionsspegeln river det MED ärendet). Idempotent
+     * (skriver aldrig dubblett för samma token+ärende). H1-authz via show().
+     *
+     * @throws DoesNotExistException Okänt/ej behörigt ärende.
+     */
+    public function registreraDokumentchatt(string $ref, string $token, string $fil): void {
+        $arende = $this->show($ref);
+        if ($this->pekareMapper === null || $token === '') {
+            return;
+        }
+        foreach ($this->pekareMapper->findByTypAndObjektId('dokumentchatt', $token) as $p) {
+            if ($p->getHubsCaseId() === $arende->getHubsCaseId()) {
+                return; // redan registrerat — idempotent
+            }
+        }
+        $this->pekareMapper->record($arende->getHubsCaseId(), 'dokumentchatt', $token, $fil !== '' ? $fil : null);
+    }
+
+    /**
      * Ärendets HÄNDELSEJOURNAL (äldst först) — datakällan för kortets
      * "Historik & beslut"-tidslinje. H1-authz via show(); bär ENDAST
      * koordinationsvärden (typ, detalj-JSON, aktör-uid, tid) — aldrig PII/innehåll.
@@ -2648,6 +2698,7 @@ class ArendeService {
         $block = self::TOM_PEKARE;
         $deckBoardId = null;
         $talkRooms = [];
+        $dokumentchattar = [];
         foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $p) {
             // id-DESC ⇒ skriv varje typ varv för varv; sista (= äldsta) vinner.
             switch ($p->getObjektTyp()) {
@@ -2679,12 +2730,21 @@ class ArendeService {
                 case 'team':
                     $block['teamId'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
                     break;
+                case 'dokumentchatt':
+                    if ($p->getObjektId() !== '') {
+                        $dokumentchattar[] = [
+                            'token' => $p->getObjektId(),
+                            'fil' => $p->getRiktning() !== null && $p->getRiktning() !== '' ? $p->getRiktning() : null,
+                        ];
+                    }
+                    break;
             }
         }
         // bevakningBoardId speglar deck-boardet (bevakningar bor på ärendekortets board).
         $block['bevakningBoardId'] = $deckBoardId;
         // Äldst först (saga-originalet = ärendets diskussion) — Rum-flikens ordning.
         $block['talkRooms'] = array_reverse($talkRooms);
+        $block['dokumentchattar'] = array_reverse($dokumentchattar);
         return $block;
     }
 
