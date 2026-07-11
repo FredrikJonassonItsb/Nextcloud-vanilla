@@ -339,15 +339,26 @@ class HandlingService {
         if ($folderId === null) {
             return null;
         }
-        try {
-            $node = $this->rootFolder->get('__groupfolders/' . $folderId);
-            return $node instanceof Folder ? $node : null;
-        } catch (\Throwable $e) {
-            $this->logger->debug('hubs_arende: HandlingService — groupfolder ej resolverbar (graceful)', [
-                'app' => 'hubs_arende',
-                'folderId' => $folderId,
-            ]);
-            return null;
+        // groupfolders >= 20 lägger de användarsynliga filerna under
+        // '__groupfolders/{id}/files' (jämte versions/trash); äldre versioner har
+        // dem direkt under '__groupfolders/{id}'. Prova files-subkatalogen FÖRST så
+        // handlingen hamnar i handläggarens synliga ärenderum, med fallback till den
+        // äldre platsen. (Skrivning till lagringsroten hamnar utanför mount:en och
+        // blir osynlig för handläggaren — därav ordningen.)
+        foreach (['__groupfolders/' . $folderId . '/files', '__groupfolders/' . $folderId] as $path) {
+            try {
+                $node = $this->rootFolder->get($path);
+                if ($node instanceof Folder) {
+                    return $node;
+                }
+            } catch (\Throwable $e) {
+                // prova nästa kandidat
+            }
         }
+        $this->logger->debug('hubs_arende: HandlingService — groupfolder ej resolverbar (graceful)', [
+            'app' => 'hubs_arende',
+            'folderId' => $folderId,
+        ]);
+        return null;
     }
 }
