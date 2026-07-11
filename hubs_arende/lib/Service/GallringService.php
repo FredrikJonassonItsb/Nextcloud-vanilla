@@ -19,11 +19,15 @@ use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Db\SakuppgiftMapper;
 use OCA\HubsArende\Integration\Client\DeckClient;
+use OCA\HubsArende\Integration\Client\GroupfolderClient;
+use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
 use OCA\HubsArende\Service\Brain\BrainProvisionRetryService;
 use OCA\HubsArende\Service\Brain\BrainProvisionService;
 use OCA\HubsArende\Service\Brain\HandelseTypAi;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IAppConfig;
+use OCP\IDBConnection;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -109,6 +113,24 @@ class GallringService {
         // TRAILING OPTIONAL (autowired): brain-provisionerings-retrykön töms så inget
         // efterprovisioneringsförsök överlever ett gallrat ärende (kap 3.3).
         private ?BrainProvisionRetryService $brainProvisionRetryService = null,
+        // TRAILING OPTIONAL (autowired): DESTRUKTIONSSPEGELN (P1.2/T5). Talk-rummen
+        // (ärenderum + möte + dokumentchatt) rivs via pekarna — annars överlever de
+        // gallringen med !minne-utdrag/AI-svar (barn-PII) i orphanade rum (Fas 0-fyndet).
+        private ?SpreedClient $spreedClient = null,
+        // TRAILING OPTIONAL (autowired): groupfoldern rivs via pekaren så icke-genererat
+        // innehåll inte överlever som herrelös datagrav.
+        private ?GroupfolderClient $groupfolderClient = null,
+        // TRAILING OPTIONAL (autowired): STUB-SPÄRR (P1.2/F10). I stub-läge sätter
+        // commit-porten 'registrerad'+gallringsdatum på ett FEJK-kvitto — gallring
+        // skulle då riva koordinationsraden fast INGET flödat till facksystemet
+        // (dataförlust, Fas 0-observationen). Gallring körs destruktivt ENDAST i
+        // live-läge (eller med explicit gallring_tillat_stub=1).
+        private ?IAppConfig $appConfig = null,
+        // TRAILING OPTIONAL (autowired): atomicitet (P1.2). De LOKALA DB-raderingarna
+        // körs i EN transaktion så ett mid-sekvens-fel (t.ex. saknad tabell, Fas 0)
+        // aldrig lämnar en dinglande halv-gallrad rad — rollback ⇒ hela ärendet står
+        // kvar och tas om vid nästa (idempotenta) svep.
+        private ?IDBConnection $db = null,
     ) {
     }
 
@@ -127,8 +149,19 @@ class GallringService {
      * @return array{antal:int, hubsCaseIds:array<int,string>} Antal purgade + deras
      *         hubsCaseId (pseudonym).
      */
-    public function gallra(?\DateTime $now = null): array {
+    public function gallra(?\DateTime $now = null, bool $tillatStub = false): array {
         $now ??= $this->timeFactory->getDateTime();
+
+        // STUB-SPÄRR (P1.2/F10): kör ALDRIG destruktivt i stub-läge — commit-porten
+        // sätter 'registrerad'+gallringsdatum på ett FEJK-kvitto, så ett svep skulle
+        // riva koordinationsraden fast INGET flödat till facksystemet (dataförlust,
+        // Fas 0-observationen). Live-läge (eller explicit override) krävs.
+        if (!$this->gallringTillaten($tillatStub)) {
+            $this->logger->warning('hubs_arende: gallring HOPPAD — facksystem-läget är ej live (stub-spärr F10)', [
+                'app' => 'hubs_arende',
+            ]);
+            return ['antal' => 0, 'hubsCaseIds' => [], 'skipped' => 'stub_mode'];
+        }
 
         $kandidater = $this->arendeMapper->findGallringsbara($now);
 
@@ -191,45 +224,78 @@ class GallringService {
                 }
             }
 
-            // Pekarna (routing-/koordinations-pekare till externa objekt), så
-            // ingen orphan-pekare överlever register-raden. findByCaseId + delete-loop
-            // över ALLA objekt_typ:er (vi äger inte PekareMapper, så vi använder dess
-            // befintliga QBMapper-API). Idempotent — en re-körning hittar 0 pekare.
-            foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $pekare) {
-                $this->pekareMapper->delete($pekare);
+            // DESTRUKTIONSSPEGEL (P1.2/T5) — riv de EXTERNA resurserna via pekarna
+            // INNAN pekarraderna tas bort (annars förloras spårtrailen mitt i, Fas 0).
+            // Talk-rummen (ärenderum + säkert möte + dokumentchatt) MÅSTE rivas —
+            // annars överlever de gallringen med !minne-utdrag/AI-svar (barn-PII) i
+            // orphanade rum (Fas 0-observationen). Graceful per rum (deleteRoom noopar
+            // om Spreed saknas/redan borta; pekaren tas ändå bort i transaktionen).
+            if ($this->spreedClient !== null) {
+                foreach (['talk_room', 'dokumentchatt'] as $rumTyp) {
+                    foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, $rumTyp) as $rumPekare) {
+                        try {
+                            $this->spreedClient->deleteRoom($rumPekare->getObjektId());
+                        } catch (\Throwable $e) {
+                            // Graceful — rummet re-rivs vid nästa (idempotenta) svep.
+                        }
+                    }
+                }
             }
-
-            // Bevaknings-registret (koordinationsdata) gallras med ärendet (K-BEV-2.2).
-            $this->bevakningMapper?->deleteByCaseId($hubsCaseId);
-
-            // Ärenderummets förstaklassiga medlemmar (uid+roll = personal-PII) MÅSTE
-            // gallras med rummet — annars kvarlämnad PII-rest (GDPR art. 5.1.e).
-            $this->memberMapper?->deleteByCaseId($hubsCaseId);
-
-            // Händelsejournalen gallras med ärendet (aktor_uid = personuppgift).
-            $this->handelseMapper?->deleteByCaseId($hubsCaseId);
-
-            // PARTSREGISTRET (namn/pnr/adress — motorns enda PII-tabell) gallras
-            // ovillkorligen med ärendet (K-NAV-4.6; policy-beslut 2026-07-06).
-            $this->partMapper?->deleteByCaseId($hubsCaseId);
-
-            // SAKUPPGIFTSLAGRET (dokumentkedjans minne, kan bära PII) gallras
-            // med ärendet — bekräftade uppgifter är transient arbetsminne.
-            $this->sakuppgiftMapper?->deleteByCaseId($hubsCaseId);
-
-            // AI-UTKASTREGISTRET (rått AI-innehåll + provenans) gallras OVILLKORLIGEN
-            // med ärendet — får aldrig överleva koordinationsraden (NEVER-SoR, kap 8.0.4).
-            $this->aiUtkastMapper?->deleteByCaseId($hubsCaseId);
-
-            // Brain-provisionerings-retrykön töms så inget efterprovisioneringsförsök
-            // överlever ett gallrat ärende (kap 3.3).
-            $this->brainProvisionRetryService?->deleteByCase($hubsCaseId);
-
-            // Per-case-åtkomstgruppen raderas så ingen tom grupp blir kvar.
+            // Groupfoldern rivs via pekaren — icke-genererat innehåll (seedat material,
+            // SM-trådsfil, uppladdat) blir annars en herrelös datagrav.
+            if ($this->groupfolderClient !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'groupfolder') as $folderPekare) {
+                    $fid = (int)$folderPekare->getObjektId();
+                    if ($fid > 0) {
+                        try {
+                            $this->groupfolderClient->removeFolder($fid);
+                        } catch (\Throwable $e) {
+                            // Graceful.
+                        }
+                    }
+                }
+            }
+            // Per-case-åtkomstgruppen (extern NC-grupp) raderas — best-effort, före transaktionen.
             $this->arenderumGroupService?->delete($hubsCaseId);
 
-            // Sedan själva register-/koordinations-raden.
-            $this->arendeMapper->delete($rad);
+            // ATOMICITET (P1.2) — de LOKALA DB-raderingarna i EN transaktion. Ett
+            // mid-sekvens-fel (saknad tabell, transient DB-fel — exakt Fas 0-buggen)
+            // rullar då tillbaka ALLT och lämnar ärendet intakt för nästa (idempotenta)
+            // svep, i stället för en dinglande halv-gallrad rad utan barn.
+            $this->db?->beginTransaction();
+            try {
+                // Pekarna (routing-/koordinationspekare), så ingen orphan-pekare överlever.
+                foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $pekare) {
+                    $this->pekareMapper->delete($pekare);
+                }
+                // Bevaknings-registret (K-BEV-2.2).
+                $this->bevakningMapper?->deleteByCaseId($hubsCaseId);
+                // Ärenderummets medlemmar (uid+roll = personal-PII, GDPR art. 5.1.e).
+                $this->memberMapper?->deleteByCaseId($hubsCaseId);
+                // Händelsejournalen (aktor_uid = personuppgift).
+                $this->handelseMapper?->deleteByCaseId($hubsCaseId);
+                // Partsregistret (motorns enda PII-tabell, K-NAV-4.6).
+                $this->partMapper?->deleteByCaseId($hubsCaseId);
+                // Sakuppgiftslagret (dokumentkedjans transienta minne, kan bära PII).
+                $this->sakuppgiftMapper?->deleteByCaseId($hubsCaseId);
+                // AI-utkastregistret (rått AI-innehåll + provenans, NEVER-SoR kap 8.0.4).
+                $this->aiUtkastMapper?->deleteByCaseId($hubsCaseId);
+                // Brain-provisionerings-retrykön (kap 3.3).
+                $this->brainProvisionRetryService?->deleteByCase($hubsCaseId);
+                // Sist: själva register-/koordinationsraden.
+                $this->arendeMapper->delete($rad);
+                $this->db?->commit();
+            } catch (\Throwable $e) {
+                if ($this->db !== null && $this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                $this->logger->error('hubs_arende: gallringens lokala radering rullades tillbaka — skjuter upp (idempotent)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $hubsCaseId,
+                    'exception' => $e->getMessage(),
+                ]);
+                continue; // dinglande rad undviks; nästa svep tar ärendet igen
+            }
 
             $antal++;
             $hubsCaseIds[] = $hubsCaseId;
@@ -261,6 +327,27 @@ class GallringService {
         return $rad->getProvenanceState() === 'registrerad'
             && $deadline !== null
             && $deadline <= $now;
+    }
+
+    /**
+     * STUB-SPÄRR (P1.2/F10): får svepet köra destruktivt? Ja endast när
+     * facksystem-integrationen är LIVE (ett verifierat kvitto ⇒ värdet flödade
+     * verkligen till SoR), eller när anroparen (smoke/test) explicit tillåter det,
+     * eller via en medveten pilot-flagga (gallring_tillat_stub=1). Utan appConfig
+     * (positionell testharness) behålls det gamla, testbara beteendet (tillåtet).
+     */
+    private function gallringTillaten(bool $tillatStub): bool {
+        if ($tillatStub) {
+            return true;
+        }
+        if ($this->appConfig === null) {
+            return true;
+        }
+        $mode = $this->appConfig->getValueString('hubs_arende', 'integration_mode_facksystem', 'stub');
+        if ($mode === 'live') {
+            return true;
+        }
+        return $this->appConfig->getValueString('hubs_arende', 'gallring_tillat_stub', '0') === '1';
     }
 
     /**

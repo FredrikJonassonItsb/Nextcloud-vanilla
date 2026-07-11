@@ -177,7 +177,26 @@ class Application extends App implements IBootstrap {
             self::MODE_STUB,
         );
 
-        $impl = $modeMap[$mode] ?? $default;
+        $impl = $modeMap[$mode] ?? null;
+        if ($impl === null) {
+            // F9 (P1.2/NEVER-SoR): ett EXPLICIT icke-stub-läge (t.ex. 'live') utan
+            // registrerad binding får ALDRIG TYST falla till stubben — då skulle en
+            // "live"-deploy committa till en fejk-adapter och sätta 'registrerad'
+            // utan att något nått facksystemet (dataförlust vid gallring). LOUD-faila
+            // (error i loggen) — svepet stoppas ändå av gallringens stub-spärr (F10).
+            if ($mode !== self::MODE_STUB) {
+                try {
+                    $c->get(\Psr\Log\LoggerInterface::class)->error(
+                        'hubs_arende: integration_mode "' . $mode . '" för porten "' . $portKey
+                        . '" saknar binding — faller till STUB. En skarp deploy MÅSTE rättas (F9).',
+                        ['app' => 'hubs_arende', 'port' => $portKey, 'mode' => $mode],
+                    );
+                } catch (\Throwable) {
+                    // Loggningen får aldrig fälla port-resolvningen.
+                }
+            }
+            $impl = $default;
+        }
 
         /** @var T $resolved */
         $resolved = $c->get($impl);

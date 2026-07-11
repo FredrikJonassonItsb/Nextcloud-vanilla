@@ -158,7 +158,9 @@ class Smoke extends Command {
 
 		// 9. GDPR-gallring (art. 5.1.e) — purge av en registrerad+gallras_efter_commit-rad
 		//    vars gallras_datum passerats. Kör med now=+100d så kvittots +90d-deadline är förbi.
-		$res9 = $this->gallringService->gallra(new \DateTime('+100 days'));
+		//    tillatStub=true: smoke-testet kör MEDVETET mot stubbarna (F10-spärren gäller
+		//    bara det schemalagda produktions-svepet, som kräver live-läge).
+		$res9 = $this->gallringService->gallra(new \DateTime('+100 days'), true);
 		$gallrad = false;
 		try {
 			$this->arendeService->show($arende->getHubsCaseId());
