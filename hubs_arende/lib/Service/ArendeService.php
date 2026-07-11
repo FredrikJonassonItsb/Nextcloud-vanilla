@@ -1566,7 +1566,16 @@ class ArendeService {
         // Spegla in handläggaren i per-case-gruppen (folder-åtkomst).
         $this->syncArenderumGrupp($hubsCaseId);
 
-        $this->loggaHandelse($hubsCaseId, Handelse::TYP_TILLDELAD, ['uid' => $uid]);
+        // Journalför FÖRDELAREN (T6/F5): tidigare bar detaljen bara mottagaren
+        // ({uid}), så vem som fördelade/omfördelade gick inte att utläsa ur
+        // tilldelnings-posten (aktör_uid finns men är generisk). {av, till} gör
+        // fördelningsbeslutet granskningsbart där det sker. 'uid' behålls bakåtkompat.
+        $fordelare = $this->userSession?->getUser()?->getUID() ?? '';
+        $this->loggaHandelse($hubsCaseId, Handelse::TYP_TILLDELAD, [
+            'av' => $fordelare,
+            'till' => $uid,
+            'uid' => $uid,
+        ]);
         $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_TILLDELAD, [
             'ref' => (string)($arende->getDnr() ?? $hubsCaseId),
         ], $hubsCaseId);
