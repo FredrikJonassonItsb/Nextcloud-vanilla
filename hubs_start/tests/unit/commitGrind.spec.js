@@ -102,8 +102,18 @@ describe('CommitGrind #A9b — advisory kommunicering (utredning→beslut)', () 
 		expect(shallowMountWithSteg('beslut').vm.visaKommunicering).toBe(false)
 	})
 
-	it('emits kommuniceringVal {gjord:true} by default at utredning→beslut', async () => {
+	it('emits kommuniceringVal {gjord:false} by default (no pre-check bias, T4/IVO)', async () => {
+		// "Parterna har kommunicerats" får INTE vara förkryssad — ett förvalt
+		// rättssäkerhetsintyg bevisar inget aktivt ställningstagande. Default är
+		// därför gjord:false; handläggaren bockar aktivt i eller anger skäl.
 		const w = shallowMountWithSteg('utredning', { typ: 'utredning', dokument: [{ fileid: 1, namn: 'Utredning' }] })
+		await w.vm.onCommit()
+		expect(w.emitted('committed')[0][2]).toEqual({ gjord: false })
+	})
+
+	it('emits kommuniceringVal {gjord:true} when the handläggare actively affirms', async () => {
+		const w = shallowMountWithSteg('utredning', { typ: 'utredning', dokument: [{ fileid: 1, namn: 'Utredning' }] })
+		w.vm.kommuniceringGjord = true
 		await w.vm.onCommit()
 		expect(w.emitted('committed')[0][2]).toEqual({ gjord: true })
 	})

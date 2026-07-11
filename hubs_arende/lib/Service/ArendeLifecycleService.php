@@ -240,7 +240,13 @@ class ArendeLifecycleService {
                 $this->handelseMapper->record(
                     $arende->getHubsCaseId(),
                     Handelse::TYP_STEG,
-                    ['fran' => $franSteg, 'till' => $nyttSteg],
+                    [
+                        'fran' => $franSteg,
+                        'till' => $nyttSteg,
+                        // GRINDLÄGE (T4/IVO): vilken grind gällde + var enforcement PÅ/AV
+                        // vid övergången — så frånvaro av TYP_GRINDVAL inte är tvetydig.
+                        'grind' => $this->grindLageForOvergang($franSteg, $nyttSteg),
+                    ],
                     $this->userSession?->getUser()?->getUID() ?? '',
                 );
             } catch (\Throwable $e) {
@@ -331,6 +337,32 @@ class ArendeLifecycleService {
                 'exception' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * GRINDLÄGE för en steg-övergång (T4/IVO) — stämplas på TYP_STEG så en läsare i
+     * efterhand kan skilja "grind passerad" från "grind avstängd". Utan detta är
+     * frånvaron av en TYP_GRINDVAL-post tvetydig (enforcement av by default). Ren
+     * koordinationsdata utan PII: {moment, enforcement:'pa'|'av'|'ingen', evidens:bool}.
+     *
+     * @return array{moment:?string, enforcement:string, evidens?:bool}
+     */
+    private function grindLageForOvergang(string $franSteg, string $nyttSteg): array {
+        $gc = $this->grindConfig;
+        $pa = static fn (bool $flagga): string => $flagga ? 'pa' : 'av';
+        if ($franSteg === 'forhandsbedomning' && $nyttSteg === 'utredning') {
+            return ['moment' => 'skyddsbedomning', 'enforcement' => $pa($gc?->skyddsbedomningGrind() ?? false), 'evidens' => $this->evidensService !== null];
+        }
+        if ($franSteg === 'forhandsbedomning' && $nyttSteg === 'avslutat') {
+            return ['moment' => 'inte_inleda', 'enforcement' => $pa($gc?->inteInledaMotiv() ?? false)];
+        }
+        if ($franSteg === 'utredning' && $nyttSteg === 'beslut') {
+            return ['moment' => 'kommunicering', 'enforcement' => $pa($gc?->beslutDokument() ?? false), 'evidens' => $this->evidensService !== null];
+        }
+        if ($nyttSteg === 'avslutat') {
+            return ['moment' => 'avslut', 'enforcement' => $pa($gc?->avslutMotiv() ?? false)];
+        }
+        return ['moment' => null, 'enforcement' => 'ingen'];
     }
 
     /**

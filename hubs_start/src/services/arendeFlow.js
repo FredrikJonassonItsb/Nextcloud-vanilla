@@ -195,19 +195,31 @@ export function harledStatus(delmoment, evidens) {
 		if (h && typeof h.detalj === 'string') { try { return JSON.parse(h.detalj) } catch (e) { return {} } }
 		return {}
 	}
-	const harHandling = (kw) => journal.some((h) => (h.typ === 'handling')
-		&& String(detalj(h).mall || '').toLowerCase().includes(kw))
+	// KANONISK matchning (T4-rotfix): en handling som bär den stämplade
+	// `detalj.dokumenttyp` (satt av DokumenttypRegistry vid generering) matchar
+	// delmomentets artefakt-KLASS exakt. Äldre journalrader utan stämpel faller
+	// tillbaka på substring-match mot mall-sluggen. Detta dödar barnets_rost-
+	// buggen (mall "08-barnets-installning" ⇒ dokumenttyp "barnsamtal" ⇒ grön)
+	// utan att förlita sig på att sluggen råkar innehålla ett nyckelord.
+	const harHandling = (klass, kwFallback) => journal.some((h) => {
+		if (h.typ !== 'handling') { return false }
+		const d = detalj(h)
+		const dt = String(d.dokumenttyp || '').toLowerCase()
+		if (dt) { return !!klass && dt === String(klass).toLowerCase() }
+		return !!kwFallback && String(d.mall || '').toLowerCase().includes(String(kwFallback).toLowerCase())
+	})
 	switch (signal) {
 	case 'system':
 		return 'klar'
 	case 'handling':
-		return harHandling(nyckel) ? 'klar' : 'saknas'
+		return harHandling(delmoment.artefakt, nyckel) ? 'klar' : 'saknas'
 	case 'kvittens':
 		// Kvittensen kan skrivas som ett grindval (grind=momentet) ELLER en ren
-		// TYP_KVITTENS (detalj.moment). Matcha båda + fall tillbaka på artefakten.
+		// TYP_KVITTENS (detalj.moment). Matcha båda + fall tillbaka på artefakten
+		// (kvittens-delmomentets artefakt är null, så klassen = nyckeln).
 		if (journal.some((h) => h.typ === 'grindval' && String(detalj(h).grind || '').toLowerCase().includes(nyckel))) { return 'klar' }
 		if (journal.some((h) => h.typ === 'kvittens' && String(detalj(h).moment || '').toLowerCase().includes(nyckel))) { return 'klar' }
-		return harHandling(nyckel) ? 'klar' : 'saknas'
+		return harHandling(nyckel, nyckel) ? 'klar' : 'saknas'
 	case 'commit':
 		if (ev.commit && ev.commit.verifierad) { return 'klar' }
 		if (journal.some((h) => h.typ === 'handling')) { return 'pagar' }

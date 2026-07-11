@@ -11,10 +11,16 @@
 		:id="'arende-' + (arende.triageRef || arende.hubsCaseId)"
 		class="arende-kort hs-card"
 		:class="{ 'arende-kort--het': pinned, 'arende-kort--plikt': pliktAktiv, 'arende-kort--markerad': markerad }">
-		<!-- Pliktmarkör -->
+		<!-- Pliktmarkör: röd när skyddsbedömningen saknas … -->
 		<p v-if="pliktAktiv" class="arende-kort__plikt">
 			<AlertOctagonIcon :size="16" />
 			{{ arende.plikt.label }}
+		</p>
+		<!-- … och en dämpad GRÖN BEKRÄFTELSE när den är dokumenterad (T4/F5):
+		     markören försvinner inte längre tyst, den bekräftar "klar". -->
+		<p v-else-if="pliktBekraftad" class="arende-kort__plikt-ok">
+			<CheckCircleIcon :size="15" />
+			{{ t('hubs_start', 'Skyddsbedömning dokumenterad') }}
 		</p>
 
 		<!-- Titel + sekretess/LOA -->
@@ -474,6 +480,11 @@ export default {
 		},
 		pliktAktiv() {
 			return !!(this.arende.plikt && !this.arende.plikt.kvitterad)
+		},
+		/** T4/F5 — skyddsbedömningen finns dokumenterad (plikt kvitterad): visa
+		 * en bekräftelse i stället för att markören tyst försvinner. */
+		pliktBekraftad() {
+			return !!(this.arende.plikt && this.arende.plikt.kvitterad)
 		},
 		/** Stabil cache-nyckel: triageRef (= dnr ?? hubsCaseId, ALLTID satt) — aldrig
 		 * den ibland-null:a dnr. Annars cachas ett oregistrerat ärende under en nyckel
@@ -1149,6 +1160,22 @@ export default {
 		background: var(--hs-status-error);
 		color: #fff;
 		font-size: 0.82rem;
+		font-weight: 600;
+		align-self: flex-start;
+	}
+
+	// Dämpad grön bekräftelse (T4/F5): lugnare än den röda plikt-pillen — den
+	// SKA inte tävla om uppmärksamhet, bara bekräfta att momentet är gjort.
+	&__plikt-ok {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 0;
+		padding: 3px 10px;
+		border-radius: var(--border-radius-pill, 16px);
+		background: var(--hs-status-success-subtle, rgba(70, 186, 97, 0.12));
+		color: var(--hs-status-success, #2d7d3f);
+		font-size: 0.78rem;
 		font-weight: 600;
 		align-self: flex-start;
 	}

@@ -65,6 +65,34 @@ describe('harledStatus — handling-signal', () => {
 	})
 })
 
+describe('harledStatus — kanonisk dokumenttyp (T4-rotfix, barnets_rost-buggen)', () => {
+	/** En handling med STÄMPLAD dokumenttyp (DokumenttypRegistry) + mall-slug. */
+	const stamplad = (dokumenttyp, mall) => ({ typ: 'handling', detalj: { dokumenttyp, mall } })
+
+	it('barnets_rost blir KLAR via stämplad dokumenttyp trots att mall-sluggen aldrig innehåller "barnsamtal"', () => {
+		// Detta är exakt buggen: mallen "08-barnets-installning-och-delaktighet"
+		// innehåller aldrig nyckelordet "barnsamtal", så den gamla substring-
+		// matchningen kunde ALDRIG bli grön. Med stämplad dokumenttyp='barnsamtal'
+		// (= delmomentets artefakt) blir den grön.
+		const dm = delmoment('utredning', 'barnets_rost') // artefakt = 'barnsamtal'
+		const ev = { journal: [stamplad('barnsamtal', '08-barnets-installning-och-delaktighet')] }
+		expect(harledStatus(dm, ev)).toBe('klar')
+	})
+
+	it('en stämplad handling av ANNAN dokumenttyp uppfyller inte delmomentet (ingen skör mall-gissning på stämplad rad)', () => {
+		const dm = delmoment('utredning', 'barnets_rost')
+		// Mall-sluggen råkar innehålla "barnets" men typen är en annan — stämpeln vinner.
+		const ev = { journal: [stamplad('bbic-utredning', '05-barnavardsutredning-med-barnets-rost')] }
+		expect(harledStatus(dm, ev)).toBe('saknas')
+	})
+
+	it('faller tillbaka på legacy-nyckelord för äldre journalrader utan stämpel', () => {
+		const dm = delmoment('utredning', 'bbic_utredning') // match = 'bbic'
+		const ev = { journal: [handling('05-barnavardsutredning-bbic')] } // ingen dokumenttyp
+		expect(harledStatus(dm, ev)).toBe('klar')
+	})
+})
+
 describe('harledStatus — commit-signal', () => {
 	const dm = delmoment('beslut', 'beslut_committat') // signal: 'commit'
 

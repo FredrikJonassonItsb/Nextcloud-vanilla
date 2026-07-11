@@ -69,6 +69,12 @@ class HandlingService {
         // bekräftade fält sparas efter lyckad generering (dokumentkedjans
         // skrivsida, ANALYS-FORIFYLLNAD-FALTKARTLAGGNING.md §4). Best-effort.
         private ?SakuppgiftService $sakuppgiftService = null,
+        // TRAILING OPTIONAL (autowired): KANONISKA dokumenttyps-registret. Stämplar
+        // den semantiska dokumenttypen på TYP_HANDLING-händelsen så grindarna kan
+        // matcha på ett kanoniskt fält i stället för att gissa ur mall-sluggen
+        // (T4-rotfixen — dödar barnets_rost-buggklassen). Null i test-harness ⇒
+        // ingen stämpel, konsumenten faller tillbaka på legacy-nyckelord.
+        private ?DokumenttypRegistry $dokumenttypRegistry = null,
     ) {
     }
 
@@ -306,6 +312,13 @@ class HandlingService {
             'mall' => $mallBas,
             'antalErsatta' => $antalErsatta,
         ];
+        // KANONISK dokumenttyp (T4-rotfix): stämpla den semantiska klassen så
+        // grindarna matchar på ett exakt fält, inte på mall-sluggens innehåll.
+        // Okänd mall ⇒ ingen stämpel (konsumenten faller tillbaka på nyckelord).
+        $dokumenttyp = $this->dokumenttypRegistry?->klassForMall($mallBas);
+        if ($dokumenttyp !== null && $dokumenttyp !== '') {
+            $detalj['dokumenttyp'] = $dokumenttyp;
+        }
         if ($skyddOverride) {
             $detalj['skyddOverride'] = true;
         }

@@ -50,6 +50,10 @@ class EvidensService {
     public function __construct(
         private readonly HandelseMapper $handelseMapper,
         private readonly ?LoggerInterface $logger = null,
+        // KANONISKA dokumenttyps-registret (T4-rotfix). När det finns matchar
+        // grinden på den STÄMPLADE dokumenttypen; nyckelords-listan nedan används
+        // bara som legacy-fallback för äldre journalrader. Null i test-harness.
+        private readonly ?DokumenttypRegistry $dokumenttypRegistry = null,
     ) {
     }
 
@@ -59,13 +63,29 @@ class EvidensService {
      * handläggare ute (grinden degraderar då till sitt icke-tvingande beteende).
      */
     public function harArtefakt(string $hubsCaseId, string $klass): bool {
-        $nyckelord = self::KLASS_NYCKELORD[$klass] ?? [$klass];
+        $klassLower = strtolower($klass);
+        // Legacy-nyckelord: från det kanoniska registret om det finns, annars den
+        // lokala fallback-tabellen (test-harness utan registry).
+        $nyckelord = $this->dokumenttypRegistry?->nyckelordForKlass($klass)
+            ?? (self::KLASS_NYCKELORD[$klass] ?? [$klass]);
         try {
             foreach ($this->handelseMapper->findByCaseId($hubsCaseId, 500) as $h) {
                 if ($h->getTyp() !== Handelse::TYP_HANDLING) {
                     continue;
                 }
-                $mall = strtolower((string)($this->detalj($h)['mall'] ?? ''));
+                $detalj = $this->detalj($h);
+                // KANONISK (T4-rotfix): en stämplad dokumenttyp är auktoritativ för
+                // just den handlingen — matchar den klassen exakt räknas den, annars
+                // hoppas den (ingen skör mall-substring-gissning på en stämplad rad).
+                $dokumenttyp = strtolower((string)($detalj['dokumenttyp'] ?? ''));
+                if ($dokumenttyp !== '') {
+                    if ($dokumenttyp === $klassLower) {
+                        return true;
+                    }
+                    continue;
+                }
+                // LEGACY-rad (ingen stämpel): fall tillbaka på nyckelord mot mall.
+                $mall = strtolower((string)($detalj['mall'] ?? ''));
                 if ($mall === '') {
                     continue;
                 }

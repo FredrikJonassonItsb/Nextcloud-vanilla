@@ -304,9 +304,12 @@ export default {
 			// #6 — signerings-bekräftelse (gateas "För över" när kraverSignering).
 			signeradBekraftad: false,
 			// A9b — rådgivande kommunicerings-checklista (visas vid utredning→beslut).
-			// Förvald "gjord" = det förväntade normalläget (kommunicering SKA ha skett);
-			// bockas av → skäl (radioval) krävs. Skickas som kommuniceringVal i kontexten.
-			kommuniceringGjord: true,
+			// INGET förval (T4/IVO/jurist): "Parterna har kommunicerats" får INTE vara
+			// förkryssad — ett rättssäkerhetsintyg som är default-ibockat bevisar inget
+			// aktivt ställningstagande (bekräftelsebias). Handläggaren bockar aktivt i
+			// "gjord" ELLER anger skäl; en befintlig kommuniceringshandling (mall 16) är
+			// ändå det starkaste beviset och släpper server-grinden oavsett kryss.
+			kommuniceringGjord: false,
 			kommuniceringSkalVal: null,
 			// #5 — granskbar dokumentlista (alla förvalda). Normaliserar både
 			// {namn,fileid}-objekt (riktig data) och strängar (demo).

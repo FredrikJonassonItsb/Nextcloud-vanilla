@@ -11,6 +11,7 @@ namespace OCA\HubsArende\Tests\Unit\Service;
 
 use OCA\HubsArende\Db\Handelse;
 use OCA\HubsArende\Db\HandelseMapper;
+use OCA\HubsArende\Service\DokumenttypRegistry;
 use OCA\HubsArende\Service\EvidensService;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -92,6 +93,42 @@ final class EvidensServiceTest extends TestCase {
 	}
 
 	// ================================================================== //
+	//  harArtefakt — KANONISK dokumenttyp (T4-rotfix). Med registret injicerat
+	//  matchar grinden på den STÄMPLADE detalj.dokumenttyp; legacy-rader utan
+	//  stämpel faller tillbaka på nyckelord.
+	// ================================================================== //
+
+	public function testHarArtefaktKanoniskDokumenttypBarnetsRost(): void {
+		// Buggklassen: mallen "08-barnets-installning-och-delaktighet" innehåller
+		// aldrig "barnsamtal", så nyckelordsmatchningen kunde ALDRIG bli sann. Med
+		// stämplad dokumenttyp='barnsamtal' uppfylls klassen.
+		$service = new EvidensService($this->handelseMapper, $this->logger, new DokumenttypRegistry());
+		$this->stubbaJournal([
+			$this->handlingTyp('barnsamtal', '08-barnets-installning-och-delaktighet'),
+		]);
+		self::assertTrue($service->harArtefakt(self::CASE_ID, 'barnsamtal'));
+	}
+
+	public function testHarArtefaktStampladAnnanTypRaknasInte(): void {
+		// En stämplad rad är auktoritativ: fel dokumenttyp räknas inte, även om
+		// mall-sluggen råkar innehålla klassens nyckelord.
+		$service = new EvidensService($this->handelseMapper, $this->logger, new DokumenttypRegistry());
+		$this->stubbaJournal([
+			$this->handlingTyp('bbic-utredning', 'utredning-med-skyddsbedomning-i-namnet'),
+		]);
+		self::assertFalse($service->harArtefakt(self::CASE_ID, 'skyddsbedomning'));
+	}
+
+	public function testHarArtefaktLegacyRadUtanStampelFallerTillbakaPaNyckelord(): void {
+		// Äldre journalrad (ingen dokumenttyp-stämpel) matchas som förr via mall-nyckelord.
+		$service = new EvidensService($this->handelseMapper, $this->logger, new DokumenttypRegistry());
+		$this->stubbaJournal([
+			$this->handling('02-omedelbar-skyddsbedomning'),
+		]);
+		self::assertTrue($service->harArtefakt(self::CASE_ID, 'skyddsbedomning'));
+	}
+
+	// ================================================================== //
 	//  harKvittens — TYP_KVITTENS.moment ELLER TYP_GRINDVAL.grind.
 	// ================================================================== //
 
@@ -142,6 +179,11 @@ final class EvidensServiceTest extends TestCase {
 
 	private function handling(string $mall): Handelse {
 		return $this->handelse(Handelse::TYP_HANDLING, ['handling' => 'skapad', 'mall' => $mall]);
+	}
+
+	/** En handling med STÄMPLAD kanonisk dokumenttyp (som HandlingService skriver). */
+	private function handlingTyp(string $dokumenttyp, string $mall): Handelse {
+		return $this->handelse(Handelse::TYP_HANDLING, ['handling' => 'skapad', 'mall' => $mall, 'dokumenttyp' => $dokumenttyp]);
 	}
 
 	/** @param array<string,mixed> $detalj */

@@ -2510,10 +2510,13 @@ class ArendeService {
             // (behåller den positionella testharnessen grön).
             $skyddsbedomningGjord = !in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true);
         }
-        if ($skyddsbedomningGjord) {
-            return null;
-        }
-        return ['typ' => 'skyddsbedomning', 'kvitterad' => false];
+        // T4/F5 — BEKRÄFTA i stället för att FÖRSVINNA. Tidigare returnerades null
+        // när skyddsbedömningen var gjord, så kortets pliktmarkör bara försvann —
+        // användaren kunde inte skilja "gjord" från "borta". Nu bär plikt-objektet
+        // ett kvitterat tillstånd (kvitterad=true), som frontenden renderar som en
+        // grön bekräftelse. All grind-logik i frontenden gatar på !kvitterad, så
+        // beteendet är oförändrat (true beter sig som det gamla null:et).
+        return ['typ' => 'skyddsbedomning', 'kvitterad' => $skyddsbedomningGjord];
     }
 
     /**

@@ -348,7 +348,7 @@ import { generateUrl } from '@nextcloud/router'
 import store from '../../store/index.js'
 import deepLinks from '../../services/deepLinks.js'
 import { skapaArendeChatt, skapaHandling, tilldela, grindKravFel } from '../../services/api.js'
-import { NASTA_ATGARD, PROCESS_STEG } from '../../services/arendeFlow.js'
+import { NASTA_ATGARD, PROCESS_STEG, nastaFor } from '../../services/arendeFlow.js'
 import { typLabel } from '../../services/messageTypes.js'
 
 /** Processtegets svenska etikett (aldrig rå steg-token i UI). */
@@ -435,7 +435,10 @@ export default {
 			overrideOpen: false,
 			overrideArende: null,
 			overrideNyttSteg: null,
-			overrideSkal: 'gjord_i_facksystem',
+			// INGET förval (T4/IVO): ett rättssäkerhetsintyg får inte vara
+			// förkryssat — bekräfta-knappen är :disabled tills handläggaren AKTIVT
+			// väljer ett skäl (bekräftelsebias bort, bevisvärdet återställt).
+			overrideSkal: '',
 			overrideRunning: false,
 		}
 	},
@@ -665,10 +668,13 @@ export default {
 
 		// --- Nästa åtgärd (state machine) -----------------------------------
 		onNastaAtgard(arende) {
-			const target = (arende.vantar && NASTA_ATGARD.overrides[arende.vantar])
-				|| NASTA_ATGARD.steg[arende.steg]
-			if (!target) {
-				return
+			// Använd SAMMA resolver som knappens etikett (nastaFor) så handlingen
+			// ALLTID matchar det knappen lovar. Tidigare räknades målet om HÄR utan
+			// plikt-grenen ⇒ knappen "Kvittera skyddsbedömning" körde i själva verket
+			// beslut-inleda (label ≠ handling, GRIND-KARTA §6.A). (T4)
+			const target = nastaFor(arende)
+			if (!target || !target.action) {
+				return this.onExpand(arende, target && target.flik)
 			}
 			switch (target.action) {
 			case 'signera':
@@ -751,7 +757,9 @@ export default {
 			case 'override':
 				this.overrideArende = arende
 				this.overrideNyttSteg = nyttSteg
-				this.overrideSkal = 'gjord_i_facksystem'
+				// Återställ till INGET förval varje gång dialogen öppnas (T4/IVO):
+				// handläggaren måste aktivt välja skäl (bekräfta-knappen är :disabled).
+				this.overrideSkal = ''
 				this.overrideRunning = false
 				this.overrideOpen = true
 				break
