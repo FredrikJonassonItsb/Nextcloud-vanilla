@@ -16,6 +16,8 @@ use OCA\HubsArende\Db\Bevakning;
 use OCA\HubsArende\Db\BevakningMapper;
 use OCA\HubsArende\Db\Handelse;
 use OCA\HubsArende\Db\HandelseMapper;
+use OCA\HubsArende\Db\Part;
+use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Integration\Client\DeckClient;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -62,6 +64,10 @@ class BevakningService {
         private readonly ?HandelseMapper $handelseMapper = null,
         // A8 — trailing-optional (positionell testharness ⇒ null ⇒ auto-omprövning AV).
         private readonly ?GrindConfig $grindConfig = null,
+        // PER-PART-DELGIVNING — trailing-optional (autowired). Null i en positionell
+        // testharness ⇒ per-part-synken är en graceful no-op (den case-nivå-baserade
+        // setDelgivningsdatum() fungerar oförändrat).
+        private readonly ?PartMapper $partMapper = null,
     ) {
     }
 
@@ -371,6 +377,168 @@ class BevakningService {
 
         $this->skapaDeckKort($arende, $b);
         $this->loggaBev($hubsCaseId, 'delgivning_satt', $b, $aktor);
+        $this->projicieraFrist($hubsCaseId);
+        return $b;
+    }
+
+    // ==================================================================== //
+    //  ★ PER-PART-DELGIVNING (FL 44 §) — laga kraft = SENASTE partens frist ★
+    // ==================================================================== //
+
+    /**
+     * ★ LEGAL-FRIST-KOD ★ Beräkna laga kraft ur PARTSREGISTRETS per-part-delgivning
+     * och foster/uppdatera ärendets ENDA överklagandebevakning därefter.
+     *
+     * RÄTTSREGELN (dokumenterat antagande — stäm av vid tveksamhet):
+     *  - Ett överklagbart beslut delges varje part med överklaganderätt
+     *    ({@see Part::delgivningsbaraRoller()}: barn, vårdnadshavare, motpart).
+     *    Var part får sin EGEN 3-veckorsfrist (FL 44 §) räknad från SIN delgivning.
+     *  - **Laga kraft = den SENAST delgivna partens frist** (max över parterna).
+     *    Beslutet vinner laga kraft först när ALLA delgivna parters frister löpt ut
+     *    — aldrig medan en vårdnadshavares frist fortfarande löper (buggen som
+     *    en-kolumns-modellen kunde ge).
+     *  - Fristen (och därmed laga kraft) är BESTÄMBAR först när alla delgivningsbara
+     *    parter FAKTISKT delgivits. Tills dess hålls bevakningen aktiv UTAN slutdatum
+     *    (fristDue=null): "fristen kan inte löpa ut förrän sista parten delgivits".
+     *  - **Undantagen part (OSL 10:3 / skyddad adress / våld):** en part som medvetet
+     *    inte delges räknas INTE in ({@see Part::arDelgivningsbar()}) och håller inte
+     *    upp laga kraft — men bärs i modellen (Part::delgivningUndantagen + grund) så
+     *    "nå inte denna part" är explicit och journalfört, inte en tyst lucka.
+     *
+     * Idempotent: återanvänder den befintliga 'overklagande'-bevakningen (samma som
+     * {@see setDelgivningsdatum()}), så de två ingångarna aldrig dubbelfostrar.
+     * Speglar {@see Arende::delgivningsdatum} = senaste delgivna partens datum
+     * (bakåtkompatibel visning). Best-effort — kastar aldrig mot anroparen.
+     *
+     * @return Bevakning|null Den fostrande bevakningen, eller null när ingen
+     *         delgivningsbar part finns / partsintegration saknas (no-op).
+     */
+    public function synkaOverklagandeFranParter(string $hubsCaseId, string $aktor): ?Bevakning {
+        if ($this->partMapper === null) {
+            return null; // ingen partsintegration (positionell testharness)
+        }
+        try {
+            $parter = $this->partMapper->findByCaseId($hubsCaseId);
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: synkaOverklagandeFranParter läste ej parter (graceful)', [
+                'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'exception' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        // Har ärendet ÖVERHUVUDTAGET någon part med delgivningsbar roll (undantag
+        // oräknat)? Om inte är per-part-modellen inte i spel — rör INTE en ev.
+        // case-nivå-satt bevakning (setDelgivningsdatum) och nolla inte spegeln.
+        $harDelgivningsbarRoll = false;
+        foreach ($parter as $p) {
+            if (in_array($p->getRoll(), Part::delgivningsbaraRoller(), true)) {
+                $harDelgivningsbarRoll = true;
+                break;
+            }
+        }
+        if (!$harDelgivningsbarRoll) {
+            return null;
+        }
+
+        // Delgivningsbara = roll med överklaganderätt OCH ej medvetet undantagen.
+        // Kan bli [] om ALLA delgivningsbar-roll-parter är undantagna — då finns
+        // ingen part att delge, och en ev. befintlig frist ska NOLLAS (inte lämnas
+        // stale): den delen faller ut nedan via $antal===0 + reconcile.
+        $delgivningsbara = array_values(array_filter(
+            $parter,
+            static fn (Part $p): bool => $p->arDelgivningsbar(),
+        ));
+
+        $senasteFrist = null;      // max(delgivning + 21 d) — laga-kraft-kandidat
+        $senasteDelgivning = null; // spegel till Arende::delgivningsdatum
+        $antalDelgivna = 0;
+        foreach ($delgivningsbara as $p) {
+            $d = $p->getDelgivningsdatum();
+            if ($d === null) {
+                continue; // ännu ej delgiven — håller upp laga kraft
+            }
+            $antalDelgivna++;
+            if ($senasteDelgivning === null || $d > $senasteDelgivning) {
+                $senasteDelgivning = $d;
+            }
+            $frist = (clone $d)->add(new \DateInterval('P21D')); // FL 44 §, 3 v
+            if ($senasteFrist === null || $frist > $senasteFrist) {
+                $senasteFrist = $frist;
+            }
+        }
+        $antal = count($delgivningsbara);
+        $allaDelgivna = $antal > 0 && $antalDelgivna === $antal;
+
+        try {
+            $arende = $this->arendeMapper->findByCaseId($hubsCaseId);
+        } catch (DoesNotExistException) {
+            return null;
+        }
+        // Spegla senaste delgivning till registret (NULL om ingen part är delgiven —
+        // t.ex. alla undantagna, eller den enda delgivna parten togs bort/undantogs).
+        $arende->setDelgivningsdatum($senasteDelgivning);
+        $this->arendeMapper->update($arende);
+
+        // fristDue = laga-kraft-datum FÖRST när det finns minst en delgiven part OCH
+        // alla delgivningsbara parter delgivits; annars null (fristen är obestämbar).
+        if ($antal === 0) {
+            // Alla delgivningsbar-roll-parter är undantagna — ingen part att delge.
+            $fristDue = null;
+            $titel = 'Överklagandefrist — alla delgivningsbara parter undantagna';
+        } else {
+            $fristDue = $allaDelgivna ? $senasteFrist : null;
+            $titel = $allaDelgivna
+                ? 'Överklagandefrist löper (laga kraft ' . $senasteFrist->format('Y-m-d') . ')'
+                : 'Överklagandefrist — väntar på delgivning (' . $antalDelgivna . '/' . $antal . ' parter delgivna)';
+        }
+
+        // Foster/uppdatera ärendets ENDA 'overklagande'-bevakning (samma post som
+        // setDelgivningsdatum återanvänder — ingen dubblett).
+        $befintlig = null;
+        foreach ($this->bevakningMapper->findAktivaByCaseId($hubsCaseId) as $b) {
+            if ($b->getTyp() === 'overklagande') {
+                $befintlig = $b;
+                break;
+            }
+        }
+        if ($befintlig !== null) {
+            $befintlig->setFristDue($fristDue);
+            $befintlig->setTitel($titel);
+            $befintlig->setAnkare(Bevakning::ANKARE_DELGIVNING);
+            $this->bevakningMapper->update($befintlig);
+            $this->uppdateraDeckKortFrist($arende, $befintlig);
+            $this->loggaBev($hubsCaseId, 'delgivning_part_synkad', $befintlig, $aktor);
+            $this->projicieraFrist($hubsCaseId);
+            return $befintlig;
+        }
+
+        // Ingen befintlig 'overklagande'-bevakning: skapa BARA om delgivning faktiskt
+        // har SKETT (minst en part delgiven). Att enbart lägga till en delgivningsbar
+        // part (innan något beslut delgetts) ska ALDRIG föda en frist. Spegeln kan dock
+        // ha nollats ovan → projicera om och avsluta.
+        if ($antalDelgivna === 0) {
+            $this->projicieraFrist($hubsCaseId);
+            return null;
+        }
+
+        $b = new Bevakning();
+        $b->setHubsCaseId($hubsCaseId);
+        $b->setTyp('overklagande');
+        $b->setTitel($titel);
+        $b->setVillkorTyp(Bevakning::VILLKOR_DATUM_PASSERAT);
+        $b->setVillkorArg(null);
+        $b->setStatus(Bevakning::STATUS_AKTIV);
+        $b->setFristDue($fristDue);
+        $b->setAnkare(Bevakning::ANKARE_DELGIVNING);
+        $b->setRecurringDagar(null);
+        $b->setLagstadgad(true);
+        $b->setSkapadAv($aktor);
+        $b->setForsenad(false);
+        $b->setSkapad($this->timeFactory->getDateTime());
+        $b = $this->bevakningMapper->insert($b);
+
+        $this->skapaDeckKort($arende, $b);
+        $this->loggaBev($hubsCaseId, 'delgivning_part_synkad', $b, $aktor);
         $this->projicieraFrist($hubsCaseId);
         return $b;
     }
@@ -813,6 +981,11 @@ class BevakningService {
     }
 
     private function parseDate(string $raw): ?\DateTime {
+        // En TOM sträng får ALDRIG bli "idag" (new \DateTime('') = nu) för ett
+        // rättsligt laddat datum (delgivning/frist) — den ska avvisas explicit.
+        if (trim($raw) === '') {
+            return null;
+        }
         try {
             return new \DateTime($raw);
         } catch (\Throwable) {

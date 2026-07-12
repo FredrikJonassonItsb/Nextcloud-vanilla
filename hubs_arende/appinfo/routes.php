@@ -167,6 +167,18 @@ return [
             'url' => '/api/v1/arende/{ref}/part/{id}',
             'verb' => 'DELETE',
         ],
+        // ★ LEGAL-FRIST ★ POST .../part/{id}/delgivning -> per-part-delgivning (FL 44 §)
+        [
+            'name' => 'Part#setDelgivning',
+            'url' => '/api/v1/arende/{ref}/part/{id}/delgivning',
+            'verb' => 'POST',
+        ],
+        // ★ LEGAL-FRIST ★ POST .../part/{id}/delgivning/undanta -> undanta part (OSL 10:3)
+        [
+            'name' => 'Part#undantaDelgivning',
+            'url' => '/api/v1/arende/{ref}/part/{id}/delgivning/undanta',
+            'verb' => 'POST',
+        ],
 
         // --- Handling-från-mall (fas 1: mall + ärendedata → docx i akten) ---
         // GET /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/mallar -> mallbibliotekets .docx
