@@ -316,14 +316,21 @@ class SakerhetsskyddGrind {
         // R-retro-4: Remove the case:-tag carrier so the token stops propagating.
         //   Delete the case:{hubsCaseId} systemtag/imap_label via sdkmc + pekare.
         $atgarder['case_tag_borttagen'] = $this->retroSafe('case_tag_borttagen', $hubsCaseId, function () use ($hubsCaseId): bool {
-            if ($this->sdkmcClient === null || $this->pekareMapper === null) {
+            if ($this->sdkmcClient === null) {
                 return false;
             }
             $done = false;
-            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'case_tag') as $p) {
-                $done = $this->sdkmcClient->deleteCaseTag($hubsCaseId, '', $p->getObjektId()) || $done;
+            // Pekar-vägen (om en R3-pekare finns).
+            if ($this->pekareMapper !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'case_tag') as $p) {
+                    $done = $this->sdkmcClient->deleteCaseTag($hubsCaseId, '', $p->getObjektId()) || $done;
+                }
+                $this->pekareMapper->deleteByCaseAndTyp($hubsCaseId, 'case_tag');
             }
-            $this->pekareMapper->deleteByCaseAndTyp($hubsCaseId, 'case_tag');
+            // LABEL-VÄGEN (2026-07-12) — täcker case-taggar som skapats via
+            // koppla/tagMessage UTAN pekare (samma buggklass som gallringens). I ett
+            // säkerhetsskyddsflöde är det extra viktigt att bäraren FAKTISKT rivs.
+            $done = $this->sdkmcClient->deleteCaseTagByLabel($hubsCaseId) || $done;
             return $done;
         });
 

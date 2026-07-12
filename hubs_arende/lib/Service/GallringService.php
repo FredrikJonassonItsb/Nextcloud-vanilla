@@ -274,6 +274,17 @@ class GallringService {
                         // Graceful — taggen städas vid nästa svep om detta fallerar.
                     }
                 }
+                // LABEL-VÄGEN (2026-07-12) — täcker case-taggar som skapats via
+                // `koppla`/`tagMessage` (label-vägen) UTAN en R3-pekare: den pekar-
+                // baserade loopen ovan hittar dem inte, så de överlevde gallringen som
+                // dinglande taggar (Fredriks inflödes-bugg). Denna deterministiska,
+                // accountId-lösa väg (sdkmc DELETE /api/tags/by-label) städar dem oavsett
+                // pekare. Idempotent + graceful: NO-OP om inget matchar / sdkmc onåbar.
+                try {
+                    $this->sdkmcClient->deleteCaseTagByLabel($hubsCaseId);
+                } catch (\Throwable $e) {
+                    // Graceful — taggen städas vid nästa svep om detta fallerar.
+                }
             }
             // Per-case-åtkomstgruppen (extern NC-grupp) raderas — best-effort, före transaktionen.
             $this->arenderumGroupService?->delete($hubsCaseId);

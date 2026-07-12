@@ -185,6 +185,61 @@ class ItslTagService {
     }
 
     /**
+     * [HUBS-ARENDE-KRAV 2026-07-12] Delete a case-tag by its IMAP label across
+     * EVERY mailbox, deterministically and without an accountId.
+     *
+     * WHY: hubs_arende's NEVER-SoR gallring must remove the `case:<uuid>`
+     * coordination tag when a case is purged. That tag may have been created on a
+     * shared funktionsadress the calling service account does not "own", so the
+     * accountId-scoped {@see deleteTag()} cannot reach it. The label `case:<uuid>`
+     * is globally unique, so it is the correct, deterministic key.
+     *
+     * SAFETY CONTRACT (fail-closed): this method ONLY ever touches tags whose label
+     * begins with the reserved `case:` engine namespace. It can NEVER remove a
+     * user-created tag, an assignment tag or a default/system tag — a non-`case:`
+     * label throws. Soft-deletes each match, then triggers the existing
+     * {@see DeleteTagsJob} which removes the IMAP labels + associations and hard
+     * deletes the rows (identical machinery to {@see deleteTag()}).
+     *
+     * @param string $imapLabel The exact `case:<uuid>` label to purge everywhere.
+     * @return int Number of tags soft-deleted (0 = nothing matched; idempotent).
+     * @throws Exception When $imapLabel is not a reserved `case:` label.
+     */
+    public function deleteCaseTagsByLabel(string $imapLabel): int {
+        if (!str_starts_with($imapLabel, 'case:')) {
+            // Fail-closed: this endpoint is ONLY for the engine's case: namespace.
+            throw new Exception('deleteCaseTagsByLabel refuses a non-case: label');
+        }
+
+        $tags = $this->tagMapper->getTagsByImapLabelAcrossMailboxes($imapLabel);
+        $count = 0;
+        foreach ($tags as $tag) {
+            // Never delete assignment/default tags even inside the case: namespace
+            // (defence in depth — a case: label should never carry those flags).
+            if ($tag->getIsAssignmentTag() === true || $tag->getIsDefaultTag() === true) {
+                continue;
+            }
+            $tag->setDeletedAt(new DateTime());
+            $this->tagMapper->update($tag);
+            $count++;
+        }
+
+        if ($count > 0) {
+            // Reuse the existing cleanup machinery: removes IMAP labels from every
+            // tagged message (so a purged case's mail resurfaces in the inflöde
+            // instead of staying hidden behind a dangling case: tag) + hard delete.
+            $this->backgroundJobService->executeNow(DeleteTagsJob::class);
+        }
+
+        $this->logger->info('sdkmc: deleteCaseTagsByLabel (hubs_arende gallring)', [
+            'imapLabel' => $imapLabel,
+            'deleted' => $count,
+        ]);
+
+        return $count;
+    }
+
+    /**
      * Tag a message.
      *
      * @param string $userId

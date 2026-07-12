@@ -217,6 +217,37 @@ class ItslTagController extends Controller {
     }
 
     /**
+     * [HUBS-ARENDE-KRAV 2026-07-12] Delete a case-tag by its IMAP label, across
+     * every mailbox, without an accountId.
+     *
+     * Consumed by hubs_arende's NEVER-SoR gallring (GallringService →
+     * SdkmcClient::deleteCaseTagByLabel) so a purged case's `case:<uuid>`
+     * coordination tag is removed deterministically even when it lives on a shared
+     * funktionsadress the calling service account does not own.
+     *
+     * FAIL-CLOSED: the service layer refuses any label outside the reserved
+     * `case:` namespace, so this route can only ever remove case-coordination tags
+     * — never user/assignment/default tags.
+     *
+     * @NoAdminRequired
+     * @NoCSRFRequired
+     * @param string $imapLabel The `case:<uuid>` label to purge everywhere.
+     * @return JSONResponse<200, array{status: string, deleted: int}, array{}>|JSONResponse<400, array{error: string}, array{}>|JSONResponse<401, array{error: string}, array{}>
+     */
+    public function deleteCaseTagByLabel(string $imapLabel): JSONResponse {
+        if ($this->userId === null) {
+            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        }
+
+        try {
+            $deleted = $this->tagService->deleteCaseTagsByLabel($imapLabel);
+            return new JSONResponse(['status' => 'ok', 'deleted' => $deleted]);
+        } catch (Exception $e) {
+            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        }
+    }
+
+    /**
      * Set flags on multiple messages in a thread (bulk operation).
      *
      * @NoAdminRequired
