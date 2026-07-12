@@ -13,6 +13,7 @@ use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\Pekare;
 use OCA\HubsArende\Db\PekareMapper;
+use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Service\GallringService;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -257,6 +258,39 @@ final class GallringServiceTest extends TestCase {
 			$rivna,
 			'ärenderum + säkert möte + dokumentchatt-rum rivs via pekarna (annars orphanade PII-rum)',
 		);
+	}
+
+	// ================================================================== //
+	//  MAIL-DELEN av destruktionsspegeln — case:-taggen rivs via sdkmc
+	//  (annars dinglande tagg mot purgat ärende som döljer inflödet).
+	// ================================================================== //
+
+	public function testGallringRiverCaseTagPaMail(): void {
+		$sdkmc = $this->createMock(SdkmcClient::class);
+		$service = new GallringService(
+			arendeMapper: $this->arendeMapper,
+			pekareMapper: $this->pekareMapper,
+			logger: $this->logger,
+			timeFactory: $this->timeFactory,
+			sdkmcClient: $sdkmc,
+		);
+		$this->stubCandidates([$this->makeGallringsbar('caseid-mail-0001', $this->daysAgo(1))]);
+		$this->pekareMapper->method('findByCaseId')->willReturn([]);
+		$this->pekareMapper->method('findByCaseAndTyp')->willReturnCallback(
+			fn (string $caseId, string $typ): array => $typ === 'case_tag'
+				? [$this->roomPekare($caseId, 'case:' . $caseId)]
+				: [],
+		);
+		$rivna = [];
+		$sdkmc->method('deleteCaseTag')->willReturnCallback(
+			function (string $cid, string $email, string $tagId) use (&$rivna): bool {
+				$rivna[] = $tagId;
+				return true;
+			},
+		);
+
+		$service->gallra(null, true);
+		self::assertSame(['case:caseid-mail-0001'], $rivna, 'case:-taggen på mail rivs vid gallring (ingen dinglande tagg)');
 	}
 
 	// ================================================================== //

@@ -20,6 +20,7 @@ use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Db\SakuppgiftMapper;
 use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
+use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
 use OCA\HubsArende\Service\Brain\BrainProvisionRetryService;
@@ -131,6 +132,12 @@ class GallringService {
         // aldrig lämnar en dinglande halv-gallrad rad — rollback ⇒ hela ärendet står
         // kvar och tas om vid nästa (idempotenta) svep.
         private ?IDBConnection $db = null,
+        // TRAILING OPTIONAL (autowired): MAIL-DELEN av destruktionsspegeln. Gallringen
+        // raderade tidigare case_tag-PEKAREN men anropade aldrig deleteCaseTag ⇒ sdkmc-
+        // taggen case:{id} överlevde som DINGLANDE referens mot ett purgat ärende, vilket
+        // döljer anmälningsmeddelandet i inflödet ("behandlad/case:"-filtret). Speglar
+        // R3-kompensationen. Verifierad bugg (2026-07-12).
+        private ?SdkmcClient $sdkmcClient = null,
     ) {
     }
 
@@ -252,6 +259,19 @@ class GallringService {
                         } catch (\Throwable $e) {
                             // Graceful.
                         }
+                    }
+                }
+            }
+            // Case:-taggen på mail (sdkmc) rivs via case_tag-pekaren — annars blir den
+            // en DINGLANDE tagg mot ett purgat ärende som döljer anmälningsmeddelandet
+            // i inflödet (sdkmc:s "behandlad/case:"-filter). Verifierad bugg 2026-07-12;
+            // speglar R3-kompensationen. Graceful (idempotent retry vid fel).
+            if ($this->sdkmcClient !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'case_tag') as $tagPekare) {
+                    try {
+                        $this->sdkmcClient->deleteCaseTag($hubsCaseId, '', $tagPekare->getObjektId());
+                    } catch (\Throwable $e) {
+                        // Graceful — taggen städas vid nästa svep om detta fallerar.
                     }
                 }
             }
