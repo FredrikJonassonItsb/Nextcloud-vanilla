@@ -217,12 +217,14 @@ final class ArendeServicePekareTest extends TestCase {
         );
         $service = $this->makeService($pekareMapper);
 
+        // deltagare = null i testharnessen (ingen IDBConnection injicerad ⇒
+        // rumDeltagare fail-closar med null; kretsvakten nekar då korrekt).
         self::assertSame(
-            ['hubsCaseId' => 'case-A', 'typ' => 'talk_room', 'fil' => null],
+            ['hubsCaseId' => 'case-A', 'typ' => 'talk_room', 'fil' => null, 'deltagare' => null],
             $service->losRum('arenderum-tok'),
         );
         self::assertSame(
-            ['hubsCaseId' => 'case-B', 'typ' => 'dokumentchatt', 'fil' => '05-bbic'],
+            ['hubsCaseId' => 'case-B', 'typ' => 'dokumentchatt', 'fil' => '05-bbic', 'deltagare' => null],
             $service->losRum('fil-tok'),
         );
         self::assertNull($service->losRum('okant-rum'), 'okänt rum ⇒ null');

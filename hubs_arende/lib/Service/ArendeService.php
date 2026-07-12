@@ -203,6 +203,11 @@ class ArendeService {
         // blockeras av dessa; ett provisioneringsfel köas durabelt eller sväljs.
         private ?BrainProvisionService $brainProvisionService = null,
         private ?BrainProvisionRetryService $brainProvisionRetryService = null,
+        // KRETSVAKT-STÖD: läser ett Talk-rums FAKTISKA mänskliga deltagare ur
+        // oc_talk_attendees (där tjänstekontots spreed-OCS inte når för fil-rum —
+        // SA:t är inte medlem ⇒ 403/404). losRum() returnerar dem så kretsvakten
+        // kan bekräfta kretsen även i Collaboras dokument-chatt. TRAILING OPTIONAL.
+        private ?\OCP\IDBConnection $db = null,
     ) {
     }
 
@@ -1717,10 +1722,52 @@ class ArendeService {
                     'hubsCaseId' => $p->getHubsCaseId(),
                     'typ' => $typ,
                     'fil' => $typ === 'dokumentchatt' ? $p->getRiktning() : null,
+                    // KRETSVAKT: rummets faktiska mänskliga deltagare (uid) — läses ur
+                    // Talk-DB så kretsvakten kan bekräfta kretsen ÄVEN i fil-rum där
+                    // tjänstekontots spreed-/participants-anrop nekas (SA ej medlem).
+                    'deltagare' => $this->rumDeltagare($token),
                 ];
             }
         }
         return null;
+    }
+
+    /**
+     * Ett Talk-rums FAKTISKA mänskliga deltagare (actor_type='users') ur
+     * oc_talk_attendees. Koordinationsdata (uid) — ingen PII/innehåll. Läser Talk:s
+     * tabeller direkt eftersom tjänstekontots OCS-anrop nekas för fil-rum (SA ej
+     * medlem). Graceful: saknad DB/fel ⇒ NULL (INTE tom lista) så kretsvakten
+     * fail-closar korrekt — en tom lista tolkas som "ingen utanför kretsen" = tillåt.
+     *
+     * @return string[]|null uid:n (tom array för tomt rum) eller null vid fel/otillgänglig DB.
+     */
+    private function rumDeltagare(string $token): ?array {
+        if ($this->db === null || $token === '') {
+            return null;
+        }
+        try {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('a.actor_id')
+                ->from('talk_attendees', 'a')
+                ->innerJoin('a', 'talk_rooms', 'r', $qb->expr()->eq('a.room_id', 'r.id'))
+                ->where($qb->expr()->eq('r.token', $qb->createNamedParameter($token)))
+                ->andWhere($qb->expr()->eq('a.actor_type', $qb->createNamedParameter('users')));
+            $res = $qb->executeQuery();
+            $uids = [];
+            while (($rad = $res->fetch()) !== false) {
+                $uid = (string)($rad['actor_id'] ?? '');
+                if ($uid !== '') {
+                    $uids[] = $uid;
+                }
+            }
+            $res->closeCursor();
+            return $uids;
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: rumDeltagare DB-läsning misslyckades (graceful, fail-closed)', [
+                'app' => 'hubs_arende', 'exception' => $e->getMessage(),
+            ]);
+            return null; // fail-closed: kretsvakten nekar hellre än fail-open:ar
+        }
     }
 
     /**
