@@ -733,6 +733,37 @@ export async function taBortPart(ref, id) {
 	return ocsData(res)
 }
 
+/**
+ * ★ LEGAL-FRIST ★ Registrera per-part-delgivning (FL 33 §) — flyttar
+ * överklagandefristen till partsnivå. Laga kraft = senaste partens frist.
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @param {string} datum delgivningsdatum (YYYY-MM-DD)
+ * @param {string} metod ordinar|forenklad|muntlig|kungorelse|stamning
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function setPartDelgivning(ref, id, datum, metod = 'ordinar') {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/{id}/delgivning (Part#setDelgivning).
+	if (DEMO) return { ok: true, part: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id)) + '/delgivning'), { datum, metod })
+	return ocsData(res)
+}
+
+/**
+ * ★ LEGAL-FRIST ★ Undanta en part från delgivning (OSL 10:3 / skyddad adress /
+ * våld) — parten ska medvetet inte nås och håller inte upp laga kraft.
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @param {string} grund osl_10_3|skyddad_adress|vald|annan
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function undantaPartDelgivning(ref, id, grund) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/{id}/delgivning/undanta (Part#undantaDelgivning).
+	if (DEMO) return { ok: true, part: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id)) + '/delgivning/undanta'), { grund })
+	return ocsData(res)
+}
+
 // ---------------------------------------------------------------------------
 // HANDLING-FRÅN-MALL (fas 1) — skapa en ifylld handling ur mallbiblioteket.
 // Motorn läser mallen ur den delade mallmappen, fyller ärendedata (register +

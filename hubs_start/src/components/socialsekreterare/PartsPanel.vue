@@ -107,6 +107,88 @@
 					{{ kallaLabel(part.kalla) }}<template v-if="part.verifierad"> · {{ t('hubs_start', 'verifierad {datum}', { datum: fmtDatum(part.verifierad) }) }}</template>
 				</p>
 
+				<!-- Rad 4: ★ PER-PART-DELGIVNING (FL 44 §) — endast delgivningsbara roller -->
+				<div v-if="part.delgivningsbarRoll" class="parts-panel__delgivning">
+					<span v-if="part.delgivningUndantagen" class="parts-panel__badge parts-panel__badge--undantagen">
+						<AlertOutlineIcon :size="13" />
+						{{ t('hubs_start', 'Undantagen från delgivning') }} · {{ undantagLabel(part.delgivningUndantagGrund) }}
+					</span>
+					<span v-else-if="part.delgivningsdatum" class="parts-panel__delgiven">
+						<CheckDecagramIcon :size="14" />
+						{{ t('hubs_start', 'Delgiven {datum}', { datum: fmtDatum(part.delgivningsdatum) }) }}
+						· {{ metodLabel(part.delgivningMetod) }}
+						· {{ t('hubs_start', 'frist {datum}', { datum: fristFor(part.delgivningsdatum) }) }}
+					</span>
+					<span v-else class="parts-panel__muted parts-panel__ejdelgiven">
+						{{ t('hubs_start', 'Ej delgiven') }}
+					</span>
+
+					<span class="parts-panel__radatgarder">
+						<button
+							class="parts-panel__radknapp"
+							type="button"
+							:disabled="muterar"
+							@click="oppnaDelgivning(part)">
+							<GavelIcon :size="14" />
+							{{ part.delgivningsdatum ? t('hubs_start', 'Ändra delgivning') : t('hubs_start', 'Registrera delgivning') }}
+						</button>
+						<button
+							v-if="!part.delgivningUndantagen"
+							class="parts-panel__radknapp"
+							type="button"
+							:disabled="muterar"
+							@click="oppnaUndanta(part)">
+							<ShieldLockIcon :size="14" />
+							{{ t('hubs_start', 'Undanta') }}
+						</button>
+					</span>
+				</div>
+
+				<!-- Inline delgivnings-formulär (datum + metod) -->
+				<div v-if="delgivningForId === part.id" class="parts-panel__andamal">
+					<input
+						v-model="delgivningDatum"
+						class="parts-panel__andamal-input"
+						type="date"
+						:disabled="muterar"
+						:aria-label="t('hubs_start', 'Delgivningsdatum')">
+					<select v-model="delgivningMetod" class="parts-panel__metod" :disabled="muterar" :aria-label="t('hubs_start', 'Delgivningssätt')">
+						<option value="ordinar">{{ t('hubs_start', 'Ordinär') }}</option>
+						<option value="forenklad">{{ t('hubs_start', 'Förenklad') }}</option>
+						<option value="muntlig">{{ t('hubs_start', 'Muntlig') }}</option>
+						<option value="kungorelse">{{ t('hubs_start', 'Kungörelse') }}</option>
+						<option value="stamning">{{ t('hubs_start', 'Stämningsman') }}</option>
+					</select>
+					<NcButton type="primary" :disabled="!delgivningDatum || muterar" @click="sparaDelgivning(part)">
+						<template #icon>
+							<NcLoadingIcon v-if="muterar" :size="16" />
+						</template>
+						{{ t('hubs_start', 'Spara') }}
+					</NcButton>
+					<NcButton :disabled="muterar" @click="stangDelgivning">
+						{{ t('hubs_start', 'Avbryt') }}
+					</NcButton>
+				</div>
+
+				<!-- Inline undantags-formulär (OSL 10:3-grund) -->
+				<div v-if="undantagForId === part.id" class="parts-panel__andamal">
+					<select v-model="undantagGrund" class="parts-panel__metod" :disabled="muterar" :aria-label="t('hubs_start', 'Undantagsgrund')">
+						<option value="osl_10_3">{{ t('hubs_start', 'OSL 10:3 (röjer skyddad uppgift)') }}</option>
+						<option value="skyddad_adress">{{ t('hubs_start', 'Skyddad adress') }}</option>
+						<option value="vald">{{ t('hubs_start', 'Våldsscenario') }}</option>
+						<option value="annan">{{ t('hubs_start', 'Annan grund') }}</option>
+					</select>
+					<NcButton type="warning" :disabled="muterar" @click="sparaUndanta(part)">
+						<template #icon>
+							<NcLoadingIcon v-if="muterar" :size="16" />
+						</template>
+						{{ t('hubs_start', 'Undanta från delgivning') }}
+					</NcButton>
+					<NcButton :disabled="muterar" @click="stangUndanta">
+						{{ t('hubs_start', 'Avbryt') }}
+					</NcButton>
+				</div>
+
 				<!-- Inline ändamåls-rad för re-uppslag (ändamålet journalförs, K-NAV-4.2) -->
 				<div v-if="andamalForId === part.id" class="parts-panel__andamal">
 					<input
@@ -129,6 +211,17 @@
 				</div>
 			</li>
 		</ul>
+
+		<!-- ★ LAGA KRAFT-sammanfattning: senaste delgivna partens frist (FL 44 §) -->
+		<div v-if="delgivningsbaraParter.length" class="parts-panel__lagakraft" :class="{ 'parts-panel__lagakraft--klar': lagaKraft.alla }">
+			<GavelIcon :size="15" />
+			<span v-if="lagaKraft.alla">
+				{{ t('hubs_start', 'Laga kraft {datum} — alla parter delgivna ({n} st)', { datum: lagaKraft.datum, n: lagaKraft.delgivna }) }}
+			</span>
+			<span v-else>
+				{{ t('hubs_start', 'Överklagandefrist ännu ej bestämbar — väntar på delgivning ({delgivna}/{totalt} parter)', { delgivna: lagaKraft.delgivna, totalt: lagaKraft.totalt }) }}
+			</span>
+		</div>
 
 		<!-- Modaler (byggs parallellt — kontrakten antagna) -->
 		<PartUppslagModal
@@ -153,11 +246,13 @@ import AccountMultiplePlusIcon from 'vue-material-design-icons/AccountMultiplePl
 import ShieldLockIcon from 'vue-material-design-icons/ShieldLock.vue'
 import AlertOutlineIcon from 'vue-material-design-icons/AlertOutline.vue'
 import DeleteOutlineIcon from 'vue-material-design-icons/DeleteOutline.vue'
+import CheckDecagramIcon from 'vue-material-design-icons/CheckDecagram.vue'
+import GavelIcon from 'vue-material-design-icons/Gavel.vue'
 
 import { translate as t, translatePlural as n } from '@nextcloud/l10n'
 import { showSuccess, showError } from '@nextcloud/dialogs'
 
-import { fetchArendeParter, uppslagPart, skapaPartManuell, uppdateraPartFranNavet, taBortPart } from '../../services/api.js'
+import { fetchArendeParter, uppslagPart, skapaPartManuell, uppdateraPartFranNavet, taBortPart, setPartDelgivning, undantaPartDelgivning } from '../../services/api.js'
 import PartUppslagModal from './PartUppslagModal.vue'
 import PartManuellModal from './PartManuellModal.vue'
 
@@ -172,6 +267,8 @@ export default {
 		ShieldLockIcon,
 		AlertOutlineIcon,
 		DeleteOutlineIcon,
+		CheckDecagramIcon,
+		GavelIcon,
 		PartUppslagModal,
 		PartManuellModal,
 	},
@@ -192,7 +289,13 @@ export default {
 			// Inline ändamåls-rad (re-uppslag) — id:t för parten vars rad är öppen.
 			andamalForId: null,
 			andamalText: '',
-			// Pågående radmutation (uppdatera/ta bort) — spärrar dubbeltryck.
+			// Inline delgivnings-/undantagsformulär — id:t för parten vars rad är öppen.
+			delgivningForId: null,
+			delgivningDatum: '',
+			delgivningMetod: 'ordinar',
+			undantagForId: null,
+			undantagGrund: 'osl_10_3',
+			// Pågående radmutation (uppdatera/ta bort/delgivning) — spärrar dubbeltryck.
 			muterar: false,
 		}
 	},
@@ -201,6 +304,30 @@ export default {
 		/** Husets referens-mönster: hubsCaseId ?? dnr ?? triageRef. */
 		ref() {
 			return this.arende.hubsCaseId || this.arende.dnr || this.arende.triageRef
+		},
+
+		/** Parter med överklaganderätt (delgivningsbar roll, ej undantagen). */
+		delgivningsbaraParter() {
+			return this.parter.filter((p) => p.delgivningsbar)
+		},
+
+		/**
+		 * ★ LEGAL-FRIST ★ Laga kraft-projektion: senaste delgivna partens frist.
+		 * Bestämbar FÖRST när ALLA delgivningsbara parter delgivits (annars väntar).
+		 */
+		lagaKraft() {
+			const bara = this.delgivningsbaraParter
+			const totalt = bara.length
+			const delgivna = bara.filter((p) => p.delgivningsdatum)
+			const alla = totalt > 0 && delgivna.length === totalt
+			let datum = null
+			for (const p of delgivna) {
+				const f = this.fristFor(p.delgivningsdatum)
+				if (f && (datum === null || f > datum)) {
+					datum = f
+				}
+			}
+			return { alla, datum, totalt, delgivna: delgivna.length }
 		},
 	},
 
@@ -339,6 +466,110 @@ export default {
 			} finally {
 				this.muterar = false
 			}
+		},
+
+		// ---- ★ PER-PART-DELGIVNING (FL 44 §) ---------------------------------
+
+		/** Öppna delgivnings-formuläret för en part (förifyll ev. befintligt). */
+		oppnaDelgivning(part) {
+			this.stangUndanta()
+			this.delgivningForId = part.id
+			this.delgivningDatum = this.fmtDatum(part.delgivningsdatum) || ''
+			this.delgivningMetod = part.delgivningMetod || 'ordinar'
+		},
+
+		stangDelgivning() {
+			this.delgivningForId = null
+			this.delgivningDatum = ''
+			this.delgivningMetod = 'ordinar'
+		},
+
+		/** Registrera per-part-delgivning → synkar överklagandebevakningen. */
+		async sparaDelgivning(part) {
+			if (!this.delgivningDatum || this.muterar) {
+				return
+			}
+			this.muterar = true
+			try {
+				const r = await setPartDelgivning(this.ref, part.id, this.delgivningDatum, this.delgivningMetod)
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Delgivning registrerad — laga kraft räknas om från senaste partens frist.'))
+					this.stangDelgivning()
+					await this.laddaParter()
+				} else {
+					showError(t('hubs_start', 'Delgivningen kunde inte sparas: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Delgivningen kunde inte sparas. Försök igen.')))
+			} finally {
+				this.muterar = false
+			}
+		},
+
+		/** Öppna undantags-formuläret (OSL 10:3 m.fl.). */
+		oppnaUndanta(part) {
+			this.stangDelgivning()
+			this.undantagForId = part.id
+			this.undantagGrund = part.delgivningUndantagGrund || 'osl_10_3'
+		},
+
+		stangUndanta() {
+			this.undantagForId = null
+			this.undantagGrund = 'osl_10_3'
+		},
+
+		/** Undanta en part från delgivning (håller inte upp laga kraft). */
+		async sparaUndanta(part) {
+			if (this.muterar) {
+				return
+			}
+			this.muterar = true
+			try {
+				const r = await undantaPartDelgivning(this.ref, part.id, this.undantagGrund)
+				if (r && r.ok !== false) {
+					showSuccess(t('hubs_start', 'Parten är undantagen från delgivning — journalfört.'))
+					this.stangUndanta()
+					await this.laddaParter()
+				} else {
+					showError(t('hubs_start', 'Undantaget kunde inte sparas: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.motorFel(e, t('hubs_start', 'Undantaget kunde inte sparas. Försök igen.')))
+			} finally {
+				this.muterar = false
+			}
+		},
+
+		/** Frist = delgivningsdatum + 21 dagar (FL 44 §, 3 veckor), YYYY-MM-DD. */
+		fristFor(delgivningsdatum) {
+			const d = String(delgivningsdatum || '').slice(0, 10)
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+				return ''
+			}
+			const dt = new Date(d + 'T00:00:00Z')
+			dt.setUTCDate(dt.getUTCDate() + 21)
+			return dt.toISOString().slice(0, 10)
+		},
+
+		metodLabel(metod) {
+			const map = {
+				ordinar: t('hubs_start', 'ordinär'),
+				forenklad: t('hubs_start', 'förenklad'),
+				muntlig: t('hubs_start', 'muntlig'),
+				kungorelse: t('hubs_start', 'kungörelse'),
+				stamning: t('hubs_start', 'stämningsman'),
+			}
+			return map[metod] || metod || ''
+		},
+
+		undantagLabel(grund) {
+			const map = {
+				osl_10_3: t('hubs_start', 'OSL 10:3'),
+				skyddad_adress: t('hubs_start', 'skyddad adress'),
+				vald: t('hubs_start', 'våldsscenario'),
+				annan: t('hubs_start', 'annan grund'),
+			}
+			return map[grund] || grund || ''
 		},
 
 		/** Motorns felorsak ur ett OCS-fel (husets mönster). */
@@ -560,6 +791,56 @@ export default {
 	&__andamal-input {
 		flex: 1 1 220px;
 		min-width: 180px;
+	}
+
+	// ★ Per-part-delgivning
+	&__delgivning {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px;
+		margin-top: 2px;
+		font-size: 0.82rem;
+	}
+
+	&__delgiven {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--hs-status-success, var(--color-success, #2d7d46));
+		font-weight: 600;
+	}
+
+	&__ejdelgiven {
+		font-style: italic;
+	}
+
+	&__badge--undantagen {
+		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
+		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		border: 1px solid var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+	}
+
+	&__metod {
+		min-width: 150px;
+	}
+
+	&__lagakraft {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin-top: 4px;
+		padding: 6px 10px;
+		border-radius: var(--border-radius, 8px);
+		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
+		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		font-size: 0.82rem;
+		font-weight: 600;
+
+		&--klar {
+			background: var(--color-success-hover, #e5f3ea);
+			color: var(--hs-status-success, var(--color-success, #2d7d46));
+		}
 	}
 }
 </style>
