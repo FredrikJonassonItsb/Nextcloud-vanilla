@@ -1736,12 +1736,23 @@ class ArendeService {
         if ($this->pekareMapper === null || $token === '') {
             return;
         }
-        foreach ($this->pekareMapper->findByTypAndObjektId('dokumentchatt', $token) as $p) {
-            if ($p->getHubsCaseId() === $arende->getHubsCaseId()) {
-                // Redan registrerat — men säkerställ ändå boten (idempotent) så en
-                // re-registrering läker ett rum där boten föll bort.
-                $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
-                return;
+        // SÄKERHET: vägra binda ett rum som redan tillhör ett ANNAT ärende. Utan detta
+        // kan en behörig användare i ärende A posta ärende B:s dokumentrums-token och
+        // binda den till A → losRum (nyaste vinner) förgiftas → botens !råd/!minne i
+        // B:s chatt hämtar A:s kontext (kors-ärende-exponering). Samma ärende = idempotent.
+        foreach (['talk_room', 'dokumentchatt'] as $rumTyp) {
+            foreach ($this->pekareMapper->findByTypAndObjektId($rumTyp, $token) as $p) {
+                if ($p->getHubsCaseId() !== $arende->getHubsCaseId()) {
+                    $this->logger->warning('hubs_arende: registreraDokumentchatt vägrade kors-ärende-bindning av rum', [
+                        'app' => 'hubs_arende',
+                    ]);
+                    return;
+                }
+                if ($rumTyp === 'dokumentchatt') {
+                    // Redan registrerat för DETTA ärende — säkerställ ändå boten (idempotent).
+                    $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+                    return;
+                }
             }
         }
         $this->pekareMapper->record($arende->getHubsCaseId(), 'dokumentchatt', $token, $fil !== '' ? $fil : null);

@@ -408,7 +408,9 @@ class SpreedClient {
                 'app' => 'hubs_arende',
                 'method' => $method,
                 'path' => $path,
-                'ref' => $ref,
+                // $ref kan vara ett rumsnamn (PII, OSL 26 kap / GDPR) — samma safeRef-
+                // hashning som success-vägen, så fel-loggen inte kringgår skyddet.
+                'ref' => $this->safeRef($ref),
                 'exception' => $e->getMessage(),
             ]);
             return null;
