@@ -147,6 +147,60 @@ class SpreedClient {
     }
 
     /**
+     * Posta ett meddelande i ett rum SOM BOTEN via Talk BOT-API:t
+     * (POST /ocs/v2.php/apps/spreed/api/v1/bot/{token}/message), HMAC-signerat med
+     * botens secret. Används för brain-hälsningen: attribuerar meddelandet till
+     * "Ärende-brain" och funkar i ALLA rum boten är uppsatt i — inklusive fil-rum
+     * där tjänstekontots chat-API nekas (SA ej deltagare). Samma kontrakt som
+     * arende-bot:s botReply. Graceful: tom secret / spreed absent / fel ⇒ false.
+     *
+     * @param string $talkToken Rummets token.
+     * @param string $text      Meddelandetext (markdown).
+     * @param string $botSecret Botens delade HMAC-secret (hubs_arende.talk_bot_secret).
+     * @return bool true om posten lyckades.
+     */
+    public function botPostMessage(string $talkToken, string $text, string $botSecret): bool {
+        if (!$this->isAvailable() || $talkToken === '' || $botSecret === '' || $text === '') {
+            return false;
+        }
+        try {
+            $random = bin2hex(random_bytes(32));
+            // Talk-kontraktet: HMAC-SHA256 över (random ⧺ text) med bot-secreten.
+            $signature = hash_hmac('sha256', $random . $text, $botSecret);
+            $url = $this->urlGenerator->getAbsoluteURL(
+                self::BOT_API_BASE . '/' . rawurlencode($talkToken) . '/message',
+            );
+            $client = $this->clientService->newClient();
+            $response = $client->request('POST', $url, [
+                'headers' => [
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json',
+                    'OCS-APIRequest' => 'true',
+                    'X-Nextcloud-Talk-Bot-Random' => $random,
+                    'X-Nextcloud-Talk-Bot-Signature' => $signature,
+                ],
+                'json' => [
+                    'message' => $text,
+                    'referenceId' => hash('sha256', $talkToken . ':' . $text),
+                ],
+                'timeout' => 10,
+                'nextcloud' => ['allow_local_address' => true],
+            ]);
+            $status = $response->getStatusCode();
+            $ok = $status >= 200 && $status < 300;
+            $this->logger->info('hubs_arende: SpreedClient.botPostMessage', [
+                'app' => 'hubs_arende', 'talkToken' => $talkToken, 'status' => $status, 'ok' => $ok,
+            ]);
+            return $ok;
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: SpreedClient.botPostMessage misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'talkToken' => $talkToken, 'exception' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Hämta (och skapa vid behov) Talk-fil-rummet för en fil — Collaboras
      * dela→chatt-panel. GET /ocs/v2.php/apps/spreed/api/v1/file/{fileId}
      * (Talk FilesIntegration#getRoomByFileId).

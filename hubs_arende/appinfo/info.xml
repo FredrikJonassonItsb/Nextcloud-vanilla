@@ -53,6 +53,7 @@ Designad ExApp-rent (in-process NC-app nu → paketeras som ExApp senare).
         <command>OCA\HubsArende\Command\Smoke</command>
         <command>OCA\HubsArende\Command\Status</command>
         <command>OCA\HubsArende\Command\SeedDemo</command>
+        <command>OCA\HubsArende\Command\BrainHalsa</command>
     </commands>
     <settings>
         <admin>OCA\HubsArende\Settings\AdminStatus</admin>

@@ -741,6 +741,9 @@ class ArendeService {
                     // Best-effort — tjänstekontot äger rummet (moderator) och Talk är
                     // idempotent. talk_bot_id=0/tom ⇒ tyst no-op.
                     $this->spreedClient->enableBotInRoom($talkToken, $this->talkBotId());
+                    // BRAIN-HÄLSNING: boten postar en inledande kommentar så handläggaren
+                    // SER att AI:n finns när rummet öppnas (upptäckbarhet). Admin-styrt.
+                    $this->postaBrainHalsning($talkToken, 'arenderum');
                     // T-koppling: teamet som deltagare (markör-attendee) så rummet
                     // listas som team-resurs + @team-mention. Samma publik som
                     // kretsen — ingen behörighetsbreddning. Best-effort.
@@ -1808,6 +1811,8 @@ class ArendeService {
         // OBS: fil-rum har annan moderator-semantik — enableBot (OCS) kan neka (404);
         // då sätter reconcile-jobbet (occ talk:bot:setup, admin) upp boten kort därpå.
         $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+        // BRAIN-HÄLSNING i dokumentets chatt (upptäckbarhet + dokumentanpassat `!råd`).
+        $this->postaBrainHalsning($token, 'dokumentchatt', $fil !== '' ? $fil : null);
     }
 
     /**
@@ -2144,6 +2149,85 @@ class ArendeService {
         }
         $raw = trim($this->appConfig->getAppValueString('talk_bot_id', '0'));
         return ctype_digit($raw) ? (int)$raw : 0;
+    }
+
+    /**
+     * Botens delade HMAC-secret för att posta som "Ärende-brain" (bot-API:t).
+     * ADMIN: occ config:app:set hubs_arende talk_bot_secret --value <secret>.
+     * Tom ⇒ ingen bot-hälsning (postaBrainHalsning no-op:ar).
+     */
+    private function talkBotSecret(): string {
+        return $this->appConfig === null ? '' : trim($this->appConfig->getAppValueString('talk_bot_secret', ''));
+    }
+
+    /**
+     * ADMIN-INSTÄLLNING: när ska brain-boten posta sin inledande hälsning så
+     * handläggaren SER att AI:n finns (upptäckbarhet)?
+     *   occ config:app:set hubs_arende brain_greeting --value alla|arenderum|off
+     *   - 'alla'      (default): hälsa i BÅDE ärenderum och dokument-chattar.
+     *   - 'arenderum': bara i ärendets diskussionsrum.
+     *   - 'off':      ingen hälsning.
+     */
+    private function brainGreetingMode(): string {
+        $m = $this->appConfig === null ? 'alla' : trim($this->appConfig->getAppValueString('brain_greeting', 'alla'));
+        return in_array($m, ['alla', 'arenderum', 'off'], true) ? $m : 'alla';
+    }
+
+    /**
+     * Posta brain-botens INLEDANDE HÄLSNING i ett rum (upptäckbarhet — så handläggaren
+     * vet att AI:n finns och hur den används). Idempotent via en 'brain_greeting'-pekare
+     * (postas EN gång per rum). Gated på {@see brainGreetingMode()}. Best-effort:
+     * får aldrig fälla provisioneringen. Posten görs SOM BOTEN (bot-API), så den
+     * funkar även i fil-rum där tjänstekontot inte är deltagare.
+     *
+     * @param string $typ 'arenderum' | 'dokumentchatt'
+     */
+    public function postaBrainHalsning(string $token, string $typ, ?string $fil = null): void {
+        if ($token === '' || $this->spreedClient === null || $this->pekareMapper === null) {
+            return;
+        }
+        $mode = $this->brainGreetingMode();
+        if ($mode === 'off' || ($mode === 'arenderum' && $typ !== 'arenderum')) {
+            return;
+        }
+        $secret = $this->talkBotSecret();
+        if ($secret === '') {
+            return; // ingen bot-secret konfigurerad ⇒ kan inte posta som boten
+        }
+        try {
+            // Idempotens: hälsa EN gång per rum (markörpekare). Gallras med ärendet.
+            foreach ($this->pekareMapper->findByTypAndObjektId('brain_greeting', $token) as $p) {
+                return; // redan hälsat
+            }
+            $text = $typ === 'dokumentchatt'
+                ? "📄 **Ärende-brain** är kopplad till detta dokument.\n"
+                    . ($fil !== null && $fil !== '' ? "_{$fil}_\n" : '')
+                    . "· `!råd` — dokumentanpassade råd för arbetsmomentet\n"
+                    . "· `!hjälp` — alla kommandon\n"
+                    . "_AI-svar är arbetsmaterial (ej journal) och delas bara inom handläggarkretsen._"
+                : "👋 **Ärende-brain** är kopplad till detta ärende och hjälper dig genom handläggningen.\n"
+                    . "· `!brief` — AI-lägesbild av hela ärendet\n"
+                    . "· `!minne <fråga>` — sök i ärendets underlag\n"
+                    . "· `!gap` — vad saknas för nästa steg · `!frist` — klockorna\n"
+                    . "· `!hjälp` — alla kommandon\n"
+                    . "_AI-svar är arbetsmaterial (ej journal), källförankrat och HITL — du godkänner allt som blir handling._";
+
+            if ($this->spreedClient->botPostMessage($token, $text, $secret)) {
+                // Markera som hälsad först EFTER lyckad post (annars retas nästa gång).
+                $foraldrar = $this->pekareMapper->findByTypAndObjektId(
+                    $typ === 'dokumentchatt' ? 'dokumentchatt' : 'talk_room',
+                    $token,
+                );
+                $caseId = $foraldrar[0] ?? null;
+                if ($caseId !== null) {
+                    $this->pekareMapper->record($caseId->getHubsCaseId(), 'brain_greeting', $token);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: postaBrainHalsning misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
