@@ -35,6 +35,10 @@ use Psr\Log\LoggerInterface;
 class SpreedClient {
     private const APP_ID = 'spreed';
     private const API_BASE = '/ocs/v2.php/apps/spreed/api/v4/room';
+    /** Talk Bot API — enable/disable a bot in a conversation (v1). */
+    private const BOT_API_BASE = '/ocs/v2.php/apps/spreed/api/v1/bot';
+    /** Talk FilesIntegration API — get/create the file's chat room (v1). */
+    private const FILE_API_BASE = '/ocs/v2.php/apps/spreed/api/v1/file';
 
     /** Talk room type: 2 = group room. */
     private const ROOM_TYPE_GROUP = 2;
@@ -95,6 +99,84 @@ class SpreedClient {
         ]);
 
         return $talkToken;
+    }
+
+    /**
+     * Aktivera en Talk-bot i ett rum (SAGA-provisionering av AI-boten "Ärende-brain")
+     * — POST /ocs/v2.php/apps/spreed/api/v1/bot/{token}/{botId} (Talk Bot#enableBot).
+     *
+     * Detta stänger den manuella provisionerings-GAP:en: utan detta måste någon köra
+     * `occ talk:bot:setup <botId> <token>` för hand innan boten svarar i rummet. Rutten
+     * kräver att anroparen är MODERATOR i rummet — tjänstekontot äger rummet det just
+     * skapade (R6), så det är moderator. Idempotent: Talk svarar 200 om boten redan är
+     * aktiverad, 201 om den aktiveras nu. Graceful: spreed absent / botId ogiltig /
+     * anrop fallerar ⇒ NO-OP (reconcile-jobbet fångar upp senare).
+     *
+     * @param string $talkToken Rummets token.
+     * @param int    $botId     Talk-botens id (hubs_arende.talk_bot_id).
+     * @return bool true om aktivering försöktes (och inte uppenbart fallerade), annars false.
+     */
+    public function enableBotInRoom(string $talkToken, int $botId): bool {
+        if (!$this->isAvailable()) {
+            $this->noop('enableBotInRoom', $talkToken);
+            return false;
+        }
+        if ($talkToken === '' || $botId <= 0) {
+            return false; // ingen bot konfigurerad (talk_bot_id tom/0) ⇒ tyst no-op
+        }
+
+        $response = $this->ocsRequest(
+            'POST',
+            self::BOT_API_BASE . '/' . rawurlencode($talkToken) . '/' . $botId,
+            null,
+            $talkToken,
+        );
+
+        // 200 (redan aktiverad) och 201 (aktiverad nu) ger båda ett bot-objekt i data.
+        $ok = is_array($response)
+            && isset($response['ocs']['data']['id']);
+
+        $this->logger->info('hubs_arende: SpreedClient.enableBotInRoom', [
+            'app' => 'hubs_arende',
+            'talkToken' => $talkToken,
+            'botId' => $botId,
+            'ok' => $ok,
+        ]);
+
+        return $ok;
+    }
+
+    /**
+     * Hämta (och skapa vid behov) Talk-fil-rummet för en fil — Collaboras
+     * dela→chatt-panel. GET /ocs/v2.php/apps/spreed/api/v1/file/{fileId}
+     * (Talk FilesIntegration#getRoomByFileId).
+     *
+     * Används av dokument-AI:n: vid handlingsskapande pre-skapas fil-rummet så det
+     * FINNS (och kan bot-provisioneras) innan handläggaren öppnar dokumentets chatt
+     * i Collabora. Talk skapar annars rummet lazily först vid chatt-öppning.
+     * Kräver att anroparen (tjänstekontot) har åtkomst till filen — det äger
+     * ärenderummets groupfolder, så det har det. Graceful ⇒ null vid fel/no-op.
+     *
+     * @param int $fileId Nextcloud-filens id (Node::getId()).
+     * @return string|null Fil-rummets token, eller null.
+     */
+    public function fileRoomToken(int $fileId): ?string {
+        if (!$this->isAvailable() || $fileId <= 0) {
+            return null;
+        }
+        $response = $this->ocsRequest('GET', self::FILE_API_BASE . '/' . $fileId, null, 'file:' . $fileId);
+        $data = $response['ocs']['data'] ?? $response['data'] ?? null;
+        $token = is_array($data) && isset($data['token']) && is_string($data['token']) && $data['token'] !== ''
+            ? $data['token']
+            : null;
+
+        $this->logger->info('hubs_arende: SpreedClient.fileRoomToken', [
+            'app' => 'hubs_arende',
+            'fileId' => $fileId,
+            'talkToken' => $token,
+        ]);
+
+        return $token;
     }
 
     /**

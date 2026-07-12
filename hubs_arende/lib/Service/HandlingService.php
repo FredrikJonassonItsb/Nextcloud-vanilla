@@ -148,8 +148,9 @@ class HandlingService {
         }
         $filnamn = $this->byggFilnamn($folder, $mallBas, $hubsCaseId);
 
+        $nyFil = null;
         try {
-            $folder->newFile($filnamn, $bytes);
+            $nyFil = $folder->newFile($filnamn, $bytes);
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende: HandlingService — kunde ej skriva handling i groupfoldern', [
                 'app' => 'hubs_arende',
@@ -162,6 +163,20 @@ class HandlingService {
 
         // (9) Pekare — gör handlingen enumererbar för gallringen (städas med ärendet).
         $this->pekareMapper->record($hubsCaseId, self::OBJEKT_TYP, $filnamn);
+
+        // (9b) DOKUMENT-AI: pre-provisionera dokumentets Collabora-chatt (fil-rum +
+        // dokumentchatt-pekare) så `!råd` ger dokumentanpassade råd direkt när
+        // handläggaren öppnar dela→chatt. Best-effort — får aldrig fälla genereringen.
+        try {
+            $fileId = $nyFil !== null ? (int)$nyFil->getId() : 0;
+            if ($fileId > 0) {
+                $this->arendeService->provisioneraDokumentchatt($ref, $fileId, $filnamn);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug('hubs_arende: HandlingService — dokumentchatt-provisionering hoppad (graceful)', [
+                'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'exception' => $e->getMessage(),
+            ]);
+        }
 
         // (10) Journal — BEST-EFFORT (får aldrig fälla den mutation den beskriver)
         //      och ALDRIG fältvärden: bara mallnamn, antal och skydds-flaggan.

@@ -730,6 +730,12 @@ class ArendeService {
                 );
                 if ($talkToken !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'talk_room', $talkToken);
+                    // AI-BOT: aktivera "Ärende-brain" i rummet DIREKT vid provisionering
+                    // så !hjälp/!brief/!läge funkar utan manuell `occ talk:bot:setup`
+                    // (stänger den manuella GAP:en; reconcile-jobbet är bara skyddsnät).
+                    // Best-effort — tjänstekontot äger rummet (moderator) och Talk är
+                    // idempotent. talk_bot_id=0/tom ⇒ tyst no-op.
+                    $this->spreedClient->enableBotInRoom($talkToken, $this->talkBotId());
                     // T-koppling: teamet som deltagare (markör-attendee) så rummet
                     // listas som team-resurs + @team-mention. Samma publik som
                     // kretsen — ingen behörighetsbreddning. Best-effort.
@@ -1732,10 +1738,43 @@ class ArendeService {
         }
         foreach ($this->pekareMapper->findByTypAndObjektId('dokumentchatt', $token) as $p) {
             if ($p->getHubsCaseId() === $arende->getHubsCaseId()) {
-                return; // redan registrerat — idempotent
+                // Redan registrerat — men säkerställ ändå boten (idempotent) så en
+                // re-registrering läker ett rum där boten föll bort.
+                $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+                return;
             }
         }
         $this->pekareMapper->record($arende->getHubsCaseId(), 'dokumentchatt', $token, $fil !== '' ? $fil : null);
+        // AI-BOT: aktivera "Ärende-brain" i dokumentets filchatt-rum så `!råd` (och de
+        // övriga AI-kommandona med 📄-kontext) funkar direkt i Collabora. Best-effort.
+        // OBS: fil-rum har annan moderator-semantik — enableBot (OCS) kan neka (404);
+        // då sätter reconcile-jobbet (occ talk:bot:setup, admin) upp boten kort därpå.
+        $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+    }
+
+    /**
+     * Dokument-AI: pre-provisionera ett dokuments Collabora-chatt vid handlingsskapande.
+     * Skapar/hämtar Talk-fil-rummet för filen (så det FINNS innan handläggaren öppnar
+     * dela→chatt) och registrerar det som dokumentchatt-pekare ({@see registreraDokumentchatt}),
+     * så `!råd` ger dokumentanpassade råd. Best-effort: fil-rummet kan kräva delning till
+     * ≥2 användare; misslyckas det fångar reconcile-jobbet upp rummet när det öppnas.
+     * Anropas av {@see HandlingService} efter att docx:en skrivits.
+     */
+    public function provisioneraDokumentchatt(string $ref, int $fileId, string $filnamn): void {
+        if ($this->spreedClient === null || $fileId <= 0) {
+            return;
+        }
+        try {
+            $token = $this->spreedClient->fileRoomToken($fileId);
+            if ($token === null || $token === '') {
+                return; // fil-rum ej skapbart nu — reconcile fångar det när det öppnas
+            }
+            $this->registreraDokumentchatt($ref, $token, $filnamn);
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: provisioneraDokumentchatt misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'ref' => $ref, 'fileId' => $fileId, 'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -2029,6 +2068,24 @@ class ArendeService {
             return false;
         }
         return $this->appConfig->getAppValueString('koppla_admin_tag', '0') === '1';
+    }
+
+    /**
+     * Talk-botens ("Ärende-brain") id — den AI-bot som SAGA:n aktiverar i ärende-/
+     * dokumentchatt-rum ({@see SpreedClient::enableBotInRoom()}).
+     *
+     *   occ config:app:set hubs_arende talk_bot_id --value 6
+     *
+     * Default 0 (ingen bot) ⇒ tyst no-op: en miljö utan brain-bot provisionerar
+     * inget och beter sig som förut. Botens id är miljöspecifikt (sätts vid
+     * `occ talk:bot:install`), därför config-styrt och aldrig hårdkodat.
+     */
+    private function talkBotId(): int {
+        if ($this->appConfig === null) {
+            return 0;
+        }
+        $raw = trim($this->appConfig->getAppValueString('talk_bot_id', '0'));
+        return ctype_digit($raw) ? (int)$raw : 0;
     }
 
     /**
