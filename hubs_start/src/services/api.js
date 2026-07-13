@@ -801,7 +801,13 @@ export async function fetchHandlingUtkast(ref, mallId = null) {
 	// (malldefinitionen — dialogen visar aldrig fält mallen saknar).
 	if (DEMO) return { ok: true, falt: [], skyddsniva: 'ingen', varningar: [] }
 	const params = mallId ? { mallId } : {}
-	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling-utkast'), { params })
+	// Med mallId kan motorn dessutom generera ett källförankrat AI-narrativ via
+	// orkestreraren (inline-läge) — det tar tid (lokal LLM), så tåla längre latens.
+	// Utan mallId (första hämtningen) är det bara register-uppslag → normal snabbhet.
+	const res = await axios.get(
+		HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling-utkast'),
+		{ params, timeout: mallId ? 45000 : undefined },
+	)
 	return ocsData(res)
 }
 

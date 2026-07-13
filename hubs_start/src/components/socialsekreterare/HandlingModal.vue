@@ -142,7 +142,18 @@
 						<label class="handling-modal__label" :for="'handling-falt-' + falt.nyckel">
 							{{ falt.etikett }}
 						</label>
+						<!-- Källförankrat AI-narrativ (flerradigt) redigeras i en textarea;
+						     att granska/redigera det HÄR är människa-i-loopen-gränsen innan
+						     handlingen skapas. Övriga (metadata)fält är enradiga inputs. -->
+						<textarea
+							v-if="falt.kalla === 'ai_narrativ'"
+							:id="'handling-falt-' + falt.nyckel"
+							v-model="lokalaVarden[falt.nyckel]"
+							class="handling-modal__input handling-modal__narrativ"
+							rows="14"
+							:disabled="isRunning" />
 						<input
+							v-else
 							:id="'handling-falt-' + falt.nyckel"
 							v-model="lokalaVarden[falt.nyckel]"
 							class="handling-modal__input"
@@ -452,6 +463,7 @@ export default {
 			const map = {
 				register: t('hubs_start', 'Register'),
 				partsregister: t('hubs_start', 'Partsregistret'),
+					ai_narrativ: t('hubs_start', 'AI-utkast — källförankrat'),
 				anvandare: t('hubs_start', 'Användare'),
 			}
 			return map[kalla] || kalla

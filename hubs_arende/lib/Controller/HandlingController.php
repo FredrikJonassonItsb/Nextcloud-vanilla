@@ -12,6 +12,7 @@ namespace OCA\HubsArende\Controller;
 use OCA\HubsArende\AppInfo\Application;
 use OCA\HubsArende\Service\ArendedataService;
 use OCA\HubsArende\Service\ArendeService;
+use OCA\HubsArende\Service\Brain\OrkNarrativKlient;
 use OCA\HubsArende\Service\HandlingService;
 use OCA\HubsArende\Service\MallService;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -21,6 +22,7 @@ use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
 use OCP\IRequest;
+use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -61,6 +63,14 @@ class HandlingController extends OCSController {
         private readonly ArendedataService $arendedataService,
         private readonly HandlingService $handlingService,
         private readonly LoggerInterface $logger,
+        // Autowirad INLINE-klient: låter en generativ AI-funktion producera ett
+        // källförankrat narrativ till utkastet. OBLIGATORISK — NC:s DI autowirar
+        // bara obligatoriska konstruktorparametrar; en optional med default (?T=null)
+        // förblir null och blocket nedan hoppas då tyst över. Degraderbarheten bor
+        // i stället i genereraNarrativ() (no-op utan konfig/onåbar orkestrerare).
+        private readonly OrkNarrativKlient $orkNarrativKlient,
+        // Autowirad: den agerande handläggaren (uid) som ork-anropet prövas mot.
+        private readonly IUserSession $userSession,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -133,6 +143,42 @@ class HandlingController extends OCSController {
             // (malldefinitionen); utan mallId returneras hela faltkartan.
             $this->arendeService->show($ref);
             $utkast = $this->arendedataService->byggUtkast($ref, $mallId);
+
+            // AI-NARRATIV (additivt, degraderbart): motsvarar mallen en generativ
+            // AI-funktion körs den INLINE och narrativet läggs SIST som en extra
+            // fält-rad. HELA anropet är best-effort — orkestreraren onåbar/okonfig/
+            // nekande ⇒ hoppa bara över (utkastet fungerar exakt som förut).
+            // Bedömning/beslut lämnas till människan (varningstexten säger det).
+            if ($mallId !== null && $mallId !== '' && $this->orkNarrativKlient !== null) {
+                try {
+                    $fnId = OrkNarrativKlient::fnForMall($mallId);
+                    $uid = $this->userSession?->getUser()?->getUID() ?? '';
+                    if ($fnId !== null && $uid !== '') {
+                        $res = $this->orkNarrativKlient->genereraNarrativ($ref, $fnId, $uid);
+                        if ($res !== null && ($res['svar_md'] ?? '') !== '') {
+                            $utkast['falt'][] = [
+                                'nyckel' => 'ai_narrativ',
+                                'etikett' => 'AI-utkast (källförankrat)',
+                                'varde' => (string)$res['svar_md'],
+                                'kalla' => 'ai_narrativ',
+                                'sparrad' => false,
+                                'varning' => 'AI-förslag ur ärendets underlag — granska och '
+                                    . 'redigera. Bedömning/beslut skriver du själv.',
+                            ];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Narrativet är en bonus — ett fel här får aldrig fälla utkastet.
+                    // PII-doktrin: endast ref/mallId loggas, aldrig innehåll.
+                    $this->logger->debug('hubs_arende handling utkast: ai-narrativ hoppades över', [
+                        'app' => 'hubs_arende',
+                        'ref' => $ref,
+                        'mallId' => $mallId,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            }
+
             return new DataResponse(['ok' => true] + $utkast, Http::STATUS_OK);
         } catch (DoesNotExistException) {
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
