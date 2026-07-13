@@ -1,6 +1,0 @@
-caddy: ok
-reb: {{httpInclude "/reb/healthz"}}
-atlas: {{httpInclude "/atlas/healthz"}}
-ada: {{httpInclude "/ada/healthz"}}
-marvin: {{httpInclude "/marvin/healthz"}}
-team: {{httpInclude "/team/healthz"}}

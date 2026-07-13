@@ -1,8 +1,0 @@
-{
-  "__generator_note__": "TEMPLATE — do not deploy as-is. provision/occ-provision.sh generates the real rooms.json after creating the capture rooms and installing the Talk bots: for each room it emits the room token as key, the target brain (reb|atlas|ada|marvin|team), the botEnv matching the TALK_BOT_SECRET_<BOTENV> that was passed to `occ talk:bot:install`, and mode (team room => 'team', else 'personal'). Exactly ONE bot is set up per room (`occ talk:bot:setup`) — the botEnv here decides which secret verifies inbound webhooks and signs replies. Remove this key in the generated file.",
-  "REPLACE_reb_room_token": { "brain": "reb", "botEnv": "REB", "mode": "personal" },
-  "REPLACE_atlas_room_token": { "brain": "atlas", "botEnv": "ATLAS", "mode": "personal" },
-  "REPLACE_ada_room_token": { "brain": "ada", "botEnv": "ADA", "mode": "personal" },
-  "REPLACE_marvin_room_token": { "brain": "marvin", "botEnv": "MARVIN", "mode": "personal" },
-  "REPLACE_team_room_token": { "brain": "team", "botEnv": "REB", "mode": "team" }
-}
