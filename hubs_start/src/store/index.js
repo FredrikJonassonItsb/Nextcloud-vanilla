@@ -346,7 +346,14 @@ const store = {
 			// står kvar i sitt utkast-läge tills den verifierade callbacken kommer).
 			if (r.verifierad) {
 				const target = payload && payload.arende
-				const a = state.arende.arenden.find((x) => (target && (x.dnr === target.dnr || x.triageRef === target.triageRef)))
+				// Matcha på STABIL identitet, inte nullbar dnr: ett ärende som
+				// committas är per definition oregistrerat (dnr=null), och
+				// `x.dnr === target.dnr` (null===null) matchade FÖRSTA oregistrerade
+				// kortet i listan — provenans/plikt/retention flippade på fel kort (B2).
+				const nyckel = target && (target.triageRef || target.hubsCaseId)
+				const a = nyckel
+					? state.arende.arenden.find((x) => x.triageRef === nyckel || x.hubsCaseId === nyckel || (x.dnr !== null && x.dnr === nyckel))
+					: null
 				if (a) {
 					a.provenance = {
 						state: 'registrerad',

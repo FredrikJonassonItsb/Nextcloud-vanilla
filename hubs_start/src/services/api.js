@@ -522,15 +522,22 @@ export function arendeTypForRad(rad) {
  */
 async function taggaCaseMeddelande(ids, hubsCaseId) {
 	if (DEMO) return true
-	try {
-		for (const id of ids) {
-			await setMessageTag(id, 'case:' + hubsCaseId, true)
-			await setMessageTag(id, 'behandlad', true)
+	// Per-tagg-felhantering: en try runt hela loopen avbröt på FÖRSTA felet —
+	// felade case:-taggen (t.ex. 404 på en meddelandekopia användaren inte äger,
+	// B1a) sattes aldrig 'behandlad' ens när den skulle lyckas, och raden föll
+	// aldrig ur "Att ta emot". Försök därför ALLA taggar; kontraktet (false om
+	// någon misslyckades) är oförändrat.
+	let allaSatta = true
+	for (const id of ids) {
+		for (const tagg of ['case:' + hubsCaseId, 'behandlad']) {
+			try {
+				await setMessageTag(id, tagg, true)
+			} catch (e) {
+				allaSatta = false
+			}
 		}
-		return true
-	} catch (e) {
-		return false
 	}
+	return allaSatta
 }
 
 export async function skapaArende(rad) {

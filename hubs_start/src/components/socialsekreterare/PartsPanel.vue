@@ -150,6 +150,8 @@
 						v-model="delgivningDatum"
 						class="parts-panel__andamal-input"
 						type="date"
+						required
+						aria-required="true"
 						:disabled="muterar"
 						:aria-label="t('hubs_start', 'Delgivningsdatum')">
 					<select v-model="delgivningMetod" class="parts-panel__metod" :disabled="muterar" :aria-label="t('hubs_start', 'Delgivningssätt')">
@@ -159,7 +161,7 @@
 						<option value="kungorelse">{{ t('hubs_start', 'Kungörelse') }}</option>
 						<option value="stamning">{{ t('hubs_start', 'Stämningsman') }}</option>
 					</select>
-					<NcButton type="primary" :disabled="!delgivningDatum || muterar" @click="sparaDelgivning(part)">
+					<NcButton type="primary" :disabled="muterar" @click="sparaDelgivning(part)">
 						<template #icon>
 							<NcLoadingIcon v-if="muterar" :size="16" />
 						</template>
@@ -486,7 +488,15 @@ export default {
 
 		/** Registrera per-part-delgivning → synkar överklagandebevakningen. */
 		async sparaDelgivning(part) {
-			if (!this.delgivningDatum || this.muterar) {
+			if (this.muterar) {
+				return
+			}
+			// Validera i handlern med synligt fel i stället för disabled-gate på
+			// knappen: en tyst grå knapp är odiagnostiserbar för användaren, och
+			// handlern läser aktuellt komponent-state även om :disabled-bindningen
+			// frusit efter ett render-fel (buggklassen bakom B6/B7).
+			if (!this.delgivningDatum) {
+				showError(t('hubs_start', 'Välj ett delgivningsdatum.'))
 				return
 			}
 			this.muterar = true
@@ -576,6 +586,12 @@ export default {
 		motorFel(e, fallback) {
 			const d = e && e.response && e.response.data
 			const orsak = (d && d.ocs && d.ocs.data && d.ocs.data.error) || (d && d.error) || null
+			// 'not_found' är motorns MEDVETNA svar även vid authz-miss (existens
+			// läcker inte via 403, H1) — den råa tokenen är obegriplig i UI:t,
+			// så översätt till handlingsbar svenska.
+			if (orsak === 'not_found') {
+				return t('hubs_start', 'Ärendet eller parten hittades inte — eller så saknar du behörighet för enheten.')
+			}
 			return orsak || fallback
 		},
 

@@ -1267,13 +1267,20 @@ class ArendeService {
 
     /**
      * Gruppledarens fördelningsvy for the hubs_start frontend (roll-läge
-     * 'fordelning'). Returns the OTILLDELADE cases the caller is authorised for,
-     * mapped to the collapsed dashboard card shape, plus the (thin) handläggar-
-     * belastning derivable from the register's own assignment state.
+     * 'fordelning'). Returns the cases the caller is authorised for, mapped to
+     * the collapsed dashboard card shape, plus the (thin) handläggar-belastning
+     * derivable from the register's own assignment state.
      *
-     * Shape mirrors ssDemo.fetchFordelningSummary so the existing UI renders it
-     * unchanged:
-     *   { attFordela: Card[], utredare: [{namn,aktiva,roda,naraTak}], mottagningPagaende:int }
+     * Shape is a superset of ssDemo.fetchFordelningSummary so the existing UI
+     * renders it unchanged ('tilldelade' är rent additiv):
+     *   { attFordela: Card[], tilldelade: Card[],
+     *     utredare: [{namn,aktiva,roda,naraTak}], mottagningPagaende:int }
+     *
+     * 'tilldelade' (B13): urvalet var tidigare per definition bara otilldelade
+     * rader — när alla ärenden är tilldelade var Fördela-vyn tom trots ett fullt
+     * register, och omfördelning saknade underlag. Tilldelade, ej avslutade
+     * ärenden bärs nu som kort på SAMMA informationsnivå som attFordela
+     * (pseudonym barnRef, ingen ny sekretessyta).
      *
      * ENGINE-HONEST: utredar-belastning is derived ONLY from the register's
      * agareUid + frist colour (real coordination state); no name lookup / PII is
@@ -1285,20 +1292,81 @@ class ArendeService {
     public function fordelningSummary(): array {
         try {
             $attFordela = [];
-            foreach ($this->arendeMapper->findOtilldelade(200) as $arende) {
+            $tilldelade = [];
+            /** @var array<string,array{aktiva:int,roda:int}> $perUid */
+            $perUid = [];
+            $mottagningPagaende = 0;
+
+            // EN registerläsning för hela vyn: samma findAll-loop som belastnings-
+            // aggregatet redan krävde bär nu även båda kortzonerna (ersätter det
+            // separata findOtilldelade-anropet). enhetTillaten prövas per rad
+            // precis som tidigare — object-level authz ändras inte.
+            foreach ($this->arendeMapper->findAll(200) as $arende) {
                 if (!$this->enhetTillaten($arende->getEnhet())) {
                     continue;
                 }
-                $attFordela[] = $this->mapToFordelningsKort($arende);
+
+                if ($arende->getStatus() === 'otilldelat') {
+                    $attFordela[] = $this->mapToFordelningsKort($arende);
+                    if (in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true)) {
+                        $mottagningPagaende++;
+                    }
+                    continue;
+                }
+
+                if ($arende->getStatus() !== 'tilldelat') {
+                    continue;
+                }
+
+                $uid = $arende->getAgareUid();
+                if ($uid !== null && $uid !== '') {
+                    if (!isset($perUid[$uid])) {
+                        $perUid[$uid] = ['aktiva' => 0, 'roda' => 0];
+                    }
+                    $perUid[$uid]['aktiva']++;
+                    if ($this->fristAr('error', $arende)) {
+                        $perUid[$uid]['roda']++;
+                    }
+                }
+
+                if ($arende->getSteg() !== 'avslutat') {
+                    // Omfördelningsbart kort. agareUid string-castas medvetet:
+                    // numeriska uid:n (personnummer-konton) får annars läcka som
+                    // JSON-nummer och frontendens strikta strängjämförelser felar.
+                    $kort = $this->mapToCard($arende);
+                    $kort['tilldelning'] = [
+                        'status' => 'tilldelat',
+                        'agareUid' => (string)$uid,
+                        'agareNamn' => $this->agareVisningsnamn($uid),
+                    ];
+                    $tilldelade[] = $kort;
+                }
             }
 
-            // Thin handläggar-belastning from the register's own assignment state:
-            // count active (tilldelat) cases + red frister per agareUid. PII-fritt —
-            // the key is the uid the engine already stores (no name/innehåll lookup).
-            [$utredare, $mottagningPagaende] = $this->utredarBelastning();
+            // findAll är nyast-först men fördelningskön ska vara äldst-först
+            // (samma ordning som findOtilldelade gav) — den som väntat längst
+            // fördelas först.
+            $attFordela = array_reverse($attFordela);
+
+            $utredare = [];
+            foreach ($perUid as $uid => $b) {
+                $utredare[] = [
+                    // (string)-cast: PHP koercerar numeriska strängnycklar till
+                    // int, så ett personnummer-uid serialiserades som JSON-nummer
+                    // ("namn":19741104...) — namn/uid måste alltid vara sträng.
+                    'namn' => (string)$uid,
+                    'aktiva' => $b['aktiva'],
+                    'roda' => $b['roda'],
+                    // Neutral belastnings-tröskel over the engine's own active count.
+                    'naraTak' => $b['aktiva'] >= 18,
+                ];
+            }
+            // Stable order (busiest first) so the UI list is deterministic.
+            usort($utredare, static fn (array $a, array $b): int => $b['aktiva'] <=> $a['aktiva']);
 
             return [
                 'attFordela' => $attFordela,
+                'tilldelade' => $tilldelade,
                 'utredare' => $utredare,
                 'mottagningPagaende' => $mottagningPagaende,
             ];
@@ -1307,7 +1375,7 @@ class ArendeService {
                 'app' => 'hubs_arende',
                 'exception' => $e,
             ]);
-            return ['attFordela' => [], 'utredare' => [], 'mottagningPagaende' => 0];
+            return ['attFordela' => [], 'tilldelade' => [], 'utredare' => [], 'mottagningPagaende' => 0];
         }
     }
 
@@ -1392,62 +1460,6 @@ class ArendeService {
         }
         $now = $this->timeFactory->getDateTime();
         return max(0, (int)$skapad->diff($now)->format('%a'));
-    }
-
-    /**
-     * Thin per-handläggare belastning + mottagningens pågående, derived ONLY from
-     * the register's own coordination state (agareUid + status + frist colour). No
-     * name resolution / PII — the agareUid the engine already stores is the key.
-     *
-     *  - utredare[]: { namn:<uid>, aktiva:int, roda:int, naraTak:bool } for every
-     *    uid that owns at least one tilldelat case.
-     *  - mottagningPagaende: count of cases still in the mottagnings-steg ('inflode'
-     *    /'forhandsbedomning') that are NOT yet assigned (the queue the fördelare
-     *    works from).
-     *
-     * @return array{0: list<array<string,mixed>>, 1: int}
-     */
-    private function utredarBelastning(): array {
-        /** @var array<string,array{aktiva:int,roda:int}> $perUid */
-        $perUid = [];
-        $mottagningPagaende = 0;
-
-        foreach ($this->arendeMapper->findAll(200) as $arende) {
-            if (!$this->enhetTillaten($arende->getEnhet())) {
-                continue;
-            }
-
-            $uid = $arende->getAgareUid();
-            if ($arende->getStatus() === 'tilldelat' && $uid !== null && $uid !== '') {
-                if (!isset($perUid[$uid])) {
-                    $perUid[$uid] = ['aktiva' => 0, 'roda' => 0];
-                }
-                $perUid[$uid]['aktiva']++;
-                if ($this->fristAr('error', $arende)) {
-                    $perUid[$uid]['roda']++;
-                }
-            } elseif (
-                $arende->getStatus() === 'otilldelat'
-                && in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true)
-            ) {
-                $mottagningPagaende++;
-            }
-        }
-
-        $utredare = [];
-        foreach ($perUid as $uid => $b) {
-            $utredare[] = [
-                'namn' => $uid,
-                'aktiva' => $b['aktiva'],
-                'roda' => $b['roda'],
-                // Neutral belastnings-tröskel over the engine's own active count.
-                'naraTak' => $b['aktiva'] >= 18,
-            ];
-        }
-        // Stable order (busiest first) so the UI list is deterministic.
-        usort($utredare, static fn (array $a, array $b): int => $b['aktiva'] <=> $a['aktiva']);
-
-        return [$utredare, $mottagningPagaende];
     }
 
     /**

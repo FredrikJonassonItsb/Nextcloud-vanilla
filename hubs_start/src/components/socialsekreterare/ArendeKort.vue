@@ -110,19 +110,13 @@
 			</div>
 
 			<div v-if="isExpanded" class="arende-kort__flik">
-				<!-- Akten (ärenderummets dokument) — filerna är KLICKBARA;
-				     meddelandereferenser (msg-*.url) renderas som meddelanderader. -->
+				<!-- Akten (ärenderummets dokument) — filerna är KLICKBARA.
+				     Meddelandereferenser (msg-*.url) visas INTE här: meddelanden hör
+				     hemma under fliken Meddelanden (aktenDokument filtrerar bort dem). -->
 				<ul v-if="activeFlik === 'dokument'" class="arende-kort__list">
-					<template v-for="(d, i) in aktenDokument">
-						<li v-if="d.arReferens" :key="'r' + i">
-							<button class="arende-kort__radknapp hs-target" type="button" @click="openFlik('meddelanden')">
-								<MessageTextLockIcon :size="16" /> {{ t('hubs_start', 'Kopplat meddelande (referens) — visa under Meddelanden') }}
-							</button>
-						</li>
-						<li v-else :key="'f' + i" :title="dokTitle(d)">
-							<a class="arende-kort__fillank" :href="fileHref(d)"><FileDocumentIcon :size="16" /> {{ dokNamn(d) }}</a>
-						</li>
-					</template>
+					<li v-for="(d, i) in aktenDokument" :key="'f' + i" :title="dokTitle(d)">
+						<a class="arende-kort__fillank" :href="fileHref(d)"><FileDocumentIcon :size="16" /> {{ dokNamn(d) }}</a>
+					</li>
 					<li v-if="!aktenDokument.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga dokument än.') }}</li>
 				</ul>
 
@@ -245,13 +239,14 @@
 					<div class="arende-kort__bevakning-ny">
 						<p class="arende-kort__flikrubrik">{{ t('hubs_start', 'Ny bevakning') }}</p>
 						<label class="arende-kort__falt">
-							<span class="arende-kort__falt-label">{{ t('hubs_start', 'Rubrik') }}</span>
+							<span class="arende-kort__falt-label">{{ t('hubs_start', 'Rubrik') }} *</span>
 							<input
 								v-model="nyBevakning.titel"
 								type="text"
 								class="arende-kort__input"
 								:placeholder="t('hubs_start', 'Kort rubrik — ingen känslig information')"
 								:disabled="nyBevakningSparar"
+								aria-required="true"
 								@keyup.enter="skapaBevak">
 						</label>
 						<p class="arende-kort__muted arende-kort__falt-hint">{{ t('hubs_start', 'Ingen känslig information i rubriken.') }}</p>
@@ -274,13 +269,25 @@
 									:disabled="nyBevakningSparar">
 							</label>
 						</div>
+						<!-- Disabled ENDAST under sparande: rubrik-kravet valideras i
+						     handlern med synligt fel. En villkors-disabled knapp blir en
+						     oförklarat död knapp om komponentens render fryser efter ett
+						     JS-fel (bindningen omvärderas aldrig, klicket avfyras aldrig). -->
 						<NcButton
 							type="primary"
-							:disabled="!nyBevakning.titel.trim() || nyBevakningSparar"
+							:disabled="nyBevakningSparar"
 							@click="skapaBevak">
 							<template #icon><BellRingIcon :size="16" /></template>
 							{{ t('hubs_start', 'Skapa bevakning') }}
 						</NcButton>
+						<!-- Förklara den nedtonade knappen — annars ser formuläret "trasigt"
+						     ut när frist/cykel är ifyllda men rubriken (kravet) är tom. -->
+						<p
+							v-if="!nyBevakning.titel.trim() && (nyBevakning.fristDue || nyBevakning.recurringDagar)"
+							class="arende-kort__muted arende-kort__falt-hint"
+							role="status">
+							{{ t('hubs_start', 'Ange en rubrik för att kunna skapa bevakningen.') }}
+						</p>
 					</div>
 
 					<!-- Delgivningsdatum: sätter FL 33 §-datumet → föder överklagandebevakningen
@@ -297,9 +304,11 @@
 								type="date"
 								class="arende-kort__input"
 								:disabled="delgivningSparar">
+							<!-- Samma buggklass som Skapa bevakning: disabled endast under
+							     sparande — datum-kravet valideras i handlern med synligt fel. -->
 							<NcButton
 								type="secondary"
-								:disabled="!delgivningsdatum || delgivningSparar"
+								:disabled="delgivningSparar"
 								@click="sattDelgivning">
 								{{ t('hubs_start', 'Spara delgivningsdatum') }}
 							</NcButton>
@@ -311,11 +320,16 @@
 				     NEVER-SoR: besluten i sak bor i facksystemet — detta är spegeln. -->
 				<div v-else-if="activeFlik === 'historik'">
 					<template v-if="full.beslut">
-						<p>{{ t('hubs_start', 'Kravnivå:') }} <strong>{{ full.beslut.kravniva }}</strong> · {{ full.beslut.signStatus }}</p>
-						<p class="arende-kort__bevarande">
-							<span :class="bevClass(full.beslut.bevarande.pades)">PAdES</span>
-							<span :class="bevClass(full.beslut.bevarande.pdfa)">PDF/A-1</span>
-							<span :class="bevClass(full.beslut.bevarande.ltv)">LTV</span>
+						<!-- Motorns A11-beslut ({ dnr, destination, provenans, signatur,
+						     signerat }) saknar demo-fixturens kravniva/signStatus/bevarande —
+						     ovillkorlig dereferens gav TypeError i rendern och fliken såg
+						     död ut på registrerade live-ärenden. Guarda per form. -->
+						<p v-if="full.beslut.kravniva">{{ t('hubs_start', 'Kravnivå:') }} <strong>{{ full.beslut.kravniva }}</strong> · {{ full.beslut.signStatus }}</p>
+						<p v-else>{{ t('hubs_start', 'Registrerad i facksystemet — dnr {dnr}', { dnr: full.beslut.dnr || '' }) }}<template v-if="full.beslut.signerat"> · {{ t('hubs_start', 'signerad') }}</template></p>
+						<p v-if="beslutBevarande" class="arende-kort__bevarande">
+							<span :class="bevClass(beslutBevarande.pades)">PAdES</span>
+							<span :class="bevClass(beslutBevarande.pdfa)">PDF/A-1</span>
+							<span :class="bevClass(beslutBevarande.ltv)">LTV</span>
 							<span class="arende-kort__muted">{{ t('hubs_start', 'Giltig nu / Giltig då') }}</span>
 						</p>
 					</template>
@@ -537,17 +551,19 @@ export default {
 			const bas = this.t('hubs_start', 'Ärende {ref}', { ref: kort })
 			return this.arende.barnRef ? bas + ' · ' + this.arende.barnRef : bas
 		},
-		/** Aktens dokument med referens-detektion (msg-*.url = meddelandepekare). */
+		/** Aktens dokument. Meddelandepekare (msg-*.url) filtreras BORT — meddelanden
+		 * visas enbart under fliken Meddelanden, aldrig som referensrad i akten. */
 		aktenDokument() {
 			const docs = (this.full.rum && this.full.rum.dokument) || []
-			return docs.map((d) => {
-				const namn = this.dokNamn(d)
-				return {
-					...(d && typeof d === 'object' ? d : { namn: String(d) }),
-					namn,
-					arReferens: /^msg-[0-9a-f]+\.url$/i.test(namn),
-				}
-			})
+			return docs
+				.map((d) => {
+					const namn = this.dokNamn(d)
+					return {
+						...(d && typeof d === 'object' ? d : { namn: String(d) }),
+						namn,
+					}
+				})
+				.filter((d) => !/^msg-[0-9a-f]+\.url$/i.test(d.namn))
 		},
 		/** Kopplade meddelanden: hämtade (live) med fixture-fallback (demo). */
 		kopplladeMeddelanden() {
@@ -565,10 +581,29 @@ export default {
 		historik() {
 			return this.tabHistorik || []
 		},
+		/** B5 — bevarande-status för historik-fliken: demo-fixturens beslut.bevarande
+		 * ({pades,pdfa,ltv}) när den finns, annars härledd ur motorns A11-signatur
+		 * ({format,pdfa,ltv} per signaturDetaljFromKvitto). null = inget att visa
+		 * (oregistrerat/osignerat) — chippen renderas då inte alls i stället för att
+		 * en ovillkorlig dereferens kraschar hela flikens render. */
+		beslutBevarande() {
+			const b = this.full.beslut
+			if (!b) {
+				return null
+			}
+			if (b.bevarande) {
+				return b.bevarande
+			}
+			const sig = b.signatur
+			if (sig && typeof sig === 'object') {
+				return { pades: /pades/i.test(String(sig.format || '')), pdfa: !!sig.pdfa, ltv: !!sig.ltv }
+			}
+			return null
+		},
 		flikar() {
 			// Flikraden är ALLTID synlig; räknaren visas när innehållet är känt
 			// (kollapsat kort saknar full-datat → null = ingen siffra, ärlig okänd).
-			const dok = this.full.rum && this.full.rum.dokument ? this.full.rum.dokument.length : null
+			const dok = this.full.rum && this.full.rum.dokument ? this.aktenDokument.length : null
 			return [
 				{ id: 'dokument', label: t('hubs_start', 'Akten'), antal: dok },
 				{ id: 'parter', label: t('hubs_start', 'Parter'), antal: this.tabParterAntal },
@@ -947,12 +982,16 @@ export default {
 		emitCommit() {
 			this.$emit('commit', this.arende, { dokument: this.normaliseraDok() })
 		},
-		/** Normalisera ärenderummets dokument till {fileid,namn} (stöd strängar + objekt). */
+		/** Normalisera ärenderummets dokument till {fileid,namn} (stöd strängar + objekt).
+		 * Meddelandepekare (msg-*.url) utesluts — de är referenser, inte handlingar,
+		 * och ska aldrig erbjudas i commit-grindens dokumenturval. */
 		normaliseraDok() {
 			const docs = (this.full.rum && this.full.rum.dokument) || []
-			return docs.map((d) => (d && typeof d === 'object')
-				? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: this.dokNamn(d) }
-				: { fileid: null, namn: String(d) })
+			return docs
+				.filter((d) => !/^msg-[0-9a-f]+\.url$/i.test(this.dokNamn(d)))
+				.map((d) => (d && typeof d === 'object')
+					? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: this.dokNamn(d) }
+					: { fileid: null, namn: String(d) })
 		},
 		/** Dokumentets visningsnamn. arenderumDokument() ger {namn,fileid}-objekt på
 		 * riktig data; demo-data ger strängar. Stöd båda (annars '[object Object]'). */
@@ -1071,7 +1110,14 @@ export default {
 		async skapaBevak() {
 			const ref = this.arende.hubsCaseId || this.cacheKey
 			const titel = this.nyBevakning.titel.trim()
-			if (!ref || !titel || this.nyBevakningSparar) {
+			if (!ref || this.nyBevakningSparar) {
+				return
+			}
+			// Rubrik-kravet valideras HÄR (inte i :disabled): handlern läser alltid
+			// aktuellt komponent-state och ger ett synligt fel — en tyst return
+			// lämnar användaren gissande om varför inget händer.
+			if (!titel) {
+				showError(t('hubs_start', 'Ange en rubrik för bevakningen.'))
 				return
 			}
 			this.nyBevakningSparar = true
@@ -1097,7 +1143,13 @@ export default {
 		/** Sätt delgivningsdatum → föder överklagandebevakningen; ladda om fliken. */
 		async sattDelgivning() {
 			const ref = this.arende.hubsCaseId || this.cacheKey
-			if (!ref || !this.delgivningsdatum || this.delgivningSparar) {
+			if (!ref || this.delgivningSparar) {
+				return
+			}
+			// Datum-kravet valideras här (inte i :disabled) — synligt fel i stället
+			// för en oförklarat grå knapp, robust även mot fryst re-render.
+			if (!this.delgivningsdatum) {
+				showError(t('hubs_start', 'Välj ett delgivningsdatum.'))
 				return
 			}
 			this.delgivningSparar = true

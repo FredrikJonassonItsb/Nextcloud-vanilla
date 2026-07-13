@@ -110,6 +110,9 @@
 						</NcCheckboxRadioSwitch>
 					</li>
 				</ul>
+				<p v-else-if="dokLaddar" class="commit-grind__docs-empty">
+					{{ t('hubs_start', 'Hämtar ärenderummets dokument…') }}
+				</p>
 				<p v-else class="commit-grind__docs-empty">
 					{{ t('hubs_start', 'Inga dokument i ärenderummet.') }}
 				</p>
@@ -121,6 +124,12 @@
 				<p v-if="kraverSignering && valda.length && !nagotValt" class="commit-grind__docs-krav" role="status">
 					<AlertIcon :size="14" />
 					<span>{{ t('hubs_start', 'Välj minst ett dokument att föra över.') }}</span>
+				</p>
+				<!-- B3 — tom lista fick tidigare "För över" att vara nedtonad UTAN förklaring
+				     (upplevd deadlock). Säg vad som krävs och hur man kommer vidare. -->
+				<p v-if="kraverSignering && !dokLaddar && !valda.length" class="commit-grind__docs-krav" role="status">
+					<AlertIcon :size="14" />
+					<span>{{ t('hubs_start', 'Beslutet kräver minst ett dokument att föra över. Skapa beslutshandlingen först (Gör annat → Skapa handling från mall) — knappen låses upp när ett dokument finns.') }}</span>
 				</p>
 			</section>
 
@@ -240,6 +249,7 @@ import ArchiveCheckIcon from 'vue-material-design-icons/ArchiveCheck.vue'
 import { translate as t } from '@nextcloud/l10n'
 
 import api from '../../services/api.js'
+import store from '../../store/index.js'
 import { isDemo } from '../../services/demoData.js'
 import { toneColor } from '../../services/tones.js'
 
@@ -316,6 +326,8 @@ export default {
 			// TODO[per-arendetyp-dokumentpolicy]: framtid — härled initial `vald`
 			// per payload.typ/arendeTyp (t.ex. exkludera utkast). Nu, beslut #5: alla förvalda.
 			valda: [],
+			// B3/B9 — sant medan grinden själv hämtar dokumentlistan ur motorn.
+			dokLaddar: false,
 		}
 	},
 
@@ -324,6 +336,12 @@ export default {
 		this.valda = docs.map((d) => (d && typeof d === 'object')
 			? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: d.namn || d.name || '', vald: true }
 			: { fileid: null, namn: String(d), vald: true })
+		// B3/B9 — vissa ingångar (t.ex. signering-vägen) skickar ingen dokumentlista.
+		// Hämta den då själv ur motorn: grinden får aldrig deadlocka på en tom lista
+		// som bara beror på VAR den öppnades ifrån.
+		if (!this.valda.length) {
+			this.hamtaDokument()
+		}
 	},
 
 	computed: {
@@ -417,6 +435,30 @@ export default {
 
 	methods: {
 		t,
+
+		/** B3/B9 — hämta ärenderummets dokument när payload saknade lista.
+		 * Meddelandepekare (msg-*.url) utesluts: referenser, inte handlingar. */
+		async hamtaDokument() {
+			const ref = this.arende && (this.arende.triageRef || this.arende.dnr || this.arende.hubsCaseId)
+			if (!ref) {
+				return
+			}
+			this.dokLaddar = true
+			try {
+				const full = await store.loadArende(ref)
+				if (this.valda.length) {
+					return
+				}
+				const docs = (full && full.rum && full.rum.dokument) || []
+				this.valda = docs
+					.filter((d) => !/^msg-[0-9a-f]+\.url$/i.test((d && typeof d === 'object') ? (d.namn || d.name || '') : String(d)))
+					.map((d) => (d && typeof d === 'object')
+						? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: d.namn || d.name || '', vald: true }
+						: { fileid: null, namn: String(d), vald: true })
+			} finally {
+				this.dokLaddar = false
+			}
+		},
 
 		clearTimers() {
 			this.timers.forEach((id) => clearTimeout(id))

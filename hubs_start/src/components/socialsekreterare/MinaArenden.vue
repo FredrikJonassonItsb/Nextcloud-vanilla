@@ -57,11 +57,8 @@
 			@upgrade-loa="onUpgradeLoa"
 			@open-help="onOpenHelp" />
 
-		<!-- Zon V: verbingång -->
-		<VadVillDuGora
-			:dismissed="prefs.verbEntryDismissed"
-			@verb="onVerb"
-			@dismiss="onDismissVerb" />
+		<!-- B11 — "Vad vill du göra?"-verbingången borttagen (förvirrade användaren;
+		     åtgärderna nås via korten, kommandopaletten och Dagspulsen). -->
 
 		<NcLoadingIcon v-if="A.loading" :size="44" class="mina-arenden__loading" />
 
@@ -74,92 +71,105 @@
 			@omfordela="onOmfordela" />
 
 		<template v-else>
-			<!-- Zon 1 topp: korg-väljare (korg-piller + typ-filter) -->
-			<KorgValjare
-				:korgar="A.korgar"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@valj-korg="store.setKorgFilter"
-				@valj-typ="store.setTypFilter" />
+			<!-- B12 — ÖVRE LAGRET: inflödet (genomströmningsytan) som egen grå platta.
+			     Utan gruppering lästes triage-banden och Mina ärenden som EN likformig
+			     kortstapel — plattan bär signalen "målet är tom yta". -->
+			<section class="mina-arenden__inflode" :aria-label="t('hubs_start', 'Inflöde — att sortera')">
+				<h2 class="mina-arenden__inflode-rubrik">{{ t('hubs_start', 'Inflöde — att sortera') }}</h2>
+				<p class="mina-arenden__inflode-under">{{ t('hubs_start', 'Målet är tom yta — allt inkommande omhändertaget.') }}</p>
 
-			<!-- Zon 1a: att ta emot (nytt-ärende-inflöde) -->
-			<AttTaEmotSektion
-				:items="taEmotItems"
-				:aktivt-filter="A.pulsFilter"
-				:pending-ids="taEmotPending"
-				@triage="onTriage"
-				@open="onOpenTriage" />
+				<!-- Zon 1 topp: korg-väljare (korg-piller + typ-filter) -->
+				<KorgValjare
+					:korgar="A.korgar"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					@valj-korg="store.setKorgFilter"
+					@valj-typ="store.setTypFilter" />
 
-			<!-- Zon 1b: att hantera (inflöde som hör till mina pågående ärenden) -->
-			<AttHanteraSektion
-				:items="attHanteraItems"
-				:gruppering="attHanteraGruppering"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@satt-gruppering="attHanteraGruppering = $event"
-				@spara-i-rum="onInflode('spara-i-rum', $event)"
-				@skapa-bevakning="onSkapaBevakningInflode"
-				@besvara="onInflode('besvara', $event)"
-				@open-arende="onOpenKoppling" />
+				<!-- Zon 1a: att ta emot (nytt-ärende-inflöde) -->
+				<AttTaEmotSektion
+					:items="taEmotItems"
+					:aktivt-filter="A.pulsFilter"
+					:pending-ids="taEmotPending"
+					@triage="onTriage"
+					@open="onOpenTriage" />
 
-			<!-- Zon 1c: ej ärendekopplat (hink + gallringsgrind ägs av sektionen) -->
-			<EjKoppladSektion
-				:items="ejKoppladItems"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@koppla="onInflode('koppla', $event)"
-				@skapa="onInflode('skapa', $event)"
-				@besvara="onInflode('besvara', $event)"
-				@vidarebefordra="onVidarebefordra"
-				@gallra="onInflode('gallra', $event)"
-				@registrera="onInflode('registrera', $event)"
-				@avvisa-forslag="onAvvisaForslag" />
+				<!-- Zon 1b: att hantera (inflöde som hör till mina pågående ärenden) -->
+				<AttHanteraSektion
+					:items="attHanteraItems"
+					:gruppering="attHanteraGruppering"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					@satt-gruppering="attHanteraGruppering = $event"
+					@spara-i-rum="onInflode('spara-i-rum', $event)"
+					@skapa-bevakning="onSkapaBevakningInflode"
+					@besvara="onInflode('besvara', $event)"
+					@open-arende="onOpenKoppling" />
 
-			<!-- Zon 2: KRÄVER ÅTGÄRD NU — varsel-LISTA som länkar NER till kortet.
-			     Ett ärende = ett kort = en arbetsyta; kortet flyttas aldrig hit. -->
-			<VarselLista
-				:varsel="varsel"
-				@ga-till="gaTillArende" />
+				<!-- Zon 1c: ej ärendekopplat (hink + gallringsgrind ägs av sektionen) -->
+				<EjKoppladSektion
+					:items="ejKoppladItems"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					@koppla="onInflode('koppla', $event)"
+					@skapa="onInflode('skapa', $event)"
+					@besvara="onInflode('besvara', $event)"
+					@vidarebefordra="onVidarebefordra"
+					@gallra="onInflode('gallra', $event)"
+					@registrera="onInflode('registrera', $event)"
+					@avvisa-forslag="onAvvisaForslag" />
+			</section>
 
-			<!-- Zon 3: MINA ÄRENDEN — ALLA ärenden jag är ansluten till
-			     (medlemsbaserad summary, frist-sorterad: närmast brinner överst). -->
-			<ArendeZon
-				:arenden="aktivaArenden"
-				:pinned="false"
-				:title="t('hubs_start', 'Mina ärenden')"
-				:filter-steg="A.stegFilter"
-				:keyboard-mode="prefs.keyboardMode"
-				:markerad-ref="markeradRef"
-				:varslade-refs="varsladeRefs"
-				@filter-steg="store.setStegFilter"
-				@nasta-atgard="onNastaAtgard"
-				@open-rum="onOpenRum"
-				@open-team="onOpenTeam"
-				@ny-chatt="onNyChatt"
-				@skapa-handling="onSkapaHandling"
-				@omfordela-kollega="onOmfordelaKollega"
-				@skicka="onSkicka"
-				@boka-mote="openMeetingWizard"
-				@signera="onSignera"
-				@commit="onCommit"
-				@bevakning="onBevakning"
-				@godkann="onGodkann"
-				@expand="onExpand" />
+			<!-- B12 — UNDRE LAGRET: arbetsytan (varsel + Mina ärenden + möten) bakom en
+			     tydlig avdelare. Varsel hör hit — den länkar NER till korten och är
+			     ärendearbete, inte triage. -->
+			<section class="mina-arenden__arbetsyta">
+				<!-- Zon 2: KRÄVER ÅTGÄRD NU — varsel-LISTA som länkar NER till kortet.
+				     Ett ärende = ett kort = en arbetsyta; kortet flyttas aldrig hit. -->
+				<VarselLista
+					:varsel="varsel"
+					@ga-till="gaTillArende" />
 
-			<!-- Zon 4: mina möten idag — TOM panel kollapsas till en rad -->
-			<button
-				v-if="!meetings.length && !motenVisas"
-				class="mina-arenden__kollapsad hs-card hs-target"
-				type="button"
-				:aria-expanded="'false'"
-				@click="motenVisas = true">
-				<ChevronRightIcon :size="16" /> {{ t('hubs_start', 'Mina möten idag') }}
-				<span class="mina-arenden__kollapsad-antal">0</span>
-			</button>
-			<MotesRemsa
-				v-else
-				:meetings="meetings"
-				@join="onJoin" />
+				<!-- Zon 3: MINA ÄRENDEN — ALLA ärenden jag är ansluten till
+				     (medlemsbaserad summary, frist-sorterad: närmast brinner överst). -->
+				<ArendeZon
+					:arenden="aktivaArenden"
+					:pinned="false"
+					:title="t('hubs_start', 'Mina ärenden')"
+					:filter-steg="A.stegFilter"
+					:keyboard-mode="prefs.keyboardMode"
+					:markerad-ref="markeradRef"
+					:varslade-refs="varsladeRefs"
+					@filter-steg="store.setStegFilter"
+					@nasta-atgard="onNastaAtgard"
+					@open-rum="onOpenRum"
+					@open-team="onOpenTeam"
+					@ny-chatt="onNyChatt"
+					@skapa-handling="onSkapaHandling"
+					@omfordela-kollega="onOmfordelaKollega"
+					@skicka="onSkicka"
+					@boka-mote="openMeetingWizard"
+					@signera="onSignera"
+					@commit="onCommit"
+					@bevakning="onBevakning"
+					@godkann="onGodkann"
+					@expand="onExpand" />
+
+				<!-- Zon 4: mina möten idag — TOM panel kollapsas till en rad -->
+				<button
+					v-if="!meetings.length && !motenVisas"
+					class="mina-arenden__kollapsad hs-card hs-target"
+					type="button"
+					:aria-expanded="'false'"
+					@click="motenVisas = true">
+					<ChevronRightIcon :size="16" /> {{ t('hubs_start', 'Mina möten idag') }}
+					<span class="mina-arenden__kollapsad-antal">0</span>
+				</button>
+				<MotesRemsa
+					v-else
+					:meetings="meetings"
+					@join="onJoin" />
+			</section>
 
 			<!-- Kvittenser & gallring BORTTAGEN ur Min dag (Fredrik 2026-07-07):
 			     registrerings-/gallringskvitton är fördelnings-/uppföljningsdata,
@@ -291,10 +301,13 @@
 			:arende="wizardArende"
 			@close="meetingWizardOpen = false"
 			@booked="onMeetingBooked" />
+		<!-- 'Nytt säkert meddelande' öppnar säker compose UTAN ärende (samma väg som
+		     kortets Skicka) — var copy-paste-felkopplad till mötes-wizarden, så
+		     palettens meddelande-val bokade möten. Mötes-eventen hör till wizarden. -->
 		<CommandPalette
 			v-if="commandPaletteOpen"
 			@close="commandPaletteOpen = false"
-			@new-message="openMeetingWizard"
+			@new-message="onSkicka()"
 			@book-meeting="openMeetingWizard"
 			@start-meeting="openMeetingWizard" />
 
@@ -361,7 +374,6 @@ import PersonaSwitcher from '../PersonaSwitcher.vue'
 
 import MinDagHeader from './MinDagHeader.vue'
 import Dagspulsen from './Dagspulsen.vue'
-import VadVillDuGora from './VadVillDuGora.vue'
 import AttTaEmotSektion from './AttTaEmotSektion.vue'
 import AttHanteraSektion from './AttHanteraSektion.vue'
 import EjKoppladSektion from './EjKoppladSektion.vue'
@@ -389,7 +401,7 @@ export default {
 		NcLoadingIcon, NcCounterBubble, NcModal, NcButton, NcCheckboxRadioSwitch,
 		CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
 		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon, ShieldAlertIcon, ArrowRightIcon,
-		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
+		MinDagHeader, Dagspulsen, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, ArendeZon,
 		MotesRemsa, VarselLista, CommitGrind, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
@@ -846,7 +858,16 @@ export default {
 			try {
 				const r = await store.inflodeAction('skapa', { id: rad.id, rad })
 				if (r && r.ok && r.arende) {
-					showSuccess(this.t('hubs_start', 'Ärende startat — ärenderum skapat, 14-dagarsklockan tickar.'))
+					// Ärlig kvittens även för TAGGEN: taggSatt=false betyder att ärendet
+					// skapades men case-/behandlad-taggen aldrig landade (t.ex. cross-
+					// account db-id i funktionsbrevlådan) → raden återkommer i inflödet
+					// och Meddelanden visar ingen markering. En ovillkorlig success
+					// dolde det som "klart" (samma falska-kvitto-klass som gap12).
+					if (r.arende.taggSatt === false) {
+						showError(this.t('hubs_start', 'Ärendet skapades men meddelandet kunde inte markeras som behandlat — kontrollera Meddelanden.'))
+					} else {
+						showSuccess(this.t('hubs_start', 'Ärende startat — ärenderum skapat, 14-dagarsklockan tickar.'))
+					}
 				} else {
 					showError(this.t('hubs_start', 'Kunde inte starta ärendet: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
@@ -987,13 +1008,22 @@ export default {
 		},
 
 		// --- Fördelningsläge (gruppledare) ----------------------------------
+		// B13 — fördela/omfördela går via MOTORNS POST /arende/{ref}/tilldela
+		// (samma orkestrering som "Ta ärendet"/omfördela-modalen: ACL, Deck,
+		// fristpåminnelser). Tidigare routades verben via store.inflodeAction →
+		// sdkmc /inflode/tilldela|omfordela som inte existerar → garanterad 400
+		// 'okand_atgard' på varje fördelning. Efteråt läses fördelningsvyn om
+		// så kortet flyttar mellan zonerna (best-effort).
 		async onFordela({ ref, utredareUid }) {
 			try {
-				const res = await store.inflodeAction('tilldela', { ref, utredareUid })
-				if (res && (res.ok === false || res.error || res.avvisad)) {
-					showError(this.t('hubs_start', 'Kunde inte fördela: {orsak}', { orsak: res.error || res.reason || this.t('hubs_start', 'okänt fel') }))
-				} else {
+				const r = await tilldela(ref, utredareUid)
+				if (r && r.ok !== false) {
 					showSuccess(this.t('hubs_start', 'Fördelat till {uid} — skrivåtkomst och fristpåminnelser flyttade.', { uid: utredareUid }))
+					try {
+						await store.loadFordelningSummary()
+					} catch (e) { /* fördelningen är redan genomförd */ }
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte fördela: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte fördela ärendet. Försök igen.'))
@@ -1001,11 +1031,14 @@ export default {
 		},
 		async onOmfordela({ ref, utredareUid }) {
 			try {
-				const res = await store.inflodeAction('omfordela', { ref, utredareUid })
-				if (res && (res.ok === false || res.error || res.avvisad)) {
-					showError(this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak: res.error || res.reason || this.t('hubs_start', 'okänt fel') }))
-				} else {
+				const r = await tilldela(ref, utredareUid)
+				if (r && r.ok !== false) {
 					showSuccess(this.t('hubs_start', 'Omfördelat till {uid}.', { uid: utredareUid }))
+					try {
+						await store.loadFordelningSummary()
+					} catch (e) { /* omfördelningen är redan genomförd */ }
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte omfördela ärendet. Försök igen.'))
@@ -1288,6 +1321,14 @@ export default {
 							await this.transitionMedGrind(arende, next, grindKontext)
 						} catch (e) { /* steg-advance är best-effort; commit är redan verifierad */ }
 					}
+					// B2 — läs om summaryn från motorn: commit-kvittots lokal-patch
+					// täcker inte frist/steg (fristen ägs av facksystemet efter
+					// registrering, GAP-044) och ingen polling rör arende-slicen —
+					// utan omläsning står fristchip/provenance frysta till sid-
+					// omladdning. Best-effort, samma mönster som onOmfordelaSkapa.
+					try {
+						await store.loadArendeSummary()
+					} catch (e) { /* commiten är redan verifierad */ }
 				} else {
 					showError(this.t('hubs_start', 'Treserva bekräftade inte registreringen — inget kvitto skapades. Försök igen.'))
 				}
@@ -1382,26 +1423,7 @@ export default {
 			this.onCommit(arende, { typ: 'motesanteckning', arende, artefakter: { anteckning } })
 		},
 
-		// --- Verbingång / header --------------------------------------------
-		onVerb(id) {
-			switch (id) {
-			case 'mote':
-				return this.openMeetingWizard()
-			case 'signera':
-				return store.setStegFilter('beslut')
-			case 'utredning':
-				return store.setStegFilter('utredning')
-			case 'foljUpp':
-				return store.setStegFilter('uppfoljning')
-			case 'taEmot':
-				return store.setPulsFilter('inflode')
-			default:
-			}
-		},
-		onDismissVerb() {
-			this.state.prefs.verbEntryDismissed = true
-			store.savePref && store.savePref('verbEntryDismissed', true)
-		},
+		// --- Header ----------------------------------------------------------
 		onUpgradeLoa() {
 			window.location.href = deepLinks.loa3UpgradeLink()
 		},
@@ -1458,6 +1480,37 @@ export default {
 		cursor: pointer;
 		&:hover { background: var(--color-background-hover); }
 		&--aktiv { background: var(--color-main-background); color: var(--color-main-text); box-shadow: 0 1px 3px var(--color-box-shadow, rgba(0, 0, 0, 0.1)); }
+	}
+
+	// B12 — lagerseparation: inflödet (ska tömmas) som grå platta, arbetsytan
+	// bakom en tydlig avdelare. Vita hs-cards på --color-background-dark är
+	// redan etablerat mönster (lägeväxeln, aggregat-pillren) — ingen ny färg.
+	&__inflode {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 16px;
+		background: var(--color-background-dark);
+		border-radius: var(--hs-card-radius);
+	}
+	&__inflode-rubrik {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+	&__inflode-under {
+		// Negativ topp-marginal: undertexten hör ihop med rubriken — flexens
+		// 12px-gap skulle annars skilja dem åt som två fristående rader.
+		margin: -8px 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-maxcontrast);
+	}
+	&__arbetsyta {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		border-top: 2px solid var(--color-border-dark);
+		padding-top: 20px;
 	}
 
 	&__chatt {
