@@ -70,6 +70,7 @@
 					@click="valjTyp(null)">
 					<AccountGroupIcon :size="14" aria-hidden="true" />
 					<span class="korg-valjare__typ-text">{{ t('hubs_start', 'Alla grupper') }}</span>
+					<NcCounterBubble v-if="totaltTyp > 0" class="korg-valjare__bubbla">{{ totaltTyp }}</NcCounterBubble>
 				</button>
 				<button
 					v-for="typ in typer"
@@ -82,6 +83,7 @@
 					@click="valjTyp(typ.key)">
 					<component :is="typ.icon" :size="14" aria-hidden="true" />
 					<span class="korg-valjare__typ-text">{{ typ.label }}</span>
+					<NcCounterBubble v-if="Number(typAntal[typ.key]) > 0" class="korg-valjare__bubbla">{{ Number(typAntal[typ.key]) }}</NcCounterBubble>
 				</button>
 			</div>
 		</div>
@@ -142,12 +144,23 @@ export default {
 			type: String,
 			default: null,
 		},
+		/** { messageType: antal } — antal inflöde-poster per grupp, för badge på grupp-chipsen. */
+		typAntal: {
+			type: Object,
+			default: () => ({}),
+		},
 	},
 
 	computed: {
 		/** Summan av otriagerat över alla korgar — visas på "Alla"-pillret. */
 		totaltOtriagerat() {
 			return this.korgar.reduce((sum, korg) => sum + Number(korg.otriagerat || 0), 0)
+		},
+
+		/** Summan av alla grupp-antal — visas på "Alla grupper"-pillret. Oberoende
+		    partition av samma inflöde som korgraden (kan därför avvika kosmetiskt). */
+		totaltTyp() {
+			return Object.values(this.typAntal).reduce((sum, n) => sum + Number(n || 0), 0)
 		},
 
 		/** De åtta meddelandetyperna med svensk etikett + ikon, i fast visningsordning. */

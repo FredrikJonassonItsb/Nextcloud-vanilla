@@ -699,8 +699,8 @@ export default {
 		white-space: nowrap;
 
 		&--fbf {
-			background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-			color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+			background: var(--hs-status-warning-bg, #fdf3e3);
+			color: var(--hs-status-warning-text, #7f5900);
 		}
 	}
 
@@ -720,9 +720,9 @@ export default {
 		}
 
 		&--sekretess {
-			background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-			color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
-			border: 1px solid var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+			background: var(--hs-status-warning-bg, #fdf3e3);
+			color: var(--hs-status-warning-text, #7f5900);
+			border: 1px solid var(--hs-status-warning-text, #7f5900);
 			cursor: help;
 		}
 	}
@@ -832,9 +832,9 @@ export default {
 	}
 
 	&__badge--undantagen {
-		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
-		border: 1px solid var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		background: var(--hs-status-warning-bg, #fdf3e3);
+		color: var(--hs-status-warning-text, #7f5900);
+		border: 1px solid var(--hs-status-warning-text, #7f5900);
 	}
 
 	&__metod {
@@ -848,8 +848,8 @@ export default {
 		margin-top: 4px;
 		padding: 6px 10px;
 		border-radius: var(--border-radius, 8px);
-		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		background: var(--hs-status-warning-bg, #fdf3e3);
+		color: var(--hs-status-warning-text, #7f5900);
 		font-size: 0.82rem;
 		font-weight: 600;
 

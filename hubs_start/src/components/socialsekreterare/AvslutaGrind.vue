@@ -301,7 +301,7 @@ export default {
 		padding: 8px 12px;
 		border-radius: var(--border-radius, 8px);
 		background: var(--color-background-hover);
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		color: var(--hs-status-warning-text, #7f5900);
 		font-size: 0.9rem;
 
 		svg {

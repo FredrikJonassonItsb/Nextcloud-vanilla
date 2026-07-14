@@ -83,6 +83,7 @@
 					:korgar="A.korgar"
 					:aktiv-korg="A.aktivKorg"
 					:aktiv-typ="A.aktivTyp"
+					:typ-antal="typAntal"
 					@valj-korg="store.setKorgFilter"
 					@valj-typ="store.setTypFilter" />
 
@@ -217,6 +218,52 @@
 			@avsluta="onAvslutaConfirmed"
 			@close="avslutaOpen = false" />
 
+		<!-- O9 — förhandsbedömningens primärbeslut: Inleda / Inte inleda. Motorn
+		     stödjer båda (forhandsbedomning → utredning | avslutat); väljaren gör
+		     "inte inleda"-vägen (A9a inteInledaVal via AvslutaGrind) nåbar. -->
+		<NcModal
+			v-if="beslutValjOpen"
+			:show="true"
+			:name="t('hubs_start', 'Fatta beslut i förhandsbedömningen')"
+			size="small"
+			@close="beslutValjOpen = false">
+			<div class="mina-arenden__beslutvalj">
+				<template v-if="beslutValjSteg === 'val'">
+					<p class="mina-arenden__beslutvalj-lead">
+						{{ t('hubs_start', 'Ska en utredning inledas, eller beslutar du att inte inleda? Båda är formella beslut som dokumenteras i akten.') }}
+					</p>
+					<div class="mina-arenden__beslutvalj-knappar">
+						<NcButton type="primary" @click="onBeslutInleda">
+							{{ t('hubs_start', 'Inleda utredning') }}
+						</NcButton>
+						<NcButton type="secondary" @click="onBeslutInteInleda">
+							{{ t('hubs_start', 'Besluta att inte inleda') }}
+						</NcButton>
+					</div>
+				</template>
+				<template v-else>
+					<p class="mina-arenden__beslutvalj-lead">
+						{{ t('hubs_start', 'Beslut att inleda utredning (SoL 11 kap. 1 §). Ange vem som fattar beslutet — det journalförs i akten.') }}
+					</p>
+					<label class="mina-arenden__beslutvalj-label" for="inleda-beslutsfattare">{{ t('hubs_start', 'Beslutsfattare') }}</label>
+					<input
+						id="inleda-beslutsfattare"
+						v-model="inledaBeslutsfattare"
+						class="mina-arenden__beslutvalj-input"
+						type="text"
+						:placeholder="t('hubs_start', 'Namn / funktion')">
+					<div class="mina-arenden__beslutvalj-knappar">
+						<NcButton @click="beslutValjSteg = 'val'">
+							{{ t('hubs_start', 'Tillbaka') }}
+						</NcButton>
+						<NcButton type="primary" :disabled="!inledaBeslutsfattare.trim()" @click="onBeslutInledaBekrafta">
+							{{ t('hubs_start', 'Bekräfta: inleda utredning') }}
+						</NcButton>
+					</div>
+				</template>
+			</div>
+		</NcModal>
+
 		<!-- A7 — skyddsbedömnings-override-grind (inline). Öppnas när motorn spärrar
 		     forhandsbedomning→utredning för att skyddsbedömningen saknas som artefakt.
 		     Handläggaren anger ett dokumenterat skäl (enum) → kontext.override.skal.
@@ -345,6 +392,7 @@ import NcCounterBubble from '@nextcloud/vue/dist/Components/NcCounterBubble.js'
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
 import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import { getCurrentUser } from '@nextcloud/auth'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import BookOpenIcon from 'vue-material-design-icons/BookOpenVariant.vue'
 import ForumIcon from 'vue-material-design-icons/Forum.vue'
@@ -423,6 +471,13 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
+			// O9 — beslutsväljare på förhandsbedömningens primärknapp: inleda
+			// utredning vs besluta att INTE inleda (→ avsluta med inteInledaVal).
+			beslutValjOpen: false,
+			beslutValjArende: null,
+			// G4 — två-fas: 'val' (inleda/inte-inleda) → 'inleda' (samla beslutsfattare).
+			beslutValjSteg: 'val',
+			inledaBeslutsfattare: '',
 			// #5 avsluta-grind + #12 egna anteckningar (modaler). #6-signering är nu
 			// inbäddad i CommitGrind (ingen egen modal → ingen modal-stapling).
 			avslutaOpen: false,
@@ -587,6 +642,15 @@ export default {
 				korgTraff(r)
 				&& (!aktivTyp || r.messageType === aktivTyp))
 		},
+		/** Antal inflöde-poster per grupp (messageType) — badge på grupp-chipsen.
+		    Oberoende partition av A.inflode (ej korg-filtrerad), speglar korg-badgen. */
+		typAntal() {
+			const m = {}
+			for (const r of (this.A.inflode || [])) {
+				if (r.messageType) m[r.messageType] = (m[r.messageType] || 0) + 1
+			}
+			return m
+		},
 		/** 1a — nytt ärende (orosanmälningar): triage-känslan, oförändrad. */
 		taEmotItems() {
 			const items = this.filteredInflode.filter((r) => this.zonOf(r) === 'attTaEmot')
@@ -691,8 +755,10 @@ export default {
 			switch (target.action) {
 			case 'signera':
 				return this.onSignera(arende)
-			case 'commit-utredning':
 			case 'beslut-inleda':
+				// O9 — öppna Inleda/Inte-inleda-väljaren i st.f. att direkt inleda.
+				return this.oppnaBeslutValj(arende)
+			case 'commit-utredning':
 			case 'skyddsbedomning':
 			case 'godkann-anteckning':
 				return this.onCommit(arende, { typ: target.action, arende })
@@ -704,6 +770,38 @@ export default {
 				return this.onOpenRum(arende)
 			default:
 				return this.onExpand(arende, target.flik)
+			}
+		},
+
+		/** O9 — öppna förhandsbedömningens beslutsväljare (Inleda / Inte inleda). */
+		oppnaBeslutValj(arende) {
+			this.beslutValjArende = arende
+			this.beslutValjSteg = 'val'
+			const cu = getCurrentUser()
+			this.inledaBeslutsfattare = (cu && cu.displayName) || (cu && cu.uid) || ''
+			this.beslutValjOpen = true
+		},
+		/** Väljaren, steg 1: "Inleda" → visa beslutsfattare-fältet (steg 2). */
+		onBeslutInleda() {
+			this.beslutValjSteg = 'inleda'
+		},
+		/** Väljaren, steg 2: bekräfta inleda → commit-flöde med inledaVal (A9a-inleda:
+		    beslut att inleda utredning journalförs av motorn med beslutsfattare). */
+		onBeslutInledaBekrafta() {
+			const beslutsfattare = (this.inledaBeslutsfattare || '').trim()
+			const arende = this.beslutValjArende
+			if (!beslutsfattare || !arende) {
+				return
+			}
+			this.beslutValjOpen = false
+			this.onCommit(arende, { typ: 'beslut-inleda', arende, inledaVal: { beslutsfattare } })
+		},
+		/** Väljaren: inte inleda → AvslutaGrind (A9a inteInledaVal → avslutat). */
+		onBeslutInteInleda() {
+			const arende = this.beslutValjArende
+			this.beslutValjOpen = false
+			if (arende) {
+				this.onAvsluta(arende)
 			}
 		},
 
@@ -800,7 +898,13 @@ export default {
 			}
 			this.overrideRunning = true
 			try {
-				const res = await this.transitionMedGrind(arende, nyttSteg, { override: { skal: this.overrideSkal } })
+				const kontext = { override: { skal: this.overrideSkal } }
+				// A9a-inleda: om beslutet att inleda samlades i beslutsväljaren, tråda
+				// det även på override-återförsöket (annars 400:ar motorn på inleda-grinden).
+				if (this.commitPayload && this.commitPayload.inledaVal) {
+					kontext.inledaVal = this.commitPayload.inledaVal
+				}
+				const res = await this.transitionMedGrind(arende, nyttSteg, kontext)
 				if (res.ok) {
 					showSuccess(this.t('hubs_start', 'Skyddsbedömningen är dokumenterad — ärendet gick vidare till utredning.'))
 					this.overrideOpen = false
@@ -1295,6 +1399,11 @@ export default {
 			if (kv && typeof kv === 'object') {
 				grindKontext.kommuniceringVal = kv
 			}
+			// A9a-inleda — tråda beslutsfattaren (från beslutsväljaren) så motorn
+			// journalför inleda-beslutet vid forhandsbedomning→utredning.
+			if (this.commitPayload && this.commitPayload.inledaVal) {
+				grindKontext.inledaVal = this.commitPayload.inledaVal
+			}
 			// "Hela vägen": commit to the facksystem (Treserva via Frends). Only show
 			// the registered-kvittens on a VERIFIED receipt (r.ok && r.verifierad); a
 			// backend failure previously either threw silently (no feedback) or — on a
@@ -1587,6 +1696,28 @@ export default {
 	}
 
 	// A7 — inline skyddsbedömnings-override-grind.
+	&__beslutvalj {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 8px 4px;
+	}
+	&__beslutvalj-lead { margin: 0; color: var(--color-main-text); }
+	&__beslutvalj-label { font-weight: 600; font-size: 0.9rem; margin-bottom: -8px; }
+	&__beslutvalj-input {
+		width: 100%;
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius, 8px);
+		background: var(--color-main-background);
+		color: var(--color-main-text);
+		font: inherit;
+	}
+	&__beslutvalj-knappar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
 	&__override {
 		display: flex;
 		flex-direction: column;

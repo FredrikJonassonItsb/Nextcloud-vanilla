@@ -685,6 +685,20 @@ export async function fetchArendeParter(ref) {
 }
 
 /**
+ * Ärenderummets anslutna (medlemsledger: handläggare/co/observatör/krets) med
+ * roll + visningsnamn. Egen billig ledger-läsning (ArendeController::medlemmar)
+ * så "Anslutna"-panelen kan läsas om vid varje expand utan den tunga full-cachen.
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @return {Promise<Array<{uid:string, roll:string, displayName?:string}>>}
+ */
+export async function fetchArendeMedlemmar(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/medlemmar (ArendeController#medlemmar).
+	if (DEMO) return []
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/medlemmar'))
+	return (ocsData(res) || {}).medlemmar || []
+}
+
+/**
  * Slå upp en person i folkbokföringen (Navet) och skriv in i partsregistret.
  * Ändamålet är obligatoriskt (journalförs; SoLPuL-nödvändighet, K-NAV-4.2).
  * @param {string} ref ärendereferens

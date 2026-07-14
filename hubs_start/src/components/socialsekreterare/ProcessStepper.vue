@@ -503,8 +503,8 @@ export default {
 
 		// Luckan är gul: delvis klart obligatoriskt steg som lämnats bakom.
 		&--lucka {
-			background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-			color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+			background: var(--hs-status-warning-bg, #fdf3e3);
+			color: var(--hs-status-warning-text, #7f5900);
 		}
 	}
 

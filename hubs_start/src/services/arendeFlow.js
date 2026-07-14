@@ -89,7 +89,10 @@ export const STEG_INNEHALL = {
 				artefakt: null, klarNar: { signal: 'kvittens', match: 'skyddsbedomning' } },
 			{ id: 'beslut_inleda', label: 'Beslut: inleda / inte inleda', vadDetAr: 'Motiverat beslut inom 14 dagar; motivering särskilt viktig vid "inte inleda".',
 				lagreferens: { lag: 'SoL', paragraf: '20 kap. 2 §', verifieraParagraf: false }, frist: { dagar: 14, ankare: 'inkom' }, niva: 'obligatorisk',
-				artefakt: 'forhandsbedomning', klarNar: { signal: 'handling', match: 'forhandsbedom' } },
+				// Klar när BESLUTET (inleda/inte inleda) journalförts som grindval av
+				// A9a/A9a-inleda-grinden — inte via en separat handling. 'inleda'
+				// matchar både grind='inleda' och grind='inte_inleda' (substring).
+				artefakt: null, klarNar: { signal: 'kvittens', match: 'inleda' } },
 		],
 	},
 	utredning: {

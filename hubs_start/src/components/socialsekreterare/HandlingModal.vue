@@ -142,11 +142,17 @@
 						<label class="handling-modal__label" :for="'handling-falt-' + falt.nyckel">
 							{{ falt.etikett }}
 						</label>
+						<!-- AI-utkast uteblev (nekan/onåbar/ej konfigurerat): förklaring
+						     utan input, så orsaken SYNS i st.f. att fältet tyst försvinner. -->
+						<div v-if="falt.kalla === 'ai_narrativ_info'" class="handling-modal__ai-info">
+							<InformationOutlineIcon :size="16" />
+							<span>{{ falt.varning }}</span>
+						</div>
 						<!-- Källförankrat AI-narrativ (flerradigt) redigeras i en textarea;
 						     att granska/redigera det HÄR är människa-i-loopen-gränsen innan
 						     handlingen skapas. Övriga (metadata)fält är enradiga inputs. -->
 						<textarea
-							v-if="falt.kalla === 'ai_narrativ'"
+							v-else-if="falt.kalla === 'ai_narrativ'"
 							:id="'handling-falt-' + falt.nyckel"
 							v-model="lokalaVarden[falt.nyckel]"
 							class="handling-modal__input handling-modal__narrativ"
@@ -159,7 +165,7 @@
 							class="handling-modal__input"
 							type="text"
 							:disabled="isRunning">
-						<div class="handling-modal__falt-meta">
+						<div v-if="falt.kalla !== 'ai_narrativ_info'" class="handling-modal__falt-meta">
 							<span v-if="falt.kalla" class="handling-modal__chip">{{ kallaLabel(falt.kalla) }}</span>
 							<span v-if="falt.varning" class="handling-modal__varning">
 								<ShieldAlertIcon :size="14" />
@@ -200,6 +206,7 @@ import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 
 import FileDocumentPlusIcon from 'vue-material-design-icons/FileDocumentPlus.vue'
 import ShieldAlertIcon from 'vue-material-design-icons/ShieldAlert.vue'
+import InformationOutlineIcon from 'vue-material-design-icons/InformationOutline.vue'
 
 import { translate as t } from '@nextcloud/l10n'
 import { showError } from '@nextcloud/dialogs'
@@ -265,7 +272,7 @@ function foldaStam(s) {
 export default {
 	name: 'HandlingModal',
 
-	components: { NcModal, NcButton, NcLoadingIcon, FileDocumentPlusIcon, ShieldAlertIcon },
+	components: { NcModal, NcButton, NcLoadingIcon, FileDocumentPlusIcon, ShieldAlertIcon, InformationOutlineIcon },
 
 	props: {
 		arende: {
@@ -681,7 +688,19 @@ export default {
 		gap: 4px;
 		font-size: 0.8rem;
 		font-weight: 600;
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		color: var(--hs-status-warning-text, #7f5900);
+	}
+
+	&__ai-info {
+		display: flex;
+		align-items: flex-start;
+		gap: 6px;
+		padding: 8px 10px;
+		border-radius: var(--border-radius, 8px);
+		background: var(--color-background-hover);
+		color: var(--color-text-maxcontrast);
+		font-size: 0.85rem;
+		line-height: 1.4;
 	}
 
 	&__info {

@@ -38,8 +38,8 @@
 				<NcButton v-if="arOtilldelat" type="secondary" :disabled="tarArendet" @click="taArendet">
 					{{ t('hubs_start', 'Ta ärendet') }}
 				</NcButton>
-				<span class="arende-kort__sekretess">{{ arende.sekretess && arende.sekretess.kod }}</span>
-				<span class="arende-kort__loa">{{ arende.loa }}</span>
+				<span v-if="arende.sekretess && arende.sekretess.kod" class="arende-kort__sekretess">{{ arende.sekretess.kod }}</span>
+				<span v-if="arende.loa" class="arende-kort__loa">{{ arende.loa }}</span>
 			</span>
 		</header>
 
@@ -363,7 +363,7 @@
 			<div v-if="isExpanded" class="arende-kort__medlemmar">
 				<span class="arende-kort__muted">{{ t('hubs_start', 'Anslutna:') }}</span>
 				<span v-for="(m, i) in medlemmar" :key="'md' + i" class="arende-kort__medlem">
-					{{ m.uid }} <span class="arende-kort__muted">({{ rollLabel(m.roll) }})</span>
+					{{ m.displayName || m.uid }} <span class="arende-kort__muted">({{ rollLabel(m.roll) }})</span>
 				</span>
 				<span v-if="!medlemmar.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga registrerade medlemmar.') }}</span>
 				<span class="arende-kort__kollega">
@@ -398,7 +398,7 @@ import { showSuccess, showError } from '@nextcloud/dialogs'
 import store from '../../store/index.js'
 import { iconFor } from '../../services/icons.js'
 import deepLinks from '../../services/deepLinks.js'
-import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, tilldela, laggTillMedlem, skapaBevakning, kvitteraBevakning, avbrytBevakning, setDelgivningsdatum } from '../../services/api.js'
+import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, fetchArendeMedlemmar, tilldela, laggTillMedlem, skapaBevakning, kvitteraBevakning, avbrytBevakning, setDelgivningsdatum } from '../../services/api.js'
 import ProcessStepper from './ProcessStepper.vue'
 import FristChip from './FristChip.vue'
 import ProvenansChip from './ProvenansChip.vue'
@@ -473,6 +473,9 @@ export default {
 			tabMoten: null,
 			tabBevakningar: null,
 			tabHistorik: null,
+			// Anslutna (medlemsledger) — hämtas om vid varje expand/mutation; den
+			// tunga full-cachen är frusen efter första laddningen.
+			tabMedlemmar: null,
 			// Parter-flikens räknare — sätts av PartsPanel (@antal) efter varje hämtning.
 			tabParterAntal: null,
 			tabLaddar: { meddelanden: false, moten: false, bevakningar: false, historik: false },
@@ -532,9 +535,10 @@ export default {
 			// Kollapsad fallback: bara diskussions-token känd → visa den ändå.
 			return this.diskussionsToken ? [{ token: this.diskussionsToken, namn: null }] : []
 		},
-		/** Ärenderummets medlemmar (ur motorns ledger) — medlemspanelen. */
+		/** Ärenderummets medlemmar (ur motorns ledger) — medlemspanelen. Färsk
+		 * ledger-hämtning (tabMedlemmar) vinner över den frusna full-cachen. */
 		medlemmar() {
-			return this.full.medlemmar || []
+			return this.tabMedlemmar || this.full.medlemmar || []
 		},
 		arOtilldelat() {
 			// Efter ett lyckat "Ta ärendet" göms knappen DIREKT (togsNyss) — utan
@@ -641,6 +645,7 @@ export default {
 				if (this.cacheKey) {
 					store.loadArende(this.cacheKey)
 				}
+				this.loadMedlemmar()
 			}
 		},
 	},
@@ -656,6 +661,7 @@ export default {
 				// nod-states blir exakta (klar/lucka/överhoppat) i det expanderade läget.
 				store.loadStegEvidens(this.cacheKey)
 				this.loadFlikData(this.activeFlik)
+				this.loadMedlemmar()
 			}
 			this.$emit('expand', this.arende)
 		},
@@ -667,6 +673,7 @@ export default {
 				if (this.cacheKey) {
 					store.loadArende(this.cacheKey)
 				}
+				this.loadMedlemmar()
 				this.$emit('expand', this.arende)
 			}
 			this.loadFlikData(id)
@@ -701,6 +708,20 @@ export default {
 			} catch (e) {
 				// Ärligt tom flik i stället för evig spinner.
 				this.tabLaddar = { meddelanden: false, moten: false, bevakningar: false, historik: false }
+			}
+		},
+		/** Hämta om medlemsledgern (Anslutna). Den tunga full-cachen är frusen efter
+		 * första laddningen → panelen skulle annars visa en föråldrad lista tills en
+		 * mutation forcerar reload. Egen billig ledger-läsning vid varje expand/mutation. */
+		async loadMedlemmar() {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref) {
+				return
+			}
+			try {
+				this.tabMedlemmar = await fetchArendeMedlemmar(ref)
+			} catch (e) {
+				// Behåll ev. tidigare lista i stället för att tömma vid tillfälligt fel.
 			}
 		},
 		onStepperGoto({ steg }) {
@@ -934,6 +955,7 @@ export default {
 					showSuccess(t('hubs_start', 'Ärendet är nu ditt.'))
 					store.loadArendeSummary()
 					store.loadArende(this.cacheKey, true)
+					this.loadMedlemmar()
 				} else {
 					showError(t('hubs_start', 'Kunde inte ta ärendet: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
 				}
@@ -963,6 +985,7 @@ export default {
 					showSuccess(t('hubs_start', 'Kollegan är tillagd i ärendet.'))
 					this.kollegaUid = ''
 					store.loadArende(this.cacheKey, true)
+					this.loadMedlemmar()
 				} else {
 					showError(t('hubs_start', 'Kunde inte lägga till kollegan: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
 				}
@@ -1325,8 +1348,8 @@ export default {
 	&__otilldelad {
 		font-size: 0.78rem; font-weight: 600; padding: 1px 10px;
 		border-radius: var(--border-radius-pill, 16px);
-		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		background: var(--hs-status-warning-bg, #fdf3e3);
+		color: var(--hs-status-warning-text, #7f5900);
 	}
 	&__tab-antal {
 		margin-left: 6px; padding: 0 7px; font-size: 0.75rem;

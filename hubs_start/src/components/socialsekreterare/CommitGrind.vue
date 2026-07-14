@@ -686,7 +686,7 @@ export default {
 		align-items: center;
 		gap: 6px;
 		margin: 4px 0 0;
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		color: var(--hs-status-warning-text, #7f5900);
 		font-size: 0.82rem;
 		font-weight: 600;
 

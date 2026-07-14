@@ -33,6 +33,11 @@ function handling(mall) {
 	return { typ: 'handling', detalj: { mall } }
 }
 
+/** Ett grindval-journalpost (detalj.grind är beviset 'kvittens'-signalen läser). */
+function grindval(grind) {
+	return { typ: 'grindval', detalj: { grind } }
+}
+
 describe('harledStatus — handling-signal', () => {
 	it('är klar när en journal-handling ur mall matchar nyckelordet', () => {
 		const dm = delmoment('forhandsbedomning', 'skyddsbedomning') // klarNar.match = 'skyddsbedom'
@@ -186,7 +191,7 @@ describe('stegNodState — nod-rollup (A5)', () => {
 		const ev = {
 			journal: [
 				handling('skyddsbedomning-akut'), // skyddsbedomning (handling) + kvittens (via handling-match)
-				handling('forhandsbedomning-beslut'), // beslut_inleda
+				grindval('inleda'), // beslut_inleda (A9a-inleda-grinden journalför beslutet)
 			],
 		}
 		const s = stegNodState('forhandsbedomning', arende('utredning'), ev)
