@@ -8,7 +8,7 @@
  */
 jest.mock('../../src/services/api.js', () => ({
 	__esModule: true,
-	default: { commitToTreserva: jest.fn() },
+	default: { commitToTreserva: jest.fn(), signeringList: jest.fn() },
 }))
 
 import api from '../../src/services/api.js'
@@ -23,9 +23,15 @@ const mountG = (payload) => {
 	return w
 }
 
+/** Flush the async created()-fetches (hamtaSigneringStatus/hamtaDokument). */
+const flushP = () => new Promise((resolve) => setTimeout(resolve, 0))
+
 beforeEach(() => {
 	api.commitToTreserva.mockReset()
 	api.commitToTreserva.mockResolvedValue({ ok: true, verifierad: true, dnr: '2026-IFO-0999', gallrasDatum: '2026-09-01', receipt: {} })
+	// K-SIGN-6 — default: ingen signeringspost i motorn ⇒ fallback-checkboxen.
+	api.signeringList.mockReset()
+	api.signeringList.mockResolvedValue({ niva_matris: {}, poster: [] })
 })
 
 describe('CommitGrind #5 — document selection', () => {
@@ -130,6 +136,66 @@ describe('CommitGrind #A9b — advisory kommunicering (utredning→beslut)', () 
 		const w = shallowMountWithSteg('beslut', { typ: 'beslut', dokument: [{ fileid: 1, namn: 'X' }] })
 		await w.vm.onCommit()
 		expect(w.emitted('committed')[0][2]).toBeNull()
+	})
+})
+
+describe('CommitGrind K-SIGN-6 — motorns verkliga signeringsstatus', () => {
+	const dto = (status, extra = {}) => ({
+		signRequestId: 'sr-1',
+		handlingRef: 7,
+		filename: 'beslut.docx',
+		niva: 'ades',
+		status,
+		signers: [{ uid: 'anna', role: 'beslutsfattare', status: status === 'signed' ? 'signerad' : 'vantar', tidpunkt: null }],
+		padesLevel: status === 'signed' ? 'PAdES-B-LTA' : null,
+		createdAt: '2026-07-14T09:00:00Z',
+		updatedAt: '2026-07-14T09:00:00Z',
+		expiresAt: null,
+		avvisadSkal: null,
+		...extra,
+	})
+
+	it('signed signeringspost ersätter checkboxen — commit släpps utan manuell bekräftelse', async () => {
+		api.signeringList.mockResolvedValue({ niva_matris: {}, poster: [dto('signed')] })
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
+		await flushP()
+		expect(w.vm.eSignKlar).toBe(true)
+		// Faktisk uppnådd PAdES-nivå stämplas i klar-texten (U7).
+		expect(w.vm.eSignKlarText).toContain('PAdES-B-LTA')
+		expect(w.vm.kanForaOver).toBe(true)
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
+		expect(w.emitted('committed')).toBeTruthy()
+	})
+
+	it('pågående begäran låser grinden — även ett (dolt) manuellt kryss släpper inte', async () => {
+		api.signeringList.mockResolvedValue({ niva_matris: {}, poster: [dto('pending')] })
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
+		await flushP()
+		expect(w.vm.eSignKlar).toBe(false)
+		w.vm.signeradBekraftad = true
+		expect(w.vm.kanForaOver).toBe(false)
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).not.toHaveBeenCalled()
+	})
+
+	it('avbrutna poster räknas inte — fallback-checkboxen gäller igen', async () => {
+		api.signeringList.mockResolvedValue({ niva_matris: {}, poster: [dto('avbruten')] })
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
+		await flushP()
+		expect(w.vm.signeringPost).toBeNull()
+		w.vm.signeradBekraftad = true
+		await w.vm.onCommit()
+		expect(api.commitToTreserva).toHaveBeenCalledTimes(1)
+	})
+
+	it('signeringList-fel ⇒ ärlig fallback (checkboxen), aldrig en låst grind', async () => {
+		api.signeringList.mockRejectedValue(new Error('nere'))
+		const w = mountG({ typ: 'signerat-beslut', kraverSignering: true, dokument: [{ fileid: 1, namn: 'Beslut' }] })
+		await flushP()
+		expect(w.vm.signeringPost).toBeNull()
+		w.vm.signeradBekraftad = true
+		expect(w.vm.kanForaOver).toBe(true)
 	})
 })
 

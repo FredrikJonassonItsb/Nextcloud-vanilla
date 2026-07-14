@@ -8,8 +8,10 @@
  */
 
 // --- @nextcloud/l10n ---------------------------------------------------------
-// Identity translators: return the source string (with %n substitution for n()).
-const t = (app, text) => text
+// Identity translators: return the source string (with {placeholder}/vars
+// substitution like the real t(), and %n substitution for n()).
+const t = (app, text, vars) => String(text).replace(/\{([^{}]+)\}/g, (hela, nyckel) =>
+	(vars && Object.prototype.hasOwnProperty.call(vars, nyckel)) ? String(vars[nyckel]) : hela)
 const n = (app, singular, plural, count) =>
 	(count === 1 ? singular : plural).replace(/%n/g, String(count))
 const translate = t

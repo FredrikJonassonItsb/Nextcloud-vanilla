@@ -202,6 +202,54 @@ return [
             'verb' => 'POST',
         ],
 
+        // --- E-underskrift fas 1 (KRAV-SIGNERING-2026-07, K-SIGN-1–9) -------
+        // Tvånivåmodellens OCS-yta — delat kontrakt med hubs_start. Allt går
+        // genom SigneringService (enda konsumenten av SigneringPort).
+        // GET .../arende/{ref}/signering -> {niva_matris, poster:[SigneringDTO]}
+        [
+            'name' => 'Signering#oversikt',
+            'url' => '/api/v1/arende/{ref}/signering',
+            'verb' => 'GET',
+        ],
+        // POST .../signering/godkann -> digitalt godkännande (K-SIGN-2; journalförs,
+        //   renderas ALDRIG som underskrift). Body: {handlingRef, filename, dokumentHash}.
+        [
+            'name' => 'Signering#godkann',
+            'url' => '/api/v1/arende/{ref}/signering/godkann',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/begar -> AdES-begäran via SigneringPort (K-SIGN-3/4).
+        //   Body: {handlingRef, filename, dokumentHash, signers:[{uid, role}]}.
+        [
+            'name' => 'Signering#begar',
+            'url' => '/api/v1/arende/{ref}/signering/begar',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/refresh -> idempotent poll (K-SIGN-22)
+        [
+            'name' => 'Signering#refresh',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/refresh',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/fornya -> NY begäran, journalförd kedja (K-SIGN-7)
+        [
+            'name' => 'Signering#fornya',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/fornya',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/avbryt -> lokalt avbruten, body {skal} (K-SIGN-7)
+        [
+            'name' => 'Signering#avbryt',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/avbryt',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/paminn -> journalförd påminnelse (v1, K-SIGN-7)
+        [
+            'name' => 'Signering#paminn',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/paminn',
+            'verb' => 'POST',
+        ],
+
         // --- Inflöde-bands (KorgValjare + de tre banden 1a/1b/1c) -----------
         // GET /ocs/v2.php/apps/hubs_arende/api/v1/inflode-summary
         //   -> korgar + klassade/matchade inflöde-rader (server-side aggregat)

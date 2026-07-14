@@ -319,6 +319,10 @@
 				<!-- Historik & beslut: motorns händelsejournal som tidslinje.
 				     NEVER-SoR: besluten i sak bor i facksystemet — detta är spegeln. -->
 				<div v-else-if="activeFlik === 'historik'">
+					<!-- K-SIGN-5/6/7 — signeringsstatus (statuskedja + per-part + åtgärder).
+					     Självförsörjande panel; auto-pollar medan en begäran pågår och
+					     fliken är öppen. signed → verklig status driver nästa-åtgärden. -->
+					<SigneringPanel :arende="arende" @signed="onSigneringSigned" />
 					<template v-if="full.beslut">
 						<!-- Motorns A11-beslut ({ dnr, destination, provenans, signatur,
 						     signerat }) saknar demo-fixturens kravniva/signStatus/bevarande —
@@ -406,6 +410,7 @@ import NastaAtgardKnapp from './NastaAtgardKnapp.vue'
 import DiskussionChip from './DiskussionChip.vue'
 import TilldelningBand from './TilldelningBand.vue'
 import PartsPanel from './PartsPanel.vue'
+import SigneringPanel from './SigneringPanel.vue'
 import AnvandarValjare from './AnvandarValjare.vue'
 
 /** Svenska etiketter för bevakningens villkorstyp (aldrig rå maskintoken i UI). */
@@ -454,7 +459,7 @@ export default {
 		NcButton, AlertOctagonIcon, ChevronRightIcon, FileDocumentIcon, MessageTextLockIcon,
 		VideoIcon, CheckCircleIcon, BellRingIcon, ForumIcon,
 		ProcessStepper, FristChip, ProvenansChip, NastaAtgardKnapp,
-		DiskussionChip, TilldelningBand, PartsPanel, AnvandarValjare,
+		DiskussionChip, TilldelningBand, PartsPanel, SigneringPanel, AnvandarValjare,
 	},
 	props: {
 		arende: { type: Object, required: true },
@@ -730,6 +735,17 @@ export default {
 		},
 		onMenuAction(key) {
 			this.$emit(key, this.arende)
+		},
+		/**
+		 * K-SIGN-8 — panelen såg en begäran gå till signed: låt VERKLIG status driva
+		 * nastaAtgard-kedjan (overriden 'signaturkvittens' → "Delge beslut").
+		 * TODO[signering-fas2]: motorn ska sätta vantar='signaturkvittens' i
+		 * arende-summaryn utifrån signeringsstatus (SigneringService släcker även
+		 * bevakningsvillkoret signering_kvitterad); tills dess patchas kortet lokalt
+		 * här — samma objekt som summaryn bär, så knappen flippar direkt.
+		 */
+		onSigneringSigned() {
+			this.$set(this.arende, 'vantar', 'signaturkvittens')
 		},
 		/** Öppna ärendechatten: expandera kortet och hoppa till Rum-fliken. */
 		openDiskussion() {

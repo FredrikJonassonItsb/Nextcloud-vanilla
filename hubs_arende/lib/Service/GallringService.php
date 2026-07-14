@@ -18,6 +18,7 @@ use OCA\HubsArende\Db\MemberMapper;
 use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Db\SakuppgiftMapper;
+use OCA\HubsArende\Db\SigneringMapper;
 use OCA\HubsArende\Integration\Client\DeckClient;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
 use OCA\HubsArende\Integration\Client\SdkmcClient;
@@ -138,6 +139,14 @@ class GallringService {
         // döljer anmälningsmeddelandet i inflödet ("behandlad/case:"-filtret). Speglar
         // R3-kompensationen. Verifierad bugg (2026-07-12).
         private ?SdkmcClient $sdkmcClient = null,
+        // TRAILING OPTIONAL (autowired): SIGNERINGSSPÅRET (hubs_arende_signering —
+        // begäranden/statusrader, K-SIGN-19) rivs OVILLKORLIGEN med ärendet av
+        // destruktionsspegeln: kedjan signRequestId+hash+uid/roll får aldrig
+        // överleva koordinationsraden.
+        // TODO[signering-fas2]: extern cancel av ÖPPNA signeringsuppdrag hos
+        // adaptern INNAN raderna rivs (annars dinglande uppdrag hos extern part)
+        // — fas 1 kör enbart mot stubben, som inte har externa uppdrag.
+        private ?SigneringMapper $signeringMapper = null,
     ) {
     }
 
@@ -309,6 +318,8 @@ class GallringService {
                 $this->partMapper?->deleteByCaseId($hubsCaseId);
                 // Sakuppgiftslagret (dokumentkedjans transienta minne, kan bära PII).
                 $this->sakuppgiftMapper?->deleteByCaseId($hubsCaseId);
+                // Signeringsspåret (begäranden/statusrader, K-SIGN-19 lokal del).
+                $this->signeringMapper?->deleteByCaseId($hubsCaseId);
                 // AI-utkastregistret (rått AI-innehåll + provenans, NEVER-SoR kap 8.0.4).
                 $this->aiUtkastMapper?->deleteByCaseId($hubsCaseId);
                 // Brain-provisionerings-retrykön (kap 3.3).

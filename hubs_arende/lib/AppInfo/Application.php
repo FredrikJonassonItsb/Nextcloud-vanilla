@@ -90,6 +90,26 @@ class Application extends App implements IBootstrap {
             );
         });
 
+        // SigneringStub-parametrarna styrs via app-config (K-SIGN-21) så demon
+        // kan köra hela pending→partially_signed→signed-progressionen på
+        // upprepade refresh utan kodändring:
+        //   occ config:app:set hubs_arende signering_stub_instant --value 1  # 1-stegs-demo
+        //   occ config:app:set hubs_arende signering_stub_polls   --value 2  # poll till signed
+        //   occ config:app:set hubs_arende signering_stub_reject_refs --value ref1,ref2
+        // Stubben ges IAppConfig för att persista sitt (annars in-memory) state
+        // över request-gränser — refresh N+1 körs i en NY PHP-request och måste
+        // minnas begäran från N. Demo-/testinfrastruktur, aldrig live-vägen.
+        $context->registerService(SigneringStub::class, function (ContainerInterface $c): SigneringStub {
+            /** @var IAppConfig $appConfig */
+            $appConfig = $c->get(IAppConfig::class);
+            return new SigneringStub(
+                instantSign: $appConfig->getAppValueString('signering_stub_instant', '0') === '1',
+                pollsUntilSigned: max(1, (int)$appConfig->getAppValueString('signering_stub_polls', '2')),
+                rejectDocumentRefs: $appConfig->getAppValueString('signering_stub_reject_refs', ''),
+                appConfig: $appConfig,
+            );
+        });
+
         $context->registerService(EdiariumPort::class, function (ContainerInterface $c): EdiariumPort {
             return self::resolvePort(
                 $c,
@@ -145,6 +165,17 @@ class Application extends App implements IBootstrap {
         //     brain_provision_secret, kommun_slug, authz_gateway_secret,
         //     ork_fn_enabled — seedas out-of-band; saknas de degraderar tjänsterna
         //     till graceful no-op / fail-closed (aldrig en default-öppning).
+
+        // --- E-underskrift fas 1 (KRAV-SIGNERING-2026-07) ---------------------
+        // INGEN explicit registrering krävs utöver port-/stub-bindningen ovan:
+        //   - Service\SigneringService (enda konsumenten av SigneringPort) →
+        //     konstruktor-autowirad; porten injiceras via SigneringPort-bindningen,
+        //     journal/bevakning/medlemmar är trailing optional (?T=null).
+        //   - Controller\SigneringController (OCS-ytan, se appinfo/routes.php) →
+        //     byggs av DI via rutt-konventionen (som PartController).
+        //   - App-config: signering_niva_matris (JSON, K-SIGN-1),
+        //     signering_session_loa (LoA-etikett för godkännande-journalen,
+        //     K-SIGN-2; dev15 seedas 'LOA3') + stub-nycklarna ovan.
     }
 
     public function boot(IBootContext $context): void {

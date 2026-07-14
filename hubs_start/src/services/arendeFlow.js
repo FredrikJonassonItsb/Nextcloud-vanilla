@@ -27,6 +27,10 @@ export const NASTA_ATGARD = {
 	},
 	overrides: {
 		motesanteckning: { label: 'Granska & godkänn mötesanteckning', action: 'godkann-anteckning', flik: 'moten' },
+		// K-SIGN-8 — 'vantar: signaturkvittens' sätts i dag lokalt av UI:t när
+		// SigneringPanel/SigneringModal ser VERKLIG status signed (fas 1-koppling).
+		// TODO[signering-fas2]: motorn ska driva overriden i arende-summaryn ur
+		// signeringsstatus (och släcka bevakningsvillkoret signering_kvitterad).
 		signaturkvittens: { label: 'Delge beslut', action: 'commit', flik: 'beslut' },
 	},
 }

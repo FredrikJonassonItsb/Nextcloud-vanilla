@@ -10,20 +10,36 @@
 		:can-close="!isRunning"
 		@close="onClose">
 		<div class="commit-grind">
-			<!-- #6 — signerings-bekräftelse, INBÄDDAD här (inte en egen staplad NcModal).
-			     Två NcModaler som monteras/avmonteras i samma tick deadlockar focus-trap +
-			     scroll-lock → UI:t hänger. En enda modal löser det. Visas bara för
-			     signerat-beslut (payload.kraverSignering); "För över" gateas tills ikryssad. -->
+			<!-- #6/K-SIGN-6 — signerings-bekräftelse, INBÄDDAD här (inte en egen staplad
+			     NcModal — två staplade modaler deadlockar focus-trap/scroll-lock).
+			     Motorns VERKLIGA signeringsstatus visas när en signeringspost finns:
+			     signed → grönt kvitto, pågående/avvisad → statusrad (grinden låst tills
+			     klar). Den manuella checkboxen finns kvar ENDAST som fallback när ingen
+			     signeringspost finns (facksystemet äger signeringen — ärligt etiketterad). -->
 			<section v-if="kraverSignering" class="commit-grind__section commit-grind__sign">
-				<p class="commit-grind__sign-lead">
-					<DrawPenIcon :size="18" />
-					<span>{{ t('hubs_start', 'Beslutet signeras i facksystemet, inte här. Bekräfta att det redan är signerat innan vi för över det.') }}</span>
+				<!-- Verklig status: e-underskriften är klar (motorns DTO, aldrig ett kryss). -->
+				<p v-if="eSignKlar" class="commit-grind__sign-klar" role="status">
+					<CheckIcon :size="18" />
+					<span>{{ eSignKlarText }}</span>
 				</p>
-				<NcCheckboxRadioSwitch
-					:checked.sync="signeradBekraftad"
-					:disabled="isRunning || committed">
-					{{ t('hubs_start', 'Jag bekräftar att beslutet signerats i facksystemet') }}
-				</NcCheckboxRadioSwitch>
+				<!-- Verklig status: en begäran finns men är inte klar — grinden förklarar
+				     sig i stället för en oförklarat död knapp. -->
+				<p v-else-if="signeringPost" class="commit-grind__sign-lead" role="status">
+					<DrawPenIcon :size="18" />
+					<span>{{ signeringStatusText }}</span>
+				</p>
+				<!-- Fallback (ingen signeringspost i motorn): manuell bekräftelse. -->
+				<template v-else>
+					<p class="commit-grind__sign-lead">
+						<DrawPenIcon :size="18" />
+						<span>{{ t('hubs_start', 'Ingen e-underskrift är begärd i Hubs — beslutet signeras då i facksystemet. Bekräfta att det redan är signerat innan vi för över det.') }}</span>
+					</p>
+					<NcCheckboxRadioSwitch
+						:checked.sync="signeradBekraftad"
+						:disabled="isRunning || committed">
+						{{ t('hubs_start', 'Jag bekräftar att beslutet signerats i facksystemet') }}
+					</NcCheckboxRadioSwitch>
+				</template>
 			</section>
 
 			<!-- A9b — kommunicering före beslut (FL 25 §). RÅDGIVANDE checklista: parterna
@@ -264,8 +280,9 @@ const TYP_LABEL = {
 }
 
 // Which payload-types carry a signature/receipt artefact to show.
+// UI-brandregeln: aldrig leverantörsnamn i användartext — säg "e-underskrift".
 const TYP_SIGNATUR = {
-	'signerat-beslut': 'AES via Inera Underskriftstjänst (PAdES · PDF/A · LTV)',
+	'signerat-beslut': 'E-underskrift (PAdES · PDF/A · LTV)',
 	beslut: 'Loggat beslut — kvittens i akten',
 	motesanteckning: 'Godkänd av handläggare (human-in-the-loop, loggat)',
 }
@@ -312,7 +329,12 @@ export default {
 			// I live drivs stegen av det faktiska API-svaret (kort stegring för läsbarhet).
 			demoLage: isDemo(),
 			// #6 — signerings-bekräftelse (gateas "För över" när kraverSignering).
+			// Fallback-vägen: används ENDAST när ingen signeringspost finns (K-SIGN-6).
 			signeradBekraftad: false,
+			// K-SIGN-6 — motorns senaste signeringspost för ärendet (SigneringDTO).
+			// null = ingen post (fallback-checkboxen visas). Hämtas i created().
+			signeringPost: null,
+			signeringLaddar: false,
 			// A9b — rådgivande kommunicerings-checklista (visas vid utredning→beslut).
 			// INGET förval (T4/IVO/jurist): "Parterna har kommunicerats" får INTE vara
 			// förkryssad — ett rättssäkerhetsintyg som är default-ibockat bevisar inget
@@ -342,6 +364,12 @@ export default {
 		if (!this.valda.length) {
 			this.hamtaDokument()
 		}
+		// K-SIGN-6 — signerings-committet läser motorns VERKLIGA status: finns en
+		// signeringspost ersätter den den manuella checkboxen (fallback endast när
+		// posten saknas). Best-effort: fel ⇒ null ⇒ ärlig fallback-väg.
+		if (this.kraverSignering) {
+			this.hamtaSigneringStatus()
+		}
 	},
 
 	computed: {
@@ -351,6 +379,33 @@ export default {
 		/** #6 — kräver detta commit en signerings-bekräftelse först (signerat-beslut)? */
 		kraverSignering() {
 			return !!(this.payload && this.payload.kraverSignering)
+		},
+		/** K-SIGN-6 — e-underskriften är KLAR enligt motorns verkliga status. */
+		eSignKlar() {
+			return !!(this.signeringPost && this.signeringPost.status === 'signed')
+		},
+		/** Verklig klar-text med faktisk uppnådd PAdES-nivå när motorn stämplat en (U7). */
+		eSignKlarText() {
+			const niva = (this.signeringPost && this.signeringPost.padesLevel) || 'PAdES'
+			return t('hubs_start', 'E-underskrift klar ({niva})', { niva })
+		},
+		/** Statusrad när en begäran finns men inte är klar — förklarar den låsta grinden. */
+		signeringStatusText() {
+			const p = this.signeringPost || {}
+			const x = (p.signers || []).filter((s) => s.status === 'signerad').length
+			const y = (p.signers || []).length
+			switch (p.status) {
+			case 'partially_signed':
+				return t('hubs_start', 'E-underskrift pågår — {x} av {y} har signerat. Överföringen låses upp när underskriften är klar.', { x, y })
+			case 'rejected':
+				return t('hubs_start', 'E-underskriften avvisades — förnya begäran under Historik & beslut på ärendekortet.')
+			case 'expired':
+				return t('hubs_start', 'Begäran om e-underskrift har gått ut — förnya den under Historik & beslut på ärendekortet.')
+			case 'avbruten':
+				return t('hubs_start', 'Begäran om e-underskrift avbröts — skicka en ny från beslutssteget.')
+			default:
+				return t('hubs_start', 'E-underskrift pågår — begäran är skickad. Överföringen låses upp när underskriften är klar.')
+			}
 		},
 		/** Är minst ett dokument valt att föra över? (A9b — gate för beslut-committet.) */
 		nagotValt() {
@@ -390,15 +445,25 @@ export default {
 		},
 		/**
 		 * Får "För över" tryckas? Grunden: inte redan igång. Signering-committet kräver
-		 * dessutom bekräftad signering OCH minst ett valt dokument (A9b). Kommunicerings-
+		 * dessutom minst ett valt dokument (A9b) OCH att underskriften är löst:
+		 * antingen VERKLIG status signed från motorn (K-SIGN-6), eller — endast när
+		 * ingen signeringspost finns — den manuella fallback-bekräftelsen. En pågående/
+		 * avvisad begäran låser grinden (statusraden förklarar varför). Kommunicerings-
 		 * checklistan är RÅDGIVANDE och blockerar aldrig (mjuk grind).
 		 */
 		kanForaOver() {
 			if (this.isRunning) {
 				return false
 			}
-			if (this.kraverSignering && (!this.signeradBekraftad || !this.nagotValt)) {
-				return false
+			if (this.kraverSignering) {
+				if (!this.nagotValt) {
+					return false
+				}
+				if (this.eSignKlar) {
+					return true
+				}
+				// Fallback-checkboxen gäller bara när motorn saknar signeringspost.
+				return !this.signeringPost && this.signeradBekraftad
 			}
 			return true
 		},
@@ -457,6 +522,31 @@ export default {
 						: { fileid: null, namn: String(d), vald: true })
 			} finally {
 				this.dokLaddar = false
+			}
+		},
+
+		/**
+		 * K-SIGN-6 — hämta motorns signeringsläge och plocka den SENASTE relevanta
+		 * posten (avbrutna räknas inte — en medvetet avbruten begäran lämnar tillbaka
+		 * fallback-vägen). Best-effort: varje fel ⇒ signeringPost = null ⇒ den ärliga
+		 * manuella bekräftelsen visas i stället för en låst grind utan förklaring.
+		 */
+		async hamtaSigneringStatus() {
+			const ref = this.arende && (this.arende.hubsCaseId || this.arende.dnr || this.arende.triageRef)
+			if (!ref) {
+				return
+			}
+			this.signeringLaddar = true
+			try {
+				const r = await api.signeringList(ref)
+				const poster = ((r && r.poster) || []).filter((p) => p && p.status !== 'avbruten')
+				poster.sort((a, b) => (String(b.createdAt || '') < String(a.createdAt || '') ? -1 : 1))
+				// En redan signerad post vinner över en senare pågående (kvittot gäller).
+				this.signeringPost = poster.find((p) => p.status === 'signed') || poster[0] || null
+			} catch (e) {
+				this.signeringPost = null
+			} finally {
+				this.signeringLaddar = false
 			}
 		},
 
@@ -532,11 +622,10 @@ export default {
 			if (this.isRunning || this.committed) {
 				return
 			}
-			// #6 — gate: kräver signering men ej bekräftad → gör inget (knappen är
-			// redan disablad; detta är en defensiv spärr även i logiken).
-			// A9b — beslut-committet kräver även minst ett valt dokument (defensiv spärr;
-			// knappen är redan disablad via kanForaOver).
-			if (this.kraverSignering && (!this.signeradBekraftad || !this.nagotValt)) {
+			// #6/K-SIGN-6 — gate: signering ej löst (verklig status eller fallback-
+			// bekräftelse) eller inget dokument valt → gör inget (knappen är redan
+			// disablad via kanForaOver; detta är en defensiv spärr även i logiken).
+			if (this.kraverSignering && !this.kanForaOver) {
 				return
 			}
 			this.failed = false
@@ -730,6 +819,21 @@ export default {
 			flex-shrink: 0;
 			margin-top: 1px;
 			color: var(--color-text-maxcontrast);
+		}
+	}
+
+	// K-SIGN-6 — verklig status: e-underskriften är klar (grönt kvitto, inget kryss).
+	&__sign-klar {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin: 0;
+		color: var(--hs-status-success);
+		font-weight: 600;
+
+		svg {
+			flex-shrink: 0;
+			margin-top: 1px;
 		}
 	}
 

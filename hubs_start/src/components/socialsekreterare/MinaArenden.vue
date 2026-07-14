@@ -208,6 +208,13 @@
 			:payload="commitPayload"
 			@committed="onCommitted"
 			@close="commitOpen = false" />
+		<!-- K-SIGN-1–4/6 — beslutsstegets signeringsdialog (tvånivåmodellen):
+		     godkann → journalförd bekräftelse; ades → begäran via SigneringPort. -->
+		<SigneringModal
+			v-if="signeringOpen"
+			:arende="signeringArende"
+			@klar="onSigneringKlar"
+			@close="signeringOpen = false" />
 		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång).
 		     A9a/A9c: grinden samlar inteInledaVal/avslutsmotiv och emittar dem. -->
 		<AvslutaGrind
@@ -434,6 +441,7 @@ import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
 import VarselLista from './VarselLista.vue'
 import CommitGrind from './CommitGrind.vue'
+import SigneringModal from './SigneringModal.vue'
 import AvslutaGrind from './AvslutaGrind.vue'
 import NyChattModal from './NyChattModal.vue'
 import HandlingModal from './HandlingModal.vue'
@@ -452,7 +460,7 @@ export default {
 		MinDagHeader, Dagspulsen, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, ArendeZon,
-		MotesRemsa, VarselLista, CommitGrind, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
+		MotesRemsa, VarselLista, CommitGrind, SigneringModal, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -471,6 +479,9 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
+			// K-SIGN-6 — beslutsstegets signeringsdialog (action=signera).
+			signeringOpen: false,
+			signeringArende: null,
 			// O9 — beslutsväljare på förhandsbedömningens primärknapp: inleda
 			// utredning vs besluta att INTE inleda (→ avsluta med inteInledaVal).
 			beslutValjOpen: false,
@@ -758,6 +769,11 @@ export default {
 			case 'beslut-inleda':
 				// O9 — öppna Inleda/Inte-inleda-väljaren i st.f. att direkt inleda.
 				return this.oppnaBeslutValj(arende)
+			case 'commit':
+				// K-SIGN-6/8 — signaturkvittens-overriden ("Delge beslut"): öppna
+				// commit-grinden på riktigt (etiketten ska matcha handlingen, T4) —
+				// CommitGrind visar motorns verkliga signeringsstatus för beslutet.
+				return this.onCommit(arende, { typ: 'beslut', arende })
 			case 'commit-utredning':
 			case 'skyddsbedomning':
 			case 'godkann-anteckning':
@@ -1289,12 +1305,34 @@ export default {
 			window.location.href = deepLinks.composerLink('secure_email', null, ref)
 		},
 		onSignera(arende) {
-			// #6 — öppna CommitGrind DIREKT med signerings-bekräftelsen inbäddad (en
-			// enda modal). Tidigare öppnades en separat SigneringsGrind-modal som i sin
-			// tur öppnade CommitGrind → två staplade NcModaler monterades/avmonterades i
-			// samma tick och deadlockade focus-trap/scroll-lock (UI:t "hängde"). "För
-			// över" gateas tills handläggaren kryssat "Jag har signerat dokumentet".
-			this.onCommit(arende, { typ: 'signerat-beslut', arende, kraverSignering: true })
+			// K-SIGN-6 — action=signera öppnar numera SigneringModal (tvånivåmodellen:
+			// godkann-bekräftelse eller e-underskriftsbegäran via motorn) i stället för
+			// CommitGrind-checkboxen. Överföringen till Treserva görs som eget steg
+			// ("Delge beslut" → commit) där CommitGrind visar motorns VERKLIGA
+			// signeringsstatus; den manuella checkboxen finns kvar där enbart som
+			// fallback när ingen signeringspost finns.
+			this.signeringArende = arende
+			this.signeringOpen = true
+		},
+		/**
+		 * K-SIGN-8 — signeringsdialogens kvitto. Vid instant-signed (stubben kan
+		 * signera direkt) driver VERKLIG status nastaAtgard-kedjan: overriden
+		 * 'signaturkvittens' flippar knappen till "Delge beslut".
+		 * TODO[signering-fas2]: motorn ska sätta vantar i summaryn ur
+		 * signeringsstatus — tills dess patchas kortet lokalt (samma mönster som
+		 * ArendeKort.onSigneringSigned).
+		 */
+		onSigneringKlar(resultat) {
+			const arende = this.signeringArende
+			if (arende && resultat && resultat.status === 'signed') {
+				this.$set(arende, 'vantar', 'signaturkvittens')
+			}
+			// Journalen/panelen har fått nytt innehåll — läs om kortets full-cache
+			// (best-effort; dialogen visar redan sitt eget kvitto).
+			const ref = arende && (arende.triageRef || arende.dnr)
+			if (ref) {
+				store.loadArende(ref, true)
+			}
 		},
 		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse + A9-motiv). */
 		onAvsluta(arende) {
@@ -1377,7 +1415,16 @@ export default {
 			// #5 — bär med ärenderummets dokumentlista (om ArendeKort skickade den) så
 			// CommitGrind kan visa den granskbara urvalslistan (alla förvalda).
 			const bas = payload || { typ: 'beslut', arende }
-			this.commitPayload = { ...bas, arende, dokument: (payload && payload.dokument) || [] }
+			// K-SIGN-6 — BESLUT-committet i beslutssteget bär signeringsgrinden:
+			// CommitGrind läser då motorns verkliga signeringsstatus ("E-underskrift
+			// klar (PAdES)" när signed; fallback-checkboxen ENDAST när ingen
+			// signeringspost finns). typ-lösa payloads (ProvenansChip-vägen) räknas
+			// som beslut-commit. Övriga typer (utredning/anteckning/…) berörs inte.
+			const kraverSignering = bas.kraverSignering !== undefined
+				? bas.kraverSignering
+				: !!(arende && arende.steg === 'beslut'
+					&& (bas.typ === 'beslut' || bas.typ === 'signerat-beslut' || bas.typ === undefined))
+			this.commitPayload = { ...bas, kraverSignering, arende, dokument: (payload && payload.dokument) || [] }
 			this.commitOpen = true
 		},
 		/**

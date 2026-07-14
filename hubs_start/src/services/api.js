@@ -839,6 +839,130 @@ export async function skapaHandling(ref, payload) {
 	return ocsData(res)
 }
 
+// ---------------------------------------------------------------------------
+// E-UNDERSKRIFT (fas 1, K-SIGN-1–9/15/21–22) — tvånivåmodellen (godkann|ades)
+// + signeringslivscykeln mot motorns OCS-yta (SigneringService → SigneringPort;
+// stub på dev15). UI:t pratar ALDRIG direkt med adaptern — bara motorns yta.
+//
+// SigneringDTO = { signRequestId, handlingRef, filename, niva:'ades',
+//   status:'pending'|'partially_signed'|'signed'|'rejected'|'expired'|'avbruten',
+//   signers:[{uid, role, status:'vantar'|'signerad', tidpunkt|null}],
+//   padesLevel: string|null, createdAt, updatedAt, expiresAt, avvisadSkal }
+// ---------------------------------------------------------------------------
+
+/**
+ * Ärendets signeringsläge: nivåmatrisen (handlingstyp → 'godkann'|'ades',
+ * K-SIGN-1) + alla signeringsposter (SigneringDTO[]).
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @return {Promise<{niva_matris: Object<string,string>, poster: Array<object>}>}
+ */
+export async function signeringList(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/signering (Signering#oversikt).
+	if (DEMO) return { niva_matris: {}, poster: [] }
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering'))
+	return ocsData(res)
+}
+
+/**
+ * Godkänn-nivån (K-SIGN-2): digitalt godkännande som journalförs med
+ * {aktör-uid, roll, tidpunkt, dokumenthash, LoA} — ALDRIG en underskrift.
+ * @param {string} ref ärendereferens
+ * @param {{handlingRef:(string|number), filename:string, dokumentHash:?string}} payload
+ * @return {Promise<{journalfort:boolean, niva:string, tidpunkt:string}>}
+ */
+export async function signeringGodkann(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/godkann (Signering#godkann).
+	if (DEMO) return { journalfort: true, niva: 'godkann', tidpunkt: new Date().toISOString() }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/godkann'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Begär e-underskrift (K-SIGN-3): motorn journalför begäran (PII-fritt) och
+ * skickar via SigneringPort. Stubben kan svara 'signed' direkt (instant).
+ * @param {string} ref ärendereferens
+ * @param {{handlingRef:(string|number), filename:string, dokumentHash:?string,
+ *          signers:Array<{uid:string, role:string}>}} payload
+ * @return {Promise<object>} SigneringDTO (status pending, eller signed om instant)
+ */
+export async function signeringBegar(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/begar (Signering#begar).
+	if (DEMO) {
+		return {
+			signRequestId: 'demo-sign-1',
+			handlingRef: payload && payload.handlingRef,
+			filename: (payload && payload.filename) || '',
+			niva: 'ades',
+			status: 'pending',
+			signers: ((payload && payload.signers) || []).map((s) => ({ ...s, status: 'vantar', tidpunkt: null })),
+			padesLevel: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			expiresAt: null,
+			avvisadSkal: null,
+		}
+	}
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/begar'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Polla/uppdatera en begäran (K-SIGN-22 — idempotent: motorn pollar adaptern
+ * och uppdaterar persisterat state; säkert att anropa hur ofta som helst).
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @return {Promise<object>} uppdaterad SigneringDTO
+ */
+export async function signeringRefresh(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/refresh (Signering#refresh).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/refresh'))
+	return ocsData(res)
+}
+
+/**
+ * Förnya en avvisad/utgången begäran (K-SIGN-7): NY signRequestId med
+ * journalförd kedja till den gamla.
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId den gamla begäran
+ * @return {Promise<object>} den NYA SigneringDTO:n
+ */
+export async function signeringFornya(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/fornya (Signering#fornya).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/fornya'))
+	return ocsData(res)
+}
+
+/**
+ * Avbryt en begäran lokalt (K-SIGN-7): skälet journalförs (enum, aldrig fri
+ * text — PII-invarianten).
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @param {string} skal enum-kod (fel_handling|ny_version|annat)
+ * @return {Promise<object>} SigneringDTO (status avbruten)
+ */
+export async function signeringAvbryt(ref, signRequestId, skal) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/avbryt (Signering#avbryt).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/avbryt'), { skal })
+	return ocsData(res)
+}
+
+/**
+ * Manuell påminnelse (K-SIGN-7, v1): motorn journalför påminnelsen — ingen
+ * Talk-integration ännu.
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @return {Promise<{paminnelse:boolean}>}
+ */
+export async function signeringPaminn(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/paminn (Signering#paminn).
+	if (DEMO) return { paminnelse: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/paminn'))
+	return ocsData(res)
+}
+
 /**
  * Ärendets MEDDELANDEN (kortets Meddelanden-flik): alla meddelanden kopplade
  * via case:-taggen, alla kanaler/riktningar, ACL-buret till mina korgar.
@@ -1071,4 +1195,11 @@ export default {
 	kvitteraBevakning,
 	avbrytBevakning,
 	setDelgivningsdatum,
+	signeringList,
+	signeringGodkann,
+	signeringBegar,
+	signeringRefresh,
+	signeringFornya,
+	signeringAvbryt,
+	signeringPaminn,
 }
