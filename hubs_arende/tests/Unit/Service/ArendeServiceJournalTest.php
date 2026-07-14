@@ -132,7 +132,12 @@ final class ArendeServiceJournalTest extends TestCase {
         );
         $service->tilldela('case-j3', 'anna-uid');
 
-        self::assertContains([Handelse::TYP_TILLDELAD, ['uid' => 'anna-uid']], $rows);
+        // T6/F5 — detaljen bär nu {av, till} (fördelaren journalförs, granskningsbart)
+        // plus 'uid' bakåtkompat. Ingen userSession i harnessen ⇒ av=''.
+        self::assertContains(
+            [Handelse::TYP_TILLDELAD, ['av' => '', 'till' => 'anna-uid', 'uid' => 'anna-uid']],
+            $rows,
+        );
     }
 
     public function testHistorikReadsViaShowAuthz(): void {

@@ -116,6 +116,40 @@ class ItslTagMapper extends QBMapper {
     }
 
     /**
+     * [HUBS-ARENDE-KRAV 2026-07-12] Find every ACTIVE tag carrying a given IMAP
+     * label ACROSS ALL mailboxes (no email_address filter).
+     *
+     * Needed by hubs_arende's NEVER-SoR gallring: when a case is purged the engine
+     * must deterministically remove the case:{uuid} coordination tag, but in a
+     * server-to-server context it has NO accountId and does not know which
+     * funktionsadress carried the tag (see {@see \OCA\SdkMc\Controller\ItslTagController::deleteCaseTagByLabel}).
+     * The label alone (`case:<uuid>`) is globally unique, so it is the correct key.
+     *
+     * @param string $imapLabel The exact imap_label to match, e.g. 'case:<uuid>'.
+     * @return ItslTag[] Every non-soft-deleted tag with that label.
+     * @throws Exception
+     */
+    public function getTagsByImapLabelAcrossMailboxes(string $imapLabel): array {
+        $qb = $this->db->getQueryBuilder();
+
+        // Matcha BÅDE imap_label OCH display_name mot 'case:<uuid>': koppla/tagMessage-
+        // vägen lagrar labeln verbatimt i imap_label, medan R3 createTag-vägen munglar
+        // imap_label (generateImapLabel → '$case_<uuid>') men behåller 'case:<uuid>'
+        // verbatimt i display_name. OR:en täcker båda så gallringen når taggen oavsett väg.
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where(
+                $qb->expr()->orX(
+                    $qb->expr()->eq('imap_label', $qb->createNamedParameter($imapLabel, IQueryBuilder::PARAM_STR)),
+                    $qb->expr()->eq('display_name', $qb->createNamedParameter($imapLabel, IQueryBuilder::PARAM_STR))
+                )
+            )
+            ->andWhere($qb->expr()->isNull('deleted_at'));
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Get all assignment tags for a mailbox.
      *
      * @param string $emailAddress

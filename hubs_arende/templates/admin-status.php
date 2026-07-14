@@ -16,6 +16,13 @@ declare(strict_types=1);
 $status = $_['status'] ?? [];
 $intMode = $status['integrationMode'] ?? [];
 $typer = $status['arendetyper'] ?? [];
+$brainGreeting = $_['brainGreeting'] ?? 'alla';
+$botConfigured = (bool)($_['botConfigured'] ?? false);
+$greetingLabel = [
+    'alla' => 'På — i både ärenderum och dokument-chattar',
+    'arenderum' => 'Endast ärendets diskussionsrum',
+    'off' => 'Av',
+][$brainGreeting] ?? $brainGreeting;
 
 /**
  * Render a value→count map as a small two-column table.
@@ -62,6 +69,26 @@ $renderCounts = static function (array $map): void {
 		</tr>
 		<?php endforeach; ?>
 	</tbody></table>
+
+	<h3>AI-assistent (Ärende-brain)</h3>
+	<p class="settings-hint">
+		Brain-boten aktiveras automatiskt i varje ärendes diskussionsrum och i dokumentens
+		Collabora-chatt, och postar en inledande hälsning så handläggaren ser att AI-stödet
+		finns (<code>!hjälp</code>, <code>!brief</code>, <code>!råd</code> m.fl.).
+	</p>
+	<table class="grid"><tbody>
+		<tr>
+			<td style="padding-right:1.5em">Inledande hälsning</td>
+			<td><strong><?php p($greetingLabel); ?></strong></td>
+		</tr>
+		<tr>
+			<td style="padding-right:1.5em">Bot-postning konfigurerad</td>
+			<td><strong><?php p($botConfigured ? 'Ja' : 'Nej (talk_bot_id / talk_bot_secret saknas)'); ?></strong></td>
+		</tr>
+	</tbody></table>
+	<p class="settings-hint">
+		Ändra läget: <code>occ config:app:set hubs_arende brain_greeting --value alla|arenderum|off</code>
+	</p>
 
 	<h3>Ärenden per steg</h3>
 	<?php $renderCounts($status['perSteg'] ?? []); ?>

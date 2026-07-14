@@ -5,6 +5,16 @@
 
 # E-underskrift i Hubs — LibreSign idag, Inera Underskriftstjänst för skarp AES, och vägen framåt
 
+> **⚠ KORRIGERING 2026-07-14 (läs först):** Adversariellt verifierad omvärldsanalys har
+> **motbevisat §2.2:s hash-antagande för API-varianten** — Ineras Underskriftstjänst API
+> kräver att HELA dokumentet laddas upp (dokumentobjekt + octet-stream; inget
+> hash-alternativ finns; lagras hos Inera till gallring, default 30 dagar). Endast
+> **Bas**-varianten är hash-only (men SITHS-only, en undertecknare). Sekretessberättelsen
+> går i stället via OSL 10:2a (sekretessgenombrott för teknisk bearbetning, ikraft
+> 2023-07-01) + kort gallringsfrist. mTLS är bekräftad för API-åtkomsten (GAP-033 kan
+> stängas). Aktuellt beslutsunderlag och kravställning:
+> `itsl-open-stack/docs/signering/OMVARLDSANALYS-SIGNERING-2026-07.md` + `KRAV-SIGNERING-2026-07.md`.
+
 > **Vad detta är:** den sammanslagna referensen för e-underskrift i Hubs. Den svarar på tre frågor:
 > (1) **hur signerar vi i Hubs idag** (LibreSign — vald app, vad den klarar, hur den sätts upp),
 > (2) **exakt vad som krävs för Inera Underskriftstjänst-API** (skarp svensk AES med BankID/Freja/SITHS —

@@ -109,6 +109,18 @@ return [
             'url' => '/api/v1/arende/{ref}/talkrum',
             'verb' => 'POST',
         ],
+        // GET    /rum/{token}                 -> reverse-lookup rum→ärende (P1.3b, bot läser registret)
+        [
+            'name' => 'Arende#rumLosning',
+            'url' => '/api/v1/rum/{token}',
+            'verb' => 'GET',
+        ],
+        // POST   /arende/{ref}/dokumentchatt  -> registrera filchatt-rum som pekare (P1.3b)
+        [
+            'name' => 'Arende#registreraDokumentchatt',
+            'url' => '/api/v1/arende/{ref}/dokumentchatt',
+            'verb' => 'POST',
+        ],
         // POST   /arende/{ref}/groupfolder    -> 1:n extra groupfolder (samma hubs_case_id)
         [
             'name' => 'Arende#laggTillGroupfolder',
@@ -155,6 +167,18 @@ return [
             'url' => '/api/v1/arende/{ref}/part/{id}',
             'verb' => 'DELETE',
         ],
+        // ★ LEGAL-FRIST ★ POST .../part/{id}/delgivning -> per-part-delgivning (FL 44 §)
+        [
+            'name' => 'Part#setDelgivning',
+            'url' => '/api/v1/arende/{ref}/part/{id}/delgivning',
+            'verb' => 'POST',
+        ],
+        // ★ LEGAL-FRIST ★ POST .../part/{id}/delgivning/undanta -> undanta part (OSL 10:3)
+        [
+            'name' => 'Part#undantaDelgivning',
+            'url' => '/api/v1/arende/{ref}/part/{id}/delgivning/undanta',
+            'verb' => 'POST',
+        ],
 
         // --- Handling-från-mall (fas 1: mall + ärendedata → docx i akten) ---
         // GET /ocs/v2.php/apps/hubs_arende/api/v1/arende/{ref}/mallar -> mallbibliotekets .docx
@@ -175,6 +199,54 @@ return [
         [
             'name' => 'Handling#skapa',
             'url' => '/api/v1/arende/{ref}/handling',
+            'verb' => 'POST',
+        ],
+
+        // --- E-underskrift fas 1 (KRAV-SIGNERING-2026-07, K-SIGN-1–9) -------
+        // Tvånivåmodellens OCS-yta — delat kontrakt med hubs_start. Allt går
+        // genom SigneringService (enda konsumenten av SigneringPort).
+        // GET .../arende/{ref}/signering -> {niva_matris, poster:[SigneringDTO]}
+        [
+            'name' => 'Signering#oversikt',
+            'url' => '/api/v1/arende/{ref}/signering',
+            'verb' => 'GET',
+        ],
+        // POST .../signering/godkann -> digitalt godkännande (K-SIGN-2; journalförs,
+        //   renderas ALDRIG som underskrift). Body: {handlingRef, filename, dokumentHash}.
+        [
+            'name' => 'Signering#godkann',
+            'url' => '/api/v1/arende/{ref}/signering/godkann',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/begar -> AdES-begäran via SigneringPort (K-SIGN-3/4).
+        //   Body: {handlingRef, filename, dokumentHash, signers:[{uid, role}]}.
+        [
+            'name' => 'Signering#begar',
+            'url' => '/api/v1/arende/{ref}/signering/begar',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/refresh -> idempotent poll (K-SIGN-22)
+        [
+            'name' => 'Signering#refresh',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/refresh',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/fornya -> NY begäran, journalförd kedja (K-SIGN-7)
+        [
+            'name' => 'Signering#fornya',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/fornya',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/avbryt -> lokalt avbruten, body {skal} (K-SIGN-7)
+        [
+            'name' => 'Signering#avbryt',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/avbryt',
+            'verb' => 'POST',
+        ],
+        // POST .../signering/{signRequestId}/paminn -> journalförd påminnelse (v1, K-SIGN-7)
+        [
+            'name' => 'Signering#paminn',
+            'url' => '/api/v1/arende/{ref}/signering/{signRequestId}/paminn',
             'verb' => 'POST',
         ],
 
@@ -218,6 +290,19 @@ return [
         [
             'name' => 'Admin#seedDemo',
             'url' => '/api/v1/admin/seed-demo',
+            'verb' => 'POST',
+        ],
+
+        // --- Brain-per-ärende: gateway-authz (server-till-server) ------------
+        // POST /ocs/v2.php/apps/hubs_arende/api/v1/authz/check
+        //   -> AuthzController::check(). Anropas av brain-gw (Node) UTAN NC-session
+        //      för varje MCP-/funktionsanrop: {uid, hubs_case_id, funktion} →
+        //      {allow, roll, skal, skydd}. #[PublicPage] + eget gateway-secret
+        //      (fail-closed), se AuthzController. Ruttnamnet 'Authz#check' resolvar
+        //      till OCA\HubsArende\Controller\AuthzController (platt namespace).
+        [
+            'name' => 'Authz#check',
+            'url' => '/api/v1/authz/check',
             'verb' => 'POST',
         ],
     ],

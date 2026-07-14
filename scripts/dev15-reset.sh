@@ -83,6 +83,13 @@ DELETE FROM oc_sdkmc_itsl_message_tag
  );
 DELETE FROM oc_sdkmc_itsl_tag
  WHERE imap_label LIKE 'case:%' OR imap_label LIKE '$dnr_%';
+-- Mail-appens EGNA per-user-taggar (oc_mail_tags) speglar case:/behandlad. De
+-- rensades tidigare inte här → dinglande 'Ärende <kort>'-taggar mot raderade
+-- ärenden blev kvar i Meddelanden-klienten. Rensa mappningarna först, sedan taggarna.
+DELETE FROM oc_mail_message_tags
+ WHERE tag_id IN (SELECT id FROM oc_mail_tags WHERE imap_label LIKE 'case:%' OR imap_label = 'behandlad');
+DELETE FROM oc_mail_tags
+ WHERE imap_label LIKE 'case:%' OR imap_label = 'behandlad';
 COMMIT;
 SQL
 

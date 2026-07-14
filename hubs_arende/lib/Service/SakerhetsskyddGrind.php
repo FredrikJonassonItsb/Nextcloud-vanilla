@@ -14,6 +14,7 @@ use OCA\HubsArende\Db\PekareMapper;
 use OCA\HubsArende\Integration\Client\GroupfolderClient;
 use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -149,6 +150,12 @@ class SakerhetsskyddGrind {
         private ?SdkmcClient $sdkmcClient = null,
         private ?SpreedClient $spreedClient = null,
         private ?GroupfolderClient $groupfolderClient = null,
+        // R0-SPEGELN mot brain-gw (SPEC-BRAIN-PER-ARENDE kap 3.5/5.3): när ett
+        // ärende med en provisionerad brain karantänsätts retroaktivt måste
+        // provisionern PATCH:as (r0_karantan=true) så gw:ns R0-spegel underhålls
+        // (ALLTID deny). TRAILING OPTIONAL — null i testharnessen/icke-brainmiljöer
+        // ⇒ steget är en loggad no-op (försvagar aldrig karantänen).
+        private ?BrainProvisionService $brainProvisionService = null,
     ) {
     }
 
@@ -266,6 +273,7 @@ class SakerhetsskyddGrind {
             'groupfolder_last' => false,
             'case_tag_borttagen' => false,
             'register_karantan' => false,
+            'brain_karantan' => false,
         ];
 
         // R-retro-1: Remove from the inflow/triage index so it stops surfacing.
@@ -308,14 +316,21 @@ class SakerhetsskyddGrind {
         // R-retro-4: Remove the case:-tag carrier so the token stops propagating.
         //   Delete the case:{hubsCaseId} systemtag/imap_label via sdkmc + pekare.
         $atgarder['case_tag_borttagen'] = $this->retroSafe('case_tag_borttagen', $hubsCaseId, function () use ($hubsCaseId): bool {
-            if ($this->sdkmcClient === null || $this->pekareMapper === null) {
+            if ($this->sdkmcClient === null) {
                 return false;
             }
             $done = false;
-            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'case_tag') as $p) {
-                $done = $this->sdkmcClient->deleteCaseTag($hubsCaseId, '', $p->getObjektId()) || $done;
+            // Pekar-vägen (om en R3-pekare finns).
+            if ($this->pekareMapper !== null) {
+                foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'case_tag') as $p) {
+                    $done = $this->sdkmcClient->deleteCaseTag($hubsCaseId, '', $p->getObjektId()) || $done;
+                }
+                $this->pekareMapper->deleteByCaseAndTyp($hubsCaseId, 'case_tag');
             }
-            $this->pekareMapper->deleteByCaseAndTyp($hubsCaseId, 'case_tag');
+            // LABEL-VÄGEN (2026-07-12) — täcker case-taggar som skapats via
+            // koppla/tagMessage UTAN pekare (samma buggklass som gallringens). I ett
+            // säkerhetsskyddsflöde är det extra viktigt att bäraren FAKTISKT rivs.
+            $done = $this->sdkmcClient->deleteCaseTagByLabel($hubsCaseId) || $done;
             return $done;
         });
 
@@ -330,6 +345,22 @@ class SakerhetsskyddGrind {
             $arende->setRetentionState('pausad');
             $this->arendeMapper->update($arende);
             return true;
+        });
+
+        // R-retro-6: SPEGLA karantänen till brain-gw (SPEC kap 3.5/5.3). Om ärendet
+        //   har en provisionerad brain-tenant sätts dess R0-flagga (PATCH r0_karantan=
+        //   true) så att gw:ns authz-grind ALLTID nekar (deny_r0_karantan). Best-effort
+        //   via retroSafe: en onåbar provisioner får ALDRIG försvaga register-karantänen
+        //   ovan (den lokala, auktoritativa staten). Saknas brain/pekare ⇒ false (no-op).
+        $atgarder['brain_karantan'] = $this->retroSafe('brain_karantan', $hubsCaseId, function () use ($hubsCaseId): bool {
+            if ($this->brainProvisionService === null || $this->pekareMapper === null) {
+                return false;
+            }
+            $done = false;
+            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'brain_tenant') as $p) {
+                $done = $this->brainProvisionService->setKarantan($p->getObjektId(), true) || $done;
+            }
+            return $done;
         });
 
         $kvitto = [

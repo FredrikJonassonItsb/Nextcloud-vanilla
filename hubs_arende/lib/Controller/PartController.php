@@ -226,4 +226,56 @@ class PartController extends OCSController {
             return new DataResponse(['error' => 'ta_bort_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
+
+    /**
+     * ★ LEGAL-FRIST ★ Registrera per-part-delgivning (FL 33 §) — flyttar
+     * överklagandefristen från ärende- till partsnivå. Laga kraft = senaste
+     * partens frist ({@see PartService::setDelgivning()}). Journalförd.
+     *
+     * POST /api/v1/arende/{ref}/part/{id}/delgivning  {datum, metod?}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function setDelgivning(string $ref, int $id, string $datum, string $metod = 'ordinar'): DataResponse {
+        if ($ref === '' || $datum === '') {
+            return new DataResponse(['error' => 'ref_eller_datum_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $part = $this->partService->setDelgivning($ref, $id, $datum, $metod);
+            return new DataResponse(['ok' => true, 'part' => $part], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende setDelgivning failed', ['exception' => $e, 'ref' => $ref, 'id' => $id]);
+            return new DataResponse(['error' => 'delgivning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * ★ LEGAL-FRIST ★ Undanta en part från delgivning (OSL 10:3 / skyddad adress /
+     * våld) — parten ska medvetet inte nås och håller inte upp laga kraft, men bärs
+     * explicit i modellen ({@see PartService::undantaDelgivning()}). Journalförd.
+     *
+     * POST /api/v1/arende/{ref}/part/{id}/delgivning/undanta  {grund}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function undantaDelgivning(string $ref, int $id, string $grund): DataResponse {
+        if ($ref === '' || $grund === '') {
+            return new DataResponse(['error' => 'ref_eller_grund_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $part = $this->partService->undantaDelgivning($ref, $id, $grund);
+            return new DataResponse(['ok' => true, 'part' => $part], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\InvalidArgumentException $e) {
+            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende undantaDelgivning failed', ['exception' => $e, 'ref' => $ref, 'id' => $id]);
+            return new DataResponse(['error' => 'undanta_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
 }

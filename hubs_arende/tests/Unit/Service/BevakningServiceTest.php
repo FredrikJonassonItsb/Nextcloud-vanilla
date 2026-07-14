@@ -14,6 +14,8 @@ use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\ArendeTyp;
 use OCA\HubsArende\Db\Bevakning;
 use OCA\HubsArende\Db\BevakningMapper;
+use OCA\HubsArende\Db\Part;
+use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Service\ArendeTypRegistry;
 use OCA\HubsArende\Service\BevakningService;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -194,6 +196,126 @@ final class BevakningServiceTest extends TestCase {
     }
 
     // ================================================================== //
+    //  ★ PER-PART-DELGIVNING (FL 44 §) — laga kraft = SENASTE partens frist ★
+    // ================================================================== //
+
+    public function testLagaKraftArSenastePartensFrist(): void {
+        // Två vårdnadshavare, båda delgivna (08 resp 10 juli). Laga kraft = den
+        // SENASTE partens frist (10 juli + 21 d = 31 juli), aldrig den tidigare.
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-08'),
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-10'),
+        ]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertNotNull($b);
+        self::assertSame('overklagande', $b->getTyp());
+        self::assertTrue($b->getLagstadgad());
+        self::assertSame('2026-07-31', $b->getFristDue()?->format('Y-m-d'), 'laga kraft = SENASTE partens frist (10 juli + 21 d)');
+        self::assertStringContainsString('laga kraft', $b->getTitel());
+    }
+
+    public function testEjAllaDelgivnaGerIngenLagaKraftFrist(): void {
+        // En delgiven, en EJ delgiven ⇒ laga kraft ännu ej bestämbar ⇒ fristDue=null.
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-08'),
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, null),
+        ]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertNotNull($b);
+        self::assertNull($b->getFristDue(), 'fristen är ej bestämbar förrän ALLA parter delgivits');
+        self::assertStringContainsString('väntar på delgivning', $b->getTitel());
+        self::assertStringContainsString('1/2', $b->getTitel());
+    }
+
+    public function testUndantagenPartHallerInteUppLagaKraft(): void {
+        // En delgiven + en UNDANTAGEN (OSL 10:3). Den undantagna räknas inte in ⇒
+        // laga kraft är bestämbar av den enda delgivningsbara parten (08 + 21 = 29).
+        $undantagen = $this->makePart(Part::ROLL_VARDNADSHAVARE, null);
+        $undantagen->setDelgivningUndantagen(true);
+        $undantagen->setDelgivningUndantagGrund(Part::UNDANTAG_OSL_10_3);
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-08'),
+            $undantagen,
+        ]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertNotNull($b);
+        self::assertSame('2026-07-29', $b->getFristDue()?->format('Y-m-d'), 'undantagen part håller inte upp laga kraft');
+        self::assertStringContainsString('laga kraft', $b->getTitel());
+    }
+
+    public function testIckeDelgivningsbarRollRaknasInte(): void {
+        // Ett barn delgivet + en anmälare med (påhittat) delgivningsdatum. anmälaren
+        // har ingen överklaganderätt ⇒ ignoreras helt i beräkningen.
+        $anmalare = $this->makePart(Part::ROLL_ANMALARE, '2026-08-01');
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_BARN, '2026-07-08'),
+            $anmalare,
+        ]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertNotNull($b);
+        self::assertSame('2026-07-29', $b->getFristDue()?->format('Y-m-d'), 'endast delgivningsbara roller räknas (barnets frist, ej anmälarens)');
+    }
+
+    public function testIngenDelgivningsbarPartGerNoop(): void {
+        // Bara en anmälare ⇒ ingen delgivningsbar ROLL alls ⇒ no-op (rör inte case-nivån).
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_ANMALARE, '2026-07-08'),
+        ]);
+
+        self::assertNull($svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1'));
+    }
+
+    public function testUndantaSistaDelgivningsbaraPartenNollarBefintligFrist(): void {
+        // En VH var delgiven ⇒ overklagande fanns med konkret frist. Nu undantas den
+        // ENDA/sista delgivningsbara parten ⇒ fristen SKA nollas, inte lämnas stale (BUGG-fix).
+        $befintlig = $this->makeOverklagande('2026-07-29');
+        $undantagen = $this->makePart(Part::ROLL_VARDNADSHAVARE, null);
+        $undantagen->setDelgivningUndantagen(true);
+        $undantagen->setDelgivningUndantagGrund(Part::UNDANTAG_VALD);
+        $svc = $this->serviceWithParts([$undantagen], [$befintlig]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertSame($befintlig, $b, 'den befintliga bevakningen reconcileras (ingen ny)');
+        self::assertNull($b->getFristDue(), 'sista delgivningsbara parten undantagen ⇒ ingen frist');
+        self::assertStringContainsString('undantagna', $b->getTitel());
+    }
+
+    public function testLaggTillNyEjDelgivenPartAteroppnarFrist(): void {
+        // Två VH delgivna (frist fanns) + en NY VH EJ delgiven ⇒ laga kraft obestämbar
+        // igen ⇒ befintlig bevaknings frist nollas till "väntar (2/3)" (BUGG-fix).
+        $befintlig = $this->makeOverklagande('2026-07-29');
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-08'),
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, '2026-07-05'),
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, null),
+        ], [$befintlig]);
+
+        $b = $svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1');
+
+        self::assertNull($b->getFristDue(), 'ny odelgiven part återöppnar fristen');
+        self::assertStringContainsString('2/3', $b->getTitel());
+    }
+
+    public function testNyDelgivningsbarPartUtanBefintligBevakningSkaparIngenFrist(): void {
+        // En VH tillagd men INGEN delgiven ännu + ingen befintlig bevakning ⇒ ingen
+        // frist ska födas prematurt (innan något beslut delgetts).
+        $svc = $this->serviceWithParts([
+            $this->makePart(Part::ROLL_VARDNADSHAVARE, null),
+        ]);
+
+        self::assertNull($svc->synkaOverklagandeFranParter(self::CASE_ID, 'handlaggare1'));
+    }
+
+    // ================================================================== //
     //  Kvittering av manuell bevakning + recurring föder ny cykel.
     // ================================================================== //
 
@@ -314,6 +436,64 @@ final class BevakningServiceTest extends TestCase {
         $b->setForsenad(false);
         $b->setSkapad(clone $this->nu);
         return $b;
+    }
+
+    /**
+     * Bygg en BevakningService med en PartMapper-mock som returnerar $parter, och
+     * inga befintliga bevakningar (så synken skapar en ny 'overklagande' att
+     * assertera på in-place). Egen arendeMapper med samma callbacks som setUp.
+     *
+     * @param Part[] $parter
+     * @param Bevakning[] $befintliga Aktiva bevakningar (för reconcile-testerna).
+     */
+    private function serviceWithParts(array $parter, array $befintliga = []): BevakningService {
+        $partMapper = $this->createMock(PartMapper::class);
+        $partMapper->method('findByCaseId')->willReturn($parter);
+
+        $this->bevakningMapper->method('findAktivaByCaseId')->willReturn($befintliga);
+        $this->bevakningMapper->method('findByCaseId')->willReturn($befintliga); // projicieraFrist
+
+        return new BevakningService(
+            $this->bevakningMapper,
+            $this->arendeMapper,
+            $this->typRegistry,
+            $this->timeFactory,
+            $this->logger,
+            null, // deckClient
+            null, // pekareMapper
+            null, // handelseMapper
+            null, // grindConfig
+            $partMapper,
+        );
+    }
+
+    /** En aktiv 'overklagande'-bevakning (för reconcile-testerna). */
+    private function makeOverklagande(?string $frist): Bevakning {
+        $b = new Bevakning();
+        $b->setHubsCaseId(self::CASE_ID);
+        $b->setTyp('overklagande');
+        $b->setTitel('Överklagandefrist löper (laga kraft ' . ($frist ?? '?') . ')');
+        $b->setVillkorTyp(Bevakning::VILLKOR_DATUM_PASSERAT);
+        $b->setStatus(Bevakning::STATUS_AKTIV);
+        $b->setFristDue($frist !== null ? new \DateTime($frist) : null);
+        $b->setAnkare(Bevakning::ANKARE_DELGIVNING);
+        $b->setLagstadgad(true);
+        $b->setSkapadAv('');
+        $b->setForsenad(false);
+        $b->setSkapad(clone $this->nu);
+        return $b;
+    }
+
+    private function makePart(string $roll, ?string $delgivningsdatum): Part {
+        $p = new Part();
+        $p->setHubsCaseId(self::CASE_ID);
+        $p->setRoll($roll);
+        $p->setNamn('Testperson');
+        $p->setSkydd(Part::SKYDD_INGEN);
+        $p->setKalla(Part::KALLA_MANUELL);
+        $p->setDelgivningUndantagen(false);
+        $p->setDelgivningsdatum($delgivningsdatum !== null ? new \DateTime($delgivningsdatum) : null);
+        return $p;
     }
 
     private function makeArende(string $steg): Arende {

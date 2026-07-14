@@ -18,7 +18,7 @@ En åtgärd-först-dashboard som binder ihop alla säkra kanaler i en triage-kö
 ("Att hantera"), med verifierade djuplänkar ned i respektive funktion.
 Byggd som fristående app — all data stannar i kundens egen driftmiljö.
     ]]></description>
-    <version>1.8.0</version>
+    <version>1.9.5</version>
     <licence>agpl</licence>
     <author mail="info@itsl.se" homepage="https://itsl.se">ITSL</author>
     <namespace>HubsStart</namespace>

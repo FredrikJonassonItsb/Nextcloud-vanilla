@@ -111,6 +111,13 @@ class ArendedataService {
         'kommunNamn' => [
             '[Kommunens namn]',
         ],
+        // --- AI-NARRATIV: det källförankrade utkast orkestreraren genererar
+        // inline (OrkNarrativKlient). Fältet levereras INTE av byggUtkast utan
+        // läggs till av HandlingController efter ork-anropet — här bara så att
+        // HandlingService::generera kan mappa nyckeln till mallens platshållare.
+        'ai_narrativ' => [
+            '[AI-UTKAST]',
+        ],
     ];
 
     /** Etikett per fältnyckel — visningsnamnet i förhandsgranskningen. */
@@ -126,6 +133,7 @@ class ArendedataService {
         'utredningInledd' => 'Utredning inleddes',
         'medutredare' => 'Medutredare',
         'kommunNamn' => 'Kommun',
+        'ai_narrativ' => 'AI-utkast (källförankrat)',
     ];
 
     /** Varning när partsregistret saknar en barn-part (inget skyddsfall — bara tomt). */

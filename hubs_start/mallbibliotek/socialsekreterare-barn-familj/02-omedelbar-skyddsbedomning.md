@@ -35,6 +35,14 @@ rattslig_grund: Omedelbar skyddsbedömning enligt socialtjänstlagen [verifiera 
 _Vid syskonärende: gör en egen skyddsbedömning per barn (ett ärende per barn, delad anmälan)._
 _(kopiera avsnittet vid flera barn)_
 
+## AI-utkast — källförankrat underlag (granska och redigera)
+
+_AI-genererat ur ärendets underlag (orosanmälan, tidigare kännedom). Granska mot
+källorna, redigera fritt och för in i rätt avsnitt nedan. **Bedömningen (avsnitt 4)
+skriver du alltid själv** — AI fyller den aldrig._
+
+[AI-UTKAST]
+
 ## 2. Anmälan som föranleder bedömningen
 
 **Anmälan inkom:** [ÅÅÅÅ-MM-DD klockslag]

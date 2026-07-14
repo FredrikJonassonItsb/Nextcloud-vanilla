@@ -11,10 +11,16 @@
 		:id="'arende-' + (arende.triageRef || arende.hubsCaseId)"
 		class="arende-kort hs-card"
 		:class="{ 'arende-kort--het': pinned, 'arende-kort--plikt': pliktAktiv, 'arende-kort--markerad': markerad }">
-		<!-- Pliktmarkör -->
+		<!-- Pliktmarkör: röd när skyddsbedömningen saknas … -->
 		<p v-if="pliktAktiv" class="arende-kort__plikt">
 			<AlertOctagonIcon :size="16" />
 			{{ arende.plikt.label }}
+		</p>
+		<!-- … och en dämpad GRÖN BEKRÄFTELSE när den är dokumenterad (T4/F5):
+		     markören försvinner inte längre tyst, den bekräftar "klar". -->
+		<p v-else-if="pliktBekraftad" class="arende-kort__plikt-ok">
+			<CheckCircleIcon :size="15" />
+			{{ t('hubs_start', 'Skyddsbedömning dokumenterad') }}
 		</p>
 
 		<!-- Titel + sekretess/LOA -->
@@ -32,13 +38,15 @@
 				<NcButton v-if="arOtilldelat" type="secondary" :disabled="tarArendet" @click="taArendet">
 					{{ t('hubs_start', 'Ta ärendet') }}
 				</NcButton>
-				<span class="arende-kort__sekretess">{{ arende.sekretess && arende.sekretess.kod }}</span>
-				<span class="arende-kort__loa">{{ arende.loa }}</span>
+				<span v-if="arende.sekretess && arende.sekretess.kod" class="arende-kort__sekretess">{{ arende.sekretess.kod }}</span>
+				<span v-if="arende.loa" class="arende-kort__loa">{{ arende.loa }}</span>
 			</span>
 		</header>
 
-		<!-- Processteg -->
+		<!-- Processteg. Hela ärendet skickas (A1/A5) så steppern kan härleda
+		     nod-states + rik hover ur STEG_INNEHALL/stegNodState + evidensen. -->
 		<ProcessStepper
+			:arende="arende"
 			:steg="arende.steg"
 			:substeg="arende.substeg"
 			:plikt="arende.plikt"
@@ -102,19 +110,13 @@
 			</div>
 
 			<div v-if="isExpanded" class="arende-kort__flik">
-				<!-- Akten (ärenderummets dokument) — filerna är KLICKBARA;
-				     meddelandereferenser (msg-*.url) renderas som meddelanderader. -->
+				<!-- Akten (ärenderummets dokument) — filerna är KLICKBARA.
+				     Meddelandereferenser (msg-*.url) visas INTE här: meddelanden hör
+				     hemma under fliken Meddelanden (aktenDokument filtrerar bort dem). -->
 				<ul v-if="activeFlik === 'dokument'" class="arende-kort__list">
-					<template v-for="(d, i) in aktenDokument">
-						<li v-if="d.arReferens" :key="'r' + i">
-							<button class="arende-kort__radknapp hs-target" type="button" @click="openFlik('meddelanden')">
-								<MessageTextLockIcon :size="16" /> {{ t('hubs_start', 'Kopplat meddelande (referens) — visa under Meddelanden') }}
-							</button>
-						</li>
-						<li v-else :key="'f' + i" :title="dokTitle(d)">
-							<a class="arende-kort__fillank" :href="fileHref(d)"><FileDocumentIcon :size="16" /> {{ dokNamn(d) }}</a>
-						</li>
-					</template>
+					<li v-for="(d, i) in aktenDokument" :key="'f' + i" :title="dokTitle(d)">
+						<a class="arende-kort__fillank" :href="fileHref(d)"><FileDocumentIcon :size="16" /> {{ dokNamn(d) }}</a>
+					</li>
 					<li v-if="!aktenDokument.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga dokument än.') }}</li>
 				</ul>
 
@@ -237,13 +239,14 @@
 					<div class="arende-kort__bevakning-ny">
 						<p class="arende-kort__flikrubrik">{{ t('hubs_start', 'Ny bevakning') }}</p>
 						<label class="arende-kort__falt">
-							<span class="arende-kort__falt-label">{{ t('hubs_start', 'Rubrik') }}</span>
+							<span class="arende-kort__falt-label">{{ t('hubs_start', 'Rubrik') }} *</span>
 							<input
 								v-model="nyBevakning.titel"
 								type="text"
 								class="arende-kort__input"
 								:placeholder="t('hubs_start', 'Kort rubrik — ingen känslig information')"
 								:disabled="nyBevakningSparar"
+								aria-required="true"
 								@keyup.enter="skapaBevak">
 						</label>
 						<p class="arende-kort__muted arende-kort__falt-hint">{{ t('hubs_start', 'Ingen känslig information i rubriken.') }}</p>
@@ -266,13 +269,25 @@
 									:disabled="nyBevakningSparar">
 							</label>
 						</div>
+						<!-- Disabled ENDAST under sparande: rubrik-kravet valideras i
+						     handlern med synligt fel. En villkors-disabled knapp blir en
+						     oförklarat död knapp om komponentens render fryser efter ett
+						     JS-fel (bindningen omvärderas aldrig, klicket avfyras aldrig). -->
 						<NcButton
 							type="primary"
-							:disabled="!nyBevakning.titel.trim() || nyBevakningSparar"
+							:disabled="nyBevakningSparar"
 							@click="skapaBevak">
 							<template #icon><BellRingIcon :size="16" /></template>
 							{{ t('hubs_start', 'Skapa bevakning') }}
 						</NcButton>
+						<!-- Förklara den nedtonade knappen — annars ser formuläret "trasigt"
+						     ut när frist/cykel är ifyllda men rubriken (kravet) är tom. -->
+						<p
+							v-if="!nyBevakning.titel.trim() && (nyBevakning.fristDue || nyBevakning.recurringDagar)"
+							class="arende-kort__muted arende-kort__falt-hint"
+							role="status">
+							{{ t('hubs_start', 'Ange en rubrik för att kunna skapa bevakningen.') }}
+						</p>
 					</div>
 
 					<!-- Delgivningsdatum: sätter FL 33 §-datumet → föder överklagandebevakningen
@@ -289,9 +304,11 @@
 								type="date"
 								class="arende-kort__input"
 								:disabled="delgivningSparar">
+							<!-- Samma buggklass som Skapa bevakning: disabled endast under
+							     sparande — datum-kravet valideras i handlern med synligt fel. -->
 							<NcButton
 								type="secondary"
-								:disabled="!delgivningsdatum || delgivningSparar"
+								:disabled="delgivningSparar"
 								@click="sattDelgivning">
 								{{ t('hubs_start', 'Spara delgivningsdatum') }}
 							</NcButton>
@@ -302,12 +319,21 @@
 				<!-- Historik & beslut: motorns händelsejournal som tidslinje.
 				     NEVER-SoR: besluten i sak bor i facksystemet — detta är spegeln. -->
 				<div v-else-if="activeFlik === 'historik'">
+					<!-- K-SIGN-5/6/7 — signeringsstatus (statuskedja + per-part + åtgärder).
+					     Självförsörjande panel; auto-pollar medan en begäran pågår och
+					     fliken är öppen. signed → verklig status driver nästa-åtgärden. -->
+					<SigneringPanel :arende="arende" @signed="onSigneringSigned" />
 					<template v-if="full.beslut">
-						<p>{{ t('hubs_start', 'Kravnivå:') }} <strong>{{ full.beslut.kravniva }}</strong> · {{ full.beslut.signStatus }}</p>
-						<p class="arende-kort__bevarande">
-							<span :class="bevClass(full.beslut.bevarande.pades)">PAdES</span>
-							<span :class="bevClass(full.beslut.bevarande.pdfa)">PDF/A-1</span>
-							<span :class="bevClass(full.beslut.bevarande.ltv)">LTV</span>
+						<!-- Motorns A11-beslut ({ dnr, destination, provenans, signatur,
+						     signerat }) saknar demo-fixturens kravniva/signStatus/bevarande —
+						     ovillkorlig dereferens gav TypeError i rendern och fliken såg
+						     död ut på registrerade live-ärenden. Guarda per form. -->
+						<p v-if="full.beslut.kravniva">{{ t('hubs_start', 'Kravnivå:') }} <strong>{{ full.beslut.kravniva }}</strong> · {{ full.beslut.signStatus }}</p>
+						<p v-else>{{ t('hubs_start', 'Registrerad i facksystemet — dnr {dnr}', { dnr: full.beslut.dnr || '' }) }}<template v-if="full.beslut.signerat"> · {{ t('hubs_start', 'signerad') }}</template></p>
+						<p v-if="beslutBevarande" class="arende-kort__bevarande">
+							<span :class="bevClass(beslutBevarande.pades)">PAdES</span>
+							<span :class="bevClass(beslutBevarande.pdfa)">PDF/A-1</span>
+							<span :class="bevClass(beslutBevarande.ltv)">LTV</span>
 							<span class="arende-kort__muted">{{ t('hubs_start', 'Giltig nu / Giltig då') }}</span>
 						</p>
 					</template>
@@ -315,8 +341,14 @@
 					<ol class="arende-kort__tidslinje">
 						<li v-for="(h, i) in historik" :key="'h' + i">
 							<span class="arende-kort__tid">{{ fmtTime(h.tid) }}</span>
-							<span>{{ historikLabel(h) }}</span>
-							<span v-if="h.aktorUid" class="arende-kort__muted"> · {{ h.aktorUid }}</span>
+							<span class="arende-kort__handelse">
+								{{ historikLabel(h) }}
+								<span v-if="h.aktorUid" class="arende-kort__muted"> · {{ h.aktorUid }}</span>
+								<a
+									v-if="historikLank(h)"
+									class="arende-kort__fillank arende-kort__handelse-lank"
+									:href="historikLank(h)"><FileDocumentIcon :size="14" /> {{ t('hubs_start', 'öppna') }}</a>
+							</span>
 						</li>
 					</ol>
 					<p v-if="!tabLaddar.historik && !historik.length" class="arende-kort__muted">{{ t('hubs_start', 'Ingen historik än.') }}</p>
@@ -335,7 +367,7 @@
 			<div v-if="isExpanded" class="arende-kort__medlemmar">
 				<span class="arende-kort__muted">{{ t('hubs_start', 'Anslutna:') }}</span>
 				<span v-for="(m, i) in medlemmar" :key="'md' + i" class="arende-kort__medlem">
-					{{ m.uid }} <span class="arende-kort__muted">({{ rollLabel(m.roll) }})</span>
+					{{ m.displayName || m.uid }} <span class="arende-kort__muted">({{ rollLabel(m.roll) }})</span>
 				</span>
 				<span v-if="!medlemmar.length" class="arende-kort__muted">{{ t('hubs_start', 'Inga registrerade medlemmar.') }}</span>
 				<span class="arende-kort__kollega">
@@ -370,7 +402,7 @@ import { showSuccess, showError } from '@nextcloud/dialogs'
 import store from '../../store/index.js'
 import { iconFor } from '../../services/icons.js'
 import deepLinks from '../../services/deepLinks.js'
-import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, tilldela, laggTillMedlem, skapaBevakning, kvitteraBevakning, avbrytBevakning, setDelgivningsdatum } from '../../services/api.js'
+import { fetchCaseMessages, fetchArendeMeetings, fetchArendeHistorik, fetchArendeBevakningar, fetchArendeMedlemmar, tilldela, laggTillMedlem, skapaBevakning, kvitteraBevakning, avbrytBevakning, setDelgivningsdatum } from '../../services/api.js'
 import ProcessStepper from './ProcessStepper.vue'
 import FristChip from './FristChip.vue'
 import ProvenansChip from './ProvenansChip.vue'
@@ -378,6 +410,7 @@ import NastaAtgardKnapp from './NastaAtgardKnapp.vue'
 import DiskussionChip from './DiskussionChip.vue'
 import TilldelningBand from './TilldelningBand.vue'
 import PartsPanel from './PartsPanel.vue'
+import SigneringPanel from './SigneringPanel.vue'
 import AnvandarValjare from './AnvandarValjare.vue'
 
 /** Svenska etiketter för bevakningens villkorstyp (aldrig rå maskintoken i UI). */
@@ -398,13 +431,35 @@ const STATUS_LABEL = {
 	avbruten: t('hubs_start', 'Avbruten'),
 }
 
+/** A2 — grind-namn (TYP_GRINDVAL.grind) → läsbar svensk etikett (aldrig rå token). */
+const GRIND_LABEL = {
+	skyddsbedomning: t('hubs_start', 'skyddsbedömning'),
+	inte_inleda: t('hubs_start', 'inte inleda utredning'),
+	kommunicering: t('hubs_start', 'kommunicering'),
+	avslut: t('hubs_start', 'avslut'),
+}
+
+/** A2 — grindval (TYP_GRINDVAL.val) → läsbar etikett. */
+const GRINDVAL_LABEL = {
+	godkand: t('hubs_start', 'godkänt'),
+	override: t('hubs_start', 'åsidosatt (dokumenterat skäl)'),
+	vald: t('hubs_start', 'valt'),
+}
+
+/** A2 — kvittens-/grind-moment (TYP_KVITTENS.moment) → läsbar etikett. */
+const MOMENT_LABEL = {
+	skyddsbedomning: t('hubs_start', 'skyddsbedömning'),
+	kommunicering: t('hubs_start', 'kommunicering'),
+	beslut: t('hubs_start', 'beslut'),
+}
+
 export default {
 	name: 'ArendeKort',
 	components: {
 		NcButton, AlertOctagonIcon, ChevronRightIcon, FileDocumentIcon, MessageTextLockIcon,
 		VideoIcon, CheckCircleIcon, BellRingIcon, ForumIcon,
 		ProcessStepper, FristChip, ProvenansChip, NastaAtgardKnapp,
-		DiskussionChip, TilldelningBand, PartsPanel, AnvandarValjare,
+		DiskussionChip, TilldelningBand, PartsPanel, SigneringPanel, AnvandarValjare,
 	},
 	props: {
 		arende: { type: Object, required: true },
@@ -423,6 +478,9 @@ export default {
 			tabMoten: null,
 			tabBevakningar: null,
 			tabHistorik: null,
+			// Anslutna (medlemsledger) — hämtas om vid varje expand/mutation; den
+			// tunga full-cachen är frusen efter första laddningen.
+			tabMedlemmar: null,
 			// Parter-flikens räknare — sätts av PartsPanel (@antal) efter varje hämtning.
 			tabParterAntal: null,
 			tabLaddar: { meddelanden: false, moten: false, bevakningar: false, historik: false },
@@ -444,6 +502,11 @@ export default {
 		},
 		pliktAktiv() {
 			return !!(this.arende.plikt && !this.arende.plikt.kvitterad)
+		},
+		/** T4/F5 — skyddsbedömningen finns dokumenterad (plikt kvitterad): visa
+		 * en bekräftelse i stället för att markören tyst försvinner. */
+		pliktBekraftad() {
+			return !!(this.arende.plikt && this.arende.plikt.kvitterad)
 		},
 		/** Stabil cache-nyckel: triageRef (= dnr ?? hubsCaseId, ALLTID satt) — aldrig
 		 * den ibland-null:a dnr. Annars cachas ett oregistrerat ärende under en nyckel
@@ -477,9 +540,10 @@ export default {
 			// Kollapsad fallback: bara diskussions-token känd → visa den ändå.
 			return this.diskussionsToken ? [{ token: this.diskussionsToken, namn: null }] : []
 		},
-		/** Ärenderummets medlemmar (ur motorns ledger) — medlemspanelen. */
+		/** Ärenderummets medlemmar (ur motorns ledger) — medlemspanelen. Färsk
+		 * ledger-hämtning (tabMedlemmar) vinner över den frusna full-cachen. */
 		medlemmar() {
-			return this.full.medlemmar || []
+			return this.tabMedlemmar || this.full.medlemmar || []
 		},
 		arOtilldelat() {
 			// Efter ett lyckat "Ta ärendet" göms knappen DIREKT (togsNyss) — utan
@@ -496,17 +560,19 @@ export default {
 			const bas = this.t('hubs_start', 'Ärende {ref}', { ref: kort })
 			return this.arende.barnRef ? bas + ' · ' + this.arende.barnRef : bas
 		},
-		/** Aktens dokument med referens-detektion (msg-*.url = meddelandepekare). */
+		/** Aktens dokument. Meddelandepekare (msg-*.url) filtreras BORT — meddelanden
+		 * visas enbart under fliken Meddelanden, aldrig som referensrad i akten. */
 		aktenDokument() {
 			const docs = (this.full.rum && this.full.rum.dokument) || []
-			return docs.map((d) => {
-				const namn = this.dokNamn(d)
-				return {
-					...(d && typeof d === 'object' ? d : { namn: String(d) }),
-					namn,
-					arReferens: /^msg-[0-9a-f]+\.url$/i.test(namn),
-				}
-			})
+			return docs
+				.map((d) => {
+					const namn = this.dokNamn(d)
+					return {
+						...(d && typeof d === 'object' ? d : { namn: String(d) }),
+						namn,
+					}
+				})
+				.filter((d) => !/^msg-[0-9a-f]+\.url$/i.test(d.namn))
 		},
 		/** Kopplade meddelanden: hämtade (live) med fixture-fallback (demo). */
 		kopplladeMeddelanden() {
@@ -524,10 +590,29 @@ export default {
 		historik() {
 			return this.tabHistorik || []
 		},
+		/** B5 — bevarande-status för historik-fliken: demo-fixturens beslut.bevarande
+		 * ({pades,pdfa,ltv}) när den finns, annars härledd ur motorns A11-signatur
+		 * ({format,pdfa,ltv} per signaturDetaljFromKvitto). null = inget att visa
+		 * (oregistrerat/osignerat) — chippen renderas då inte alls i stället för att
+		 * en ovillkorlig dereferens kraschar hela flikens render. */
+		beslutBevarande() {
+			const b = this.full.beslut
+			if (!b) {
+				return null
+			}
+			if (b.bevarande) {
+				return b.bevarande
+			}
+			const sig = b.signatur
+			if (sig && typeof sig === 'object') {
+				return { pades: /pades/i.test(String(sig.format || '')), pdfa: !!sig.pdfa, ltv: !!sig.ltv }
+			}
+			return null
+		},
 		flikar() {
 			// Flikraden är ALLTID synlig; räknaren visas när innehållet är känt
 			// (kollapsat kort saknar full-datat → null = ingen siffra, ärlig okänd).
-			const dok = this.full.rum && this.full.rum.dokument ? this.full.rum.dokument.length : null
+			const dok = this.full.rum && this.full.rum.dokument ? this.aktenDokument.length : null
 			return [
 				{ id: 'dokument', label: t('hubs_start', 'Akten'), antal: dok },
 				{ id: 'parter', label: t('hubs_start', 'Parter'), antal: this.tabParterAntal },
@@ -565,6 +650,7 @@ export default {
 				if (this.cacheKey) {
 					store.loadArende(this.cacheKey)
 				}
+				this.loadMedlemmar()
 			}
 		},
 	},
@@ -576,7 +662,11 @@ export default {
 			this.localExpanded = !this.localExpanded
 			if (this.localExpanded && this.cacheKey) {
 				store.loadArende(this.cacheKey)
+				// A6 — ge processteppern evidens (historik/bevakningar/parter) så dess
+				// nod-states blir exakta (klar/lucka/överhoppat) i det expanderade läget.
+				store.loadStegEvidens(this.cacheKey)
 				this.loadFlikData(this.activeFlik)
+				this.loadMedlemmar()
 			}
 			this.$emit('expand', this.arende)
 		},
@@ -588,6 +678,7 @@ export default {
 				if (this.cacheKey) {
 					store.loadArende(this.cacheKey)
 				}
+				this.loadMedlemmar()
 				this.$emit('expand', this.arende)
 			}
 			this.loadFlikData(id)
@@ -611,14 +702,31 @@ export default {
 					this.tabLaddar.bevakningar = true
 					this.tabBevakningar = await fetchArendeBevakningar(ref)
 					this.tabLaddar.bevakningar = false
+					// A6 — spegla in i evidens-cachen så steppern återanvänder datat.
+					store.setStegEvidensDel(this.cacheKey, 'bevakningar', this.tabBevakningar)
 				} else if (id === 'historik' && this.tabHistorik === null && !this.tabLaddar.historik) {
 					this.tabLaddar.historik = true
 					this.tabHistorik = await fetchArendeHistorik(ref)
 					this.tabLaddar.historik = false
+					store.setStegEvidensDel(this.cacheKey, 'historik', this.tabHistorik)
 				}
 			} catch (e) {
 				// Ärligt tom flik i stället för evig spinner.
 				this.tabLaddar = { meddelanden: false, moten: false, bevakningar: false, historik: false }
+			}
+		},
+		/** Hämta om medlemsledgern (Anslutna). Den tunga full-cachen är frusen efter
+		 * första laddningen → panelen skulle annars visa en föråldrad lista tills en
+		 * mutation forcerar reload. Egen billig ledger-läsning vid varje expand/mutation. */
+		async loadMedlemmar() {
+			const ref = this.arende.hubsCaseId || this.cacheKey
+			if (!ref) {
+				return
+			}
+			try {
+				this.tabMedlemmar = await fetchArendeMedlemmar(ref)
+			} catch (e) {
+				// Behåll ev. tidigare lista i stället för att tömma vid tillfälligt fel.
 			}
 		},
 		onStepperGoto({ steg }) {
@@ -627,6 +735,17 @@ export default {
 		},
 		onMenuAction(key) {
 			this.$emit(key, this.arende)
+		},
+		/**
+		 * K-SIGN-8 — panelen såg en begäran gå till signed: låt VERKLIG status driva
+		 * nastaAtgard-kedjan (overriden 'signaturkvittens' → "Delge beslut").
+		 * TODO[signering-fas2]: motorn ska sätta vantar='signaturkvittens' i
+		 * arende-summaryn utifrån signeringsstatus (SigneringService släcker även
+		 * bevakningsvillkoret signering_kvitterad); tills dess patchas kortet lokalt
+		 * här — samma objekt som summaryn bär, så knappen flippar direkt.
+		 */
+		onSigneringSigned() {
+			this.$set(this.arende, 'vantar', 'signaturkvittens')
 		},
 		/** Öppna ärendechatten: expandera kortet och hoppa till Rum-fliken. */
 		openDiskussion() {
@@ -674,9 +793,15 @@ export default {
 			}
 			return i === 0 ? t('hubs_start', 'Ärendets diskussion') : t('hubs_start', 'Chatt {n}', { n: i + 1 })
 		},
-		/** Tidslinjens radtext ur journalens typ + detalj (koordination, aldrig PII). */
+		/**
+		 * Tidslinjens radtext ur journalens typ + detalj (koordination, aldrig PII).
+		 * Beviset finns i detaljen — A2 lägger till case för handling/part/bevakning/
+		 * grindval/kvittens så raden aldrig faller till det råa typnamnet. Aktör + datum
+		 * renderas separat av raden (h.aktorUid + fmtTime(h.tid)); ev. artefakt-länk
+		 * via historikLank().
+		 */
 		historikLabel(h) {
-			const d = h.detalj || {}
+			const d = this.historikDetalj(h)
 			switch (h.typ) {
 			case 'skapad':
 				return t('hubs_start', 'Ärendet skapades ({typ})', { typ: d.arendeTyp || '' })
@@ -694,9 +819,133 @@ export default {
 				return t('hubs_start', 'Ny chatt skapades i ärendet')
 			case 'kopplad':
 				return n('hubs_start', '%n meddelande kopplades', '%n meddelanden kopplades', d.antal || 1)
+			case 'handling': {
+				// Handling skapad ur mall (mall-nyckeln, aldrig innehåll). Filnamnet
+				// visas när det finns; annars bara mallen.
+				const mall = d.mall || d.mallNamn || d.mallId || ''
+				const fil = this.handelseFil(h)
+				if (mall && fil) {
+					return t('hubs_start', 'Handling skapad ur mall: {mall} → {fil}', { mall, fil })
+				}
+				if (mall) {
+					return t('hubs_start', 'Handling skapad ur mall: {mall}', { mall })
+				}
+				return fil
+					? t('hubs_start', 'Handling skapad: {fil}', { fil })
+					: t('hubs_start', 'Handling skapad')
+			}
+			case 'part': {
+				// Partsregister-händelse: roll + riktning (aldrig namn/pnr).
+				const roll = this.rollLabel(d.roll) || t('hubs_start', 'part')
+				if (d.riktning === 'ut' || d.borttagen) {
+					return t('hubs_start', 'Part borttagen: {roll}', { roll })
+				}
+				if (d.kalla === 'navet' || d.uppdaterad) {
+					return t('hubs_start', 'Part uppdaterad mot folkbokföringen: {roll}', { roll })
+				}
+				return t('hubs_start', 'Part tillagd: {roll}', { roll })
+			}
+			case 'bevakning': {
+				// Bevaknings-livscykel: typ/titel + status (register-koordination).
+				const titel = d.titel || this.bevakningTypLabel(d.typ) || t('hubs_start', 'bevakning')
+				const status = d.status ? this.statusLabel(d.status) : ''
+				return status
+					? t('hubs_start', 'Bevakning: {titel} ({status})', { titel, status })
+					: t('hubs_start', 'Bevakning: {titel}', { titel })
+			}
+			case 'grindval': {
+				// A2 — grind-beslut: vilken grind + vilket val (+ ev. skäl-enum).
+				const grind = GRIND_LABEL[d.grind] || d.grind || ''
+				const val = GRINDVAL_LABEL[d.val] || d.val || ''
+				const skal = this.grindvalSkal(d)
+				const bas = t('hubs_start', 'Grindval: {grind} — {val}', { grind, val })
+				return skal ? bas + ' · ' + skal : bas
+			}
+			case 'kvittens': {
+				// A2 — kvittens av ett moment (t.ex. skyddsbedömning).
+				const moment = MOMENT_LABEL[d.moment] || d.moment || ''
+				return t('hubs_start', 'Kvitterat: {moment}', { moment })
+			}
 			default:
 				return h.typ
 			}
+		},
+		/** Normalisera journal-detaljen (objekt eller JSON-sträng) → objekt. */
+		historikDetalj(h) {
+			if (h && typeof h.detalj === 'object' && h.detalj) {
+				return h.detalj
+			}
+			if (h && typeof h.detalj === 'string') {
+				try {
+					return JSON.parse(h.detalj)
+				} catch (e) {
+					return {}
+				}
+			}
+			return {}
+		},
+		/** Filnamnet för en journal-händelse om detaljen bär en (handling/artefakt). */
+		handelseFil(h) {
+			const d = this.historikDetalj(h)
+			return d.fil || d.filnamn || d.artefakt || d.artefaktRef || ''
+		},
+		/**
+		 * A2 — artefakt-länk för en journalrad (återanvänder fileHref-mönstret): en
+		 * skapad handling/artefakt i akten öppnas i Filer. null när raden saknar fil.
+		 */
+		historikLank(h) {
+			const fil = this.handelseFil(h)
+			const caseId = this.arende.hubsCaseId
+			if (fil && caseId) {
+				return deepLinks.fileLink('/' + caseId + '/' + fil)
+			}
+			return null
+		},
+		/** Grindvalets skäl-enum → läsbar text (orsak/skal/utfall + beslutsfattare). */
+		grindvalSkal(d) {
+			const delar = []
+			const koder = {
+				// A7 override-skäl
+				gjord_i_facksystem: t('hubs_start', 'skyddsbedömning gjord i facksystemet'),
+				gjord_utanfor_hubs: t('hubs_start', 'skyddsbedömning gjord utanför Hubs'),
+				bradskande: t('hubs_start', 'brådskande'),
+				// A9a inte-inleda-orsak
+				ingen_grund: t('hubs_start', 'ingen grund för utredning'),
+				annan_huvudman: t('hubs_start', 'annan huvudman'),
+				redan_aktuell: t('hubs_start', 'redan aktuell'),
+				avskrivs: t('hubs_start', 'avskrivs'),
+				// A9b kommunicerings-skäl
+				sker_i_beslut: t('hubs_start', 'kommunicering sker i beslutet'),
+				ej_relevant: t('hubs_start', 'ej relevant'),
+				// A9c avslutsutfall
+				behov_tillgodosett: t('hubs_start', 'behov tillgodosett'),
+				flyttat: t('hubs_start', 'flyttat'),
+				avbojt: t('hubs_start', 'tackat nej'),
+				annan_insats: t('hubs_start', 'annan insats'),
+				overford_facksystem: t('hubs_start', 'överförd till facksystemet'),
+			}
+			const kod = d.orsak || d.skal || d.utfall
+			if (kod && koder[kod]) {
+				delar.push(koder[kod])
+			}
+			if (d.kvarstaende) {
+				delar.push(t('hubs_start', 'kvarstående behov'))
+			}
+			return delar.join(', ')
+		},
+		/** Bevaknings-typens läsbara etikett (fallback när titel saknas). */
+		bevakningTypLabel(typ) {
+			if (!typ) {
+				return ''
+			}
+			const s = String(typ).toLowerCase()
+			if (s.includes('overvagande') || s.includes('omprovning')) {
+				return t('hubs_start', 'övervägande/omprövning')
+			}
+			if (s.includes('overklagande')) {
+				return t('hubs_start', 'överklagandefrist')
+			}
+			return typ
 		},
 		rollLabel(roll) {
 			const map = {
@@ -722,6 +971,7 @@ export default {
 					showSuccess(t('hubs_start', 'Ärendet är nu ditt.'))
 					store.loadArendeSummary()
 					store.loadArende(this.cacheKey, true)
+					this.loadMedlemmar()
 				} else {
 					showError(t('hubs_start', 'Kunde inte ta ärendet: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
 				}
@@ -751,6 +1001,7 @@ export default {
 					showSuccess(t('hubs_start', 'Kollegan är tillagd i ärendet.'))
 					this.kollegaUid = ''
 					store.loadArende(this.cacheKey, true)
+					this.loadMedlemmar()
 				} else {
 					showError(t('hubs_start', 'Kunde inte lägga till kollegan: {orsak}', { orsak: (r && r.error) || t('hubs_start', 'okänt fel') }))
 				}
@@ -770,12 +1021,16 @@ export default {
 		emitCommit() {
 			this.$emit('commit', this.arende, { dokument: this.normaliseraDok() })
 		},
-		/** Normalisera ärenderummets dokument till {fileid,namn} (stöd strängar + objekt). */
+		/** Normalisera ärenderummets dokument till {fileid,namn} (stöd strängar + objekt).
+		 * Meddelandepekare (msg-*.url) utesluts — de är referenser, inte handlingar,
+		 * och ska aldrig erbjudas i commit-grindens dokumenturval. */
 		normaliseraDok() {
 			const docs = (this.full.rum && this.full.rum.dokument) || []
-			return docs.map((d) => (d && typeof d === 'object')
-				? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: this.dokNamn(d) }
-				: { fileid: null, namn: String(d) })
+			return docs
+				.filter((d) => !/^msg-[0-9a-f]+\.url$/i.test(this.dokNamn(d)))
+				.map((d) => (d && typeof d === 'object')
+					? { fileid: (d.fileid !== undefined && d.fileid !== null) ? d.fileid : null, namn: this.dokNamn(d) }
+					: { fileid: null, namn: String(d) })
 		},
 		/** Dokumentets visningsnamn. arenderumDokument() ger {namn,fileid}-objekt på
 		 * riktig data; demo-data ger strängar. Stöd båda (annars '[object Object]'). */
@@ -894,7 +1149,14 @@ export default {
 		async skapaBevak() {
 			const ref = this.arende.hubsCaseId || this.cacheKey
 			const titel = this.nyBevakning.titel.trim()
-			if (!ref || !titel || this.nyBevakningSparar) {
+			if (!ref || this.nyBevakningSparar) {
+				return
+			}
+			// Rubrik-kravet valideras HÄR (inte i :disabled): handlern läser alltid
+			// aktuellt komponent-state och ger ett synligt fel — en tyst return
+			// lämnar användaren gissande om varför inget händer.
+			if (!titel) {
+				showError(t('hubs_start', 'Ange en rubrik för bevakningen.'))
 				return
 			}
 			this.nyBevakningSparar = true
@@ -920,7 +1182,13 @@ export default {
 		/** Sätt delgivningsdatum → föder överklagandebevakningen; ladda om fliken. */
 		async sattDelgivning() {
 			const ref = this.arende.hubsCaseId || this.cacheKey
-			if (!ref || !this.delgivningsdatum || this.delgivningSparar) {
+			if (!ref || this.delgivningSparar) {
+				return
+			}
+			// Datum-kravet valideras här (inte i :disabled) — synligt fel i stället
+			// för en oförklarat grå knapp, robust även mot fryst re-render.
+			if (!this.delgivningsdatum) {
+				showError(t('hubs_start', 'Välj ett delgivningsdatum.'))
 				return
 			}
 			this.delgivningSparar = true
@@ -952,6 +1220,8 @@ export default {
 			this.tabLaddar.bevakningar = true
 			try {
 				this.tabBevakningar = await fetchArendeBevakningar(ref)
+				// A6 — håll evidens-cachen (och därmed steppern) i synk efter mutationen.
+				store.setStegEvidensDel(this.cacheKey, 'bevakningar', this.tabBevakningar)
 			} catch (e) {
 				// Ärligt tom flik i stället för evig spinner.
 			} finally {
@@ -981,6 +1251,22 @@ export default {
 		background: var(--hs-status-error);
 		color: #fff;
 		font-size: 0.82rem;
+		font-weight: 600;
+		align-self: flex-start;
+	}
+
+	// Dämpad grön bekräftelse (T4/F5): lugnare än den röda plikt-pillen — den
+	// SKA inte tävla om uppmärksamhet, bara bekräfta att momentet är gjort.
+	&__plikt-ok {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		margin: 0;
+		padding: 3px 10px;
+		border-radius: var(--border-radius-pill, 16px);
+		background: var(--hs-status-success-subtle, rgba(70, 186, 97, 0.12));
+		color: var(--hs-status-success, #2d7d3f);
+		font-size: 0.78rem;
 		font-weight: 600;
 		align-self: flex-start;
 	}
@@ -1078,8 +1364,8 @@ export default {
 	&__otilldelad {
 		font-size: 0.78rem; font-weight: 600; padding: 1px 10px;
 		border-radius: var(--border-radius-pill, 16px);
-		background: var(--hs-status-warning-bg, var(--color-warning-hover, #fdf3e3));
-		color: var(--hs-status-warning, var(--color-warning-text, #9a5b00));
+		background: var(--hs-status-warning-bg, #fdf3e3);
+		color: var(--hs-status-warning-text, #7f5900);
 	}
 	&__tab-antal {
 		margin-left: 6px; padding: 0 7px; font-size: 0.75rem;
@@ -1151,6 +1437,8 @@ export default {
 		li { display: flex; gap: 10px; align-items: baseline; }
 	}
 	&__tid { color: var(--color-text-maxcontrast); font-size: 0.78rem; min-width: 96px; font-variant-numeric: tabular-nums; }
+	&__handelse { min-width: 0; }
+	&__handelse-lank { margin-left: 6px; font-size: 0.82rem; font-weight: 600; }
 	&__medlemmar {
 		display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
 		border-top: 1px solid var(--color-border); padding-top: 10px; margin-top: 10px;

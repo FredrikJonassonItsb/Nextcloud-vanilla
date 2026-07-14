@@ -57,11 +57,8 @@
 			@upgrade-loa="onUpgradeLoa"
 			@open-help="onOpenHelp" />
 
-		<!-- Zon V: verbingång -->
-		<VadVillDuGora
-			:dismissed="prefs.verbEntryDismissed"
-			@verb="onVerb"
-			@dismiss="onDismissVerb" />
+		<!-- B11 — "Vad vill du göra?"-verbingången borttagen (förvirrade användaren;
+		     åtgärderna nås via korten, kommandopaletten och Dagspulsen). -->
 
 		<NcLoadingIcon v-if="A.loading" :size="44" class="mina-arenden__loading" />
 
@@ -74,92 +71,106 @@
 			@omfordela="onOmfordela" />
 
 		<template v-else>
-			<!-- Zon 1 topp: korg-väljare (korg-piller + typ-filter) -->
-			<KorgValjare
-				:korgar="A.korgar"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@valj-korg="store.setKorgFilter"
-				@valj-typ="store.setTypFilter" />
+			<!-- B12 — ÖVRE LAGRET: inflödet (genomströmningsytan) som egen grå platta.
+			     Utan gruppering lästes triage-banden och Mina ärenden som EN likformig
+			     kortstapel — plattan bär signalen "målet är tom yta". -->
+			<section class="mina-arenden__inflode" :aria-label="t('hubs_start', 'Inflöde — att sortera')">
+				<h2 class="mina-arenden__inflode-rubrik">{{ t('hubs_start', 'Inflöde — att sortera') }}</h2>
+				<p class="mina-arenden__inflode-under">{{ t('hubs_start', 'Målet är tom yta — allt inkommande omhändertaget.') }}</p>
 
-			<!-- Zon 1a: att ta emot (nytt-ärende-inflöde) -->
-			<AttTaEmotSektion
-				:items="taEmotItems"
-				:aktivt-filter="A.pulsFilter"
-				:pending-ids="taEmotPending"
-				@triage="onTriage"
-				@open="onOpenTriage" />
+				<!-- Zon 1 topp: korg-väljare (korg-piller + typ-filter) -->
+				<KorgValjare
+					:korgar="A.korgar"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					:typ-antal="typAntal"
+					@valj-korg="store.setKorgFilter"
+					@valj-typ="store.setTypFilter" />
 
-			<!-- Zon 1b: att hantera (inflöde som hör till mina pågående ärenden) -->
-			<AttHanteraSektion
-				:items="attHanteraItems"
-				:gruppering="attHanteraGruppering"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@satt-gruppering="attHanteraGruppering = $event"
-				@spara-i-rum="onInflode('spara-i-rum', $event)"
-				@skapa-bevakning="onSkapaBevakningInflode"
-				@besvara="onInflode('besvara', $event)"
-				@open-arende="onOpenKoppling" />
+				<!-- Zon 1a: att ta emot (nytt-ärende-inflöde) -->
+				<AttTaEmotSektion
+					:items="taEmotItems"
+					:aktivt-filter="A.pulsFilter"
+					:pending-ids="taEmotPending"
+					@triage="onTriage"
+					@open="onOpenTriage" />
 
-			<!-- Zon 1c: ej ärendekopplat (hink + gallringsgrind ägs av sektionen) -->
-			<EjKoppladSektion
-				:items="ejKoppladItems"
-				:aktiv-korg="A.aktivKorg"
-				:aktiv-typ="A.aktivTyp"
-				@koppla="onInflode('koppla', $event)"
-				@skapa="onInflode('skapa', $event)"
-				@besvara="onInflode('besvara', $event)"
-				@vidarebefordra="onVidarebefordra"
-				@gallra="onInflode('gallra', $event)"
-				@registrera="onInflode('registrera', $event)"
-				@avvisa-forslag="onAvvisaForslag" />
+				<!-- Zon 1b: att hantera (inflöde som hör till mina pågående ärenden) -->
+				<AttHanteraSektion
+					:items="attHanteraItems"
+					:gruppering="attHanteraGruppering"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					@satt-gruppering="attHanteraGruppering = $event"
+					@spara-i-rum="onInflode('spara-i-rum', $event)"
+					@skapa-bevakning="onSkapaBevakningInflode"
+					@besvara="onInflode('besvara', $event)"
+					@open-arende="onOpenKoppling" />
 
-			<!-- Zon 2: KRÄVER ÅTGÄRD NU — varsel-LISTA som länkar NER till kortet.
-			     Ett ärende = ett kort = en arbetsyta; kortet flyttas aldrig hit. -->
-			<VarselLista
-				:varsel="varsel"
-				@ga-till="gaTillArende" />
+				<!-- Zon 1c: ej ärendekopplat (hink + gallringsgrind ägs av sektionen) -->
+				<EjKoppladSektion
+					:items="ejKoppladItems"
+					:aktiv-korg="A.aktivKorg"
+					:aktiv-typ="A.aktivTyp"
+					@koppla="onInflode('koppla', $event)"
+					@skapa="onInflode('skapa', $event)"
+					@besvara="onInflode('besvara', $event)"
+					@vidarebefordra="onVidarebefordra"
+					@gallra="onInflode('gallra', $event)"
+					@registrera="onInflode('registrera', $event)"
+					@avvisa-forslag="onAvvisaForslag" />
+			</section>
 
-			<!-- Zon 3: MINA ÄRENDEN — ALLA ärenden jag är ansluten till
-			     (medlemsbaserad summary, frist-sorterad: närmast brinner överst). -->
-			<ArendeZon
-				:arenden="aktivaArenden"
-				:pinned="false"
-				:title="t('hubs_start', 'Mina ärenden')"
-				:filter-steg="A.stegFilter"
-				:keyboard-mode="prefs.keyboardMode"
-				:markerad-ref="markeradRef"
-				:varslade-refs="varsladeRefs"
-				@filter-steg="store.setStegFilter"
-				@nasta-atgard="onNastaAtgard"
-				@open-rum="onOpenRum"
-				@open-team="onOpenTeam"
-				@ny-chatt="onNyChatt"
-				@skapa-handling="onSkapaHandling"
-				@omfordela-kollega="onOmfordelaKollega"
-				@skicka="onSkicka"
-				@boka-mote="openMeetingWizard"
-				@signera="onSignera"
-				@commit="onCommit"
-				@bevakning="onBevakning"
-				@godkann="onGodkann"
-				@expand="onExpand" />
+			<!-- B12 — UNDRE LAGRET: arbetsytan (varsel + Mina ärenden + möten) bakom en
+			     tydlig avdelare. Varsel hör hit — den länkar NER till korten och är
+			     ärendearbete, inte triage. -->
+			<section class="mina-arenden__arbetsyta">
+				<!-- Zon 2: KRÄVER ÅTGÄRD NU — varsel-LISTA som länkar NER till kortet.
+				     Ett ärende = ett kort = en arbetsyta; kortet flyttas aldrig hit. -->
+				<VarselLista
+					:varsel="varsel"
+					@ga-till="gaTillArende" />
 
-			<!-- Zon 4: mina möten idag — TOM panel kollapsas till en rad -->
-			<button
-				v-if="!meetings.length && !motenVisas"
-				class="mina-arenden__kollapsad hs-card hs-target"
-				type="button"
-				:aria-expanded="'false'"
-				@click="motenVisas = true">
-				<ChevronRightIcon :size="16" /> {{ t('hubs_start', 'Mina möten idag') }}
-				<span class="mina-arenden__kollapsad-antal">0</span>
-			</button>
-			<MotesRemsa
-				v-else
-				:meetings="meetings"
-				@join="onJoin" />
+				<!-- Zon 3: MINA ÄRENDEN — ALLA ärenden jag är ansluten till
+				     (medlemsbaserad summary, frist-sorterad: närmast brinner överst). -->
+				<ArendeZon
+					:arenden="aktivaArenden"
+					:pinned="false"
+					:title="t('hubs_start', 'Mina ärenden')"
+					:filter-steg="A.stegFilter"
+					:keyboard-mode="prefs.keyboardMode"
+					:markerad-ref="markeradRef"
+					:varslade-refs="varsladeRefs"
+					@filter-steg="store.setStegFilter"
+					@nasta-atgard="onNastaAtgard"
+					@open-rum="onOpenRum"
+					@open-team="onOpenTeam"
+					@ny-chatt="onNyChatt"
+					@skapa-handling="onSkapaHandling"
+					@omfordela-kollega="onOmfordelaKollega"
+					@skicka="onSkicka"
+					@boka-mote="openMeetingWizard"
+					@signera="onSignera"
+					@commit="onCommit"
+					@bevakning="onBevakning"
+					@godkann="onGodkann"
+					@expand="onExpand" />
+
+				<!-- Zon 4: mina möten idag — TOM panel kollapsas till en rad -->
+				<button
+					v-if="!meetings.length && !motenVisas"
+					class="mina-arenden__kollapsad hs-card hs-target"
+					type="button"
+					:aria-expanded="'false'"
+					@click="motenVisas = true">
+					<ChevronRightIcon :size="16" /> {{ t('hubs_start', 'Mina möten idag') }}
+					<span class="mina-arenden__kollapsad-antal">0</span>
+				</button>
+				<MotesRemsa
+					v-else
+					:meetings="meetings"
+					@join="onJoin" />
+			</section>
 
 			<!-- Kvittenser & gallring BORTTAGEN ur Min dag (Fredrik 2026-07-07):
 			     registrerings-/gallringskvitton är fördelnings-/uppföljningsdata,
@@ -197,13 +208,126 @@
 			:payload="commitPayload"
 			@committed="onCommitted"
 			@close="commitOpen = false" />
-		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång) -->
+		<!-- K-SIGN-1–4/6 — beslutsstegets signeringsdialog (tvånivåmodellen):
+		     godkann → journalförd bekräftelse; ades → begäran via SigneringPort. -->
+		<SigneringModal
+			v-if="signeringOpen"
+			:arende="signeringArende"
+			@klar="onSigneringKlar"
+			@close="signeringOpen = false" />
+		<!-- #5 — avsluta-grind: terminalt steg → 'avslutat' (ren steg-övergång).
+		     A9a/A9c: grinden samlar inteInledaVal/avslutsmotiv och emittar dem. -->
 		<AvslutaGrind
 			v-if="avslutaOpen"
 			:arende="avslutaArende"
 			:is-running="avslutaRunning"
+			:bevakningar="avslutaBevakningar"
 			@avsluta="onAvslutaConfirmed"
 			@close="avslutaOpen = false" />
+
+		<!-- O9 — förhandsbedömningens primärbeslut: Inleda / Inte inleda. Motorn
+		     stödjer båda (forhandsbedomning → utredning | avslutat); väljaren gör
+		     "inte inleda"-vägen (A9a inteInledaVal via AvslutaGrind) nåbar. -->
+		<NcModal
+			v-if="beslutValjOpen"
+			:show="true"
+			:name="t('hubs_start', 'Fatta beslut i förhandsbedömningen')"
+			size="small"
+			@close="beslutValjOpen = false">
+			<div class="mina-arenden__beslutvalj">
+				<template v-if="beslutValjSteg === 'val'">
+					<p class="mina-arenden__beslutvalj-lead">
+						{{ t('hubs_start', 'Ska en utredning inledas, eller beslutar du att inte inleda? Båda är formella beslut som dokumenteras i akten.') }}
+					</p>
+					<div class="mina-arenden__beslutvalj-knappar">
+						<NcButton type="primary" @click="onBeslutInleda">
+							{{ t('hubs_start', 'Inleda utredning') }}
+						</NcButton>
+						<NcButton type="secondary" @click="onBeslutInteInleda">
+							{{ t('hubs_start', 'Besluta att inte inleda') }}
+						</NcButton>
+					</div>
+				</template>
+				<template v-else>
+					<p class="mina-arenden__beslutvalj-lead">
+						{{ t('hubs_start', 'Beslut att inleda utredning (SoL 11 kap. 1 §). Ange vem som fattar beslutet — det journalförs i akten.') }}
+					</p>
+					<label class="mina-arenden__beslutvalj-label" for="inleda-beslutsfattare">{{ t('hubs_start', 'Beslutsfattare') }}</label>
+					<input
+						id="inleda-beslutsfattare"
+						v-model="inledaBeslutsfattare"
+						class="mina-arenden__beslutvalj-input"
+						type="text"
+						:placeholder="t('hubs_start', 'Namn / funktion')">
+					<div class="mina-arenden__beslutvalj-knappar">
+						<NcButton @click="beslutValjSteg = 'val'">
+							{{ t('hubs_start', 'Tillbaka') }}
+						</NcButton>
+						<NcButton type="primary" :disabled="!inledaBeslutsfattare.trim()" @click="onBeslutInledaBekrafta">
+							{{ t('hubs_start', 'Bekräfta: inleda utredning') }}
+						</NcButton>
+					</div>
+				</template>
+			</div>
+		</NcModal>
+
+		<!-- A7 — skyddsbedömnings-override-grind (inline). Öppnas när motorn spärrar
+		     forhandsbedomning→utredning för att skyddsbedömningen saknas som artefakt.
+		     Handläggaren anger ett dokumenterat skäl (enum) → kontext.override.skal.
+		     3 klick, ingen uppsats; skälet journalförs PII-fritt av motorn. -->
+		<NcModal
+			v-if="overrideOpen"
+			:show="true"
+			:name="t('hubs_start', 'Skyddsbedömning saknas')"
+			size="small"
+			:can-close="!overrideRunning"
+			@close="overrideOpen = false">
+			<div class="mina-arenden__override">
+				<p class="mina-arenden__override-lead">
+					<ShieldAlertIcon :size="18" />
+					<span>{{ t('hubs_start', 'Ingen omedelbar skyddsbedömning är dokumenterad i Hubs. Utredning får bara inledas när skyddsbedömningen finns. Ange varför den kan anses gjord — skälet journalförs.') }}</span>
+				</p>
+				<fieldset class="mina-arenden__override-val">
+					<legend class="mina-arenden__override-legend">{{ t('hubs_start', 'Skäl') }}</legend>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="gjord_i_facksystem"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Skyddsbedömningen är gjord och dokumenterad i facksystemet') }}
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="gjord_utanfor_hubs"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Skyddsbedömningen är gjord utanför Hubs (t.ex. på papper/annat system)') }}
+					</NcCheckboxRadioSwitch>
+					<NcCheckboxRadioSwitch
+						:checked.sync="overrideSkal"
+						value="bradskande"
+						name="override-skal"
+						type="radio"
+						:disabled="overrideRunning">
+						{{ t('hubs_start', 'Brådskande — skyddsbedömning görs omgående och dokumenteras') }}
+					</NcCheckboxRadioSwitch>
+				</fieldset>
+				<div class="mina-arenden__override-foot">
+					<NcButton :disabled="overrideRunning" @click="overrideOpen = false">
+						{{ t('hubs_start', 'Avbryt') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="overrideRunning || !overrideSkal" @click="onOverrideConfirmed">
+						<template #icon>
+							<NcLoadingIcon v-if="overrideRunning" :size="18" />
+							<ArrowRightIcon v-else :size="18" />
+						</template>
+						{{ t('hubs_start', 'Dokumentera & gå vidare') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
 		<!-- Ny chatt i ärenderummet (1:n — motorn kopplar team + åtkomstlista) -->
 		<NyChattModal
 			v-if="nyChattOpen"
@@ -231,10 +355,13 @@
 			:arende="wizardArende"
 			@close="meetingWizardOpen = false"
 			@booked="onMeetingBooked" />
+		<!-- 'Nytt säkert meddelande' öppnar säker compose UTAN ärende (samma väg som
+		     kortets Skicka) — var copy-paste-felkopplad till mötes-wizarden, så
+		     palettens meddelande-val bokade möten. Mötes-eventen hör till wizarden. -->
 		<CommandPalette
 			v-if="commandPaletteOpen"
 			@close="commandPaletteOpen = false"
-			@new-message="openMeetingWizard"
+			@new-message="onSkicka()"
 			@book-meeting="openMeetingWizard"
 			@start-meeting="openMeetingWizard" />
 
@@ -269,6 +396,10 @@
 <script>
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
 import NcCounterBubble from '@nextcloud/vue/dist/Components/NcCounterBubble.js'
+import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
+import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
+import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
+import { getCurrentUser } from '@nextcloud/auth'
 import CheckAllIcon from 'vue-material-design-icons/CheckAll.vue'
 import BookOpenIcon from 'vue-material-design-icons/BookOpenVariant.vue'
 import ForumIcon from 'vue-material-design-icons/Forum.vue'
@@ -276,14 +407,16 @@ import ChevronRightIcon from 'vue-material-design-icons/ChevronRight.vue'
 import AccountIcon from 'vue-material-design-icons/Account.vue'
 import AccountSupervisorIcon from 'vue-material-design-icons/AccountSupervisor.vue'
 import FlaskOutlineIcon from 'vue-material-design-icons/FlaskOutline.vue'
+import ShieldAlertIcon from 'vue-material-design-icons/ShieldAlert.vue'
+import ArrowRightIcon from 'vue-material-design-icons/ArrowRight.vue'
 import { showSuccess, showInfo, showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { generateUrl } from '@nextcloud/router'
 
 import store from '../../store/index.js'
 import deepLinks from '../../services/deepLinks.js'
-import { skapaArendeChatt, skapaHandling, tilldela } from '../../services/api.js'
-import { NASTA_ATGARD, PROCESS_STEG } from '../../services/arendeFlow.js'
+import { skapaArendeChatt, skapaHandling, tilldela, grindKravFel } from '../../services/api.js'
+import { NASTA_ATGARD, PROCESS_STEG, nastaFor } from '../../services/arendeFlow.js'
 import { typLabel } from '../../services/messageTypes.js'
 
 /** Processtegets svenska etikett (aldrig rå steg-token i UI). */
@@ -296,7 +429,6 @@ import PersonaSwitcher from '../PersonaSwitcher.vue'
 
 import MinDagHeader from './MinDagHeader.vue'
 import Dagspulsen from './Dagspulsen.vue'
-import VadVillDuGora from './VadVillDuGora.vue'
 import AttTaEmotSektion from './AttTaEmotSektion.vue'
 import AttHanteraSektion from './AttHanteraSektion.vue'
 import EjKoppladSektion from './EjKoppladSektion.vue'
@@ -309,6 +441,7 @@ import ArendeZon from './ArendeZon.vue'
 import MotesRemsa from './MotesRemsa.vue'
 import VarselLista from './VarselLista.vue'
 import CommitGrind from './CommitGrind.vue'
+import SigneringModal from './SigneringModal.vue'
 import AvslutaGrind from './AvslutaGrind.vue'
 import NyChattModal from './NyChattModal.vue'
 import HandlingModal from './HandlingModal.vue'
@@ -321,12 +454,13 @@ export default {
 	name: 'MinaArenden',
 
 	components: {
-		NcLoadingIcon, NcCounterBubble, CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
-		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon,
-		MinDagHeader, Dagspulsen, VadVillDuGora, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
+		NcLoadingIcon, NcCounterBubble, NcModal, NcButton, NcCheckboxRadioSwitch,
+		CheckAllIcon, BookOpenIcon, ForumIcon, ChevronRightIcon,
+		AccountIcon, AccountSupervisorIcon, FlaskOutlineIcon, ShieldAlertIcon, ArrowRightIcon,
+		MinDagHeader, Dagspulsen, AttTaEmotSektion, AttHanteraSektion, EjKoppladSektion,
 		KopplaValjare,
 		KorgValjare, EnhetschattPanel, FordelningsVy, FavoritValjare, ArendeZon,
-		MotesRemsa, VarselLista, CommitGrind, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
+		MotesRemsa, VarselLista, CommitGrind, SigneringModal, AvslutaGrind, NyChattModal, HandlingModal, OmfordelaModal, OnboardingTour, MeetingWizard, CommandPalette,
 		PersonaSwitcher,
 	},
 
@@ -345,6 +479,16 @@ export default {
 			commitOpen: false,
 			commitArende: null,
 			commitPayload: null,
+			// K-SIGN-6 — beslutsstegets signeringsdialog (action=signera).
+			signeringOpen: false,
+			signeringArende: null,
+			// O9 — beslutsväljare på förhandsbedömningens primärknapp: inleda
+			// utredning vs besluta att INTE inleda (→ avsluta med inteInledaVal).
+			beslutValjOpen: false,
+			beslutValjArende: null,
+			// G4 — två-fas: 'val' (inleda/inte-inleda) → 'inleda' (samla beslutsfattare).
+			beslutValjSteg: 'val',
+			inledaBeslutsfattare: '',
 			// #5 avsluta-grind + #12 egna anteckningar (modaler). #6-signering är nu
 			// inbäddad i CommitGrind (ingen egen modal → ingen modal-stapling).
 			avslutaOpen: false,
@@ -362,6 +506,18 @@ export default {
 			favoritRad: null,
 			// Fas F3 — inflöde-raden vars koppling väntar i KopplaValjare (null = stängd).
 			kopplaRad: null,
+			// A7 — skyddsbedömnings-override-grind (inline modal). Öppnas när motorn
+			// 400:ar forhandsbedomning→utredning för att skyddsbedömningen saknas som
+			// artefakt/kvittens. Handläggaren anger ett dokumenterat skäl (enum) som
+			// skickas som kontext.override {skal} vid omförsöket.
+			overrideOpen: false,
+			overrideArende: null,
+			overrideNyttSteg: null,
+			// INGET förval (T4/IVO): ett rättssäkerhetsintyg får inte vara
+			// förkryssat — bekräfta-knappen är :disabled tills handläggaren AKTIVT
+			// väljer ett skäl (bekräftelsebias bort, bevisvärdet återställt).
+			overrideSkal: '',
+			overrideRunning: false,
 		}
 	},
 
@@ -452,6 +608,16 @@ export default {
 		arFordelare() {
 			return this.state.profile === 'forvaltare'
 		},
+		/**
+		 * A9 — bevakningarna för det ärende som håller på att avslutas (ur A6-cachen),
+		 * så AvslutaGrind kan visa den mjuka varningen om aktiv övervägande/omprövning.
+		 * Tom lista när cachen ännu ej fyllts (ingen falsk varning).
+		 */
+		avslutaBevakningar() {
+			const a = this.avslutaArende
+			const ref = a && (a.triageRef || a.dnr || a.hubsCaseId)
+			return (ref && this.A.bevakningarCache && this.A.bevakningarCache[ref]) || []
+		},
 		/** Dagspuls HÄRLEDD ur laddad data — döda motor-nollor visas aldrig som sanning. */
 		pulsBeriknad() {
 			const p = this.A.puls || {}
@@ -486,6 +652,15 @@ export default {
 			return this.A.inflode.filter((r) =>
 				korgTraff(r)
 				&& (!aktivTyp || r.messageType === aktivTyp))
+		},
+		/** Antal inflöde-poster per grupp (messageType) — badge på grupp-chipsen.
+		    Oberoende partition av A.inflode (ej korg-filtrerad), speglar korg-badgen. */
+		typAntal() {
+			const m = {}
+			for (const r of (this.A.inflode || [])) {
+				if (r.messageType) m[r.messageType] = (m[r.messageType] || 0) + 1
+			}
+			return m
 		},
 		/** 1a — nytt ärende (orosanmälningar): triage-känslan, oförändrad. */
 		taEmotItems() {
@@ -580,16 +755,26 @@ export default {
 
 		// --- Nästa åtgärd (state machine) -----------------------------------
 		onNastaAtgard(arende) {
-			const target = (arende.vantar && NASTA_ATGARD.overrides[arende.vantar])
-				|| NASTA_ATGARD.steg[arende.steg]
-			if (!target) {
-				return
+			// Använd SAMMA resolver som knappens etikett (nastaFor) så handlingen
+			// ALLTID matchar det knappen lovar. Tidigare räknades målet om HÄR utan
+			// plikt-grenen ⇒ knappen "Kvittera skyddsbedömning" körde i själva verket
+			// beslut-inleda (label ≠ handling, GRIND-KARTA §6.A). (T4)
+			const target = nastaFor(arende)
+			if (!target || !target.action) {
+				return this.onExpand(arende, target && target.flik)
 			}
 			switch (target.action) {
 			case 'signera':
 				return this.onSignera(arende)
-			case 'commit-utredning':
 			case 'beslut-inleda':
+				// O9 — öppna Inleda/Inte-inleda-väljaren i st.f. att direkt inleda.
+				return this.oppnaBeslutValj(arende)
+			case 'commit':
+				// K-SIGN-6/8 — signaturkvittens-overriden ("Delge beslut"): öppna
+				// commit-grinden på riktigt (etiketten ska matcha handlingen, T4) —
+				// CommitGrind visar motorns verkliga signeringsstatus för beslutet.
+				return this.onCommit(arende, { typ: 'beslut', arende })
+			case 'commit-utredning':
 			case 'skyddsbedomning':
 			case 'godkann-anteckning':
 				return this.onCommit(arende, { typ: target.action, arende })
@@ -601,6 +786,154 @@ export default {
 				return this.onOpenRum(arende)
 			default:
 				return this.onExpand(arende, target.flik)
+			}
+		},
+
+		/** O9 — öppna förhandsbedömningens beslutsväljare (Inleda / Inte inleda). */
+		oppnaBeslutValj(arende) {
+			this.beslutValjArende = arende
+			this.beslutValjSteg = 'val'
+			const cu = getCurrentUser()
+			this.inledaBeslutsfattare = (cu && cu.displayName) || (cu && cu.uid) || ''
+			this.beslutValjOpen = true
+		},
+		/** Väljaren, steg 1: "Inleda" → visa beslutsfattare-fältet (steg 2). */
+		onBeslutInleda() {
+			this.beslutValjSteg = 'inleda'
+		},
+		/** Väljaren, steg 2: bekräfta inleda → commit-flöde med inledaVal (A9a-inleda:
+		    beslut att inleda utredning journalförs av motorn med beslutsfattare). */
+		onBeslutInledaBekrafta() {
+			const beslutsfattare = (this.inledaBeslutsfattare || '').trim()
+			const arende = this.beslutValjArende
+			if (!beslutsfattare || !arende) {
+				return
+			}
+			this.beslutValjOpen = false
+			this.onCommit(arende, { typ: 'beslut-inleda', arende, inledaVal: { beslutsfattare } })
+		},
+		/** Väljaren: inte inleda → AvslutaGrind (A9a inteInledaVal → avslutat). */
+		onBeslutInteInleda() {
+			const arende = this.beslutValjArende
+			this.beslutValjOpen = false
+			if (arende) {
+				this.onAvsluta(arende)
+			}
+		},
+
+		/**
+		 * A7/A9 — vilken grind kräver övergången (fromSteg → nyttSteg)? Rutas på
+		 * grafens deterministiska kanter (inte på felmeddelandets text), så nyckeln
+		 * matchar kontrakt-tabellen exakt:
+		 *  - forhandsbedomning→utredning  → 'override'      (skyddsbedömning saknas, A7)
+		 *  - forhandsbedomning→avslutat   → 'inteInleda'    (A9a)
+		 *  - utredning→beslut             → 'kommunicering' (A9b)
+		 *  - X→avslutat (ej forhb.)       → 'avslutsmotiv'  (A9c)
+		 * @return {?string}
+		 */
+		grindForTransition(fromSteg, nyttSteg) {
+			if (nyttSteg === 'avslutat') {
+				return fromSteg === 'forhandsbedomning' ? 'inteInleda' : 'avslutsmotiv'
+			}
+			if (fromSteg === 'forhandsbedomning' && nyttSteg === 'utredning') {
+				return 'override'
+			}
+			if (fromSteg === 'utredning' && nyttSteg === 'beslut') {
+				return 'kommunicering'
+			}
+			return null
+		},
+		/**
+		 * A7/A9 — kör en steg-övergång och HANTERA grind-kravet. Skickar hela kontexten
+		 * (override/inteInledaVal/kommuniceringVal/avslutsmotiv) till motorn; om motorn
+		 * 400:ar med grindKravs öppnas rätt grind-dialog så handläggaren kan komplettera
+		 * och skicka om. Returnerar { ok } eller { grind } (dialogen öppnad, väntar val).
+		 * Andra fel bubblar som vanligt (callern visar sitt eget felmeddelande).
+		 * @param {object} arende
+		 * @param {string} nyttSteg
+		 * @param {object} [kontext] grind-kontext (kan vara tom vid första försöket)
+		 * @return {Promise<{ok?:boolean, grind?:string, error?:string, r?:object}>}
+		 */
+		async transitionMedGrind(arende, nyttSteg, kontext = {}) {
+			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
+			if (!ref) {
+				return { ok: false }
+			}
+			try {
+				const r = await store.transitionSteg(ref, nyttSteg, kontext)
+				return { ok: !!(r && r.ok !== false), r }
+			} catch (e) {
+				const grindFel = grindKravFel(e)
+				if (grindFel.grindKravs) {
+					// Öppna rätt dialog för det som fattas och kom ihåg målsteget.
+					const grind = this.grindForTransition(arende.steg, nyttSteg)
+					this.oppnaGrindDialog(grind, arende, nyttSteg)
+					return { grind: grind || 'okand', error: grindFel.error }
+				}
+				throw e
+			}
+		},
+		/**
+		 * A7/A9 — öppna grind-dialogen som motsvarar ett grind-krav. Skyddsbedömnings-
+		 * override sköts av den inline-modalen här; inte-inleda/avslutsmotiv av
+		 * AvslutaGrind; kommunicering av CommitGrind (beslut-committet).
+		 */
+		oppnaGrindDialog(grind, arende, nyttSteg) {
+			switch (grind) {
+			case 'override':
+				this.overrideArende = arende
+				this.overrideNyttSteg = nyttSteg
+				// Återställ till INGET förval varje gång dialogen öppnas (T4/IVO):
+				// handläggaren måste aktivt välja skäl (bekräfta-knappen är :disabled).
+				this.overrideSkal = ''
+				this.overrideRunning = false
+				this.overrideOpen = true
+				break
+			case 'inteInleda':
+			case 'avslutsmotiv':
+				// AvslutaGrind samlar rätt fält utifrån ärendets steg (forhandsbedomning
+				// ⇒ inteInledaVal; annars avslutsmotiv). Öppna den.
+				this.avslutaArende = arende
+				this.avslutaRunning = false
+				this.avslutaOpen = true
+				break
+			case 'kommunicering':
+				// Beslut-committet (CommitGrind) bär kommuniceringVal. Öppna commit-grinden.
+				this.onCommit(arende, { typ: 'beslut', arende })
+				break
+			default:
+				showInfo(this.t('hubs_start', 'Ett obligatoriskt beslut saknas för att gå vidare.'))
+			}
+		},
+		/** A7 — bekräfta skyddsbedömnings-overriden: skicka om med kontext.override. */
+		async onOverrideConfirmed() {
+			const arende = this.overrideArende
+			const nyttSteg = this.overrideNyttSteg
+			if (!arende || !nyttSteg || this.overrideRunning) {
+				return
+			}
+			this.overrideRunning = true
+			try {
+				const kontext = { override: { skal: this.overrideSkal } }
+				// A9a-inleda: om beslutet att inleda samlades i beslutsväljaren, tråda
+				// det även på override-återförsöket (annars 400:ar motorn på inleda-grinden).
+				if (this.commitPayload && this.commitPayload.inledaVal) {
+					kontext.inledaVal = this.commitPayload.inledaVal
+				}
+				const res = await this.transitionMedGrind(arende, nyttSteg, kontext)
+				if (res.ok) {
+					showSuccess(this.t('hubs_start', 'Skyddsbedömningen är dokumenterad — ärendet gick vidare till utredning.'))
+					this.overrideOpen = false
+				} else if (res.grind) {
+					// Motorn krävde ännu ett val (ska normalt inte hända med giltigt skäl)
+					// — transitionMedGrind har återöppnat rätt dialog; lämna den öppen.
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte gå vidare: {orsak}', { orsak: res.error || this.t('hubs_start', 'okänt fel') }))
+				}
+			} catch (e) {
+				showError(this.t('hubs_start', 'Kunde inte gå vidare. Försök igen.'))
+			} finally {
+				this.overrideRunning = false
 			}
 		},
 
@@ -645,7 +978,16 @@ export default {
 			try {
 				const r = await store.inflodeAction('skapa', { id: rad.id, rad })
 				if (r && r.ok && r.arende) {
-					showSuccess(this.t('hubs_start', 'Ärende startat — ärenderum skapat, 14-dagarsklockan tickar.'))
+					// Ärlig kvittens även för TAGGEN: taggSatt=false betyder att ärendet
+					// skapades men case-/behandlad-taggen aldrig landade (t.ex. cross-
+					// account db-id i funktionsbrevlådan) → raden återkommer i inflödet
+					// och Meddelanden visar ingen markering. En ovillkorlig success
+					// dolde det som "klart" (samma falska-kvitto-klass som gap12).
+					if (r.arende.taggSatt === false) {
+						showError(this.t('hubs_start', 'Ärendet skapades men meddelandet kunde inte markeras som behandlat — kontrollera Meddelanden.'))
+					} else {
+						showSuccess(this.t('hubs_start', 'Ärende startat — ärenderum skapat, 14-dagarsklockan tickar.'))
+					}
 				} else {
 					showError(this.t('hubs_start', 'Kunde inte starta ärendet: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
@@ -786,13 +1128,22 @@ export default {
 		},
 
 		// --- Fördelningsläge (gruppledare) ----------------------------------
+		// B13 — fördela/omfördela går via MOTORNS POST /arende/{ref}/tilldela
+		// (samma orkestrering som "Ta ärendet"/omfördela-modalen: ACL, Deck,
+		// fristpåminnelser). Tidigare routades verben via store.inflodeAction →
+		// sdkmc /inflode/tilldela|omfordela som inte existerar → garanterad 400
+		// 'okand_atgard' på varje fördelning. Efteråt läses fördelningsvyn om
+		// så kortet flyttar mellan zonerna (best-effort).
 		async onFordela({ ref, utredareUid }) {
 			try {
-				const res = await store.inflodeAction('tilldela', { ref, utredareUid })
-				if (res && (res.ok === false || res.error || res.avvisad)) {
-					showError(this.t('hubs_start', 'Kunde inte fördela: {orsak}', { orsak: res.error || res.reason || this.t('hubs_start', 'okänt fel') }))
-				} else {
+				const r = await tilldela(ref, utredareUid)
+				if (r && r.ok !== false) {
 					showSuccess(this.t('hubs_start', 'Fördelat till {uid} — skrivåtkomst och fristpåminnelser flyttade.', { uid: utredareUid }))
+					try {
+						await store.loadFordelningSummary()
+					} catch (e) { /* fördelningen är redan genomförd */ }
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte fördela: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte fördela ärendet. Försök igen.'))
@@ -800,11 +1151,14 @@ export default {
 		},
 		async onOmfordela({ ref, utredareUid }) {
 			try {
-				const res = await store.inflodeAction('omfordela', { ref, utredareUid })
-				if (res && (res.ok === false || res.error || res.avvisad)) {
-					showError(this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak: res.error || res.reason || this.t('hubs_start', 'okänt fel') }))
-				} else {
+				const r = await tilldela(ref, utredareUid)
+				if (r && r.ok !== false) {
 					showSuccess(this.t('hubs_start', 'Omfördelat till {uid}.', { uid: utredareUid }))
+					try {
+						await store.loadFordelningSummary()
+					} catch (e) { /* omfördelningen är redan genomförd */ }
+				} else {
+					showError(this.t('hubs_start', 'Kunde inte omfördela: {orsak}', { orsak: (r && r.error) || this.t('hubs_start', 'okänt fel') }))
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte omfördela ärendet. Försök igen.'))
@@ -951,43 +1305,96 @@ export default {
 			window.location.href = deepLinks.composerLink('secure_email', null, ref)
 		},
 		onSignera(arende) {
-			// #6 — öppna CommitGrind DIREKT med signerings-bekräftelsen inbäddad (en
-			// enda modal). Tidigare öppnades en separat SigneringsGrind-modal som i sin
-			// tur öppnade CommitGrind → två staplade NcModaler monterades/avmonterades i
-			// samma tick och deadlockade focus-trap/scroll-lock (UI:t "hängde"). "För
-			// över" gateas tills handläggaren kryssat "Jag har signerat dokumentet".
-			this.onCommit(arende, { typ: 'signerat-beslut', arende, kraverSignering: true })
+			// K-SIGN-6 — action=signera öppnar numera SigneringModal (tvånivåmodellen:
+			// godkann-bekräftelse eller e-underskriftsbegäran via motorn) i stället för
+			// CommitGrind-checkboxen. Överföringen till Treserva görs som eget steg
+			// ("Delge beslut" → commit) där CommitGrind visar motorns VERKLIGA
+			// signeringsstatus; den manuella checkboxen finns kvar där enbart som
+			// fallback när ingen signeringspost finns.
+			this.signeringArende = arende
+			this.signeringOpen = true
 		},
-		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse). */
+		/**
+		 * K-SIGN-8 — signeringsdialogens kvitto. Vid instant-signed (stubben kan
+		 * signera direkt) driver VERKLIG status nastaAtgard-kedjan: overriden
+		 * 'signaturkvittens' flippar knappen till "Delge beslut".
+		 * TODO[signering-fas2]: motorn ska sätta vantar i summaryn ur
+		 * signeringsstatus — tills dess patchas kortet lokalt (samma mönster som
+		 * ArendeKort.onSigneringSigned).
+		 */
+		onSigneringKlar(resultat) {
+			const arende = this.signeringArende
+			if (arende && resultat && resultat.status === 'signed') {
+				this.$set(arende, 'vantar', 'signaturkvittens')
+			}
+			// Journalen/panelen har fått nytt innehåll — läs om kortets full-cache
+			// (best-effort; dialogen visar redan sitt eget kvitto).
+			const ref = arende && (arende.triageRef || arende.dnr)
+			if (ref) {
+				store.loadArende(ref, true)
+			}
+		},
+		/** #5 — terminalt steg: öppna avsluta-grinden (bekräftelse + A9-motiv). */
 		onAvsluta(arende) {
 			this.avslutaArende = arende
 			this.avslutaRunning = false
 			this.avslutaOpen = true
+			// A9 — ladda evidensen så AvslutaGrindens mjuka omprövnings-varning blir
+			// korrekt (bevakningarna hamnar i A6-cachen som avslutaBevakningar läser).
+			const ref = arende && (arende.triageRef || arende.dnr || arende.hubsCaseId)
+			if (ref) {
+				store.loadStegEvidens(ref)
+			}
 		},
 		/**
-		 * #5 — bekräftat avslut: en REN steg-övergång till 'avslutat' (ingen ny
-		 * Treserva-commit — akten är redan registrerad; avslut ≠ registrering). På ok
-		 * patchar store det lokala steget och kortet faller till terminal-läget.
+		 * #5 + A9a/A9c — bekräftat avslut: en REN steg-övergång till 'avslutat' (ingen ny
+		 * Treserva-commit — akten är redan registrerad; avslut ≠ registrering). AvslutaGrind
+		 * samlar in grind-kontexten utifrån ärendets steg och emittar den:
+		 *  - forhandsbedomning ⇒ { inteInledaVal: { orsak, beslutsfattare } }  (A9a)
+		 *  - annars            ⇒ { avslutsmotiv: { utfall, kvarstaende? } }     (A9c)
+		 * Vi trådar hela payloaden som kontext till motorn. Bakåtkompatibelt: en
+		 * payload utan grind-fält (t.ex. flaggan AV) ger en ren övergång som förut.
+		 * Om motorn ändå 400:ar med grindKravs öppnas rätt dialog av transitionMedGrind.
+		 *
+		 * Robust mot AvslutaGrindens emit-form: ärendet tas ur komponentens state
+		 * (this.avslutaArende), och kontexten letas fram bland emit-argumenten oavsett
+		 * om grinden emittar (arende, kontext), (kontext) eller bara (arende).
+		 * @param {...*} args emit-argument från AvslutaGrind
 		 */
-		async onAvslutaConfirmed(arende) {
+		async onAvslutaConfirmed(...args) {
+			const arende = this.avslutaArende
 			const ref = arende && (arende.hubsCaseId || arende.dnr || arende.triageRef)
 			if (!ref) {
 				this.avslutaOpen = false
 				return
 			}
+			// Hitta grind-payloaden (det arg som bär inteInledaVal/avslutsmotiv) och
+			// plocka bara ut de kontrakt-nycklar motorn förstår — aldrig hela objektet.
+			const payload = args.find((a) => a && typeof a === 'object' && (a.inteInledaVal || a.avslutsmotiv)) || {}
+			const kontext = {}
+			if (payload.inteInledaVal) {
+				kontext.inteInledaVal = payload.inteInledaVal
+			}
+			if (payload.avslutsmotiv) {
+				kontext.avslutsmotiv = payload.avslutsmotiv
+			}
 			this.avslutaRunning = true
 			try {
-				const r = await store.transitionSteg(ref, 'avslutat')
-				if (r && r.ok !== false) {
+				const res = await this.transitionMedGrind(arende, 'avslutat', kontext)
+				if (res.ok) {
 					showSuccess(this.t('hubs_start', 'Ärendet avslutat — gallringen av Hubs-rummet har startat.'))
+					this.avslutaOpen = false
+				} else if (res.grind) {
+					// Grind-dialogen är (åter)öppnad av transitionMedGrind — lämna den.
 				} else {
-					showError(this.t('hubs_start', 'Kunde inte avsluta ärendet: {orsak}', { orsak: (r && (r.error || r.reason)) || this.t('hubs_start', 'okänt fel') }))
+					showError(this.t('hubs_start', 'Kunde inte avsluta ärendet: {orsak}', { orsak: res.error || this.t('hubs_start', 'okänt fel') }))
+					this.avslutaOpen = false
 				}
 			} catch (e) {
 				showError(this.t('hubs_start', 'Kunde inte avsluta ärendet. Försök igen.'))
+				this.avslutaOpen = false
 			} finally {
 				this.avslutaRunning = false
-				this.avslutaOpen = false
 			}
 		},
 		onBevakning(arende) {
@@ -1008,12 +1415,42 @@ export default {
 			// #5 — bär med ärenderummets dokumentlista (om ArendeKort skickade den) så
 			// CommitGrind kan visa den granskbara urvalslistan (alla förvalda).
 			const bas = payload || { typ: 'beslut', arende }
-			this.commitPayload = { ...bas, arende, dokument: (payload && payload.dokument) || [] }
+			// K-SIGN-6 — BESLUT-committet i beslutssteget bär signeringsgrinden:
+			// CommitGrind läser då motorns verkliga signeringsstatus ("E-underskrift
+			// klar (PAdES)" när signed; fallback-checkboxen ENDAST när ingen
+			// signeringspost finns). typ-lösa payloads (ProvenansChip-vägen) räknas
+			// som beslut-commit. Övriga typer (utredning/anteckning/…) berörs inte.
+			const kraverSignering = bas.kraverSignering !== undefined
+				? bas.kraverSignering
+				: !!(arende && arende.steg === 'beslut'
+					&& (bas.typ === 'beslut' || bas.typ === 'signerat-beslut' || bas.typ === undefined))
+			this.commitPayload = { ...bas, kraverSignering, arende, dokument: (payload && payload.dokument) || [] }
 			this.commitOpen = true
 		},
-		async onCommitted(result, valdaDokument) {
+		/**
+		 * @param {object} result CommitGrindens verifierade kvitto
+		 * @param {Array} [valdaDokument] granskade dokument (trådas till andra committet)
+		 * @param {?object} [kommuniceringValArg] A9b — CommitGrind emittar kommunicerings-
+		 *        valet {gjord, skal?} (eller null) som TREDJE arg inför utredning→beslut.
+		 */
+		async onCommitted(result, valdaDokument, kommuniceringValArg) {
 			this.commitOpen = false
 			const arende = this.commitArende
+			// A9b — bygg kontexten under rätt nyckel (kommuniceringVal). CommitGrind
+			// skickar valet som rått {gjord, skal?}-objekt; var ändå robust mot en ev.
+			// {kommuniceringVal:{…}}-inpackning (grindens emit-form kan variera).
+			const grindKontext = {}
+			const kv = (kommuniceringValArg && kommuniceringValArg.kommuniceringVal)
+				|| kommuniceringValArg
+				|| (result && result.kommuniceringVal)
+			if (kv && typeof kv === 'object') {
+				grindKontext.kommuniceringVal = kv
+			}
+			// A9a-inleda — tråda beslutsfattaren (från beslutsväljaren) så motorn
+			// journalför inleda-beslutet vid forhandsbedomning→utredning.
+			if (this.commitPayload && this.commitPayload.inledaVal) {
+				grindKontext.inledaVal = this.commitPayload.inledaVal
+			}
 			// "Hela vägen": commit to the facksystem (Treserva via Frends). Only show
 			// the registered-kvittens on a VERIFIED receipt (r.ok && r.verifierad); a
 			// backend failure previously either threw silently (no feedback) or — on a
@@ -1025,20 +1462,29 @@ export default {
 				const r = await store.commitArende({ ...this.commitPayload, arende, valdaDokument: valdaDokument || (this.commitPayload && this.commitPayload.valdaDokument) })
 				if (r && r.ok && r.verifierad) {
 					showSuccess(this.t('hubs_start', 'Fört till Treserva — registrerat i akten.'))
-					// gap1 — efter en VERIFIERAD commit: advancera ärendet ett steg i grafen
-					// (forhandsbedomning→utredning→beslut→uppfoljning→avslutat).
+					// gap1/A7/A9 — efter en VERIFIERAD commit: advancera ärendet ett steg
+					// i grafen (forhandsbedomning→utredning→beslut→uppfoljning→avslutat).
 					const next = this.nextSteg(arende && arende.steg)
 					if (arende && next) {
-						const ref = arende.hubsCaseId || arende.dnr
-						if (ref) {
-							try {
-								// ORO-1: en VERIFIERAD commit av skyddsbedömningen ÄR kvitteringen
-								// av plikt-grinden — skicka kvittensen så förhandsbedömning→utredning
-								// släpps förbi fas-spärren för pliktGrind-typer (orosanmälan).
-								await store.transitionSteg(ref, next, true)
-							} catch (e) { /* steg-advance är best-effort; commit är redan verifierad */ }
-						}
+						try {
+							// A7: den hårdkodade skyddsbedomningKvitterad=true är BORTTAGEN —
+							// grinden sköts server-side. En VERIFIERAD commit av skyddsbedöm-
+							// ningen skapar artefakten som A7-grinden läser, så övergången
+							// släpps utan override. A9b: kommuniceringVal (från CommitGrind)
+							// trådas som kontext inför utredning→beslut. Saknas ett obligato-
+							// riskt grind-val 400:ar motorn och transitionMedGrind öppnar rätt
+							// dialog. Best-effort: commiten är redan verifierad oavsett.
+							await this.transitionMedGrind(arende, next, grindKontext)
+						} catch (e) { /* steg-advance är best-effort; commit är redan verifierad */ }
 					}
+					// B2 — läs om summaryn från motorn: commit-kvittots lokal-patch
+					// täcker inte frist/steg (fristen ägs av facksystemet efter
+					// registrering, GAP-044) och ingen polling rör arende-slicen —
+					// utan omläsning står fristchip/provenance frysta till sid-
+					// omladdning. Best-effort, samma mönster som onOmfordelaSkapa.
+					try {
+						await store.loadArendeSummary()
+					} catch (e) { /* commiten är redan verifierad */ }
 				} else {
 					showError(this.t('hubs_start', 'Treserva bekräftade inte registreringen — inget kvitto skapades. Försök igen.'))
 				}
@@ -1133,26 +1579,7 @@ export default {
 			this.onCommit(arende, { typ: 'motesanteckning', arende, artefakter: { anteckning } })
 		},
 
-		// --- Verbingång / header --------------------------------------------
-		onVerb(id) {
-			switch (id) {
-			case 'mote':
-				return this.openMeetingWizard()
-			case 'signera':
-				return store.setStegFilter('beslut')
-			case 'utredning':
-				return store.setStegFilter('utredning')
-			case 'foljUpp':
-				return store.setStegFilter('uppfoljning')
-			case 'taEmot':
-				return store.setPulsFilter('inflode')
-			default:
-			}
-		},
-		onDismissVerb() {
-			this.state.prefs.verbEntryDismissed = true
-			store.savePref && store.savePref('verbEntryDismissed', true)
-		},
+		// --- Header ----------------------------------------------------------
 		onUpgradeLoa() {
 			window.location.href = deepLinks.loa3UpgradeLink()
 		},
@@ -1209,6 +1636,37 @@ export default {
 		cursor: pointer;
 		&:hover { background: var(--color-background-hover); }
 		&--aktiv { background: var(--color-main-background); color: var(--color-main-text); box-shadow: 0 1px 3px var(--color-box-shadow, rgba(0, 0, 0, 0.1)); }
+	}
+
+	// B12 — lagerseparation: inflödet (ska tömmas) som grå platta, arbetsytan
+	// bakom en tydlig avdelare. Vita hs-cards på --color-background-dark är
+	// redan etablerat mönster (lägeväxeln, aggregat-pillren) — ingen ny färg.
+	&__inflode {
+		display: flex;
+		flex-direction: column;
+		gap: 12px;
+		padding: 16px;
+		background: var(--color-background-dark);
+		border-radius: var(--hs-card-radius);
+	}
+	&__inflode-rubrik {
+		margin: 0;
+		font-size: 0.95rem;
+		font-weight: 700;
+	}
+	&__inflode-under {
+		// Negativ topp-marginal: undertexten hör ihop med rubriken — flexens
+		// 12px-gap skulle annars skilja dem åt som två fristående rader.
+		margin: -8px 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-maxcontrast);
+	}
+	&__arbetsyta {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		border-top: 2px solid var(--color-border-dark);
+		padding-top: 20px;
 	}
 
 	&__chatt {
@@ -1282,6 +1740,63 @@ export default {
 		text-decoration: none;
 
 		&:hover { color: var(--color-main-text); text-decoration: underline; }
+	}
+
+	// A7 — inline skyddsbedömnings-override-grind.
+	&__beslutvalj {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 8px 4px;
+	}
+	&__beslutvalj-lead { margin: 0; color: var(--color-main-text); }
+	&__beslutvalj-label { font-weight: 600; font-size: 0.9rem; margin-bottom: -8px; }
+	&__beslutvalj-input {
+		width: 100%;
+		padding: 8px 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--border-radius, 8px);
+		background: var(--color-main-background);
+		color: var(--color-main-text);
+		font: inherit;
+	}
+	&__beslutvalj-knappar {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 10px;
+	}
+	&__override {
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+		padding: 8px 4px;
+	}
+	&__override-lead {
+		display: flex;
+		align-items: flex-start;
+		gap: 8px;
+		margin: 0;
+		svg { flex-shrink: 0; margin-top: 1px; color: var(--hs-status-error); }
+	}
+	&__override-val {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		margin: 0;
+		padding: 0;
+		border: none;
+	}
+	&__override-legend {
+		font-weight: 600;
+		font-size: 0.9rem;
+		margin-bottom: 2px;
+		padding: 0;
+	}
+	&__override-foot {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+		padding-top: 4px;
 	}
 }
 </style>

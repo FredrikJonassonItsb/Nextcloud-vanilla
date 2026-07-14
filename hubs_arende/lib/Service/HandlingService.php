@@ -69,6 +69,12 @@ class HandlingService {
         // bekräftade fält sparas efter lyckad generering (dokumentkedjans
         // skrivsida, ANALYS-FORIFYLLNAD-FALTKARTLAGGNING.md §4). Best-effort.
         private ?SakuppgiftService $sakuppgiftService = null,
+        // TRAILING OPTIONAL (autowired): KANONISKA dokumenttyps-registret. Stämplar
+        // den semantiska dokumenttypen på TYP_HANDLING-händelsen så grindarna kan
+        // matcha på ett kanoniskt fält i stället för att gissa ur mall-sluggen
+        // (T4-rotfixen — dödar barnets_rost-buggklassen). Null i test-harness ⇒
+        // ingen stämpel, konsumenten faller tillbaka på legacy-nyckelord.
+        private ?DokumenttypRegistry $dokumenttypRegistry = null,
     ) {
     }
 
@@ -142,8 +148,9 @@ class HandlingService {
         }
         $filnamn = $this->byggFilnamn($folder, $mallBas, $hubsCaseId);
 
+        $nyFil = null;
         try {
-            $folder->newFile($filnamn, $bytes);
+            $nyFil = $folder->newFile($filnamn, $bytes);
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende: HandlingService — kunde ej skriva handling i groupfoldern', [
                 'app' => 'hubs_arende',
@@ -156,6 +163,20 @@ class HandlingService {
 
         // (9) Pekare — gör handlingen enumererbar för gallringen (städas med ärendet).
         $this->pekareMapper->record($hubsCaseId, self::OBJEKT_TYP, $filnamn);
+
+        // (9b) DOKUMENT-AI: pre-provisionera dokumentets Collabora-chatt (fil-rum +
+        // dokumentchatt-pekare) så `!råd` ger dokumentanpassade råd direkt när
+        // handläggaren öppnar dela→chatt. Best-effort — får aldrig fälla genereringen.
+        try {
+            $fileId = $nyFil !== null ? (int)$nyFil->getId() : 0;
+            if ($fileId > 0) {
+                $this->arendeService->provisioneraDokumentchatt($ref, $fileId, $filnamn);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->debug('hubs_arende: HandlingService — dokumentchatt-provisionering hoppad (graceful)', [
+                'app' => 'hubs_arende', 'hubsCaseId' => $hubsCaseId, 'exception' => $e->getMessage(),
+            ]);
+        }
 
         // (10) Journal — BEST-EFFORT (får aldrig fälla den mutation den beskriver)
         //      och ALDRIG fältvärden: bara mallnamn, antal och skydds-flaggan.
@@ -306,6 +327,13 @@ class HandlingService {
             'mall' => $mallBas,
             'antalErsatta' => $antalErsatta,
         ];
+        // KANONISK dokumenttyp (T4-rotfix): stämpla den semantiska klassen så
+        // grindarna matchar på ett exakt fält, inte på mall-sluggens innehåll.
+        // Okänd mall ⇒ ingen stämpel (konsumenten faller tillbaka på nyckelord).
+        $dokumenttyp = $this->dokumenttypRegistry?->klassForMall($mallBas);
+        if ($dokumenttyp !== null && $dokumenttyp !== '') {
+            $detalj['dokumenttyp'] = $dokumenttyp;
+        }
         if ($skyddOverride) {
             $detalj['skyddOverride'] = true;
         }
@@ -339,15 +367,26 @@ class HandlingService {
         if ($folderId === null) {
             return null;
         }
-        try {
-            $node = $this->rootFolder->get('__groupfolders/' . $folderId);
-            return $node instanceof Folder ? $node : null;
-        } catch (\Throwable $e) {
-            $this->logger->debug('hubs_arende: HandlingService — groupfolder ej resolverbar (graceful)', [
-                'app' => 'hubs_arende',
-                'folderId' => $folderId,
-            ]);
-            return null;
+        // groupfolders >= 20 lägger de användarsynliga filerna under
+        // '__groupfolders/{id}/files' (jämte versions/trash); äldre versioner har
+        // dem direkt under '__groupfolders/{id}'. Prova files-subkatalogen FÖRST så
+        // handlingen hamnar i handläggarens synliga ärenderum, med fallback till den
+        // äldre platsen. (Skrivning till lagringsroten hamnar utanför mount:en och
+        // blir osynlig för handläggaren — därav ordningen.)
+        foreach (['__groupfolders/' . $folderId . '/files', '__groupfolders/' . $folderId] as $path) {
+            try {
+                $node = $this->rootFolder->get($path);
+                if ($node instanceof Folder) {
+                    return $node;
+                }
+            } catch (\Throwable $e) {
+                // prova nästa kandidat
+            }
         }
+        $this->logger->debug('hubs_arende: HandlingService — groupfolder ej resolverbar (graceful)', [
+            'app' => 'hubs_arende',
+            'folderId' => $folderId,
+        ]);
+        return null;
     }
 }

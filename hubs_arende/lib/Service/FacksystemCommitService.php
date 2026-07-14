@@ -129,6 +129,44 @@ class FacksystemCommitService {
         return $mode === self::MODE_LIVE ? self::MODE_LIVE : self::MODE_STUB;
     }
 
+    /**
+     * A12: spara PERMANENT provenans om ett moment (rättskälla som överlever gallring).
+     *
+     * Delegerar till den DI-resolverade porten. BEST-EFFORT — samma disciplin som en
+     * fristående provenansnot ska ha: den får ALDRIG fälla den redan verifierade commiten.
+     * Alla fel (även oväntade) fångas och loggas PII-fritt; metoden returnerar false i
+     * stället för att kasta så att ArendeService kan fortsätta. Facksystem-commiten är
+     * sanningen; provenansnoten är sekundär, gallrings-överlevande spårbarhet.
+     *
+     * PII-invariant: $moment bär enbart enum-koder + referenser (lagrum/utfall/aktorUid/
+     * dnr/artefaktRef) — aldrig fri text eller personuppgifter.
+     *
+     * @param string $hubsCaseId Kanonisk ärende-token (UUID v4).
+     * @param array<string,mixed> $moment {moment,lagrum,utfall,aktorUid,tid?,artefaktRef?,harCommit?,dnr?}.
+     *
+     * @return bool true om provenansen sparades, annars false (aldrig kast).
+     */
+    public function sparaProvenans(string $hubsCaseId, array $moment): bool {
+        try {
+            $ok = $this->port()->sparaProvenans($hubsCaseId, $moment);
+            if (!$ok) {
+                $this->logger->warning('hubs_arende: sparaProvenans returnerade false (best-effort)', [
+                    'hubsCaseId' => $hubsCaseId,
+                    'moment'     => (string)($moment['moment'] ?? ''),
+                ]);
+            }
+            return $ok;
+        } catch (\Throwable $e) {
+            // Best-effort: får aldrig fälla commiten. Logga PII-fritt och fortsätt.
+            $this->logger->warning('hubs_arende: sparaProvenans FEL (best-effort, ignoreras)', [
+                'hubsCaseId' => $hubsCaseId,
+                'moment'     => (string)($moment['moment'] ?? ''),
+                'error'      => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     // ------------------------------------------------------------------ //
 
     /**

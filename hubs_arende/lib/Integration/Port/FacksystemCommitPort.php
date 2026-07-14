@@ -89,4 +89,27 @@ interface FacksystemCommitPort {
      * @throws \OCA\HubsArende\Integration\Port\Exception\CallbackVerificationException om token är okänd/ogiltig.
      */
     public function verifyCallback(string $callbackToken, array $callbackData): array;
+
+    /**
+     * Spara PERMANENT provenans om ett moment (A12) — den rättskälla som överlever gallring.
+     *
+     * Journalen (hubs_handelser) gallras TILLSAMMANS med ärendet; provenansen om att
+     * ett beslut committades/registrerades måste däremot bestå bortom gallringen. Denna
+     * metod skriver den permanenta noten på facksystem-/e-arkiv-sidan (utanför Hubs-
+     * gallringen). I stub-läge loggas den PII-fritt och hålls i minnet; en live-port
+     * persisterar mot facksystemet/e-arkivet.
+     *
+     * Best-effort-kontrakt: metoden får ALDRIG fälla en redan verifierad commit. Den
+     * returnerar false (i stället för att kasta) vid intern miss så att anroparen kan
+     * fortsätta; facksystem-commiten är sanningen, provenansnoten är sekundär spårbarhet.
+     *
+     * PII-invariant: $moment bär enbart enum-koder + referenser (lagrum, utfall, aktorUid,
+     * dnr, artefaktRef) — ALDRIG fri text eller personuppgifter.
+     *
+     * @param string $hubsCaseId Kanonisk ärende-token (UUID v4).
+     * @param array<string,mixed> $moment {moment,lagrum,utfall,aktorUid,tid?,artefaktRef?,harCommit?,dnr?}.
+     *
+     * @return bool true om provenansen sparades, false vid best-effort-miss (aldrig kast).
+     */
+    public function sparaProvenans(string $hubsCaseId, array $moment): bool;
 }

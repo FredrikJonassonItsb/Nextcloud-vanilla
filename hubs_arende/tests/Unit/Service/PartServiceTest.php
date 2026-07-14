@@ -17,6 +17,7 @@ use OCA\HubsArende\Db\PartMapper;
 use OCA\HubsArende\Integration\Port\FolkbokforingPort;
 use OCA\HubsArende\Integration\Stub\FolkbokforingStub;
 use OCA\HubsArende\Service\ArendeService;
+use OCA\HubsArende\Service\BevakningService;
 use OCA\HubsArende\Service\PartService;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\IUserSession;
@@ -81,6 +82,7 @@ final class PartServiceTest extends TestCase {
     private ITimeFactory&MockObject $timeFactory;
     private ISecureRandom&MockObject $secureRandom;
     private IUserSession&MockObject $userSession;
+    private BevakningService&MockObject $bevakningService;
     private FolkbokforingPort $port;
 
     /** @var Part[] Every Part handed to PartMapper::insert(), in call order. */
@@ -98,6 +100,7 @@ final class PartServiceTest extends TestCase {
         $this->timeFactory = $this->createMock(ITimeFactory::class);
         $this->secureRandom = $this->createMock(ISecureRandom::class);
         $this->userSession = $this->createMock(IUserSession::class);
+        $this->bevakningService = $this->createMock(BevakningService::class);
         $this->inserts = [];
         $this->journal = [];
 
@@ -339,8 +342,114 @@ final class PartServiceTest extends TestCase {
     }
 
     // ================================================================== //
+    //  ★ PER-PART-DELGIVNING (FL 44 §) — validering + journalföring ★
+    // ================================================================== //
+
+    public function testSetDelgivningPaIckeDelgivningsbarRollKastar(): void {
+        // En anmälare har ingen överklaganderätt och kan inte delges ett beslut.
+        $this->partMapper->method('findById')->willReturn($this->partICase(Part::ROLL_ANMALARE));
+        $service = $this->nyPartService();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->setDelgivning(self::REF, 1, '2026-07-08', Part::DELGIVNING_ORDINAR);
+    }
+
+    public function testSetDelgivningOgiltigMetodKastar(): void {
+        $this->partMapper->method('findById')->willReturn($this->partICase(Part::ROLL_VARDNADSHAVARE));
+        $service = $this->nyPartService();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->setDelgivning(self::REF, 1, '2026-07-08', 'brevduva');
+    }
+
+    public function testSetDelgivningOgiltigtDatumKastar(): void {
+        $this->partMapper->method('findById')->willReturn($this->partICase(Part::ROLL_VARDNADSHAVARE));
+        $service = $this->nyPartService();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->setDelgivning(self::REF, 1, 'inte-ett-datum', Part::DELGIVNING_ORDINAR);
+    }
+
+    public function testSetDelgivningSatterFaltOchJournalfor(): void {
+        $part = $this->partICase(Part::ROLL_VARDNADSHAVARE);
+        $part->setDelgivningUndantagen(true); // ska nollas när parten delges
+        $part->setDelgivningUndantagGrund(Part::UNDANTAG_OSL_10_3);
+        $this->partMapper->method('findById')->willReturn($part);
+        $service = $this->nyPartService();
+
+        $resultat = $service->setDelgivning(self::REF, 1, '2026-07-08', Part::DELGIVNING_FORENKLAD);
+
+        self::assertSame('2026-07-08', $resultat->getDelgivningsdatum()?->format('Y-m-d'));
+        self::assertSame(Part::DELGIVNING_FORENKLAD, $resultat->getDelgivningMetod());
+        self::assertFalse($resultat->getDelgivningUndantagen(), 'att delge nollar ett tidigare undantag');
+        self::assertNull($resultat->getDelgivningUndantagGrund());
+        // Journalförd med koordinationsdata (aldrig identitet).
+        $delgivning = array_values(array_filter($this->journal, static fn ($p): bool => ($p['detalj']['handling'] ?? '') === 'delgiven'));
+        self::assertCount(1, $delgivning);
+        self::assertSame(Part::ROLL_VARDNADSHAVARE, $delgivning[0]['detalj']['roll']);
+    }
+
+    public function testUndantaDelgivningSatterUndantagenOchNollarDatum(): void {
+        $part = $this->partICase(Part::ROLL_VARDNADSHAVARE);
+        $part->setDelgivningsdatum(new \DateTime('2026-07-08')); // ska nollas
+        $part->setDelgivningMetod(Part::DELGIVNING_ORDINAR);
+        $this->partMapper->method('findById')->willReturn($part);
+        $service = $this->nyPartService();
+
+        $resultat = $service->undantaDelgivning(self::REF, 1, Part::UNDANTAG_OSL_10_3);
+
+        self::assertTrue($resultat->getDelgivningUndantagen());
+        self::assertSame(Part::UNDANTAG_OSL_10_3, $resultat->getDelgivningUndantagGrund());
+        self::assertNull($resultat->getDelgivningsdatum(), 'en undantagen part är inte delgiven');
+        self::assertNull($resultat->getDelgivningMetod());
+        $undantag = array_values(array_filter($this->journal, static fn ($p): bool => ($p['detalj']['handling'] ?? '') === 'delgivning_undantagen'));
+        self::assertCount(1, $undantag);
+        self::assertSame(Part::UNDANTAG_OSL_10_3, $undantag[0]['detalj']['grund']);
+    }
+
+    public function testUndantaDelgivningOgiltigGrundKastar(): void {
+        $this->partMapper->method('findById')->willReturn($this->partICase(Part::ROLL_VARDNADSHAVARE));
+        $service = $this->nyPartService();
+
+        $this->expectException(\InvalidArgumentException::class);
+        $service->undantaDelgivning(self::REF, 1, 'godtycke');
+    }
+
+    public function testTaBortSynkarLagaKraft(): void {
+        // Att ta bort en part MÅSTE ompröva laga kraft (BUGG-fix: annars stale frist).
+        $this->partMapper->method('findById')->willReturn($this->partICase(Part::ROLL_VARDNADSHAVARE));
+        $this->bevakningService->expects($this->once())
+            ->method('synkaOverklagandeFranParter')
+            ->with(self::REF, $this->anything());
+        $service = $this->nyPartService();
+        $service->taBort(self::REF, 1);
+    }
+
+    public function testLaggTillSynkarLagaKraft(): void {
+        // Att lägga till en delgivningsbar part MÅSTE ompröva laga kraft (återöppning).
+        $this->bevakningService->expects($this->once())
+            ->method('synkaOverklagandeFranParter')
+            ->with(self::REF, $this->anything());
+        $service = $this->nyPartService();
+        $service->laggTill(self::REF, ['roll' => Part::ROLL_VARDNADSHAVARE, 'skydd' => Part::SKYDD_INGEN, 'namn' => 'Test VH']);
+    }
+
+    // ================================================================== //
     //  Helpers
     // ================================================================== //
+
+    /** En part i test-ärendet (self::REF) med id=1 — för findById-guarden. */
+    private function partICase(string $roll): Part {
+        $part = new Part();
+        $part->setId(1);
+        $part->setHubsCaseId(self::REF);
+        $part->setRoll($roll);
+        $part->setNamn('Testperson');
+        $part->setSkydd(Part::SKYDD_INGEN);
+        $part->setKalla(Part::KALLA_MANUELL);
+        $part->setDelgivningUndantagen(false);
+        return $part;
+    }
 
     private function nyPartService(): PartService {
         $service = $this->bygg(PartService::class);
@@ -364,6 +473,7 @@ final class PartServiceTest extends TestCase {
             $this->timeFactory,
             $this->secureRandom,
             $this->userSession,
+            $this->bevakningService,
         ];
         // Porten finns först när stubben själv är byggd (setUp bygger den).
         if (isset($this->port)) {

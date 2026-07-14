@@ -54,6 +54,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setPartsModell(?string $partsModell)
  * @method string|null getBevakningsmallar()
  * @method void setBevakningsmallar(?string $bevakningsmallar)
+ * @method bool|null getOmprovningskrav()
+ * @method void setOmprovningskrav(?bool $omprovningskrav)
  */
 class ArendeTyp extends Entity implements \JsonSerializable {
     protected string $arendeTypId = '';
@@ -85,6 +87,12 @@ class ArendeTyp extends Entity implements \JsonSerializable {
      * (vidSteg=stegnamn). Null = inga standardbevakningar.
      */
     protected ?string $bevakningsmallar = null;
+    /**
+     * A8 — kräver lagstadgad omprövning/övervägande var 6:e månad (LVU 13 §,
+     * SoL övervägande). true ⇒ motorn skapar omprövningsbevakningen AUTOMATISKT
+     * vid inträde i uppföljning (vilar aldrig på att handläggaren råkar skapa den).
+     */
+    protected ?bool $omprovningskrav = false;
 
     public function __construct() {
         // arende_typ_id is the string PK; tell the framework it is the id field.
@@ -105,6 +113,7 @@ class ArendeTyp extends Entity implements \JsonSerializable {
         $this->addType('postCommitHook', 'string');
         $this->addType('partsModell', 'string');
         $this->addType('bevakningsmallar', 'string');
+        $this->addType('omprovningskrav', 'boolean');
     }
 
     #[\ReturnTypeWillChange]
@@ -127,6 +136,7 @@ class ArendeTyp extends Entity implements \JsonSerializable {
             'postCommitHook' => $this->postCommitHook,
             'partsModell' => $this->partsModell,
             'bevakningsmallar' => $this->bevakningsmallar,
+            'omprovningskrav' => $this->omprovningskrav,
         ];
     }
 }
