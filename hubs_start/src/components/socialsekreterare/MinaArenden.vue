@@ -809,15 +809,22 @@ export default {
 			if (!beslutsfattare || !arende) {
 				return
 			}
+			// Stäng väljaren FÖRST, öppna commit-dialogen i en SENARE cykel. Att toggla
+			// två NcModal-v-if i samma tick kraschar Vue-DOM-patchen (teleport/focus-trap-
+			// teardown krockar med nästa modals mount → "insertBefore NotFoundError").
+			// Bug: E2E-körning 2026-07-14 (kritisk — kärntestet var blockerat).
 			this.beslutValjOpen = false
-			this.onCommit(arende, { typ: 'beslut-inleda', arende, inledaVal: { beslutsfattare } })
+			window.setTimeout(() => {
+				this.onCommit(arende, { typ: 'beslut-inleda', arende, inledaVal: { beslutsfattare } })
+			}, 160)
 		},
 		/** Väljaren: inte inleda → AvslutaGrind (A9a inteInledaVal → avslutat). */
 		onBeslutInteInleda() {
 			const arende = this.beslutValjArende
 			this.beslutValjOpen = false
+			// Se onBeslutInledaBekrafta: öppna nästa modal i en senare cykel (modal-swap-krock).
 			if (arende) {
-				this.onAvsluta(arende)
+				window.setTimeout(() => this.onAvsluta(arende), 160)
 			}
 		},
 
@@ -865,6 +872,14 @@ export default {
 			} catch (e) {
 				const grindFel = grindKravFel(e)
 				if (grindFel.grindKravs) {
+					// A9a-inleda: motorn kräver ett dokumenterat beslut (beslutsfattare) att
+					// inleda. Öppna beslutsväljaren i st.f. skyddsbedömnings-overriden — annars
+					// re-öppnas overriden tomt i en TYST loop (E2E 2026-07-14).
+					if (arende.steg === 'forhandsbedomning' && nyttSteg === 'utredning'
+						&& /beslutsfattare|inleda/i.test(grindFel.error || '')) {
+						this.oppnaBeslutValj(arende)
+						return { grind: 'inleda', error: grindFel.error }
+					}
 					// Öppna rätt dialog för det som fattas och kom ihåg målsteget.
 					const grind = this.grindForTransition(arende.steg, nyttSteg)
 					this.oppnaGrindDialog(grind, arende, nyttSteg)
