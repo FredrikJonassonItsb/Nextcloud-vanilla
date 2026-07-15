@@ -18,8 +18,11 @@ import { defaultPersonaId } from '../services/personas.js'
 const POLL_INTERVAL_MS = 30000
 
 const state = Vue.observable({
-	/** @type {('LOA1'|'LOA2'|'LOA3')} */
-	loa: 'LOA3',
+	/** @type {('LOA1'|'LOA2'|'LOA3')} Fail-secure default: LÄGSTA nivån tills den
+	 *  faktiska tillitsnivån hämtas live (sdkmc getSettings / boot). Aldrig en
+	 *  hårdkodad hög nivå — den visade annars falskt "BankID Tillitsnivå 3" vid
+	 *  lösenordsinloggning (E2E 2026-07-14). */
+	loa: 'LOA1',
 	/** Demo mode: UI rendered from fixtures, deep links inert (see DEMO.md). */
 	demoMode: false,
 	/** Which Hubs apps are installed/enabled (from initial state). */

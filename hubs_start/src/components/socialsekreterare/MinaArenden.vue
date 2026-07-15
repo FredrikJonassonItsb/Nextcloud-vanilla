@@ -872,16 +872,17 @@ export default {
 			} catch (e) {
 				const grindFel = grindKravFel(e)
 				if (grindFel.grindKravs) {
-					// A9a-inleda: motorn kräver ett dokumenterat beslut (beslutsfattare) att
-					// inleda. Öppna beslutsväljaren i st.f. skyddsbedömnings-overriden — annars
-					// re-öppnas overriden tomt i en TYST loop (E2E 2026-07-14).
-					if (arende.steg === 'forhandsbedomning' && nyttSteg === 'utredning'
-						&& /beslutsfattare|inleda/i.test(grindFel.error || '')) {
+					// MASKINLÄSBAR grind-nyckel från motorn (G3) — annars fallback på den
+					// statiska transition→grind-kartan. Löser tvetydigheten på
+					// forhandsbedomning→utredning som bär TVÅ grindar (A7 skyddsbedomning +
+					// A9a inleda): utan nyckeln öppnades skyddsbedömnings-overriden fast det
+					// var inleda-beslutet som saknades → tyst 400-loop (E2E 2026-07-14).
+					const grind = grindFel.grind || this.grindForTransition(arende.steg, nyttSteg)
+					// A9a-inleda: öppna beslutsväljaren (ej overriden).
+					if (grind === 'inleda') {
 						this.oppnaBeslutValj(arende)
 						return { grind: 'inleda', error: grindFel.error }
 					}
-					// Öppna rätt dialog för det som fattas och kom ihåg målsteget.
-					const grind = this.grindForTransition(arende.steg, nyttSteg)
 					this.oppnaGrindDialog(grind, arende, nyttSteg)
 					return { grind: grind || 'okand', error: grindFel.error }
 				}

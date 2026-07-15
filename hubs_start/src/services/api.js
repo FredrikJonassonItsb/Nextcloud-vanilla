@@ -85,9 +85,12 @@ const ocsData = (response) => response?.data?.ocs?.data
 export function grindKravFel(e) {
 	const data = e && e.response && e.response.data && e.response.data.ocs && e.response.data.ocs.data
 	if (data && data.grindKravs) {
-		return { grindKravs: true, error: data.error || null }
+		// grind = maskinläsbar nyckel för VILKEN grind som föll (skyddsbedomning|
+		// inleda|inte_inleda|kommunicering|avslut) när motorn kan avgöra det (G3).
+		// Låter frontenden öppna rätt dialog utan att gissa via textmatchning.
+		return { grindKravs: true, error: data.error || null, grind: data.grind || null }
 	}
-	return { grindKravs: false, error: (data && data.error) || null }
+	return { grindKravs: false, error: (data && data.error) || null, grind: null }
 }
 
 // ---------------------------------------------------------------------------
