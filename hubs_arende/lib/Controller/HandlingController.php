@@ -165,6 +165,20 @@ class HandlingController extends OCSController {
                                 'varning' => 'AI-förslag ur ärendets underlag — granska och '
                                     . 'redigera. Bedömning/beslut skriver du själv.',
                             ];
+                        } else {
+                            // TYST NEKAN GÖRS SYNLIG: mallen HAR en generativ funktion men
+                            // narrativet uteblev (otaget ärende / fel steg / ej aktiverat /
+                            // ork onåbar). En icke-redigerbar info-rad förklarar VARFÖR i
+                            // st.f. att fältet tyst försvinner. PII-fri orsakskod → text.
+                            $skal = is_array($res) ? (string)($res['skal'] ?? 'ej_konfigurerad') : 'ej_konfigurerad';
+                            $utkast['falt'][] = [
+                                'nyckel' => 'ai_narrativ_info',
+                                'etikett' => 'AI-utkast',
+                                'varde' => '',
+                                'kalla' => 'ai_narrativ_info',
+                                'sparrad' => true,
+                                'varning' => $this->aiNarrativOrsak($skal),
+                            ];
                         }
                     }
                 } catch (\Throwable $e) {
@@ -193,6 +207,35 @@ class HandlingController extends OCSController {
             $this->logger->error('hubs_arende handling utkast failed', ['exception' => $e, 'ref' => $ref]);
             return new DataResponse(['error' => 'utkast_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * PII-fri orsakskod (ork-svarets 'skal' — deny_krets_skrivning m.fl.) →
+     * människoläsbar förklaring till varför AI-utkastet uteblev. Gör den tidigare
+     * tysta nekan begriplig och åtgärdbar för handläggaren (mönstermatchning så
+     * nya deny-koder faller på en vettig default i st.f. att försvinna tyst).
+     */
+    private function aiNarrativOrsak(string $skal): string {
+        return match (true) {
+            str_contains($skal, 'krets_skrivning') =>
+                'AI-utkast kräver att ärendet är taget. Välj "Ta ärendet" (bli handläggare) och öppna mallen igen.',
+            str_contains($skal, 'observator') =>
+                'Observatörer kan inte generera AI-utkast för ärendet.',
+            str_contains($skal, 'fn_ej_aktiverad') =>
+                'AI-utkast är inte aktiverat för den här malltypen i denna miljö.',
+            str_contains($skal, 'steg_sparr') =>
+                'Den här mallen har inget AI-utkast i ärendets nuvarande steg.',
+            str_contains($skal, 'r0_karantan') =>
+                'Ärendet är i karantän — AI-utkast är inte tillgängligt än.',
+            str_contains($skal, 'disarmed') =>
+                'AI-tjänsten är avstängd i denna miljö.',
+            str_contains($skal, 'onabar') || str_contains($skal, 'ork_status') =>
+                'AI-tjänsten kunde inte nås just nu. Utkastet fungerar ändå — försök igen senare.',
+            $skal === 'ej_konfigurerad' =>
+                'AI-utkast är inte konfigurerat i denna miljö.',
+            default =>
+                'AI-utkast kunde inte genereras just nu (' . $skal . ').',
+        };
     }
 
     /**

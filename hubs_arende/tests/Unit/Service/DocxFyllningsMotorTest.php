@@ -136,10 +136,10 @@ final class DocxFyllningsMotorTest extends TestCase {
     }
 
     // ================================================================== //
-    //  (5) Flerradigt värde plattas till ", " (fas 1: ingen <w:br/>)
+    //  (5) Flerradigt värde blir <w:br/>-radbrytning (inte hopslaget med ", ")
     // ================================================================== //
 
-    public function testFlerradigtVardeSammanslasMedKommaMellanslag(): void {
+    public function testFlerradigtVardeBlirRadbrytning(): void {
         $docx = $this->byggDocx(
             '<w:p><w:r><w:t>Handläggare: [Namn, titel]</w:t></w:r></w:p>',
         );
@@ -151,8 +151,12 @@ final class DocxFyllningsMotorTest extends TestCase {
         self::assertSame(['[Namn, titel]' => 1], $resultat['ersatta']);
 
         $xml = $this->lasDocumentXml($resultat['bytes']);
-        self::assertStringContainsString('Handläggare: Rad1, Rad2', $xml);
-        // Ingen rå radbrytning får smyga in i <w:t>-runnen.
+        // Radbrytningen blir en riktig <w:br/> mellan runs — inte ihopslaget med
+        // ", " och inte en rå \n (som Word renderar som ett enda mellanslag).
+        self::assertStringContainsString('Handläggare: Rad1', $xml);
+        self::assertStringContainsString('<w:br/>', $xml);
+        self::assertStringContainsString('Rad2', $xml);
+        self::assertStringNotContainsString('Rad1, Rad2', $xml);
         self::assertStringNotContainsString("Rad1\nRad2", $xml);
     }
 

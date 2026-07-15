@@ -220,6 +220,49 @@ final class ArendeLifecycleServiceGrindTest extends TestCase {
 	}
 
 	// ================================================================== //
+	//  A9a-inleda — beslut att INLEDA utredning (forhandsbedomning→utredning, PÅ).
+	// ================================================================== //
+
+	public function testA9aInledaKraverBeslutsfattare(): void {
+		$this->arendeService->method('show')->willReturn($this->makeArende('forhandsbedomning'));
+		// makeTyp(false): ingen pliktGrind → A7 skippas, bara inleda-grinden gäller.
+		$this->typRegistry->method('get')->willReturn($this->makeTyp(false));
+		$this->grindConfig->method('inledaBeslut')->willReturn(true);
+
+		$this->arendeMapper->expects(self::never())->method('update');
+
+		try {
+			$this->makeService()->transitionera(self::CASE_ID, 'utredning');
+			self::fail('grinden borde ha kastat');
+		} catch (\InvalidArgumentException $e) {
+			self::assertStringContainsString('beslutsfattare', $e->getMessage());
+		}
+		self::assertSame([], $this->journal, 'inget journalförs på en blockerad övergång');
+	}
+
+	public function testA9aInledaSlapperMedBeslutsfattareOchJournalfor(): void {
+		$this->arendeService->method('show')->willReturn($this->makeArende('forhandsbedomning'));
+		$this->typRegistry->method('get')->willReturn($this->makeTyp(false));
+		$this->grindConfig->method('inledaBeslut')->willReturn(true);
+
+		$this->arendeMapper->expects(self::once())->method('update')->willReturnArgument(0);
+
+		$result = $this->makeService()->transitionera(
+			self::CASE_ID,
+			'utredning',
+			['inledaVal' => ['beslutsfattare' => 'chef1']],
+		);
+		self::assertSame('utredning', $result->getSteg());
+
+		// TYP_GRINDVAL {grind:inleda,val:vald,beslutsfattare:...} journalförs.
+		$gv = $this->grindval();
+		self::assertCount(1, $gv);
+		self::assertSame('inleda', $gv[0]['grind']);
+		self::assertSame('vald', $gv[0]['val']);
+		self::assertSame('chef1', $gv[0]['beslutsfattare']);
+	}
+
+	// ================================================================== //
 	//  A9b — kommunicerings-checkpoint (utredning→beslut, flagga PÅ).
 	// ================================================================== //
 

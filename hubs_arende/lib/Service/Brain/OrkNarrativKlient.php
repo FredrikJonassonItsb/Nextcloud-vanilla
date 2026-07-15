@@ -113,8 +113,10 @@ class OrkNarrativKlient {
      * @param string $fnId       Ork-funktionen ({@see fnForMall()}).
      * @param string $uid        Den handläggare som utlöste utkastet.
      *
-     * @return array{svar_md:string, kallor:mixed, modell:mixed}|null Narrativet, eller
-     *   null vid ej konfigurerad/onåbar/nekande orkestrerare (degraderbart no-op).
+     * @return array{svar_md:string, kallor:mixed, modell:mixed}|array{skal:string}|null
+     *   Narrativet vid lyckad körning; `{skal}` (PII-fri orsakskod, t.ex.
+     *   deny_krets_skrivning/deny_steg_sparr/ork_onabar) vid nekan/onåbar ork så
+     *   anroparen kan visa VARFÖR; null endast när orkestreraren ej är konfigurerad.
      */
     public function genereraNarrativ(string $hubsCaseId, string $fnId, string $uid): ?array {
         $url = $this->baseUrl();
@@ -147,15 +149,19 @@ class OrkNarrativKlient {
                 ],
                 'connect_timeout' => self::CONNECT_TIMEOUT,
                 'timeout' => self::TOTAL_TIMEOUT,
+                // Läs nekande-svaret (403/409/422 med 'skal') i stället för att kasta,
+                // så orsaken kan visas för handläggaren i st.f. att tyst försvinna.
+                'http_errors' => false,
                 // Ork-funktionsporten bor på kommunens interna nät.
                 'nextcloud' => ['allow_local_address' => true],
             ]);
 
+            $status = $response->getStatusCode();
             $raw = $response->getBody();
             $text = is_string($raw) ? $raw : '';
             $data = $text !== '' ? json_decode($text, true) : null;
 
-            // Lyckad körning = ett icke-tomt svar_md. Nekad/fel ⇒ inget svar_md ⇒ null.
+            // Lyckad körning = ett icke-tomt svar_md.
             if (is_array($data) && !empty($data['svar_md'])) {
                 return [
                     'svar_md' => (string)$data['svar_md'],
@@ -163,16 +169,23 @@ class OrkNarrativKlient {
                     'modell' => $data['modell'] ?? null,
                 ];
             }
-            return null;
+            // Nekad/tomt: bär den PII-fria orsakskoden (ork-svarets 'skal'/'fel',
+            // annars HTTP-status) så anroparen kan visa VARFÖR narrativet uteblev.
+            $skal = is_array($data) ? ($data['skal'] ?? $data['fel'] ?? null) : null;
+            if (($skal === null || $skal === '') && $status >= 400) {
+                $skal = 'ork_status_' . $status;
+            }
+            return ($skal !== null && $skal !== '') ? ['skal' => (string)$skal] : null;
         } catch (\Throwable $e) {
-            // Degraderbart: en onåbar/nekande orkestrerare får ALDRIG fälla utkastet.
-            // INGEN PII, INGET svar-innehåll — endast fn-id och feltyp i loggen.
+            // Degraderbart: en onåbar orkestrerare får ALDRIG fälla utkastet. INGEN
+            // PII, INGET svar-innehåll — endast fn-id och feltyp i loggen. Orsaken
+            // 'ork_onabar' visas för handläggaren (konfigurerad men ej åtkomlig ork).
             $this->logger->debug('hubs_arende: ork-narrativ inline misslyckades (graceful)', [
                 'app' => 'hubs_arende',
                 'fnId' => $fnId,
                 'exception' => $e->getMessage(),
             ]);
-            return null;
+            return ['skal' => 'ork_onabar'];
         }
     }
 

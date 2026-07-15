@@ -230,6 +230,7 @@ class ArendeController extends OCSController {
         bool $skyddsbedomningKvitterad = false,
         ?array $override = null,
         ?array $inteInledaVal = null,
+        ?array $inledaVal = null,
         ?array $kommuniceringVal = null,
         ?array $avslutsmotiv = null,
     ): DataResponse {
@@ -246,6 +247,9 @@ class ArendeController extends OCSController {
             }
             if ($inteInledaVal !== null) {
                 $kontext['inteInledaVal'] = $inteInledaVal;
+            }
+            if ($inledaVal !== null) {
+                $kontext['inledaVal'] = $inledaVal;
             }
             if ($kommuniceringVal !== null) {
                 $kontext['kommuniceringVal'] = $kommuniceringVal;

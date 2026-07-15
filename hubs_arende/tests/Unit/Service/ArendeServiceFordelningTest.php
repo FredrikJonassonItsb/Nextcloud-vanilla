@@ -104,6 +104,13 @@ final class ArendeServiceFordelningTest extends TestCase {
 
         // Mottagningskön: det otilldelade ärendet står i förhandsbedömning.
         self::assertSame(1, $result['mottagningPagaende']);
+
+        // "Utredarnas belastning" räknar ALDRIG avslutade ärenden som aktiva:
+        // anna.ignell äger case-till-2 (beslut) + case-avslutat-1 (avslutat) men
+        // ska visa aktiva=1, inte 2 (annars spök-belastning på avslutade ärenden).
+        $aktivaPerUid = array_column($result['utredare'], 'aktiva', 'uid');
+        self::assertSame(1, $aktivaPerUid['anna.ignell'], 'avslutat ärende får inte räknas som aktiv belastning');
+        self::assertSame(1, $aktivaPerUid['197411040293']);
     }
 
     // ================================================================== //
@@ -127,6 +134,59 @@ final class ArendeServiceFordelningTest extends TestCase {
             '"namn":"197411040293"',
             json_encode($result['utredare'], JSON_THROW_ON_ERROR),
         );
+    }
+
+    // ================================================================== //
+    //  Roster-seed — utredare utan aktiva ärenden är ändå valbara (bootstrap)
+    // ================================================================== //
+
+    public function testFordelningSummarySeedsRosterFromEnhetMembership(): void {
+        // ETT tilldelat ärende (uid upptagen), INGA otilldelade. Enheten har flera
+        // medlemmar utan aktiva ärenden — de MÅSTE ändå bli valbara, annars kan
+        // första tilldelningen aldrig göras (rostern speglade bara tilldelningar).
+        $this->arendeMapper->method('findAll')->willReturn([
+            $this->makeArende('case-till-1', 'tilldelat', 'utredning', '197411040293'),
+        ]);
+
+        $users = [];
+        foreach (['197411040293', 'anna.ignell', 'karin.forss', 'sara.nystrom', 'hubs-arende-svc'] as $u) {
+            $iu = $this->createMock(\OCP\IUser::class);
+            $iu->method('getUID')->willReturn($u);
+            $users[] = $iu;
+        }
+        $group = $this->createMock(\OCP\IGroup::class);
+        $group->method('getUsers')->willReturn($users);
+        $group->method('getGID')->willReturn('barn-familj');
+        $groupManager = $this->createMock(\OCP\IGroupManager::class);
+        $groupManager->method('isAdmin')->willReturn(false);
+        $groupManager->method('getUserGroupIds')->willReturn(['barn-familj']);
+        $groupManager->method('get')->willReturnCallback(
+            static fn (string $gid) => $gid === 'barn-familj' ? $group : null,
+        );
+        $user = $this->createMock(\OCP\IUser::class);
+        $user->method('getUID')->willReturn('nils');
+        $userSession = $this->createMock(\OCP\IUserSession::class);
+        $userSession->method('getUser')->willReturn($user);
+
+        $svc = new ArendeService(
+            $this->arendeMapper, $this->typRegistry, $this->grind, $this->commitService,
+            $this->secureRandom, $this->timeFactory, $this->logger,
+            userSession: $userSession,
+            groupManager: $groupManager,
+        );
+
+        $result = $svc->fordelningSummary();
+
+        // Tjänstekontot (-svc) bortfiltrerat; de 3 idle + den upptagne kvar.
+        $uids = array_column($result['utredare'], 'uid');
+        sort($uids);
+        self::assertSame(['197411040293', 'anna.ignell', 'karin.forss', 'sara.nystrom'], $uids);
+
+        // Idle-utredare har aktiva=0; den med det tilldelade ärendet har 1.
+        $aktivaPerUid = array_column($result['utredare'], 'aktiva', 'uid');
+        self::assertSame(1, $aktivaPerUid['197411040293']);
+        self::assertSame(0, $aktivaPerUid['anna.ignell']);
+        self::assertSame(0, $aktivaPerUid['sara.nystrom']);
     }
 
     // ================================================================== //

@@ -633,6 +633,9 @@ class ArendeService {
                 $teamSingleId = $this->teamClient->createTeam('Ärende ' . self::kortRef($hubsCaseId), $perCaseGid);
                 if ($teamSingleId !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'team', $teamSingleId);
+                    // Materialisera individ-medlemmarna i teamet (namn i team-vyn).
+                    // Körs EFTER att team-pekaren finns — annars vore synken en no-op.
+                    $this->syncArenderumTeamMedlemmar($hubsCaseId, $this->atkomstUids($hubsCaseId));
                 }
             } else {
                 $this->skipStep('T', $hubsCaseId);
@@ -1066,16 +1069,11 @@ class ArendeService {
      * @return list<array<string,mixed>>
      */
     public function dashboardArenden(bool $mineOnly = false): array {
-        $minaCaseIds = null;
+        $mineUid = null;
         if ($mineOnly && $this->memberMapper !== null) {
-            $uid = $this->userSession?->getUser()?->getUID();
-            if ($uid !== null && $uid !== '') {
-                try {
-                    $minaCaseIds = array_fill_keys($this->memberMapper->findCaseIdsByUid($uid), true);
-                } catch (\Throwable $e) {
-                    // Graceful: fall tillbaka till enhets-scopad lista hellre än tom vy.
-                    $minaCaseIds = null;
-                }
+            $u = $this->userSession?->getUser()?->getUID();
+            if ($u !== null && $u !== '') {
+                $mineUid = (string)$u;
             }
         }
         $out = [];
@@ -1083,8 +1081,21 @@ class ArendeService {
             if (!$this->enhetTillaten($arende->getEnhet())) {
                 continue;
             }
-            if ($minaCaseIds !== null && !isset($minaCaseIds[$arende->getHubsCaseId()])) {
-                continue;
+            // "Mina ärenden" = HANDOFF-MEDVETET: bara ärenden jag faktiskt håller
+            // (aktiv handläggare/co/observatör) eller — medan ärendet är otilldelat —
+            // är i mottagningskretsen för. Speglar exakt rums-/folderåtkomsten
+            // (atkomstUids), så en krets-medlem ser INTE ett ärende som tilldelats
+            // någon annan (inre sekretess, OSL 26 kap). N+1 mot ledgern (≤200 rader);
+            // batcha om volymen växer. Graceful: hellre visa (enhet-scopat) än tappa
+            // raden tyst vid ett ledger-fel.
+            if ($mineUid !== null) {
+                try {
+                    if (!in_array($mineUid, $this->atkomstUids($arende->getHubsCaseId()), true)) {
+                        continue;
+                    }
+                } catch (\Throwable $e) {
+                    // fall igenom → raden visas (enhet-authz gäller fortfarande ovan)
+                }
             }
             // AVSLUTADE ärenden visas ALDRIG i arbetsvyn (Fredrik 2026-07-07):
             // akten lever i SoR och Hubs-raden väntar bara på gallringssvepet —
@@ -1229,7 +1240,7 @@ class ArendeService {
         if ($this->memberMapper !== null) {
             try {
                 $medlemmar = array_map(
-                    static fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll()],
+                    fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll(), 'displayName' => $this->agareVisningsnamn($m->getUid())],
                     $this->memberMapper->findByCaseId($hubsCaseId),
                 );
             } catch (\Throwable $e) {
@@ -1296,6 +1307,8 @@ class ArendeService {
             /** @var array<string,array{aktiva:int,roda:int}> $perUid */
             $perUid = [];
             $mottagningPagaende = 0;
+            /** @var array<string,Arende> $enhetProv en representant per enhet (roster-seed) */
+            $enhetProv = [];
 
             // EN registerläsning för hela vyn: samma findAll-loop som belastnings-
             // aggregatet redan krävde bär nu även båda kortzonerna (ersätter det
@@ -1305,6 +1318,9 @@ class ArendeService {
                 if (!$this->enhetTillaten($arende->getEnhet())) {
                     continue;
                 }
+                // Representant per enhet: rostern seedas ur enhetens FAKTISKA
+                // medlemskap, inte bara ur redan tilldelade ärenden (bootstrap-fix).
+                $enhetProv[$arende->getEnhet() ?? ''] = $arende;
 
                 if ($arende->getStatus() === 'otilldelat') {
                     $attFordela[] = $this->mapToFordelningsKort($arende);
@@ -1319,17 +1335,23 @@ class ArendeService {
                 }
 
                 $uid = $arende->getAgareUid();
+                $avslutat = $arende->getSteg() === 'avslutat';
                 if ($uid !== null && $uid !== '') {
                     if (!isset($perUid[$uid])) {
                         $perUid[$uid] = ['aktiva' => 0, 'roda' => 0];
                     }
-                    $perUid[$uid]['aktiva']++;
-                    if ($this->fristAr('error', $arende)) {
-                        $perUid[$uid]['roda']++;
+                    // Avslutade (men ännu ogallrade) ärenden är INTE aktiv belastning
+                    // — de väntar bara på gallringssvepet. Räkna dem aldrig som aktiva/
+                    // röda, annars visar "Utredarnas belastning" spök-ärenden.
+                    if (!$avslutat) {
+                        $perUid[$uid]['aktiva']++;
+                        if ($this->fristAr('error', $arende)) {
+                            $perUid[$uid]['roda']++;
+                        }
                     }
                 }
 
-                if ($arende->getSteg() !== 'avslutat') {
+                if (!$avslutat) {
                     // Omfördelningsbart kort. agareUid string-castas medvetet:
                     // numeriska uid:n (personnummer-konton) får annars läcka som
                     // JSON-nummer och frontendens strikta strängjämförelser felar.
@@ -1348,13 +1370,29 @@ class ArendeService {
             // fördelas först.
             $attFordela = array_reverse($attFordela);
 
+            // Seeda rostern ur enheternas faktiska medlemskap så en utredare UTAN
+            // aktiva ärenden ändå är valbar (annars bootstrap-döläge: första
+            // tilldelningen kan aldrig göras eftersom listan bara speglade tidigare
+            // tilldelningar). Guardat i aclKretsUids → tom i system-/CLI-kontext
+            // (ingen groupManager) så assignment-derived räkningen är oförändrad där.
+            foreach ($enhetProv as $prov) {
+                foreach ($this->aclKretsUids($prov) as $medlemUid) {
+                    if ($medlemUid !== '' && !$this->arSystemkonto($medlemUid) && !isset($perUid[$medlemUid])) {
+                        $perUid[$medlemUid] = ['aktiva' => 0, 'roda' => 0];
+                    }
+                }
+            }
+
             $utredare = [];
             foreach ($perUid as $uid => $b) {
                 $utredare[] = [
-                    // (string)-cast: PHP koercerar numeriska strängnycklar till
-                    // int, så ett personnummer-uid serialiserades som JSON-nummer
-                    // ("namn":19741104...) — namn/uid måste alltid vara sträng.
-                    'namn' => (string)$uid,
+                    // uid = assignments-nyckeln (FordelaTill emittar u.uid). (string)-cast:
+                    // PHP koercerar numeriska strängnycklar till int, så ett personnummer-
+                    // uid serialiserades annars som JSON-nummer — uid/namn måste vara sträng.
+                    'uid' => (string)$uid,
+                    // namn = visningsnamn för läsbarhet; fallback uid när namn saknas
+                    // (t.ex. system-/CLI-kontext utan userManager) → aldrig tomt.
+                    'namn' => $this->agareVisningsnamn((string)$uid) ?? (string)$uid,
                     'aktiva' => $b['aktiva'],
                     'roda' => $b['roda'],
                     // Neutral belastnings-tröskel over the engine's own active count.
@@ -1713,7 +1751,7 @@ class ArendeService {
             return [];
         }
         return array_map(
-            static fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll()],
+            fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll(), 'displayName' => $this->agareVisningsnamn($m->getUid())],
             $this->memberMapper->findByCaseId($arende->getHubsCaseId()),
         );
     }
@@ -3235,6 +3273,16 @@ class ArendeService {
     }
 
     /**
+     * Service-/systemkonton (tjänstekonto, bottar, admin) är enhetsmedlemmar men
+     * aldrig utredare att fördela till — filtreras bort ur den mänskliga rostern.
+     */
+    private function arSystemkonto(string $uid): bool {
+        return $uid === 'admin'
+            || str_ends_with($uid, '-svc')
+            || str_starts_with($uid, 'bot-');
+    }
+
+    /**
      * Säkerhets-gate för tilldelning: assignee MÅSTE vara behörig för ärendets
      * enhet (medlem av enhetens mottagningskrets) innan vi pekar om ACL/Deck och
      * re-homar kalenderobjektet till deras kalender.
@@ -3296,7 +3344,42 @@ class ArendeService {
      * utan grupp-service/ledger.
      */
     private function syncArenderumGrupp(string $hubsCaseId): void {
-        $this->arenderumGroupService?->sync($hubsCaseId, $this->atkomstUids($hubsCaseId));
+        $uids = $this->atkomstUids($hubsCaseId);
+        $this->arenderumGroupService?->sync($hubsCaseId, $uids);
+        // Spegla samma åtkomstlista in i teamets individ-medlemmar (namn i team-vyn).
+        $this->syncArenderumTeamMedlemmar($hubsCaseId, $uids);
+    }
+
+    /**
+     * Spegla member-ledgerns AKTIVA åtkomstlista in i ärende-TEAMETS individuella
+     * medlemmar (TYPE_USER) så Nextclouds team-/kontaktvy visar allas NAMN, inte
+     * bara den kollapsade gruppraden. Uid:n förfiltreras mot userExists (samma som
+     * gruppsynken) så ej-upplösbara uid:n (demo-hl-*) inte POST:as i evighet.
+     * Graceful no-op utan team-klient/pekare eller innan team-pekaren finns (T i
+     * createCase kör synken explicit EFTER att teamet skapats). Borttagning är
+     * auktoritativ i {@see TeamClient::syncMembers} (revokering får ej hänga kvar).
+     *
+     * @param string[] $uids ärenderummets aktiva åtkomstlista (atkomstUids)
+     */
+    private function syncArenderumTeamMedlemmar(string $hubsCaseId, array $uids): void {
+        if ($this->teamClient === null || $this->pekareMapper === null) {
+            return;
+        }
+        $singleId = null;
+        foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'team') as $p) {
+            $singleId = $p->getObjektId();
+            break;
+        }
+        if ($singleId === null || $singleId === '') {
+            return;
+        }
+        if ($this->userManager !== null) {
+            $uids = array_values(array_filter(
+                $uids,
+                fn ($u): bool => $this->userManager->userExists((string)$u),
+            ));
+        }
+        $this->teamClient->syncMembers($singleId, $uids);
     }
 
     /**

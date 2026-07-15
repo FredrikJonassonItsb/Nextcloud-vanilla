@@ -172,6 +172,24 @@ class ArendeLifecycleService {
             }
         }
 
+        // A9a-INLEDA — BESLUT ATT INLEDA UTREDNING (forhandsbedomning→utredning).
+        // Symmetriskt med "inte inleda" nedan: att INLEDA utredning är ett formellt
+        // delegerat beslut (SoL 11:1) och får inte vara ett tyst steg-klick — kräver
+        // {beslutsfattare}. Journalförs som TYP_GRINDVAL 'inleda' så beslutet
+        // dokumenteras (och stepper-noden "beslut: inleda/inte inleda" markeras klar).
+        if ($franSteg === 'forhandsbedomning' && $nyttSteg === 'utredning'
+            && $this->grindConfig !== null && $this->grindConfig->inledaBeslut()) {
+            $beslutsfattare = trim((string)($kontext['inledaVal']['beslutsfattare'] ?? ''));
+            if ($beslutsfattare === '') {
+                throw new \InvalidArgumentException(
+                    'Beslut om att inleda utredning måste ange beslutsfattare.'
+                );
+            }
+            $this->journalGrindval($arende->getHubsCaseId(), 'inleda', 'vald', [
+                'beslutsfattare' => $beslutsfattare,
+            ]);
+        }
+
         // A9a — INTE-INLEDA-MOTIV (forhandsbedomning→avslutat). "Inte inleda" är ett
         // legitimt utfall men får inte vara ett tyst förbi-klick: kräver strukturerat
         // {orsak, beslutsfattare}. Journalförs så beslut skiljs från slarv.

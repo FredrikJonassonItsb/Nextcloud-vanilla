@@ -28,6 +28,10 @@ class GrindConfig {
     public const FLAGGA_SKYDDSBEDOMNING = 'grind_skyddsbedomning';
     /** A9a — kräv strukturerat skäl vid "inte inleda" (förhandsbedömning→avslutat). */
     public const FLAGGA_INTE_INLEDA = 'grind_inte_inleda_motiv';
+    /** A9a-inleda — kräv ett dokumenterat beslut (beslutsfattare) att INLEDA
+     *  utredning (förhandsbedömning→utredning). Symmetriskt med "inte inleda":
+     *  att inleda är ett formellt delegerat beslut (SoL 11:1), inte ett tyst klick. */
+    public const FLAGGA_INLEDA_BESLUT = 'grind_inleda_beslut';
     /** A9b — kräv dokument + kommunicerings-val vid beslutscommit (utredning→beslut). */
     public const FLAGGA_BESLUT_DOKUMENT = 'grind_beslut_dokument';
     /** A9c — kräv avslutsmotiv (uppföljning/övrigt→avslutat). */
@@ -53,6 +57,10 @@ class GrindConfig {
 
     public function inteInledaMotiv(): bool {
         return $this->pa(self::FLAGGA_INTE_INLEDA);
+    }
+
+    public function inledaBeslut(): bool {
+        return $this->pa(self::FLAGGA_INLEDA_BESLUT);
     }
 
     public function beslutDokument(): bool {

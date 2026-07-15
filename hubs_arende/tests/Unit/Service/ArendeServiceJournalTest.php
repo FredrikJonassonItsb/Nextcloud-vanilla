@@ -175,14 +175,38 @@ final class ArendeServiceJournalTest extends TestCase {
         $annans = new Arende();
         $annans->setHubsCaseId('case-annans');
         $annans->setArendeTyp('orosanmalan');
-        $annans->setStatus('otilldelat');
-        $annans->setSteg('forhandsbedomning');
+        // Tilldelat 'annan' (en handläggare finns → mottagningskretsen revokeras i
+        // atkomstUids), fastän fredrik ligger kvar som krets-rad i ledgern.
+        $annans->setStatus('tilldelat');
+        $annans->setSteg('utredning');
         $annans->setProvenanceState('ej_registrerad');
         $annans->setEnhet('barn-familj@');
         $this->arendeMapper->method('findAll')->willReturn([$mitt, $annans]);
 
+        // Handoff-medvetet mine-filter läser ledgern per ärende (atkomstUids), inte
+        // det roll-agnostiska findCaseIdsByUid: fredrik är krets i BÅDA, men ser bara
+        // det otilldelade (case-mitt), inte det som tilldelats någon annan.
+        $medlem = static function (string $uid, string $roll): Member {
+            $m = new Member();
+            $m->setUid($uid);
+            $m->setRoll($roll);
+            return $m;
+        };
         $memberMapper = $this->createMock(MemberMapper::class);
-        $memberMapper->method('findCaseIdsByUid')->with('fredrik')->willReturn(['case-mitt']);
+        $memberMapper->method('findByCaseId')->willReturnCallback(
+            static function (string $cid) use ($medlem): array {
+                if ($cid === 'case-mitt') {
+                    return [$medlem('fredrik', Member::ROLL_MOTTAGNINGSKRETS)];
+                }
+                if ($cid === 'case-annans') {
+                    return [
+                        $medlem('fredrik', Member::ROLL_MOTTAGNINGSKRETS),
+                        $medlem('annan', Member::ROLL_HANDLAGGARE),
+                    ];
+                }
+                return [];
+            }
+        );
 
         $user = $this->createMock(\OCP\IUser::class);
         $user->method('getUID')->willReturn('fredrik');
