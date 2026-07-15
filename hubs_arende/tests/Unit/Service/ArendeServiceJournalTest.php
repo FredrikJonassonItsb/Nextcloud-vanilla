@@ -140,6 +140,69 @@ final class ArendeServiceJournalTest extends TestCase {
         );
     }
 
+    /**
+     * OMFÖRDELNING (E2E 2026-07-14): tilldela() var additiv och lämnade den TIDIGARE
+     * handläggaren kvar som aktiv handlaggare-medlem → ärendet fastnade i förra
+     * handläggarens "Mina ärenden", dubblettidentiteter i Anslutna och kvarhängande
+     * åtkomst efter handoff. Nu revokeras föregående handläggare (annat uid) ur ledgern
+     * FÖRE record() och handoffen journalförs som TYP_MEDLEM riktning=ut.
+     */
+    public function testTilldelaRevokesPreviousHandlaggareOnReassignment(): void {
+        $arende = new Arende();
+        $arende->setHubsCaseId('case-j5');
+        $arende->setArendeTyp('orosanmalan');
+        $this->arendeMapper->method('findByCaseId')->with('case-j5')->willReturn($arende);
+
+        $rows = [];
+        $this->handelseMapper->method('record')
+            ->willReturnCallback(function (string $caseId, string $typ, array $detalj) use (&$rows): Handelse {
+                $rows[] = [$typ, $detalj];
+                return new Handelse();
+            });
+
+        $medlem = static function (string $uid, string $roll): Member {
+            $m = new Member();
+            $m->setUid($uid);
+            $m->setRoll($roll);
+            return $m;
+        };
+        $memberMapper = $this->createMock(MemberMapper::class);
+        // Ledgern har en TIDIGARE handläggare (axel) före omfördelningen till anna.
+        $memberMapper->method('findByCaseAndRoll')
+            ->with('case-j5', Member::ROLL_HANDLAGGARE)
+            ->willReturn([$medlem('axel', Member::ROLL_HANDLAGGARE)]);
+        $memberMapper->method('findByCaseId')->willReturn([]); // atkomstUids-synken
+        $deleted = [];
+        $memberMapper->method('deleteByCaseUidRoll')
+            ->willReturnCallback(function (string $cid, string $uid, string $roll) use (&$deleted): int {
+                $deleted[] = [$cid, $uid, $roll];
+                return 1;
+            });
+        $recorded = [];
+        $memberMapper->method('record')
+            ->willReturnCallback(function (string $cid, string $uid, string $roll) use (&$recorded, $medlem): Member {
+                $recorded[] = [$cid, $uid, $roll];
+                return $medlem($uid, $roll);
+            });
+
+        $service = new ArendeService(
+            $this->arendeMapper, $this->typRegistry, $this->grind, $this->commitService,
+            $this->secureRandom, $this->timeFactory, $this->logger,
+            handelseMapper: $this->handelseMapper,
+            memberMapper: $memberMapper,
+        );
+        $service->tilldela('case-j5', 'anna');
+
+        // Gamla handläggaren axel revokerad ur ledgern; nya anna registrerad.
+        self::assertContains(['case-j5', 'axel', Member::ROLL_HANDLAGGARE], $deleted);
+        self::assertContains(['case-j5', 'anna', Member::ROLL_HANDLAGGARE], $recorded);
+        // Handoffen är granskningsbar: TYP_MEDLEM ut för axel.
+        self::assertContains(
+            [Handelse::TYP_MEDLEM, ['uid' => 'axel', 'roll' => Member::ROLL_HANDLAGGARE, 'riktning' => 'ut']],
+            $rows,
+        );
+    }
+
     public function testHistorikReadsViaShowAuthz(): void {
         $arende = new Arende();
         $arende->setHubsCaseId('case-j4');

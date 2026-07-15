@@ -1621,11 +1621,31 @@ class ArendeService {
         $arende->setStatus('tilldelat');
         $this->arendeMapper->update($arende);
 
+        // OMFÖRDELNING: revokera tidigare handläggare (annat uid) ur ledgern FÖRE
+        // record() av den nya. tilldela() var additiv → en omfördelning lämnade den
+        // gamla handläggaren kvar som aktiv handlaggare-medlem, vilket gav (a) ärendet
+        // kvar i förra handläggarens "Mina ärenden", (b) dubblettidentiteter i Anslutna
+        // och (c) kvarhängande atkomstUids-åtkomst efter handoff (E2E 2026-07-14).
+        // Speglas i journalen som TYP_MEDLEM riktning=ut så handoffen är granskningsbar.
+        // Endast handlaggare-rollen rensas: en tidigare handläggare som ÄVEN är
+        // co_handlaggare/observatör/krets behåller de rollerna (och därmed sin åtkomst).
+        if ($this->memberMapper !== null) {
+            foreach ($this->memberMapper->findByCaseAndRoll($hubsCaseId, Member::ROLL_HANDLAGGARE) as $gammal) {
+                if ($gammal->getUid() !== $uid) {
+                    $this->memberMapper->deleteByCaseUidRoll($hubsCaseId, $gammal->getUid(), Member::ROLL_HANDLAGGARE);
+                    $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, [
+                        'uid' => $gammal->getUid(),
+                        'roll' => Member::ROLL_HANDLAGGARE,
+                        'riktning' => 'ut',
+                    ]);
+                }
+            }
+        }
         // Förstaklassigt medlemskap: registrera den tilldelade handläggaren som
-        // medlem (roll=handlaggare). ADDITIVT — mottagningskretsen behåller sin
-        // grupp-åtkomst till groupfolder (groupfolders ger åtkomst per GRUPP, inte
+        // medlem (roll=handlaggare). idempotent via UNIQUE. Mottagningskretsen behåller
+        // sin grupp-åtkomst till groupfolder (groupfolders ger åtkomst per GRUPP, inte
         // per användare; äkta per-handläggar-avsmalning kräver per-case-grupp eller
-        // granulära ACL-regler, se Integration/README seam). idempotent via UNIQUE.
+        // granulära ACL-regler, se Integration/README seam).
         $this->memberMapper?->record($hubsCaseId, $uid, Member::ROLL_HANDLAGGARE);
         // Spegla in handläggaren i per-case-gruppen (folder-åtkomst).
         $this->syncArenderumGrupp($hubsCaseId);
@@ -1674,15 +1694,20 @@ class ArendeService {
         $hubsCaseId = $arende->getHubsCaseId();
 
         $this->memberMapper?->record($hubsCaseId, $uid, $roll);
-        // Spegla in nya medlemmen i per-case-gruppen (folder-åtkomst).
-        $this->syncArenderumGrupp($hubsCaseId);
 
-        // Chat-åtkomst: lägg till som deltagare i varje talkrum (kan vara flera).
+        // Chat-åtkomst FÖRST (före grupp-/cirkelsynken): det tjänstekonto-autentiserade
+        // addParticipant-anropet skapar attendee + 'user_added'-systemmeddelandet med
+        // korrekt aktör (tjänstekontot). Kördes det EFTER syncArenderumGrupp() hann
+        // cirkel-propageringen (en OAUTENTISERAD loopback-request) lägga in deltagaren
+        // först → systemmeddelandet fick actor='Gäst' (E2E 2026-07-14). Ordningen fixar
+        // attributionen. addParticipant är idempotent, så en dubbelinläggning är no-op.
         if ($this->spreedClient !== null && $this->pekareMapper !== null) {
             foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'talk_room') as $p) {
                 $this->spreedClient->addParticipant($p->getObjektId(), $uid);
             }
         }
+        // Spegla in nya medlemmen i per-case-gruppen (folder-åtkomst).
+        $this->syncArenderumGrupp($hubsCaseId);
 
         $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, ['uid' => $uid, 'roll' => $roll, 'riktning' => 'in']);
         $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_MEDLEM, [
