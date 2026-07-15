@@ -95,6 +95,10 @@ class ArendeController extends OCSController {
         }
         try {
             $arende = $this->arendeService->show($ref);
+            // ÅTKOMSTLOGG (inre sekretess, OSL 26 kap): en läsning av ärendedetaljen
+            // loggas — inte bara mutationer — så åtkomst till skyddad information är
+            // revisionsspårbar (Fredrik 2026-07-15). Efter authz-gaten i show().
+            $this->arendeService->auditLasning($ref, 'detalj');
             // Full dashboard card (collapsed fields + empty heavy flik-fält) for the
             // frontend's lazy-load on card expand — engine-honest + thin.
             return new DataResponse($this->arendeService->mapToFullCard($arende), Http::STATUS_OK);
@@ -298,7 +302,10 @@ class ArendeController extends OCSController {
             return new DataResponse(['error' => 'ref_saknas'], Http::STATUS_BAD_REQUEST);
         }
         try {
-            return new DataResponse(['handelser' => $this->arendeService->historik($ref)], Http::STATUS_OK);
+            $handelser = $this->arendeService->historik($ref);
+            // ÅTKOMSTLOGG (OSL 26 kap): läsning av "Historik & beslut" loggas.
+            $this->arendeService->auditLasning($ref, 'historik');
+            return new DataResponse(['handelser' => $handelser], Http::STATUS_OK);
         } catch (DoesNotExistException) {
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
         } catch (\Throwable $e) {

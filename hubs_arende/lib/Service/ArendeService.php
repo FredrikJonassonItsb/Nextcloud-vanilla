@@ -294,6 +294,31 @@ class ArendeService {
     }
 
     /**
+     * ÅTKOMSTLOGG (inre sekretess, OSL 26 kap.) — journalför en LÄSNING av ett ärende.
+     *
+     * Inte bara MUTATIONER loggas (dessa journalförs redan som Handelse) utan även
+     * LÄSNINGAR, så åtkomst till skyddad ärendeinformation är revisionsspårbar
+     * (Fredrik 2026-07-15). Anropas från de ANVÄNDARVÄNDA läs-endpointsen i controllern
+     * (ArendeController::show/historik) EFTER att show():s authz-gate släppt igenom —
+     * inte från varje intern show() (som anropas av alla mutationer och skulle dränka
+     * loggen). PII-fritt: uid + case-ref + vy, ALDRIG innehåll.
+     *
+     * Fas 1: best-effort strukturerad logg (audit-markör 'atkomst-lasning' i hubs.log,
+     * filtrerbar). Fas 2 (dokumenterad, ej här): ett durabelt åtkomstlogg-register med
+     * retention + sök, om revisionskravet kräver mer än loggretentionen.
+     */
+    public function auditLasning(string $ref, string $vy): void {
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        $this->logger->info('hubs_arende: atkomst-lasning', [
+            'app' => 'hubs_arende',
+            'audit' => 'lasning',
+            'uid' => $uid,
+            'ref' => $ref,
+            'vy' => $vy,
+        ]);
+    }
+
+    /**
      * Create a case for an inflow row, running the säkerhetsskydd-grind (R0) then
      * the saga R1–R10 with per-step compensation.
      *

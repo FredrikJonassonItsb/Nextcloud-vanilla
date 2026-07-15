@@ -203,6 +203,36 @@ final class ArendeServiceJournalTest extends TestCase {
         );
     }
 
+    /**
+     * ÅTKOMSTLOGG (OSL 26 kap, Fredrik 2026-07-15): en läsning loggas med uid + ref +
+     * vy och audit-markören 'lasning' (PII-fritt, revisionsspårbart).
+     */
+    public function testAuditLasningLoggarAtkomstMedUidRefVy(): void {
+        $user = $this->createMock(\OCP\IUser::class);
+        $user->method('getUID')->willReturn('sara.nystrom');
+        $userSession = $this->createMock(\OCP\IUserSession::class);
+        $userSession->method('getUser')->willReturn($user);
+
+        $logged = [];
+        $this->logger->method('info')
+            ->willReturnCallback(function ($msg, array $ctx = []) use (&$logged): void {
+                $logged[] = [(string)$msg, $ctx];
+            });
+
+        $service = new ArendeService(
+            $this->arendeMapper, $this->typRegistry, $this->grind, $this->commitService,
+            $this->secureRandom, $this->timeFactory, $this->logger,
+            userSession: $userSession,
+        );
+        $service->auditLasning('case-x', 'detalj');
+
+        $rad = array_values(array_filter($logged, static fn ($r): bool => ($r[1]['audit'] ?? null) === 'lasning'));
+        self::assertCount(1, $rad);
+        self::assertSame('sara.nystrom', $rad[0][1]['uid']);
+        self::assertSame('case-x', $rad[0][1]['ref']);
+        self::assertSame('detalj', $rad[0][1]['vy']);
+    }
+
     public function testHistorikReadsViaShowAuthz(): void {
         $arende = new Arende();
         $arende->setHubsCaseId('case-j4');
