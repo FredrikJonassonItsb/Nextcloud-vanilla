@@ -14,6 +14,7 @@ use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Service\ArendeLifecycleService;
 use OCA\HubsArende\Service\ArendeService;
 use OCA\HubsArende\Service\DokumenttypRegistry;
+use OCA\HubsArende\Service\GrindKravException;
 use OCA\HubsArende\Exception\AvvisadException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -262,9 +263,18 @@ class ArendeController extends OCSController {
         } catch (DoesNotExistException) {
             // Covers both a missing case and an unauthorised enhet (existence not leaked).
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (GrindKravException $e) {
+            // Grind-krav ej uppfyllt medan flaggan är på: svara MASKINLÄSBART vilken
+            // grind som saknar sitt underlag (grind-nyckeln) så frontenden öppnar RÄTT
+            // dialog direkt — löser den tysta 400-loopen på forhandsbedomning→utredning
+            // som bär två grindar (skyddsbedomning + inleda). E2E 2026-07-14.
+            return new DataResponse(
+                ['error' => $e->getMessage(), 'grindKravs' => true, 'grind' => $e->grind],
+                Http::STATUS_BAD_REQUEST,
+            );
         } catch (\InvalidArgumentException $e) {
-            // Grind-krav ej uppfyllt (saknat obligatoriskt val medan flaggan är på) ELLER
-            // otillåten övergång. grindKravs-flaggan låter frontend öppna rätt grind-dialog.
+            // Otillåten övergång / okänt steg (ej grind-krav). grindKravs för
+            // bakåtkompatibilitet; utan 'grind' faller frontenden på grindForTransition.
             return new DataResponse(
                 ['error' => $e->getMessage(), 'grindKravs' => true],
                 Http::STATUS_BAD_REQUEST,

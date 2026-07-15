@@ -19,6 +19,7 @@ use OCA\HubsArende\Service\ArendeService;
 use OCA\HubsArende\Service\ArendeTypRegistry;
 use OCA\HubsArende\Service\EvidensService;
 use OCA\HubsArende\Service\GrindConfig;
+use OCA\HubsArende\Service\GrindKravException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
@@ -260,6 +261,46 @@ final class ArendeLifecycleServiceGrindTest extends TestCase {
 		self::assertSame('inleda', $gv[0]['grind']);
 		self::assertSame('vald', $gv[0]['val']);
 		self::assertSame('chef1', $gv[0]['beslutsfattare']);
+	}
+
+	/** Grind-krav kastar TYPAT (GrindKravException) med MASKINLÄSBAR grind-nyckel. */
+	public function testGrindKravBarMaskinlasbarNyckel(): void {
+		$this->arendeService->method('show')->willReturn($this->makeArende('forhandsbedomning'));
+		$this->typRegistry->method('get')->willReturn($this->makeTyp(false));
+		$this->grindConfig->method('inledaBeslut')->willReturn(true);
+
+		try {
+			$this->makeService()->transitionera(self::CASE_ID, 'utredning');
+			self::fail('grinden borde ha kastat');
+		} catch (GrindKravException $e) {
+			self::assertSame('inleda', $e->grind, 'grind-nyckeln ska bära vilken grind som föll');
+		}
+	}
+
+	/**
+	 * JOURNAL-INTEGRITET (E2E 2026-07-14): A7 passerar (artefakt finns) men A9a-inleda
+	 * FALLER (ingen beslutsfattare) på samma kant forhandsbedomning→utredning. Ett
+	 * "skyddsbedomning=godkand" får ALDRIG bli kvar i journalen för den nekade
+	 * övergången — grindval flushas först efter update(), som aldrig nås.
+	 */
+	public function testA7GodkandJournalforsEjNarInledaGrindFaller(): void {
+		$this->arendeService->method('show')->willReturn($this->makeArende('forhandsbedomning'));
+		$this->typRegistry->method('get')->willReturn($this->makeTyp(true)); // pliktGrind ⇒ A7 gäller
+		$this->grindConfig->method('skyddsbedomningGrind')->willReturn(true);
+		$this->grindConfig->method('inledaBeslut')->willReturn(true);
+		$this->evidensService->method('harArtefakt')
+			->with(self::CASE_ID, 'skyddsbedomning')->willReturn(true); // A7 skulle ge 'godkand'
+
+		// Övergången nekas ⇒ persisteras aldrig ⇒ inget grindval flushas.
+		$this->arendeMapper->expects(self::never())->method('update');
+
+		try {
+			$this->makeService()->transitionera(self::CASE_ID, 'utredning'); // ingen inledaVal
+			self::fail('inleda-grinden borde ha kastat');
+		} catch (GrindKravException $e) {
+			self::assertSame('inleda', $e->grind);
+		}
+		self::assertSame([], $this->journal, 'inget skyddsbedomning=godkand får läcka till journalen');
 	}
 
 	// ================================================================== //

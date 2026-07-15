@@ -138,7 +138,17 @@ class ArendeLifecycleService {
         //  på i dev/av i prod); när en flagga är AV degraderar grinden till sitt
         //  gamla, icke-tvingande beteende. Legitima men okontrollerbara utfall går
         //  smidigt men LÄMNAR SPÅR (journalförd TYP_GRINDVAL).
+        //
+        //  JOURNAL-INTEGRITET: grindval SAMLAS här men journalförs FÖRST efter att
+        //  övergången faktiskt persisterats (update). En senare grind som kastar
+        //  (t.ex. A9a-inleda efter att A7 passerat) får då ALDRIG lämna ett
+        //  föräldralöst "godkand" i journalen — tidigare skrevs A7:s godkand
+        //  omedelbart och blev kvar fast övergången nekades (E2E 2026-07-14:
+        //  7× skyddsbedomning=godkand utan efterföljande steg-händelse).
         // ============================================================== //
+
+        /** @var array<int,array{0:string,1:string,2:array<string,mixed>}> grind,val,extra — flushas efter update() */
+        $pendingGrindval = [];
 
         // A7 — SKYDDSBEDÖMNINGS-EXISTENS-GRIND (forhandsbedomning→utredning).
         // Bryter den cirkulära härledningen (GAP-U1): grinden kräver att en verklig
@@ -155,17 +165,17 @@ class ArendeLifecycleService {
                     if (!$harBedomning) {
                         $skal = (string)($kontext['override']['skal'] ?? '');
                         if ($skal === '') {
-                            throw new \InvalidArgumentException(
+                            throw new GrindKravException('skyddsbedomning',
                                 'Plikt-grind: en skyddsbedömning måste finnas (eller anges som gjord utanför Hubs) innan utredning inleds.'
                             );
                         }
-                        $this->journalGrindval($arende->getHubsCaseId(), 'skyddsbedomning', 'override', ['skal' => $skal]);
+                        $pendingGrindval[] = ['skyddsbedomning', 'override', ['skal' => $skal]];
                     } else {
-                        $this->journalGrindval($arende->getHubsCaseId(), 'skyddsbedomning', 'godkand', []);
+                        $pendingGrindval[] = ['skyddsbedomning', 'godkand', []];
                     }
                 } elseif (($kontext['skyddsbedomningKvitterad'] ?? false) !== true) {
                     // Flagga AV → gammalt beteende (klient-boolean), bakåtkompatibelt.
-                    throw new \InvalidArgumentException(
+                    throw new GrindKravException('skyddsbedomning',
                         'Plikt-grind: skyddsbedömningen måste kvitteras innan utredning inleds.'
                     );
                 }
@@ -181,13 +191,11 @@ class ArendeLifecycleService {
             && $this->grindConfig !== null && $this->grindConfig->inledaBeslut()) {
             $beslutsfattare = trim((string)($kontext['inledaVal']['beslutsfattare'] ?? ''));
             if ($beslutsfattare === '') {
-                throw new \InvalidArgumentException(
+                throw new GrindKravException('inleda',
                     'Beslut om att inleda utredning måste ange beslutsfattare.'
                 );
             }
-            $this->journalGrindval($arende->getHubsCaseId(), 'inleda', 'vald', [
-                'beslutsfattare' => $beslutsfattare,
-            ]);
+            $pendingGrindval[] = ['inleda', 'vald', ['beslutsfattare' => $beslutsfattare]];
         }
 
         // A9a — INTE-INLEDA-MOTIV (forhandsbedomning→avslutat). "Inte inleda" är ett
@@ -197,14 +205,14 @@ class ArendeLifecycleService {
             && $this->grindConfig !== null && $this->grindConfig->inteInledaMotiv()) {
             $orsak = (string)($kontext['inteInledaVal']['orsak'] ?? '');
             if ($orsak === '') {
-                throw new \InvalidArgumentException(
+                throw new GrindKravException('inte_inleda',
                     'Beslut om att inte inleda utredning måste ange en orsak.'
                 );
             }
-            $this->journalGrindval($arende->getHubsCaseId(), 'inte_inleda', 'vald', [
+            $pendingGrindval[] = ['inte_inleda', 'vald', [
                 'orsak' => $orsak,
                 'beslutsfattare' => (string)($kontext['inteInledaVal']['beslutsfattare'] ?? ''),
-            ]);
+            ]];
         }
 
         // A9b — KOMMUNICERINGS-CHECKPOINT (utredning→beslut). Kommunicering (FL 25 §)
@@ -219,11 +227,11 @@ class ArendeLifecycleService {
                 $gjord = is_array($val) && ($val['gjord'] ?? false) === true;
                 $skal = is_array($val) ? (string)($val['skal'] ?? '') : '';
                 if (!$gjord && $skal === '') {
-                    throw new \InvalidArgumentException(
+                    throw new GrindKravException('kommunicering',
                         'Kommunicering med parterna (FL 25 §) saknas — bekräfta att den gjorts eller ange varför den utelämnas.'
                     );
                 }
-                $this->journalGrindval($arende->getHubsCaseId(), 'kommunicering', $gjord ? 'godkand' : 'override', ['skal' => $skal]);
+                $pendingGrindval[] = ['kommunicering', $gjord ? 'godkand' : 'override', ['skal' => $skal]];
             }
         }
 
@@ -233,14 +241,14 @@ class ArendeLifecycleService {
             && $this->grindConfig !== null && $this->grindConfig->avslutMotiv()) {
             $utfall = (string)($kontext['avslutsmotiv']['utfall'] ?? '');
             if ($utfall === '') {
-                throw new \InvalidArgumentException(
+                throw new GrindKravException('avslut',
                     'Avslut kräver ett angivet utfall.'
                 );
             }
-            $this->journalGrindval($arende->getHubsCaseId(), 'avslut', 'vald', [
+            $pendingGrindval[] = ['avslut', 'vald', [
                 'utfall' => $utfall,
                 'kvarstaende' => (bool)($kontext['avslutsmotiv']['kvarstaende'] ?? false),
-            ]);
+            ]];
         }
 
         // Apply the move.
@@ -251,6 +259,14 @@ class ArendeLifecycleService {
         $this->maybeRecomputeFristDue($arende, $nyttSteg);
 
         $arende = $this->arendeMapper->update($arende);
+
+        // FLUSH GRINDVAL: nu — och först nu — är övergången persisterad, så de
+        // samlade grindvalen får journalföras. Skrivs FÖRE steg-posten så
+        // ordningen (grindval → steg) bevaras i tidslinjen. En grind som kastade
+        // ovan nådde aldrig hit ⇒ inga föräldralösa grindval.
+        foreach ($pendingGrindval as [$grind, $val, $extra]) {
+            $this->journalGrindval($arende->getHubsCaseId(), $grind, $val, $extra);
+        }
 
         // Journal (best-effort): steg-övergången i "Historik & beslut"-tidslinjen.
         if ($this->handelseMapper !== null) {
