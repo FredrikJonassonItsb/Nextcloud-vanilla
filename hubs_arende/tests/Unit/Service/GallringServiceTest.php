@@ -13,8 +13,11 @@ use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Db\ArendeMapper;
 use OCA\HubsArende\Db\Pekare;
 use OCA\HubsArende\Db\PekareMapper;
+use OCA\HubsArende\Integration\Client\SdkmcClient;
+use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Service\GallringService;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\IAppConfig;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -178,6 +181,119 @@ final class GallringServiceTest extends TestCase {
 	}
 
 	// ================================================================== //
+	//  STUB-SPÄRR (F10) — inget destruktivt svep i stub-läge.
+	// ================================================================== //
+
+	public function testStubModeSkipparGallring(): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturnCallback(
+			fn (string $app, string $key, string $default = ''): string => $key === 'integration_mode_facksystem' ? 'stub' : $default,
+		);
+		$service = new GallringService(
+			arendeMapper: $this->arendeMapper,
+			pekareMapper: $this->pekareMapper,
+			logger: $this->logger,
+			timeFactory: $this->timeFactory,
+			appConfig: $appConfig,
+		);
+		// En FÖRFALLEN rad finns — men stub-läget ska hoppa svepet helt (F10).
+		$this->stubCandidates([$this->makeGallringsbar('caseid-stub-0001', $this->daysAgo(1))]);
+		$this->arendeMapper->expects(self::never())->method('delete');
+
+		$result = $service->gallra();
+		self::assertSame(0, $result['antal'], 'stub-läge ⇒ inget gallras');
+		self::assertSame('stub_mode', $result['skipped'] ?? null);
+	}
+
+	public function testExplicitOverrideTillaterGallringIStubLage(): void {
+		$appConfig = $this->createMock(IAppConfig::class);
+		$appConfig->method('getValueString')->willReturn('stub');
+		$service = new GallringService(
+			arendeMapper: $this->arendeMapper,
+			pekareMapper: $this->pekareMapper,
+			logger: $this->logger,
+			timeFactory: $this->timeFactory,
+			appConfig: $appConfig,
+		);
+		$this->stubCandidates([$this->makeGallringsbar('caseid-ovr-0001', $this->daysAgo(1))]);
+		$this->pekareMapper->method('findByCaseId')->willReturn([]);
+		$this->pekareMapper->method('findByCaseAndTyp')->willReturn([]);
+		$this->arendeMapper->expects(self::once())->method('delete');
+
+		$result = $service->gallra(null, true); // explicit anropare-override (smoke/test)
+		self::assertSame(1, $result['antal']);
+	}
+
+	// ================================================================== //
+	//  DESTRUKTIONSSPEGEL (T5) — Talk-/möte-/dokumentchatt-rum rivs via pekarna.
+	// ================================================================== //
+
+	public function testGallringRiverTalkOchDokumentchattRum(): void {
+		$spreed = $this->createMock(SpreedClient::class);
+		$service = new GallringService(
+			arendeMapper: $this->arendeMapper,
+			pekareMapper: $this->pekareMapper,
+			logger: $this->logger,
+			timeFactory: $this->timeFactory,
+			spreedClient: $spreed,
+		);
+		$this->stubCandidates([$this->makeGallringsbar('caseid-rum-0001', $this->daysAgo(1))]);
+		$this->pekareMapper->method('findByCaseId')->willReturn([]);
+		$this->pekareMapper->method('findByCaseAndTyp')->willReturnCallback(
+			fn (string $caseId, string $typ): array => match ($typ) {
+				'talk_room' => [$this->roomPekare($caseId, 'arenderum-tok'), $this->roomPekare($caseId, 'mote-tok')],
+				'dokumentchatt' => [$this->roomPekare($caseId, 'filchatt-tok')],
+				default => [],
+			},
+		);
+		$rivna = [];
+		$spreed->method('deleteRoom')->willReturnCallback(function (string $t) use (&$rivna): bool {
+			$rivna[] = $t;
+			return true;
+		});
+
+		$service->gallra(null, true);
+		self::assertSame(
+			['arenderum-tok', 'mote-tok', 'filchatt-tok'],
+			$rivna,
+			'ärenderum + säkert möte + dokumentchatt-rum rivs via pekarna (annars orphanade PII-rum)',
+		);
+	}
+
+	// ================================================================== //
+	//  MAIL-DELEN av destruktionsspegeln — case:-taggen rivs via sdkmc
+	//  (annars dinglande tagg mot purgat ärende som döljer inflödet).
+	// ================================================================== //
+
+	public function testGallringRiverCaseTagPaMail(): void {
+		$sdkmc = $this->createMock(SdkmcClient::class);
+		$service = new GallringService(
+			arendeMapper: $this->arendeMapper,
+			pekareMapper: $this->pekareMapper,
+			logger: $this->logger,
+			timeFactory: $this->timeFactory,
+			sdkmcClient: $sdkmc,
+		);
+		$this->stubCandidates([$this->makeGallringsbar('caseid-mail-0001', $this->daysAgo(1))]);
+		$this->pekareMapper->method('findByCaseId')->willReturn([]);
+		$this->pekareMapper->method('findByCaseAndTyp')->willReturnCallback(
+			fn (string $caseId, string $typ): array => $typ === 'case_tag'
+				? [$this->roomPekare($caseId, 'case:' . $caseId)]
+				: [],
+		);
+		$rivna = [];
+		$sdkmc->method('deleteCaseTag')->willReturnCallback(
+			function (string $cid, string $email, string $tagId) use (&$rivna): bool {
+				$rivna[] = $tagId;
+				return true;
+			},
+		);
+
+		$service->gallra(null, true);
+		self::assertSame(['case:caseid-mail-0001'], $rivna, 'case:-taggen på mail rivs vid gallring (ingen dinglande tagg)');
+	}
+
+	// ================================================================== //
 	//  Helpers
 	// ================================================================== //
 
@@ -207,6 +323,14 @@ final class GallringServiceTest extends TestCase {
 		$p->setHubsCaseId($caseId);
 		$p->setObjektTyp('deck_card');
 		$p->setObjektId('obj-' . substr($caseId, -4));
+		return $p;
+	}
+
+	/** Ett rum-pekare (talk_room/dokumentchatt) med token i objektId. */
+	private function roomPekare(string $caseId, string $token): Pekare {
+		$p = new Pekare();
+		$p->setHubsCaseId($caseId);
+		$p->setObjektId($token);
 		return $p;
 	}
 

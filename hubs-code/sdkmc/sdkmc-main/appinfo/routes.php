@@ -82,6 +82,9 @@ return [
         ['name' => 'itsl_tag#createTag', 'url' => '/api/tags/{accountId}', 'verb' => 'POST'],
         ['name' => 'itsl_tag#updateTag', 'url' => '/api/tags/{accountId}/{id}', 'verb' => 'PUT'],
         ['name' => 'itsl_tag#deleteTag', 'url' => '/api/tags/{accountId}/delete/{id}', 'verb' => 'DELETE'],
+        // [HUBS-ARENDE-KRAV 2026-07-12] deterministic, accountId-less case-tag purge
+        // for NEVER-SoR gallring (only touches the reserved `case:` namespace).
+        ['name' => 'itsl_tag#deleteCaseTagByLabel', 'url' => '/api/tags/by-label/{imapLabel}', 'verb' => 'DELETE'],
         ['name' => 'itsl_tag#setMessageTag', 'url' => '/api/messages/{id}/tags/{imapLabel}', 'verb' => 'PUT'],
         ['name' => 'itsl_tag#removeMessageTag', 'url' => '/api/messages/{id}/tags/{imapLabel}', 'verb' => 'DELETE'],
 

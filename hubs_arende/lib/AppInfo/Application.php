@@ -90,6 +90,26 @@ class Application extends App implements IBootstrap {
             );
         });
 
+        // SigneringStub-parametrarna styrs via app-config (K-SIGN-21) så demon
+        // kan köra hela pending→partially_signed→signed-progressionen på
+        // upprepade refresh utan kodändring:
+        //   occ config:app:set hubs_arende signering_stub_instant --value 1  # 1-stegs-demo
+        //   occ config:app:set hubs_arende signering_stub_polls   --value 2  # poll till signed
+        //   occ config:app:set hubs_arende signering_stub_reject_refs --value ref1,ref2
+        // Stubben ges IAppConfig för att persista sitt (annars in-memory) state
+        // över request-gränser — refresh N+1 körs i en NY PHP-request och måste
+        // minnas begäran från N. Demo-/testinfrastruktur, aldrig live-vägen.
+        $context->registerService(SigneringStub::class, function (ContainerInterface $c): SigneringStub {
+            /** @var IAppConfig $appConfig */
+            $appConfig = $c->get(IAppConfig::class);
+            return new SigneringStub(
+                instantSign: $appConfig->getAppValueString('signering_stub_instant', '0') === '1',
+                pollsUntilSigned: max(1, (int)$appConfig->getAppValueString('signering_stub_polls', '2')),
+                rejectDocumentRefs: $appConfig->getAppValueString('signering_stub_reject_refs', ''),
+                appConfig: $appConfig,
+            );
+        });
+
         $context->registerService(EdiariumPort::class, function (ContainerInterface $c): EdiariumPort {
             return self::resolvePort(
                 $c,
@@ -127,6 +147,35 @@ class Application extends App implements IBootstrap {
 
         // --- NC-notiser (klockan): tilldelning/medlemskap/frist-varsel ----
         $context->registerNotifierService(Notifier::class);
+
+        // --- Brain-per-ärende (SPEC-BRAIN-PER-ARENDE) --------------------------
+        // INGEN explicit registrering krävs: hela brain-integrationen är
+        // konstruktor-autowirad av NC-containern, precis som motorns övriga
+        // tjänster (ovan är bara portar/notifier/team som behöver en manuell seam).
+        //   - Service\Brain\AuthzService, BrainProvisionService,
+        //     BrainProvisionRetryService, AiUtkastService  → autowiras per typ.
+        //   - Controller\AuthzController (POST /api/v1/authz/check, se
+        //     appinfo/routes.php) → byggs av DI via rutt-konventionen.
+        //   - De brain-injektionerna i ArendeService/ArendeLifecycleService/
+        //     SakerhetsskyddGrind/GallringService är TRAILING OPTIONAL (?T=null)
+        //     och fylls av autowiring i drift (null i den positionella testharnessen).
+        //   - BackgroundJob\BrainProvisionRetryJob → registrerad i appinfo/info.xml
+        //     <background-jobs> (durabel R2b-retry).
+        //   - App-config (per kommun-stack): openbrain_provision_url,
+        //     brain_provision_secret, kommun_slug, authz_gateway_secret,
+        //     ork_fn_enabled — seedas out-of-band; saknas de degraderar tjänsterna
+        //     till graceful no-op / fail-closed (aldrig en default-öppning).
+
+        // --- E-underskrift fas 1 (KRAV-SIGNERING-2026-07) ---------------------
+        // INGEN explicit registrering krävs utöver port-/stub-bindningen ovan:
+        //   - Service\SigneringService (enda konsumenten av SigneringPort) →
+        //     konstruktor-autowirad; porten injiceras via SigneringPort-bindningen,
+        //     journal/bevakning/medlemmar är trailing optional (?T=null).
+        //   - Controller\SigneringController (OCS-ytan, se appinfo/routes.php) →
+        //     byggs av DI via rutt-konventionen (som PartController).
+        //   - App-config: signering_niva_matris (JSON, K-SIGN-1),
+        //     signering_session_loa (LoA-etikett för godkännande-journalen,
+        //     K-SIGN-2; dev15 seedas 'LOA3') + stub-nycklarna ovan.
     }
 
     public function boot(IBootContext $context): void {
@@ -159,7 +208,26 @@ class Application extends App implements IBootstrap {
             self::MODE_STUB,
         );
 
-        $impl = $modeMap[$mode] ?? $default;
+        $impl = $modeMap[$mode] ?? null;
+        if ($impl === null) {
+            // F9 (P1.2/NEVER-SoR): ett EXPLICIT icke-stub-läge (t.ex. 'live') utan
+            // registrerad binding får ALDRIG TYST falla till stubben — då skulle en
+            // "live"-deploy committa till en fejk-adapter och sätta 'registrerad'
+            // utan att något nått facksystemet (dataförlust vid gallring). LOUD-faila
+            // (error i loggen) — svepet stoppas ändå av gallringens stub-spärr (F10).
+            if ($mode !== self::MODE_STUB) {
+                try {
+                    $c->get(\Psr\Log\LoggerInterface::class)->error(
+                        'hubs_arende: integration_mode "' . $mode . '" för porten "' . $portKey
+                        . '" saknar binding — faller till STUB. En skarp deploy MÅSTE rättas (F9).',
+                        ['app' => 'hubs_arende', 'port' => $portKey, 'mode' => $mode],
+                    );
+                } catch (\Throwable) {
+                    // Loggningen får aldrig fälla port-resolvningen.
+                }
+            }
+            $impl = $default;
+        }
 
         /** @var T $resolved */
         $resolved = $c->get($impl);

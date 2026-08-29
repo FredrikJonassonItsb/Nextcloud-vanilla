@@ -33,7 +33,7 @@
 						:key="refFor(a)"
 						class="hs-card fordelnings-vy__arende">
 						<div class="fordelnings-vy__arende-huvud">
-							<span class="fordelnings-vy__barn">{{ a.barnRef }}</span>
+							<span class="fordelnings-vy__barn">{{ kortTitel(a) }}<span v-if="a.dnr" class="fordelnings-vy__dnr"> · dnr {{ a.dnr }}</span></span>
 
 							<span class="fordelnings-vy__badges">
 								<span
@@ -57,6 +57,9 @@
 								<FristChip v-if="a.frist" :frist="a.frist" />
 							</span>
 						</div>
+
+						<!-- Vad ärendet gäller: kategori + var i processen (för klok fördelning) -->
+						<p v-if="kategoriStegLabel(a)" class="fordelnings-vy__kategori">{{ kategoriStegLabel(a) }}</p>
 
 						<!-- Mottagningens förslag (rådgivande, chefen beslutar) -->
 						<p v-if="a.forslag" class="fordelnings-vy__forslag">
@@ -237,6 +240,37 @@ export default {
 		t,
 		n,
 
+		/** Rubrik: kort mänsklig referens + ev. objekt-pseudonym. Aldrig tom
+		    (kortRef härleds ur hubsCaseId). Speglar ArendeKort.kortTitel. */
+		kortTitel(a) {
+			const kort = a.kortRef || String(a.hubsCaseId || '').replace(/-/g, '').slice(0, 6)
+			const bas = this.t('hubs_start', 'Ärende {ref}', { ref: kort })
+			return a.barnRef ? bas + ' · ' + a.barnRef : bas
+		},
+		/** "Vad gäller det": ärendekategori · processteg (tomma led utelämnas). */
+		kategoriStegLabel(a) {
+			return [this.kategoriLabel(a.arendeTyp), this.stegLabel(a.steg)].filter(Boolean).join(' · ')
+		},
+		kategoriLabel(typ) {
+			const map = {
+				orosanmalan: this.t('hubs_start', 'Orosanmälan'),
+				ansokan: this.t('hubs_start', 'Ansökan'),
+				begaran: this.t('hubs_start', 'Begäran'),
+				aktualisering: this.t('hubs_start', 'Aktualisering'),
+			}
+			return map[typ] || typ || ''
+		},
+		stegLabel(steg) {
+			const map = {
+				forhandsbedomning: this.t('hubs_start', 'Förhandsbedömning'),
+				utredning: this.t('hubs_start', 'Utredning'),
+				beslut: this.t('hubs_start', 'Beslut'),
+				uppfoljning: this.t('hubs_start', 'Uppföljning'),
+				avslutat: this.t('hubs_start', 'Avslutat'),
+			}
+			return map[steg] || steg || ''
+		},
+
 		/** Stabil referens: dnr om det finns, annars triageRef. */
 		refFor(a) {
 			return a.dnr || a.triageRef
@@ -323,6 +357,8 @@ export default {
 		font-size: 0.98rem;
 		color: var(--color-main-text);
 	}
+	&__dnr { font-weight: 400; font-size: 0.85rem; color: var(--color-text-maxcontrast); }
+	&__kategori { margin: 2px 0 0; font-size: 0.8rem; color: var(--color-text-maxcontrast); }
 
 	&__badges {
 		display: flex;

@@ -71,10 +71,34 @@ class Handelse extends Entity implements \JsonSerializable {
      * lagstadgad} — ALDRIG bevakningens titel-fritext (koordinationsdata utan PII).
      */
     public const TYP_BEVAKNING = 'bevakning';
+    /**
+     * Grind-beslut i utredningskedjan (A9): ett medvetet, journalfört val vid en
+     * grind — legitimt utfall eller override av en hård grind. detalj:
+     * {grind, val, skal?, beslutsfattare?, utfall?} där grind ∈ skyddsbedomning |
+     * inte_inleda | kommunicering | avslut, val ∈ godkand | override | vald.
+     * ALDRIG fritext-motivering/PII — skal är en ENUM-kod, aldrig fri prosa.
+     */
+    public const TYP_GRINDVAL = 'grindval';
+    /**
+     * Kvittens av ett lagstadgat moment (A7): handläggaren intygar att momentet
+     * (t.ex. skyddsbedömningen) utförts. detalj: {moment, artefaktRef?} —
+     * koordinationsdata, aldrig sakinnehåll.
+     */
+    public const TYP_KVITTENS = 'kvittens';
+    /**
+     * AI-koordination (brain-per-ärende, SPEC-BRAIN-PER-ARENDE kap 8.0.4). En
+     * livscykel-/HITL-händelse för ärendets brain-tenant. detalj:
+     * {handling, funktion?, run_id?, modellversion?, prompt_version?, diff_pct?,
+     * orsak_kategori?, protokoll_ref?} där handling ∈ provisionerad | fryst |
+     * gallrad | utkast_skapat | utkast_godkant | utkast_avvisat | nodatkomst |
+     * ateroppnad ({@see \OCA\HubsArende\Service\Brain\HandelseTypAi}). ALDRIG
+     * ärendeinnehåll/PII — bara koordinationsvärden (facit: audit utan innehåll).
+     */
+    public const TYP_AI = 'ai';
 
     /** FK -> hubs_arende_case.hubs_case_id (UUID v4). */
     protected string $hubsCaseId = '';
-    /** skapad | steg | tilldelad | medlem | registrerad | rum | kopplad | part | handling */
+    /** skapad | steg | tilldelad | medlem | registrerad | rum | kopplad | part | handling | grindval | kvittens | ai */
     protected string $typ = '';
     /** Litet JSON-objekt med koordinationsvärden — aldrig fritext/PII. */
     protected ?string $detalj = null;

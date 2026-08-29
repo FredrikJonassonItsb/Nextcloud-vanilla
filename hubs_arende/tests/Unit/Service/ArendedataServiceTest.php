@@ -284,10 +284,13 @@ final class ArendedataServiceTest extends TestCase {
     // ================================================================== //
 
     public function testPlatshallareKartanTackerExaktFas1Nycklarna(): void {
-        // Kartans nyckelmängd är HELA fas 1-kontraktet — varken mer (inga
-        // datum-nycklar: [ÅÅÅÅ-MM-DD] m.fl. fylls medvetet inte) eller mindre.
+        // Kartans nyckelmängd är HELA fas 1-kontraktet PLUS ai_narrativ — varken
+        // mer (inga datum-nycklar: [ÅÅÅÅ-MM-DD] m.fl. fylls medvetet inte) eller
+        // mindre. ai_narrativ är AI-utkastets [AI-UTKAST]-platshållare (själva
+        // narrativet injiceras av HandlingController, inte av byggUtkast — därför
+        // ligger det i PLATSHALLARE men inte bland byggUtkasts fält-nycklar).
         self::assertEqualsCanonicalizing(
-            self::FAS1_NYCKLAR,
+            [...self::FAS1_NYCKLAR, 'ai_narrativ'],
             array_keys(ArendedataService::PLATSHALLARE),
         );
 

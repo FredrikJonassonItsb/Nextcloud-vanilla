@@ -2,83 +2,90 @@
   - SPDX-FileCopyrightText: ITSL <info@itsl.se>
   - SPDX-License-Identifier: AGPL-3.0-or-later
   -
-  - Korg-/typ-filter överst i Zon 1. En handläggare med 4–6 korgar fokuserar eller
-  - avfokuserar per korg + per meddelandetyp utan navigeringskostnad. Default "Alla
-  - korgar". Korg ∩ typ kombineras (båda kan vara aktiva). Samma piller-grammatik som
-  - Dagspulsen: ikon + text + tal, aldrig bara färg; knapp-/tangentbordsstyrt.
+  - Korg-/gruppfilter överst i Zon 1 (B10). TVÅ OBEROENDE filterrader:
+  -   Rad 1 KORGAR — var posten fysiskt ligger (brevlådorna). "Alla korgar" + en per korg.
+  -   Rad 2 GRUPPER — vad systemet AUTOMATISKT sorterat posten som (typ-klassningen).
+  -         "Alla grupper" + en per grupp.
+  - Raderna kombineras (korg ∩ grupp) och kan väljas oberoende av varandra —
+  - radetiketterna + de gråa huvudpillren bär den signalen. Samma piller-grammatik
+  - som Dagspulsen: ikon + text + tal, aldrig bara färg; knapp-/tangentbordsstyrt.
 -->
 <template>
-	<div class="korg-valjare" role="group" :aria-label="t('hubs_start', 'Korg- och typfilter')">
-		<!-- Korg-raden: ett "Alla"-piller + ett per korg -->
-		<div
-			class="korg-valjare__korgar"
-			role="group"
-			:aria-label="t('hubs_start', 'Korgar')">
-			<!-- AGGREGAT-pillren (Alla korgar / Alla grupper) har egen gråton
-			     (--aggregat) — de är SUMMOR av de andra korgarna, inte egna val. -->
-			<button
-				type="button"
-				class="korg-valjare__korg korg-valjare__korg--aggregat hs-target"
-				:class="{ 'korg-valjare__korg--aktiv': aktivKorg === null }"
-				:aria-pressed="aktivKorg === null ? 'true' : 'false'"
-				:aria-label="t('hubs_start', 'Alla korgar (summan av alla) — {n} otriagerat', { n: totaltOtriagerat })"
-				@click="valjKorg(null)">
-				<span class="korg-valjare__ikon" aria-hidden="true">
-					<InboxMultipleIcon :size="18" />
-				</span>
-				<span class="korg-valjare__etikett">{{ t('hubs_start', 'Alla korgar') }}</span>
-				<NcCounterBubble v-if="totaltOtriagerat > 0" class="korg-valjare__bubbla">{{ totaltOtriagerat }}</NcCounterBubble>
-			</button>
+	<div class="korg-valjare" role="group" :aria-label="t('hubs_start', 'Korg- och gruppfilter')">
+		<!-- Rad 1 — KORGAR: var informationen ligger -->
+		<div class="korg-valjare__rad">
+			<span class="korg-valjare__rad-etikett">{{ t('hubs_start', 'Korgar') }}</span>
+			<div
+				class="korg-valjare__korgar"
+				role="group"
+				:aria-label="t('hubs_start', 'Korgar — var posten ligger')">
+				<!-- AGGREGAT-pillret (Alla korgar) har egen gråton (--aggregat) —
+				     det är SUMMAN av de andra korgarna, inte ett eget val. -->
+				<button
+					type="button"
+					class="korg-valjare__korg korg-valjare__korg--aggregat hs-target"
+					:class="{ 'korg-valjare__korg--aktiv': aktivKorg === null }"
+					:aria-pressed="aktivKorg === null ? 'true' : 'false'"
+					:aria-label="t('hubs_start', 'Alla korgar (summan av alla) — {n} otriagerat', { n: totaltOtriagerat })"
+					@click="valjKorg(null)">
+					<span class="korg-valjare__ikon" aria-hidden="true">
+						<InboxMultipleIcon :size="18" />
+					</span>
+					<span class="korg-valjare__etikett">{{ t('hubs_start', 'Alla korgar') }}</span>
+					<NcCounterBubble v-if="totaltOtriagerat > 0" class="korg-valjare__bubbla">{{ totaltOtriagerat }}</NcCounterBubble>
+				</button>
 
-			<button
-				v-if="harGrupper"
-				type="button"
-				class="korg-valjare__korg korg-valjare__korg--aggregat hs-target"
-				:class="{ 'korg-valjare__korg--aktiv': aktivKorg === GRUPPER }"
-				:aria-pressed="aktivKorg === GRUPPER ? 'true' : 'false'"
-				:aria-label="t('hubs_start', 'Alla grupper (summan av funktionsbrevlådorna) — {n} otriagerat', { n: gruppOtriagerat })"
-				@click="valjKorg(GRUPPER)">
-				<span class="korg-valjare__ikon" aria-hidden="true">
-					<AccountGroupIcon :size="18" />
-				</span>
-				<span class="korg-valjare__etikett">{{ t('hubs_start', 'Alla grupper') }}</span>
-				<NcCounterBubble v-if="gruppOtriagerat > 0" class="korg-valjare__bubbla">{{ gruppOtriagerat }}</NcCounterBubble>
-			</button>
-
-			<button
-				v-for="korg in korgar"
-				:key="korg.addr"
-				type="button"
-				class="korg-valjare__korg hs-target"
-				:class="{ 'korg-valjare__korg--aktiv': aktivKorg === korg.addr }"
-				:aria-pressed="aktivKorg === korg.addr ? 'true' : 'false'"
-				:aria-label="korgAriaLabel(korg)"
-				@click="valjKorg(korg.addr)">
-				<span class="korg-valjare__ikon" aria-hidden="true">
-					<component :is="scopeIkon(korg.scope)" :size="18" />
-				</span>
-				<span class="korg-valjare__etikett">{{ korg.label }}</span>
-				<NcCounterBubble v-if="Number(korg.otriagerat) > 0" class="korg-valjare__bubbla">{{ Number(korg.otriagerat) }}</NcCounterBubble>
-			</button>
+				<button
+					v-for="korg in korgar"
+					:key="korg.addr"
+					type="button"
+					class="korg-valjare__korg hs-target"
+					:class="{ 'korg-valjare__korg--aktiv': aktivKorg === korg.addr }"
+					:aria-pressed="aktivKorg === korg.addr ? 'true' : 'false'"
+					:aria-label="korgAriaLabel(korg)"
+					@click="valjKorg(korg.addr)">
+					<span class="korg-valjare__ikon" aria-hidden="true">
+						<component :is="scopeIkon(korg.scope)" :size="18" />
+					</span>
+					<span class="korg-valjare__etikett">{{ korg.label }}</span>
+					<NcCounterBubble v-if="Number(korg.otriagerat) > 0" class="korg-valjare__bubbla">{{ Number(korg.otriagerat) }}</NcCounterBubble>
+				</button>
+			</div>
 		</div>
 
-		<!-- Typ-raden: små piller, en per meddelandetyp -->
-		<div
-			class="korg-valjare__typer"
-			role="group"
-			:aria-label="t('hubs_start', 'Meddelandetyper')">
-			<button
-				v-for="typ in typer"
-				:key="typ.key"
-				type="button"
-				class="korg-valjare__typ hs-target"
-				:class="{ 'korg-valjare__typ--aktiv': aktivTyp === typ.key }"
-				:aria-pressed="aktivTyp === typ.key ? 'true' : 'false'"
-				:aria-label="t('hubs_start', 'Typ: {typ}', { typ: typ.label })"
-				@click="valjTyp(typ.key)">
-				<component :is="typ.icon" :size="14" aria-hidden="true" />
-				<span class="korg-valjare__typ-text">{{ typ.label }}</span>
-			</button>
+		<!-- Rad 2 — GRUPPER: systemets automatiska sortering (typ-klassningen).
+		     Väljs OBEROENDE av korgraden; "Alla grupper" nollställer gruppfiltret. -->
+		<div class="korg-valjare__rad">
+			<span class="korg-valjare__rad-etikett">{{ t('hubs_start', 'Grupper') }}</span>
+			<div
+				class="korg-valjare__typer"
+				role="group"
+				:aria-label="t('hubs_start', 'Grupper — sorteras automatiskt av systemet')">
+				<button
+					type="button"
+					class="korg-valjare__typ korg-valjare__typ--aggregat hs-target"
+					:class="{ 'korg-valjare__typ--aktiv': aktivTyp === null }"
+					:aria-pressed="aktivTyp === null ? 'true' : 'false'"
+					:aria-label="t('hubs_start', 'Alla grupper — visa alla automatiskt sorterade grupper')"
+					@click="valjTyp(null)">
+					<AccountGroupIcon :size="14" aria-hidden="true" />
+					<span class="korg-valjare__typ-text">{{ t('hubs_start', 'Alla grupper') }}</span>
+					<NcCounterBubble v-if="totaltTyp > 0" class="korg-valjare__bubbla">{{ totaltTyp }}</NcCounterBubble>
+				</button>
+				<button
+					v-for="typ in typer"
+					:key="typ.key"
+					type="button"
+					class="korg-valjare__typ hs-target"
+					:class="{ 'korg-valjare__typ--aktiv': aktivTyp === typ.key }"
+					:aria-pressed="aktivTyp === typ.key ? 'true' : 'false'"
+					:aria-label="t('hubs_start', 'Grupp: {typ}', { typ: typ.label })"
+					@click="valjTyp(typ.key)">
+					<component :is="typ.icon" :size="14" aria-hidden="true" />
+					<span class="korg-valjare__typ-text">{{ typ.label }}</span>
+					<NcCounterBubble v-if="Number(typAntal[typ.key]) > 0" class="korg-valjare__bubbla">{{ Number(typAntal[typ.key]) }}</NcCounterBubble>
+				</button>
+			</div>
 		</div>
 	</div>
 </template>
@@ -137,33 +144,23 @@ export default {
 			type: String,
 			default: null,
 		},
+		/** { messageType: antal } — antal inflöde-poster per grupp, för badge på grupp-chipsen. */
+		typAntal: {
+			type: Object,
+			default: () => ({}),
+		},
 	},
 
 	computed: {
-		/**
-		 * Sentinel-värdet för aggregatet "Alla grupper" (= alla korgar utom den
-		 * personliga). '@'-prefixet kan aldrig kollidera med en korg-adress.
-		 * MinaArendens filteredInflode tolkar samma sentinel.
-		 */
-		GRUPPER() {
-			return '@alla-grupper'
-		},
-
 		/** Summan av otriagerat över alla korgar — visas på "Alla"-pillret. */
 		totaltOtriagerat() {
 			return this.korgar.reduce((sum, korg) => sum + Number(korg.otriagerat || 0), 0)
 		},
 
-		/** Finns funktionsbrevlådor (grupp/fax/sdk)? Annars är aggregatet meningslöst. */
-		harGrupper() {
-			return this.korgar.some((korg) => korg.scope !== 'personlig')
-		},
-
-		/** Summan av otriagerat över funktionsbrevlådorna — "Alla grupper"-pillret. */
-		gruppOtriagerat() {
-			return this.korgar
-				.filter((korg) => korg.scope !== 'personlig')
-				.reduce((sum, korg) => sum + Number(korg.otriagerat || 0), 0)
+		/** Summan av alla grupp-antal — visas på "Alla grupper"-pillret. Oberoende
+		    partition av samma inflöde som korgraden (kan därför avvika kosmetiskt). */
+		totaltTyp() {
+			return Object.values(this.typAntal).reduce((sum, n) => sum + Number(n || 0), 0)
 		},
 
 		/** De åtta meddelandetyperna med svensk etikett + ikon, i fast visningsordning. */
@@ -227,6 +224,22 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+
+	// B10 — två rubricerade, oberoende filterrader (Korgar / Grupper).
+	&__rad {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+	}
+
+	&__rad-etikett {
+		flex: 0 0 56px;
+		color: var(--color-text-maxcontrast);
+		font-size: 0.78rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.02em;
+	}
 
 	&__korgar,
 	&__typer {
@@ -339,6 +352,16 @@ export default {
 			border-color: var(--color-primary-element);
 			background: var(--color-primary-element-light, var(--color-background-hover));
 			color: var(--color-primary-element);
+		}
+
+		// AGGREGAT-pillret (Alla grupper): samma gråa "summa"-signal som Alla korgar.
+		&--aggregat:not(&--aktiv) {
+			background: var(--color-background-dark);
+			border-style: dashed;
+		}
+
+		&--aggregat#{&}--aktiv {
+			border-style: dashed;
 		}
 	}
 }

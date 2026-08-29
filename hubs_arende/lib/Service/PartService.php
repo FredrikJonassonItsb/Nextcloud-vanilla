@@ -73,6 +73,10 @@ class PartService {
         // TRAILING OPTIONAL (autowired): aktören bakom mutationen ('' =
         // system/CLI-kontext utan session).
         private ?IUserSession $userSession = null,
+        // TRAILING OPTIONAL (autowired): per-part-delgivningen fostrar ärendets
+        // överklagandebevakning (laga kraft = senaste partens frist). Null i en
+        // positionell testharness ⇒ delgivningen sätts men bevakningen synkas ej.
+        private ?BevakningService $bevakningService = null,
     ) {
     }
 
@@ -171,6 +175,11 @@ class PartService {
             'kalla' => Part::KALLA_MANUELL,
             'skydd' => $skydd,
         ]);
+
+        // ★ LEGAL-FRIST ★ En ny delgivningsbar part (ej delgiven) gör laga kraft
+        // obestämbar igen — synka så en redan uppnådd frist återöppnas ("väntar").
+        // No-op om ärendet saknar delgivningsbara roller / ingen delgivning skett.
+        $this->synkaDelgivning($arende->getHubsCaseId());
 
         return $part;
     }
@@ -292,6 +301,10 @@ class PartService {
             'antalVardnadshavare' => count($vardnadshavare),
         ]);
 
+        // ★ LEGAL-FRIST ★ Uppslaget kan ha lagt till barn/vårdnadshavare
+        // (delgivningsbara) — synka så laga kraft omprövas (t.ex. återöppnas).
+        $this->synkaDelgivning($arende->getHubsCaseId());
+
         return [
             'part' => $part,
             'vardnadshavare' => $vardnadshavare,
@@ -378,11 +391,163 @@ class PartService {
             'roll' => $roll,
             'kalla' => $kalla,
         ]);
+
+        // ★ LEGAL-FRIST ★ Att ta bort en delgiven/frist-hållande part ändrar laga
+        // kraft (senaste kvarvarande partens frist), och att ta bort den SISTA
+        // delgivningsbara parten ska nolla fristen — synka i båda fallen.
+        $this->synkaDelgivning($arende->getHubsCaseId());
+    }
+
+    // ================================================================== //
+    //  ★ PER-PART-DELGIVNING (FL 44 §) ★
+    // ================================================================== //
+
+    /**
+     * ★ LEGAL-FRIST ★ Registrera att EN part delgivits ett beslut (FL 33 §) och
+     * synka ärendets överklagandebevakning (laga kraft = senaste partens frist,
+     * {@see BevakningService::synkaOverklagandeFranParter()}).
+     *
+     * Att delge en part NOLLAR ett ev. tidigare undantag (parten nåddes ju) —
+     * "delge per part" och "nå inte denna part" är ömsesidigt uteslutande på
+     * partsnivå. Endast en part med överklaganderätt
+     * ({@see Part::delgivningsbaraRoller()}) kan delges ett beslut.
+     *
+     * IDOR-guard: raden måste tillhöra det authz-grindade ärendet.
+     * Journalförd (roll/metod/datum — aldrig identitet).
+     *
+     * @param string $ref hubsCaseId eller dnr.
+     * @param int $id Partsradens id.
+     * @param string $datum Delgivningsdatum (YYYY-MM-DD).
+     * @param string $metod Delgivningssätt, se {@see Part::tillatnaDelgivningsmetoder()}.
+     *
+     * @throws DoesNotExistException Vid saknat/obehörigt ärende eller rad ur annat ärende.
+     * @throws \InvalidArgumentException Vid ogiltigt datum/metod eller roll utan
+     *         överklaganderätt.
+     */
+    public function setDelgivning(string $ref, int $id, string $datum, string $metod): Part {
+        $arende = $this->arendeService->show($ref);
+        $part = $this->kravPartICase($arende, $id);
+
+        if (!in_array($part->getRoll(), Part::delgivningsbaraRoller(), true)) {
+            throw new \InvalidArgumentException(
+                'Parten har inte överklaganderätt (roll ' . $part->getRoll() . ') och kan inte delges ett beslut.',
+            );
+        }
+        if (!in_array($metod, Part::tillatnaDelgivningsmetoder(), true)) {
+            throw new \InvalidArgumentException(
+                'Ogiltig delgivningsmetod (ordinar|forenklad|muntlig|kungorelse|stamning).',
+            );
+        }
+        $d = $this->parseDatum($datum);
+
+        $part->setDelgivningsdatum($d);
+        $part->setDelgivningMetod($metod);
+        // Att delge nollar ett ev. tidigare undantag (parten nåddes).
+        $part->setDelgivningUndantagen(false);
+        $part->setDelgivningUndantagGrund(null);
+        $part = $this->partMapper->update($part);
+
+        $this->loggaHandelse($arende->getHubsCaseId(), [
+            'handling' => 'delgiven',
+            'roll' => $part->getRoll(),
+            'metod' => $metod,
+            'datum' => $d->format('Y-m-d'),
+        ]);
+
+        // Synka laga kraft ur samtliga parters delgivning (best-effort).
+        $this->bevakningService?->synkaOverklagandeFranParter(
+            $arende->getHubsCaseId(),
+            $this->aktor(),
+        );
+
+        return $part;
+    }
+
+    /**
+     * ★ LEGAL-FRIST ★ Undanta en part från delgivning (OSL 10:3 / skyddad adress /
+     * våldsscenario) — parten ska MEDVETET inte nås. Den räknas då inte in i laga
+     * kraft ({@see Part::arDelgivningsbar()}) men bärs explicit + journalfört i
+     * modellen ("nå inte denna part" är aldrig en tyst lucka).
+     *
+     * Nollar ett ev. tidigare satt delgivningsdatum (en undantagen part är inte
+     * delgiven). Synkar överklagandebevakningen (undantaget kan göra laga kraft
+     * bestämbar när den var den enda part som fattades).
+     *
+     * @param string $ref hubsCaseId eller dnr.
+     * @param int $id Partsradens id.
+     * @param string $grund Undantagsgrund, se {@see Part::tillatnaUndantagsgrunder()}.
+     *
+     * @throws DoesNotExistException Vid saknat/obehörigt ärende eller rad ur annat ärende.
+     * @throws \InvalidArgumentException Vid ogiltig grund eller roll utan överklaganderätt.
+     */
+    public function undantaDelgivning(string $ref, int $id, string $grund): Part {
+        $arende = $this->arendeService->show($ref);
+        $part = $this->kravPartICase($arende, $id);
+
+        if (!in_array($part->getRoll(), Part::delgivningsbaraRoller(), true)) {
+            throw new \InvalidArgumentException(
+                'Endast en part med överklaganderätt kan undantas från delgivning.',
+            );
+        }
+        if (!in_array($grund, Part::tillatnaUndantagsgrunder(), true)) {
+            throw new \InvalidArgumentException(
+                'Ogiltig undantagsgrund (osl_10_3|skyddad_adress|vald|annan).',
+            );
+        }
+
+        $part->setDelgivningUndantagen(true);
+        $part->setDelgivningUndantagGrund($grund);
+        // En undantagen part är inte delgiven — nolla ev. datum/metod.
+        $part->setDelgivningsdatum(null);
+        $part->setDelgivningMetod(null);
+        $part = $this->partMapper->update($part);
+
+        $this->loggaHandelse($arende->getHubsCaseId(), [
+            'handling' => 'delgivning_undantagen',
+            'roll' => $part->getRoll(),
+            'grund' => $grund,
+        ]);
+
+        $this->bevakningService?->synkaOverklagandeFranParter(
+            $arende->getHubsCaseId(),
+            $this->aktor(),
+        );
+
+        return $part;
     }
 
     // ================================================================== //
     //  PRIVATA HJÄLPARE
     // ================================================================== //
+
+    /**
+     * Parse ett delgivningsdatum (YYYY-MM-DD, strikt). Kastar vid ogiltigt datum.
+     *
+     * @throws \InvalidArgumentException
+     */
+    private function parseDatum(string $datum): \DateTime {
+        $d = \DateTime::createFromFormat('!Y-m-d', trim($datum));
+        $fel = \DateTime::getLastErrors();
+        if ($d === false || ($fel && ($fel['warning_count'] > 0 || $fel['error_count'] > 0))) {
+            throw new \InvalidArgumentException('Ogiltigt delgivningsdatum — ange YYYY-MM-DD.');
+        }
+        return $d;
+    }
+
+    /** Aktörens uid ('' = system/CLI-kontext utan session). */
+    private function aktor(): string {
+        return $this->userSession?->getUser()?->getUID() ?? '';
+    }
+
+    /**
+     * ★ LEGAL-FRIST ★ Be BevakningService omberäkna ärendets överklagandebevakning
+     * ur partsregistrets delgivning. Best-effort (?-> + idempotent): den interna
+     * grinden gör det till en no-op när ärendet saknar delgivningsbara roller, så
+     * detta får anropas efter VARJE partsmutation (tillägg/uppslag/borttag/delgivning).
+     */
+    private function synkaDelgivning(string $hubsCaseId): void {
+        $this->bevakningService?->synkaOverklagandeFranParter($hubsCaseId, $this->aktor());
+    }
 
     /**
      * Load a part row by id and REQUIRE that it belongs to the given (already

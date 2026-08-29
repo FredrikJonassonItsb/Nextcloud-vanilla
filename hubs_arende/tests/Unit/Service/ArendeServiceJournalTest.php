@@ -132,7 +132,105 @@ final class ArendeServiceJournalTest extends TestCase {
         );
         $service->tilldela('case-j3', 'anna-uid');
 
-        self::assertContains([Handelse::TYP_TILLDELAD, ['uid' => 'anna-uid']], $rows);
+        // T6/F5 — detaljen bär nu {av, till} (fördelaren journalförs, granskningsbart)
+        // plus 'uid' bakåtkompat. Ingen userSession i harnessen ⇒ av=''.
+        self::assertContains(
+            [Handelse::TYP_TILLDELAD, ['av' => '', 'till' => 'anna-uid', 'uid' => 'anna-uid']],
+            $rows,
+        );
+    }
+
+    /**
+     * OMFÖRDELNING (E2E 2026-07-14): tilldela() var additiv och lämnade den TIDIGARE
+     * handläggaren kvar som aktiv handlaggare-medlem → ärendet fastnade i förra
+     * handläggarens "Mina ärenden", dubblettidentiteter i Anslutna och kvarhängande
+     * åtkomst efter handoff. Nu revokeras föregående handläggare (annat uid) ur ledgern
+     * FÖRE record() och handoffen journalförs som TYP_MEDLEM riktning=ut.
+     */
+    public function testTilldelaRevokesPreviousHandlaggareOnReassignment(): void {
+        $arende = new Arende();
+        $arende->setHubsCaseId('case-j5');
+        $arende->setArendeTyp('orosanmalan');
+        $this->arendeMapper->method('findByCaseId')->with('case-j5')->willReturn($arende);
+
+        $rows = [];
+        $this->handelseMapper->method('record')
+            ->willReturnCallback(function (string $caseId, string $typ, array $detalj) use (&$rows): Handelse {
+                $rows[] = [$typ, $detalj];
+                return new Handelse();
+            });
+
+        $medlem = static function (string $uid, string $roll): Member {
+            $m = new Member();
+            $m->setUid($uid);
+            $m->setRoll($roll);
+            return $m;
+        };
+        $memberMapper = $this->createMock(MemberMapper::class);
+        // Ledgern har en TIDIGARE handläggare (axel) före omfördelningen till anna.
+        $memberMapper->method('findByCaseAndRoll')
+            ->with('case-j5', Member::ROLL_HANDLAGGARE)
+            ->willReturn([$medlem('axel', Member::ROLL_HANDLAGGARE)]);
+        $memberMapper->method('findByCaseId')->willReturn([]); // atkomstUids-synken
+        $deleted = [];
+        $memberMapper->method('deleteByCaseUidRoll')
+            ->willReturnCallback(function (string $cid, string $uid, string $roll) use (&$deleted): int {
+                $deleted[] = [$cid, $uid, $roll];
+                return 1;
+            });
+        $recorded = [];
+        $memberMapper->method('record')
+            ->willReturnCallback(function (string $cid, string $uid, string $roll) use (&$recorded, $medlem): Member {
+                $recorded[] = [$cid, $uid, $roll];
+                return $medlem($uid, $roll);
+            });
+
+        $service = new ArendeService(
+            $this->arendeMapper, $this->typRegistry, $this->grind, $this->commitService,
+            $this->secureRandom, $this->timeFactory, $this->logger,
+            handelseMapper: $this->handelseMapper,
+            memberMapper: $memberMapper,
+        );
+        $service->tilldela('case-j5', 'anna');
+
+        // Gamla handläggaren axel revokerad ur ledgern; nya anna registrerad.
+        self::assertContains(['case-j5', 'axel', Member::ROLL_HANDLAGGARE], $deleted);
+        self::assertContains(['case-j5', 'anna', Member::ROLL_HANDLAGGARE], $recorded);
+        // Handoffen är granskningsbar: TYP_MEDLEM ut för axel.
+        self::assertContains(
+            [Handelse::TYP_MEDLEM, ['uid' => 'axel', 'roll' => Member::ROLL_HANDLAGGARE, 'riktning' => 'ut']],
+            $rows,
+        );
+    }
+
+    /**
+     * ÅTKOMSTLOGG (OSL 26 kap, Fredrik 2026-07-15): en läsning loggas med uid + ref +
+     * vy och audit-markören 'lasning' (PII-fritt, revisionsspårbart).
+     */
+    public function testAuditLasningLoggarAtkomstMedUidRefVy(): void {
+        $user = $this->createMock(\OCP\IUser::class);
+        $user->method('getUID')->willReturn('sara.nystrom');
+        $userSession = $this->createMock(\OCP\IUserSession::class);
+        $userSession->method('getUser')->willReturn($user);
+
+        $logged = [];
+        $this->logger->method('info')
+            ->willReturnCallback(function ($msg, array $ctx = []) use (&$logged): void {
+                $logged[] = [(string)$msg, $ctx];
+            });
+
+        $service = new ArendeService(
+            $this->arendeMapper, $this->typRegistry, $this->grind, $this->commitService,
+            $this->secureRandom, $this->timeFactory, $this->logger,
+            userSession: $userSession,
+        );
+        $service->auditLasning('case-x', 'detalj');
+
+        $rad = array_values(array_filter($logged, static fn ($r): bool => ($r[1]['audit'] ?? null) === 'lasning'));
+        self::assertCount(1, $rad);
+        self::assertSame('sara.nystrom', $rad[0][1]['uid']);
+        self::assertSame('case-x', $rad[0][1]['ref']);
+        self::assertSame('detalj', $rad[0][1]['vy']);
     }
 
     public function testHistorikReadsViaShowAuthz(): void {
@@ -170,14 +268,38 @@ final class ArendeServiceJournalTest extends TestCase {
         $annans = new Arende();
         $annans->setHubsCaseId('case-annans');
         $annans->setArendeTyp('orosanmalan');
-        $annans->setStatus('otilldelat');
-        $annans->setSteg('forhandsbedomning');
+        // Tilldelat 'annan' (en handläggare finns → mottagningskretsen revokeras i
+        // atkomstUids), fastän fredrik ligger kvar som krets-rad i ledgern.
+        $annans->setStatus('tilldelat');
+        $annans->setSteg('utredning');
         $annans->setProvenanceState('ej_registrerad');
         $annans->setEnhet('barn-familj@');
         $this->arendeMapper->method('findAll')->willReturn([$mitt, $annans]);
 
+        // Handoff-medvetet mine-filter läser ledgern per ärende (atkomstUids), inte
+        // det roll-agnostiska findCaseIdsByUid: fredrik är krets i BÅDA, men ser bara
+        // det otilldelade (case-mitt), inte det som tilldelats någon annan.
+        $medlem = static function (string $uid, string $roll): Member {
+            $m = new Member();
+            $m->setUid($uid);
+            $m->setRoll($roll);
+            return $m;
+        };
         $memberMapper = $this->createMock(MemberMapper::class);
-        $memberMapper->method('findCaseIdsByUid')->with('fredrik')->willReturn(['case-mitt']);
+        $memberMapper->method('findByCaseId')->willReturnCallback(
+            static function (string $cid) use ($medlem): array {
+                if ($cid === 'case-mitt') {
+                    return [$medlem('fredrik', Member::ROLL_MOTTAGNINGSKRETS)];
+                }
+                if ($cid === 'case-annans') {
+                    return [
+                        $medlem('fredrik', Member::ROLL_MOTTAGNINGSKRETS),
+                        $medlem('annan', Member::ROLL_HANDLAGGARE),
+                    ];
+                }
+                return [];
+            }
+        );
 
         $user = $this->createMock(\OCP\IUser::class);
         $user->method('getUID')->willReturn('fredrik');

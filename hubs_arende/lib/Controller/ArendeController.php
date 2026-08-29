@@ -13,6 +13,8 @@ use OCA\HubsArende\AppInfo\Application;
 use OCA\HubsArende\Db\Arende;
 use OCA\HubsArende\Service\ArendeLifecycleService;
 use OCA\HubsArende\Service\ArendeService;
+use OCA\HubsArende\Service\DokumenttypRegistry;
+use OCA\HubsArende\Service\GrindKravException;
 use OCA\HubsArende\Exception\AvvisadException;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -39,6 +41,9 @@ class ArendeController extends OCSController {
         private readonly ArendeService $arendeService,
         private readonly ArendeLifecycleService $lifecycleService,
         private readonly LoggerInterface $logger,
+        // Kanoniska dokumenttyps-registret (P1.3b): reverse-lookupen returnerar
+        // dokumenttypen så boten slutar regex-matcha filnamn.
+        private readonly ?DokumenttypRegistry $dokumenttypRegistry = null,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -90,6 +95,10 @@ class ArendeController extends OCSController {
         }
         try {
             $arende = $this->arendeService->show($ref);
+            // ÅTKOMSTLOGG (inre sekretess, OSL 26 kap): en läsning av ärendedetaljen
+            // loggas — inte bara mutationer — så åtkomst till skyddad information är
+            // revisionsspårbar (Fredrik 2026-07-15). Efter authz-gaten i show().
+            $this->arendeService->auditLasning($ref, 'detalj');
             // Full dashboard card (collapsed fields + empty heavy flik-fält) for the
             // frontend's lazy-load on card expand — engine-honest + thin.
             return new DataResponse($this->arendeService->mapToFullCard($arende), Http::STATUS_OK);
@@ -201,29 +210,79 @@ class ArendeController extends OCSController {
      * updated case (unchanged on an idempotent same-step no-op).
      *
      * POST /api/v1/arende/{hubsCaseId}/steg
+     *
+     * Kontext-nycklar (alla valfria, PII-fria enum-koder — se KONTRAKT):
+     *  - skyddsbedomningKvitterad (bool): legacy, endast när skyddsbedömnings-flaggan är AV.
+     *  - override            {skal}: A7-override när skyddsbedömning saknas.
+     *  - inteInledaVal       {orsak, beslutsfattare}: A9a (förhandsbedömning→avslutat).
+     *  - kommuniceringVal    {gjord, skal?}: A9b (utredning→beslut).
+     *  - avslutsmotiv        {utfall, kvarstaende?}: A9c (X→avslutat, utom förhandsbedömning).
+     *
+     * Grinden i transitionera() kastar \InvalidArgumentException när ett obligatoriskt
+     * grind-val saknas OCH grind-flaggan är på → 400 {error, grindKravs:true} så att
+     * frontend kan öppna rätt grind-dialog och skicka om med rätt kontext-nyckel.
+     *
+     * @param array<string, mixed>|null $override        A7-override {skal}
+     * @param array<string, mixed>|null $inteInledaVal    A9a {orsak, beslutsfattare}
+     * @param array<string, mixed>|null $kommuniceringVal A9b {gjord, skal?}
+     * @param array<string, mixed>|null $avslutsmotiv     A9c {utfall, kvarstaende?}
      */
     #[NoAdminRequired]
     #[NoCSRFRequired]
-    public function steg(string $hubsCaseId, string $nyttSteg, bool $skyddsbedomningKvitterad = false): DataResponse {
+    public function steg(
+        string $hubsCaseId,
+        string $nyttSteg,
+        bool $skyddsbedomningKvitterad = false,
+        ?array $override = null,
+        ?array $inteInledaVal = null,
+        ?array $inledaVal = null,
+        ?array $kommuniceringVal = null,
+        ?array $avslutsmotiv = null,
+    ): DataResponse {
         if ($hubsCaseId === '' || $nyttSteg === '') {
             return new DataResponse(['error' => 'hubsCaseId_eller_nyttSteg_saknas'], Http::STATUS_BAD_REQUEST);
         }
         try {
-            // ORO-1: vidarebefordra ev. skyddsbedömnings-kvittens som kontext. Plikt-
-            // grinden i transitionera() kräver detta för förhandsbedömning→utredning på
-            // en pliktGrind-typ (orosanmälan). Frontend sätter true när handläggaren
-            // fattat beslutet (verifierad commit av skyddsbedömningen = kvittering).
-            $arende = $this->lifecycleService->transitionera(
-                $hubsCaseId,
-                $nyttSteg,
-                ['skyddsbedomningKvitterad' => $skyddsbedomningKvitterad],
-            );
+            // Bygg kontext-bunten till transitionera(). Legacy-kvittensen skickas
+            // alltid (grinden ignorerar den när flaggan är på); grind-valen skickas
+            // bara när de faktiskt levererats så att default-beteendet är oförändrat.
+            $kontext = ['skyddsbedomningKvitterad' => $skyddsbedomningKvitterad];
+            if ($override !== null) {
+                $kontext['override'] = $override;
+            }
+            if ($inteInledaVal !== null) {
+                $kontext['inteInledaVal'] = $inteInledaVal;
+            }
+            if ($inledaVal !== null) {
+                $kontext['inledaVal'] = $inledaVal;
+            }
+            if ($kommuniceringVal !== null) {
+                $kontext['kommuniceringVal'] = $kommuniceringVal;
+            }
+            if ($avslutsmotiv !== null) {
+                $kontext['avslutsmotiv'] = $avslutsmotiv;
+            }
+            $arende = $this->lifecycleService->transitionera($hubsCaseId, $nyttSteg, $kontext);
             return new DataResponse($arende->jsonSerialize(), Http::STATUS_OK);
         } catch (DoesNotExistException) {
             // Covers both a missing case and an unauthorised enhet (existence not leaked).
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (GrindKravException $e) {
+            // Grind-krav ej uppfyllt medan flaggan är på: svara MASKINLÄSBART vilken
+            // grind som saknar sitt underlag (grind-nyckeln) så frontenden öppnar RÄTT
+            // dialog direkt — löser den tysta 400-loopen på forhandsbedomning→utredning
+            // som bär två grindar (skyddsbedomning + inleda). E2E 2026-07-14.
+            return new DataResponse(
+                ['error' => $e->getMessage(), 'grindKravs' => true, 'grind' => $e->grind],
+                Http::STATUS_BAD_REQUEST,
+            );
         } catch (\InvalidArgumentException $e) {
-            return new DataResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            // Otillåten övergång / okänt steg (ej grind-krav). grindKravs för
+            // bakåtkompatibilitet; utan 'grind' faller frontenden på grindForTransition.
+            return new DataResponse(
+                ['error' => $e->getMessage(), 'grindKravs' => true],
+                Http::STATUS_BAD_REQUEST,
+            );
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende steg failed', ['exception' => $e, 'hubsCaseId' => $hubsCaseId]);
             return new DataResponse(['error' => 'steg_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
@@ -243,7 +302,10 @@ class ArendeController extends OCSController {
             return new DataResponse(['error' => 'ref_saknas'], Http::STATUS_BAD_REQUEST);
         }
         try {
-            return new DataResponse(['handelser' => $this->arendeService->historik($ref)], Http::STATUS_OK);
+            $handelser = $this->arendeService->historik($ref);
+            // ÅTKOMSTLOGG (OSL 26 kap): läsning av "Historik & beslut" loggas.
+            $this->arendeService->auditLasning($ref, 'historik');
+            return new DataResponse(['handelser' => $handelser], Http::STATUS_OK);
         } catch (DoesNotExistException) {
             return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
         } catch (\Throwable $e) {
@@ -404,6 +466,59 @@ class ArendeController extends OCSController {
         } catch (\Throwable $e) {
             $this->logger->error('hubs_arende medlemmar failed', ['exception' => $e, 'ref' => $ref]);
             return new DataResponse(['error' => 'medlemmar_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * REVERSE-lookup rum→ärende (P1.3b/T1): ett Talk-rums token → dess ärende via
+     * PEKARREGISTRET, så boten läser EN sanningskälla i stället för sin rooms.json-
+     * skuggfil. System-uppslagning (SA-auth), returnerar koordinationsdata +
+     * kanonisk dokumenttyp (så boten slutar regex-matcha filnamn).
+     *
+     * GET /api/v1/rum/{token}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function rumLosning(string $token): DataResponse {
+        if ($token === '') {
+            return new DataResponse(['error' => 'token_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $res = $this->arendeService->losRum($token);
+            if ($res === null) {
+                return new DataResponse(['error' => 'okant_rum'], Http::STATUS_NOT_FOUND);
+            }
+            $fil = $res['fil'] ?? null;
+            $res['dokumenttyp'] = ($fil !== null && $fil !== '' && $this->dokumenttypRegistry !== null)
+                ? $this->dokumenttypRegistry->klassForMall($fil)
+                : null;
+            return new DataResponse($res, Http::STATUS_OK);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende rumLosning failed', ['exception' => $e]);
+            return new DataResponse(['error' => 'rum_losning_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Registrera ett dokumentchatt-rum (Collaboras dela→chatt) som förstaklassig
+     * pekare (P1.3b) — gör AI-närvaron inventerbar och rummet gallringsbart.
+     *
+     * POST /api/v1/arende/{ref}/dokumentchatt  {token, fil?}
+     */
+    #[NoAdminRequired]
+    #[NoCSRFRequired]
+    public function registreraDokumentchatt(string $ref, string $token = '', string $fil = ''): DataResponse {
+        if ($ref === '' || $token === '') {
+            return new DataResponse(['error' => 'ref_eller_token_saknas'], Http::STATUS_BAD_REQUEST);
+        }
+        try {
+            $this->arendeService->registreraDokumentchatt($ref, $token, $fil);
+            return new DataResponse(['ok' => true], Http::STATUS_OK);
+        } catch (DoesNotExistException) {
+            return new DataResponse(['error' => 'not_found'], Http::STATUS_NOT_FOUND);
+        } catch (\Throwable $e) {
+            $this->logger->error('hubs_arende registreraDokumentchatt failed', ['exception' => $e, 'ref' => $ref]);
+            return new DataResponse(['error' => 'dokumentchatt_failed'], Http::STATUS_INTERNAL_SERVER_ERROR);
         }
     }
 
