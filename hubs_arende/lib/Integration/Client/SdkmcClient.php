@@ -24,6 +24,7 @@ use Psr\Log\LoggerInterface;
  * routes (sdkmc/appinfo/routes.php → itsl_tag#*):
  *   - POST   /api/tags/{accountId}                       createTag(displayName,color)
  *   - DELETE /api/tags/{accountId}/delete/{id}           deleteTag
+ *   - DELETE /api/tags/by-label/{imapLabel}              deleteCaseTagByLabel  [HUBS-ARENDE-KRAV 2026-07-12]
  *   - PUT    /api/messages/{id}/tags/{imapLabel}         setMessageTag
  *   - DELETE /api/messages/{id}/tags/{imapLabel}         removeMessageTag
  *   - PUT    /api/thread/tags/{imapLabel}                setThreadTag (bulk {ids:[]})
@@ -187,6 +188,41 @@ class SdkmcClient {
             'hubsCaseId' => $hubsCaseId,
             'accountId' => $accountId,
             'tagId' => $tagId,
+        ]);
+
+        return true;
+    }
+
+    /**
+     * DESTRUKTIONSSPEGELNS LABEL-VÄG (2026-07-12) — riv case:{hubsCaseId}-taggen
+     * DETERMINISTISKT via dess imap_label, utan accountId och utan R3-pekare.
+     *
+     * Löser den öppna begränsningen i {@see deleteCaseTag()}: på miljöer där
+     * case-taggen skapades via `koppla`/`tagMessage` (label-vägen) finns INGEN
+     * case_tag-pekare, så den pekar-baserade kompensationen städar ingenting och
+     * taggen blir en DINGLANDE referens mot ett gallrat ärende (döljer anmälan i
+     * inflödet). Denna metod anropar sdkmc:s nya, kravmärkta rutt
+     * (DELETE /api/tags/by-label/{imapLabel}, se KRAV-SDKMC-2026-07-12.md) som är
+     * fail-closed till `case:`-namnrymden.
+     *
+     * @param string $hubsCaseId Canonical case UUID — dess case:-label rivs överallt.
+     * @return bool true om ett borttag försöktes (sdkmc nåbar), false på NO-OP.
+     */
+    public function deleteCaseTagByLabel(string $hubsCaseId): bool {
+        if (!$this->isAvailable()) {
+            $this->noop('deleteCaseTagByLabel', $hubsCaseId);
+            return false;
+        }
+
+        $imapLabel = $this->caseLabel($hubsCaseId);
+        // Ingen accountId behövs: labeln case:<uuid> är globalt unik och sdkmc-rutten
+        // hittar taggen över alla brevlådor (fail-closed till case:-namnrymden).
+        $this->ocsRequest('DELETE', '/api/tags/by-label/' . rawurlencode($imapLabel), null, $hubsCaseId);
+
+        $this->logger->info('hubs_arende: SdkmcClient.deleteCaseTagByLabel', [
+            'app' => 'hubs_arende',
+            'hubsCaseId' => $hubsCaseId,
+            'imapLabel' => $imapLabel,
         ]);
 
         return true;

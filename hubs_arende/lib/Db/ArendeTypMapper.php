@@ -70,4 +70,25 @@ class ArendeTypMapper extends QBMapper {
             return false;
         }
     }
+
+    /**
+     * Set the bevakningsmallar JSON on an existing row by its STRING id.
+     *
+     * QBMapper::update() keys on an int `id`, which this table lacks (PK is the
+     * string arende_typ_id) — so the mallar-backfill ({@see ArendeTypRegistry::
+     * synkaBevakningsmallar}) writes through a targeted UPDATE here instead.
+     * Returns the number of rows affected.
+     *
+     * @throws Exception
+     */
+    public function setBevakningsmallar(string $arendeTypId, ?string $json): int {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('bevakningsmallar', $qb->createNamedParameter($json, IQueryBuilder::PARAM_STR))
+            ->where(
+                $qb->expr()->eq('arende_typ_id', $qb->createNamedParameter($arendeTypId, IQueryBuilder::PARAM_STR))
+            );
+
+        return $qb->executeStatement();
+    }
 }

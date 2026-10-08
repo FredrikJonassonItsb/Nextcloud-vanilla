@@ -32,6 +32,7 @@ class Notifier implements INotifier {
     public const SUBJECT_TILLDELAD = 'tilldelad';
     public const SUBJECT_MEDLEM = 'medlem';
     public const SUBJECT_FRIST = 'frist';
+    public const SUBJECT_BEVAKNING = 'bevakning';
 
     public function __construct(
         private IFactory $l10nFactory,
@@ -73,6 +74,29 @@ class Notifier implements INotifier {
                         ? $l->t('Fristen för ärende %1$s går ut %2$s', [$ref, $datum])
                         : $l->t('Fristen för ärende %s har passerats', [$ref]),
                 );
+                break;
+            case self::SUBJECT_BEVAKNING:
+                // Koordinationsdata (pseudonym titel + dagar) — aldrig PII. Tonen styrs
+                // av dagarKvar: framförhållning (>0), förfallodag (0) eller larmläge (<0),
+                // där en missad lagstadgad frist markeras extra.
+                $titel = (string)($params['titel'] ?? '');
+                $dagarKvar = (int)($params['dagarKvar'] ?? 0);
+                $lagstadgad = (bool)($params['lagstadgad'] ?? false);
+                if ($dagarKvar > 0) {
+                    $notification->setParsedSubject(
+                        $l->t('Bevakning «%1$s» förfaller om %2$s dagar.', [$titel, (string)$dagarKvar]),
+                    );
+                } elseif ($dagarKvar === 0) {
+                    $notification->setParsedSubject(
+                        $l->t('Bevakning «%s» förfaller idag.', [$titel]),
+                    );
+                } else {
+                    $sen = (string)abs($dagarKvar);
+                    $bas = $l->t('ÖVERSKRIDEN bevakning «%1$s» (%2$s dagar sen)', [$titel, $sen]);
+                    $notification->setParsedSubject(
+                        $lagstadgad ? $bas . $l->t(' — lagstadgad frist!') : $bas,
+                    );
+                }
                 break;
             default:
                 throw new UnknownNotificationException();

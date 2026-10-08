@@ -52,6 +52,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setFristDue(?\DateTime $fristDue)
  * @method \DateTime|null getGallrasDatum()
  * @method void setGallrasDatum(?\DateTime $gallrasDatum)
+ * @method \DateTime|null getDelgivningsdatum()
+ * @method void setDelgivningsdatum(?\DateTime $delgivningsdatum)
  * @method string getArendeTyp()
  * @method void setArendeTyp(string $arendeTyp)
  * @method \DateTime|null getSkapad()
@@ -89,6 +91,12 @@ class Arende extends Entity implements \JsonSerializable {
     protected ?\DateTime $fristDue = null;
     /** Verkställbar gallrings-deadline från kvittot (committedAt + 90d). */
     protected ?\DateTime $gallrasDatum = null;
+    /**
+     * Delgivningsdatum (FL 33 §) — ankaret för överklagandefristen. Sätts när ett
+     * beslut delges parten; BevakningService föder överklagandebevakningen (3 v →
+     * laga kraft) ur detta. Null tills ett delgivet beslut finns.
+     */
+    protected ?\DateTime $delgivningsdatum = null;
     /** FK -> hubs_arende_typ.arende_typ_id */
     protected string $arendeTyp = '';
     protected ?\DateTime $skapad = null;
@@ -109,6 +117,7 @@ class Arende extends Entity implements \JsonSerializable {
         $this->addType('retentionState', 'string');
         $this->addType('fristDue', 'datetime');
         $this->addType('gallrasDatum', 'datetime');
+        $this->addType('delgivningsdatum', 'datetime');
         $this->addType('arendeTyp', 'string');
         $this->addType('skapad', 'datetime');
     }
@@ -131,6 +140,7 @@ class Arende extends Entity implements \JsonSerializable {
             'retentionState' => $this->retentionState,
             'fristDue' => $this->fristDue?->format('Y-m-d'),
             'gallrasDatum' => $this->gallrasDatum?->format('Y-m-d'),
+            'delgivningsdatum' => $this->delgivningsdatum?->format('Y-m-d'),
             'arendeTyp' => $this->arendeTyp,
             'skapad' => $this->skapad?->format(\DateTimeInterface::ATOM),
         ];

@@ -73,6 +73,14 @@ use OCP\AppFramework\Db\Entity;
  * @method void setKalla(string $kalla)
  * @method \DateTime|null getVerifierad()
  * @method void setVerifierad(?\DateTime $verifierad)
+ * @method \DateTime|null getDelgivningsdatum()
+ * @method void setDelgivningsdatum(?\DateTime $delgivningsdatum)
+ * @method string|null getDelgivningMetod()
+ * @method void setDelgivningMetod(?string $delgivningMetod)
+ * @method bool getDelgivningUndantagen()
+ * @method void setDelgivningUndantagen(bool $delgivningUndantagen)
+ * @method string|null getDelgivningUndantagGrund()
+ * @method void setDelgivningUndantagGrund(?string $delgivningUndantagGrund)
  * @method \DateTime|null getSkapad()
  * @method void setSkapad(\DateTime $skapad)
  */
@@ -109,6 +117,28 @@ class Part extends Entity implements \JsonSerializable {
     /** Enriched from Treserva (facksystem). */
     public const KALLA_TRESERVA = 'treserva';
 
+    // --- Delgivningssätt (FL 33–47 §) ---
+    /** Ordinär delgivning (mottagningsbevis / vanligt brev). */
+    public const DELGIVNING_ORDINAR = 'ordinar';
+    /** Förenklad delgivning (skickat + kontrollmeddelande). */
+    public const DELGIVNING_FORENKLAD = 'forenklad';
+    /** Muntlig delgivning. */
+    public const DELGIVNING_MUNTLIG = 'muntlig';
+    /** Kungörelsedelgivning. */
+    public const DELGIVNING_KUNGORELSE = 'kungorelse';
+    /** Stämningsmannadelgivning. */
+    public const DELGIVNING_STAMNING = 'stamning';
+
+    // --- Grund för att UNDANTA en part från delgivning (OSL 10:3 m.fl.) ---
+    /** OSL 10:3 — delgivning skulle röja uppgift parten inte får ta del av. */
+    public const UNDANTAG_OSL_10_3 = 'osl_10_3';
+    /** Skyddad adress/folkbokföring — parten får inte nås på känd adress. */
+    public const UNDANTAG_SKYDDAD_ADRESS = 'skyddad_adress';
+    /** Våldsscenario — delgivning skulle äventyra en annan parts säkerhet. */
+    public const UNDANTAG_VALD = 'vald';
+    /** Annan dokumenterad grund. */
+    public const UNDANTAG_ANNAN = 'annan';
+
     /** FK -> hubs_arende_case.hubs_case_id (UUID v4). */
     protected string $hubsCaseId = '';
     /** barn | vardnadshavare | anmalare | motpart | samverkanspart | annan */
@@ -133,6 +163,21 @@ class Part extends Entity implements \JsonSerializable {
     protected string $kalla = '';
     /** When the record was last verified against Navet (null = never). */
     protected ?\DateTime $verifierad = null;
+    /**
+     * ★ LEGAL-FRIST ★ Partens delgivningsdatum (FL 33 §) — ankaret för DENNA
+     * parts överklagandefrist (delgivning + 3 v). Null = ej delgiven ännu.
+     */
+    protected ?\DateTime $delgivningsdatum = null;
+    /** ordinar | forenklad | muntlig | kungorelse | stamning (null = ej delgiven). */
+    protected ?string $delgivningMetod = null;
+    /**
+     * ★ LEGAL-FRIST ★ Parten ska MEDVETET EJ delges (OSL 10:3 / skyddad adress /
+     * våld). En undantagen part håller INTE upp laga kraft — men bärs i modellen
+     * så "nå inte denna part" är explicit och journalfört, aldrig en tyst lucka.
+     */
+    protected bool $delgivningUndantagen = false;
+    /** osl_10_3 | skyddad_adress | vald | annan (kort grund; null om ej undantagen). */
+    protected ?string $delgivningUndantagGrund = null;
     /** When the party record was created. */
     protected ?\DateTime $skapad = null;
 
@@ -150,6 +195,10 @@ class Part extends Entity implements \JsonSerializable {
         $this->addType('identitetshistorik', 'string');
         $this->addType('kalla', 'string');
         $this->addType('verifierad', 'datetime');
+        $this->addType('delgivningsdatum', 'datetime');
+        $this->addType('delgivningMetod', 'string');
+        $this->addType('delgivningUndantagen', 'boolean');
+        $this->addType('delgivningUndantagGrund', 'string');
         $this->addType('skapad', 'datetime');
     }
 
@@ -185,6 +234,63 @@ class Part extends Entity implements \JsonSerializable {
     }
 
     /**
+     * ★ LEGAL-FRIST ★ Rollerna som ett överklagbart beslut DELGES (parter med
+     * överklaganderätt/ställföreträdarskap): barnet självt, dess vårdnadshavare
+     * och en motpart. anmalare/samverkanspart/annan delges inte ett beslut och
+     * håller därmed inte upp laga kraft.
+     *
+     * Endast dessa roller räknas in i laga-kraft-beräkningen
+     * ({@see \OCA\HubsArende\Service\BevakningService::synkaOverklagandeFranParter()}).
+     *
+     * @return string[]
+     */
+    public static function delgivningsbaraRoller(): array {
+        return [
+            self::ROLL_BARN,
+            self::ROLL_VARDNADSHAVARE,
+            self::ROLL_MOTPART,
+        ];
+    }
+
+    /**
+     * Whitelist för delgivningssätt (validering; null = ej delgiven är också ok).
+     *
+     * @return string[]
+     */
+    public static function tillatnaDelgivningsmetoder(): array {
+        return [
+            self::DELGIVNING_ORDINAR,
+            self::DELGIVNING_FORENKLAD,
+            self::DELGIVNING_MUNTLIG,
+            self::DELGIVNING_KUNGORELSE,
+            self::DELGIVNING_STAMNING,
+        ];
+    }
+
+    /**
+     * Whitelist för undantagsgrunder (validering).
+     *
+     * @return string[]
+     */
+    public static function tillatnaUndantagsgrunder(): array {
+        return [
+            self::UNDANTAG_OSL_10_3,
+            self::UNDANTAG_SKYDDAD_ADRESS,
+            self::UNDANTAG_VALD,
+            self::UNDANTAG_ANNAN,
+        ];
+    }
+
+    /**
+     * Är parten en som ska delges beslutet (roll med överklaganderätt OCH inte
+     * medvetet undantagen)? Detta är parten som räknas in i laga kraft.
+     */
+    public function arDelgivningsbar(): bool {
+        return in_array($this->roll, self::delgivningsbaraRoller(), true)
+            && !$this->delgivningUndantagen;
+    }
+
+    /**
      * Full serialization INCLUDING PII — intended for display to the
      * authorized handläggare inside the ärenderum (the invariant is the
      * authorization boundary, not PII-hiding). Must never be routed to
@@ -208,6 +314,13 @@ class Part extends Entity implements \JsonSerializable {
                 : null,
             'kalla' => $this->kalla,
             'verifierad' => $this->verifierad?->format('c'),
+            'delgivningsdatum' => $this->delgivningsdatum?->format('Y-m-d'),
+            'delgivningMetod' => $this->delgivningMetod,
+            'delgivningUndantagen' => $this->delgivningUndantagen,
+            'delgivningUndantagGrund' => $this->delgivningUndantagGrund,
+            // Härledda vyfält (frontendens PartsPanel slipper duplicera regeln):
+            'delgivningsbarRoll' => in_array($this->roll, self::delgivningsbaraRoller(), true),
+            'delgivningsbar' => $this->arDelgivningsbar(),
             'skapad' => $this->skapad?->format('c'),
         ];
     }

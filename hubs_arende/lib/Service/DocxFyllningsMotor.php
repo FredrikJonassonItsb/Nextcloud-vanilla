@@ -138,10 +138,25 @@ class DocxFyllningsMotor {
                             htmlspecialchars((string)$platshallare, ENT_XML1 | ENT_NOQUOTES, 'UTF-8'),
                         ]);
 
-                        // Fas 1-begränsning (se klassdoc): radbrytningar kan inte
-                        // leva i en <w:t>-run som text — platta till ", ".
-                        $plattat = str_replace(["\r\n", "\r", "\n"], ["\n", "\n", ', '], (string)$varde);
-                        $escapat = htmlspecialchars($plattat, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+                        // FLERRADIGA VÄRDEN (fas 2): radbrytningar bevaras som RIKTIGA
+                        // <w:br/>-element. Platshållaren ligger ALLTID inuti en <w:t>
+                        // (den är dokumenttext), så vi stänger och återöppnar <w:t>-runen
+                        // kring varje rad: rad1</w:t><w:br/><w:t xml:space="preserve">rad2.
+                        // Varje rad XML-escapas för sig, så ett insatt värde kan aldrig
+                        // bilda ny struktur utöver de kontrollerade <w:br/>-elementen.
+                        // ENRADIGA värden (alla fas 1-metadatafält: namn/pnr/dnr/enhet)
+                        // ger EXAKT samma escapade sträng som tidigare — oförändrat beteende.
+                        $rader = preg_split('/\r\n|\r|\n/', (string)$varde);
+                        if ($rader === false) {
+                            $rader = [(string)$varde];
+                        }
+                        $escapat = implode(
+                            '</w:t><w:br/><w:t xml:space="preserve">',
+                            array_map(
+                                static fn (string $rad): string => htmlspecialchars($rad, ENT_XML1 | ENT_QUOTES, 'UTF-8'),
+                                $rader
+                            )
+                        );
 
                         // Räkna FÖRE ersättning så siffran speglar exakt vad som
                         // byts. Nålarna kan inte överlappa (&quot;-formen och

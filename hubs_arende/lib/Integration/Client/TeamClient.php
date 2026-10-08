@@ -52,6 +52,12 @@ class TeamClient {
     /** Circles member type: 2 = NC-grupp (Member::TYPE_GROUP). */
     private const MEMBER_TYPE_GROUP = 2;
 
+    /** Circles member type: 1 = NC-user (Member::TYPE_USER) — individ-presentation. */
+    private const MEMBER_TYPE_USER = 1;
+
+    /** Circles owner level (Member::LEVEL_OWNER) — service-kontot; reconcileras aldrig bort. */
+    private const LEVEL_OWNER = 9;
+
     public function __construct(
         private IAppManager $appManager,
         private IClientService $clientService,
@@ -145,9 +151,113 @@ class TeamClient {
         return true;
     }
 
+    /**
+     * Reconcila teamets INDIVIDUELLA (TYPE_USER) medlemmar till exakt $uids, så att
+     * Nextclouds team-/kontaktvy visar varje ansluten persons NAMN (en TYPE_GROUP-
+     * medlem expanderas inte rekursivt i panelen — därav att bara gruppraden syns
+     * idag). Detta är PRESENTATION utöver gruppen; gruppen förblir den primära
+     * åtkomstspegeln.
+     *
+     * SÄKERHET: teamet är även "applicable" på ärenderummets groupfolder (R4) och
+     * Talk-deltagare (R6), så ett direkt individ-medlemskap ÄR en åtkomstväg.
+     * Därför måste borttagningen vara AUKTORITATIV: vid handoff (mottagningskretsen
+     * revokeras) skulle en användare vars DELETE tyst failar behålla folder-/chatt-
+     * åtkomst (inre sekretess, OSL 26 kap). Varje borttagning verifieras + en retry,
+     * och ett kvarstående fel loggas som error (sväljs INTE som övriga anrop).
+     *
+     * $uids MÅSTE vara förfiltrerade mot userExists av anroparen (annars POST:as
+     * ej-upplösbara uid:n varje gång). Ägaren (service-kontot, level 9) rörs aldrig.
+     *
+     * @param string   $singleId circle singleId
+     * @param string[] $uids     önskade individ-uid:n (= ärenderummets aktiva åtkomstlista)
+     * @return bool true om synken lyckades (inkl. alla borttagningar), annars false
+     */
+    public function syncMembers(string $singleId, array $uids): bool {
+        if (!$this->isAvailable()) {
+            $this->noop('syncMembers', $singleId);
+            return false;
+        }
+        if ($singleId === '') {
+            return false;
+        }
+
+        $want = [];
+        foreach ($uids as $u) {
+            $u = (string)$u;
+            if ($u !== '') {
+                $want[$u] = true;
+            }
+        }
+        $current = $this->listUserMembers($singleId); // userId => ['memberId'=>string,'level'=>int]
+
+        // Lägg till saknade individer som TYPE_USER (blir level member).
+        foreach (array_keys($want) as $uid) {
+            if (!isset($current[$uid])) {
+                $this->ocsRequest('POST', self::API_BASE . '/' . rawurlencode($singleId) . '/members', [
+                    'userId' => $uid,
+                    'type' => self::MEMBER_TYPE_USER,
+                ], $singleId);
+            }
+        }
+
+        // Ta bort överflödiga individer AUKTORITATIVT (aldrig ägaren/level 9).
+        $ok = true;
+        foreach ($current as $uid => $rec) {
+            if (isset($want[$uid]) || (int)($rec['level'] ?? self::MEMBER_TYPE_USER) >= self::LEVEL_OWNER) {
+                continue;
+            }
+            if (!$this->removeMemberVerified($singleId, (string)$rec['memberId'])) {
+                $ok = false;
+                $this->logger->error('hubs_arende: TeamClient.syncMembers — REVOKERING MISSLYCKADES; användare kan behålla åtkomst (manuell åtgärd krävs)', [
+                    'app' => 'hubs_arende',
+                    'teamId' => $singleId,
+                    'uidRef' => $this->safeRef($uid),
+                ]);
+            }
+        }
+
+        return $ok;
+    }
+
     // ================================================================== //
     //  Internal helpers
     // ================================================================== //
+
+    /**
+     * GET teamets TYPE_USER-medlemmar → [userId => ['memberId'=>string,'level'=>int]].
+     * TYPE_GROUP-medlemmen (åtkomstspegeln) och ägaren utelämnas/bevaras av anroparen.
+     *
+     * @return array<string,array{memberId:string,level:int}>
+     */
+    private function listUserMembers(string $singleId): array {
+        $resp = $this->ocsRequest('GET', self::API_BASE . '/' . rawurlencode($singleId) . '/members', null, $singleId);
+        $data = $resp['ocs']['data'] ?? null;
+        $out = [];
+        if (is_array($data)) {
+            foreach ($data as $m) {
+                if (!is_array($m)) {
+                    continue;
+                }
+                $uid = $m['userId'] ?? null;
+                $memberId = $m['id'] ?? null;
+                if ((int)($m['userType'] ?? 0) === self::MEMBER_TYPE_USER
+                    && is_string($uid) && $uid !== ''
+                    && is_string($memberId) && $memberId !== '') {
+                    $out[$uid] = ['memberId' => $memberId, 'level' => (int)($m['level'] ?? 1)];
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** DELETE en cirkelmedlem (memberId), verifiera OCS-ok, en transient retry. */
+    private function removeMemberVerified(string $singleId, string $memberId): bool {
+        $path = self::API_BASE . '/' . rawurlencode($singleId) . '/members/' . rawurlencode($memberId);
+        if ($this->ocsOk($this->ocsRequest('DELETE', $path, null, $singleId))) {
+            return true;
+        }
+        return $this->ocsOk($this->ocsRequest('DELETE', $path, null, $singleId));
+    }
 
     /** Pull the circle singleId out of an OCS v2 envelope ({ocs:{data:{id}}}). */
     private function extractSingleId(?array $response): ?string {

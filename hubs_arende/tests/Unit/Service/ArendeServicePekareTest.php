@@ -73,6 +73,7 @@ final class ArendeServicePekareTest extends TestCase {
             $this->pekare('deck_card', '7', '99'),             // objekt_id=cardId, riktning=boardId
             $this->pekare('calendar', 'case-cal.ics', 'agare-uid'),
             $this->pekare('team', 'team-single-id'),           // T — presentationsteamet
+            $this->pekare('dokumentchatt', 'filtok-1', '05-bbic'), // P1.3b — filchatt-rum (objektId=token, riktning=fil)
             $this->pekare('talk_room', 'token-ORIG'),          // SAGA-original (äldst)
         ]);
         // mapToCard (inherited) reuses findByCaseAndTyp for talkToken + bevakningBoardId.
@@ -102,6 +103,10 @@ final class ArendeServicePekareTest extends TestCase {
                 ['token' => 'token-ORIG', 'namn' => null],
                 ['token' => 'token-NEW', 'namn' => null],
             ],
+            // P1.3b — dokumentchatt-rum (filchatt) som förstaklassiga pekare.
+            'dokumentchattar' => [
+                ['token' => 'filtok-1', 'fil' => '05-bbic'],
+            ],
         ], $full['pekare']);
         // bevakningBoardId === deckBoardId invariant.
         self::assertSame($full['pekare']['deckBoardId'], $full['pekare']['bevakningBoardId']);
@@ -125,6 +130,7 @@ final class ArendeServicePekareTest extends TestCase {
             'bevakningBoardId' => null,
             'teamId' => null,
             'talkRooms' => [],
+            'dokumentchattar' => [],
         ], $full['pekare']);
         // Collapsed keys (inherited) are also honest-empty.
         self::assertNull($full['talkToken']);
@@ -193,6 +199,43 @@ final class ArendeServicePekareTest extends TestCase {
     }
 
     // ================================================================== //
+    //  (5) losRum — reverse-lookup rum→ärende (P1.3b): boten läser registret
+    // ================================================================== //
+
+    public function testLosRumResolvarTalkRoomOchDokumentchatt(): void {
+        $pekareMapper = $this->createMock(PekareMapper::class);
+        $pekareMapper->method('findByTypAndObjektId')->willReturnCallback(
+            function (string $typ, string $token): array {
+                if ($typ === 'talk_room' && $token === 'arenderum-tok') {
+                    return [$this->pekareMed('case-A', 'talk_room', 'arenderum-tok')];
+                }
+                if ($typ === 'dokumentchatt' && $token === 'fil-tok') {
+                    return [$this->pekareMed('case-B', 'dokumentchatt', 'fil-tok', '05-bbic')];
+                }
+                return [];
+            },
+        );
+        $service = $this->makeService($pekareMapper);
+
+        // deltagare = null i testharnessen (ingen IDBConnection injicerad ⇒
+        // rumDeltagare fail-closar med null; kretsvakten nekar då korrekt).
+        self::assertSame(
+            ['hubsCaseId' => 'case-A', 'typ' => 'talk_room', 'fil' => null, 'deltagare' => null],
+            $service->losRum('arenderum-tok'),
+        );
+        self::assertSame(
+            ['hubsCaseId' => 'case-B', 'typ' => 'dokumentchatt', 'fil' => '05-bbic', 'deltagare' => null],
+            $service->losRum('fil-tok'),
+        );
+        self::assertNull($service->losRum('okant-rum'), 'okänt rum ⇒ null');
+        self::assertNull($service->losRum(''), 'tom token ⇒ null');
+    }
+
+    public function testLosRumUtanPekareMapperArNull(): void {
+        self::assertNull($this->makeService(null)->losRum('vilken-som-helst'));
+    }
+
+    // ================================================================== //
     //  Helpers
     // ================================================================== //
 
@@ -224,6 +267,13 @@ final class ArendeServicePekareTest extends TestCase {
         $p->setObjektTyp($objektTyp);
         $p->setObjektId($objektId);
         $p->setRiktning($riktning);
+        return $p;
+    }
+
+    /** Pekare med hubs_case_id satt (losRum returnerar getHubsCaseId()). */
+    private function pekareMed(string $hubsCaseId, string $objektTyp, string $objektId, ?string $riktning = null): Pekare {
+        $p = $this->pekare($objektTyp, $objektId, $riktning);
+        $p->setHubsCaseId($hubsCaseId);
         return $p;
     }
 }

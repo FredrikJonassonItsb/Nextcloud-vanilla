@@ -66,8 +66,11 @@ class PageController extends Controller {
                 'profile' => $this->roleService->getProfile($this->userId),
                 'channelCoverage' => $this->appDetection->channelCoverage(),
                 'prefs' => $this->preferences->get($this->userId),
-                // LOA is refreshed live from sdkmc getSettings; provide a safe default.
-                'loa' => 'LOA3',
+                // LOA refreshas live från sdkmc getSettings; default MÅSTE vara
+                // fail-secure (lägsta) tills dess — en hårdkodad hög nivå visade
+                // annars falskt "BankID Tillitsnivå 3" redan vid första paint efter
+                // lösenordsinloggning (E2E 2026-07-14). Bindande LoA bor i sessionen/sdkmc.
+                'loa' => 'LOA1',
                 // Optional landing persona (app-config 'default_persona'). On an
                 // instance where the engine (hubs_arende) owns the ärende data, set
                 // this to 'socialsekreterare' so the dashboard lands directly on the

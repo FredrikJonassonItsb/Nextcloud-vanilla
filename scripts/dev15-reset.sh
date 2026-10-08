@@ -20,7 +20,10 @@
 #   - TEAM: per-ärende circles (pekare objekt_typ='team' + namn-fallback
 #     'Ärende <UUID>') via `occ circles:manage:destroy` — läses FÖRE SQL-blocket
 #     (som raderar pekarna).
-#   - oc_hubs_arende_case/pekare/member/flagga   (alla ärenden + koordinations-state)
+#   - oc_hubs_arende_case + all per-ärende-data: pekare/member/flagga/handelse/
+#     bevakning + part/sakuppgift/ai_utkast/brain_provision (ärenden, koordinations-
+#     state, parter, sakuppgifter, AI-utkast, brain-provisionering). Behåll _typ.
+#     De fyra sistnämnda guardas med to_regclass (finns ej i äldre scheman).
 #     → kvittenser (TreservaKvittens) härleds ur registret, så de försvinner med.
 #   - oc_sdkmc_itsl_message_tag + oc_sdkmc_itsl_tag för case:* / behandlad / $dnr_*
 #     → meddelandena blir otaggade och dyker upp i "Att ta emot" igen.
@@ -28,10 +31,13 @@
 #     via `occ groupfolders:delete -f` (DB + filsystem) — aldrig blind SQL.
 #   - PER-CASE-GRUPPER: NC-grupper 'hubs-case-*' via `occ group:delete` (täpper
 #     det tidigare hålet där grupperna läckte som föräldralösa).
+#   - ÄRENDE-TALK-RUM: diskussions-rum ('Ärende … – diskussion') + docx-fil-chattar
+#     via `occ talk:room:delete` (name-baserat svep → tar även redan föräldralösa
+#     rum från tidigare gallringar). Attendees/meddelanden rensas av kommandot.
 #
-# LÄMNAR KVAR (osynligt i klienten; pekarna är borta): föräldralösa Talk-diskussions-
-#   rum, Deck-kort och kalenderobjekt. Säker post-hoc-radering av dem kräver motorns
-#   teardown; säg till om de också ska med.
+# LÄMNAR KVAR (osynligt i klienten; pekarna är borta): föräldralösa Deck-kort och
+#   kalenderobjekt (+ ev. 'Säkert möte'-rum). Säker post-hoc-radering av dem kräver
+#   motorns teardown; säg till om de också ska med.
 #
 # Användning:
 #   scripts/dev15-reset.sh
@@ -73,6 +79,19 @@ DELETE FROM oc_hubs_arende_pekare;
 DELETE FROM oc_hubs_arende_member;
 DELETE FROM oc_hubs_arende_flagga;
 DELETE FROM oc_hubs_arende_handelse;
+DELETE FROM oc_hubs_arende_bevakning;
+-- Per-ärende-data som historiskt saknades här → blev dinglande rader efter att
+-- _case raderats (parter/sakuppgifter/AI-utkast/brain-provisionering). Guardade
+-- med to_regclass så scheman utan tabellerna (t.ex. före ai_utkast-migrationen)
+-- inte avbryter hela återställningen (\set ON_ERROR_STOP on ovan). Måste ligga
+-- FÖRE _case (samma barn-först-ordning som pekare/member/… ovan).
+DO $$
+BEGIN
+  IF to_regclass('oc_hubs_arende_part')            IS NOT NULL THEN DELETE FROM oc_hubs_arende_part;            END IF;
+  IF to_regclass('oc_hubs_arende_sakuppgift')      IS NOT NULL THEN DELETE FROM oc_hubs_arende_sakuppgift;      END IF;
+  IF to_regclass('oc_hubs_arende_ai_utkast')       IS NOT NULL THEN DELETE FROM oc_hubs_arende_ai_utkast;       END IF;
+  IF to_regclass('oc_hubs_arende_brain_provision') IS NOT NULL THEN DELETE FROM oc_hubs_arende_brain_provision; END IF;
+END $$;
 DELETE FROM oc_hubs_arende_case;
 -- sdkmc per-meddelande-taggar: case:* / behandlad / $dnr_* (mappningar + per-ärende-defs).
 DELETE FROM oc_sdkmc_itsl_message_tag
@@ -82,6 +101,13 @@ DELETE FROM oc_sdkmc_itsl_message_tag
  );
 DELETE FROM oc_sdkmc_itsl_tag
  WHERE imap_label LIKE 'case:%' OR imap_label LIKE '$dnr_%';
+-- Mail-appens EGNA per-user-taggar (oc_mail_tags) speglar case:/behandlad. De
+-- rensades tidigare inte här → dinglande 'Ärende <kort>'-taggar mot raderade
+-- ärenden blev kvar i Meddelanden-klienten. Rensa mappningarna först, sedan taggarna.
+DELETE FROM oc_mail_message_tags
+ WHERE tag_id IN (SELECT id FROM oc_mail_tags WHERE imap_label LIKE 'case:%' OR imap_label = 'behandlad');
+DELETE FROM oc_mail_tags
+ WHERE imap_label LIKE 'case:%' OR imap_label = 'behandlad';
 COMMIT;
 SQL
 
@@ -114,12 +140,32 @@ done
 echo "  ✓ ${n} per-case-grupper raderade."
 REMOTE
 
+# ── 5) ÄRENDE-TALK-RUM: diskussions-rum ('Ärende … – diskussion') + per-dokument
+#      fil-chattar (docx). Dessa LÄMNADES tidigare kvar (föräldralösa rum i Talk-
+#      sidopanelen efter att pekarna raderats); raderas nu auktoritativt via
+#      `occ talk:room:delete` (rensar även attendees/meddelanden). Name-baserat svep
+#      så ÄVEN redan föräldralösa rum (från tidigare gallringar utan detta steg) tas.
+echo "→ Raderar ärende-Talk-rum (diskussioner + docx-fil-chattar)…"
+ssh -o BatchMode=yes -o ConnectTimeout=30 "${SSH_TARGET}" bash -s <<'REMOTE'
+tokens=$(sudo docker exec hubs-postgres psql -U oc_hubs -d hubs -t -A \
+  -c "SELECT token FROM oc_talk_rooms WHERE name LIKE 'Ärende %' OR (type = 3 AND object_type = 'file' AND name LIKE '%.docx');")
+n=0
+for t in $tokens; do
+  if sudo docker exec -u www-data hubs-php php /var/www/html/occ talk:room:delete "$t" -n >/dev/null 2>&1; then
+    n=$((n + 1))
+  fi
+done
+echo "  ✓ ${n} ärende-Talk-rum raderade."
+REMOTE
+
 # ── Verifiering av känt läge ────────────────────────────────────────────────
 ssh -o BatchMode=yes -o ConnectTimeout=15 "${SSH_TARGET}" "${PSQL}" <<'SQL'
 \echo ''
-\echo '=== KÄNT LÄGE (förväntat: arenden=0, pekare=0, medlemmar=0, hanterade_taggar=0, arenderum=0, team=0, case_grupper=0, inbox>=2) ==='
+\echo '=== KÄNT LÄGE (förväntat: arenden=0, parter=0, sakuppgifter=0, pekare=0, medlemmar=0, hanterade_taggar=0, arenderum=0, team=0, case_grupper=0, talk_arenderum=0, inbox>=2) ==='
 SELECT
-  (SELECT count(*) FROM oc_hubs_arende_case)   AS arenden,
+  (SELECT count(*) FROM oc_hubs_arende_case)       AS arenden,
+  (SELECT count(*) FROM oc_hubs_arende_part)       AS parter,
+  (SELECT count(*) FROM oc_hubs_arende_sakuppgift) AS sakuppgifter,
   (SELECT count(*) FROM oc_hubs_arende_pekare)  AS pekare,
   (SELECT count(*) FROM oc_hubs_arende_member)  AS medlemmar,
   (SELECT count(*) FROM oc_sdkmc_itsl_message_tag mmt
@@ -130,6 +176,7 @@ SELECT
   (SELECT count(*) FROM oc_circles_circle
      WHERE name ~ '^Ärende [0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$') AS team,
   (SELECT count(*) FROM oc_groups WHERE gid LIKE 'hubs-case-%') AS case_grupper,
+  (SELECT count(*) FROM oc_talk_rooms WHERE name LIKE 'Ärende %') AS talk_arenderum,
   (SELECT count(*) FROM oc_mail_messages m
      JOIN oc_mail_mailboxes mb ON m.mailbox_id = mb.id
      WHERE lower(mb.name) = 'inbox')           AS inbox_meddelanden;

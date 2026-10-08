@@ -11,6 +11,7 @@ namespace OCA\HubsArende\Settings;
 
 use OCA\HubsArende\Service\StatusService;
 use OCP\AppFramework\Http\TemplateResponse;
+use OCP\AppFramework\Services\IAppConfig;
 use OCP\Settings\ISettings;
 
 /**
@@ -20,6 +21,7 @@ use OCP\Settings\ISettings;
 class AdminStatus implements ISettings {
     public function __construct(
         private StatusService $statusService,
+        private IAppConfig $appConfig,
     ) {
     }
 
@@ -28,7 +30,13 @@ class AdminStatus implements ISettings {
         return new TemplateResponse(
             'hubs_arende',
             'admin-status',
-            ['status' => $this->statusService->status()],
+            [
+                'status' => $this->statusService->status(),
+                // AI-upptäckbarhet: brain-hälsningens läge + om bot-posting är konfigurerad.
+                'brainGreeting' => trim($this->appConfig->getAppValueString('brain_greeting', 'alla')),
+                'botConfigured' => trim($this->appConfig->getAppValueString('talk_bot_id', '0')) !== '0'
+                    && trim($this->appConfig->getAppValueString('talk_bot_secret', '')) !== '',
+            ],
             '',
         );
     }

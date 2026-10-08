@@ -71,6 +71,28 @@ const HUBS_ARENDE_OCS = (path) => generateOcsUrl('apps/hubs_arende/api/v1' + pat
 /** Unwrap an OCS response body. */
 const ocsData = (response) => response?.data?.ocs?.data
 
+/**
+ * A7/A9 — plocka fram motorns grind-krav ur ett kastat OCS-fel. transitionSteg()
+ * (och commit-flödet) svarar 400 med { error, grindKravs:true } när ett obligatoriskt
+ * grindval saknas OCH flaggan är på (ArendeLifecycleService kastar
+ * \InvalidArgumentException → controller 400). Returnerar { grindKravs, error } så
+ * callern kan avgöra OM en grind-dialog ska öppnas (grindKravs===true) och visa
+ * motorns orsak. grindKravs=false för alla andra fel (transport/403/…), som då
+ * hanteras som vanliga fel. PII-fritt: error bär enum-koder, aldrig fri text.
+ * @param {*} e ett kastat axios-/OCS-fel
+ * @return {{grindKravs:boolean, error:?string}}
+ */
+export function grindKravFel(e) {
+	const data = e && e.response && e.response.data && e.response.data.ocs && e.response.data.ocs.data
+	if (data && data.grindKravs) {
+		// grind = maskinläsbar nyckel för VILKEN grind som föll (skyddsbedomning|
+		// inleda|inte_inleda|kommunicering|avslut) när motorn kan avgöra det (G3).
+		// Låter frontenden öppna rätt dialog utan att gissa via textmatchning.
+		return { grindKravs: true, error: data.error || null, grind: data.grind || null }
+	}
+	return { grindKravs: false, error: (data && data.error) || null, grind: null }
+}
+
 // ---------------------------------------------------------------------------
 // Boot / identity
 // ---------------------------------------------------------------------------
@@ -503,15 +525,22 @@ export function arendeTypForRad(rad) {
  */
 async function taggaCaseMeddelande(ids, hubsCaseId) {
 	if (DEMO) return true
-	try {
-		for (const id of ids) {
-			await setMessageTag(id, 'case:' + hubsCaseId, true)
-			await setMessageTag(id, 'behandlad', true)
+	// Per-tagg-felhantering: en try runt hela loopen avbröt på FÖRSTA felet —
+	// felade case:-taggen (t.ex. 404 på en meddelandekopia användaren inte äger,
+	// B1a) sattes aldrig 'behandlad' ens när den skulle lyckas, och raden föll
+	// aldrig ur "Att ta emot". Försök därför ALLA taggar; kontraktet (false om
+	// någon misslyckades) är oförändrat.
+	let allaSatta = true
+	for (const id of ids) {
+		for (const tagg of ['case:' + hubsCaseId, 'behandlad']) {
+			try {
+				await setMessageTag(id, tagg, true)
+			} catch (e) {
+				allaSatta = false
+			}
 		}
-		return true
-	} catch (e) {
-		return false
 	}
+	return allaSatta
 }
 
 export async function skapaArende(rad) {
@@ -565,17 +594,30 @@ export async function skapaArende(rad) {
 
 /**
  * Avancera ett ärende ett steg i livscykel-grafen (inflode→forhandsbedomning→
- * utredning→beslut→uppfoljning→avslutat). Körs efter en verifierad commit.
+ * utredning→beslut→uppfoljning→avslutat). Kör grindarna server-side (A7/A9):
+ * hela KONTEXT-objektet skickas med så motorn kan konsumera override/inteInledaVal/
+ * kommuniceringVal/avslutsmotiv (se ArendeLifecycleService::transitionera). Ett
+ * saknat obligatoriskt grindval ger 400 { error, grindKravs } så callern kan visa
+ * rätt grind-dialog och skicka om.
+ *
  * @param {string} ref hubsCaseId, dnr eller triageRef
  * @param {string} nyttSteg målsteget enligt ArendeLifecycleService-grafen
- * @param {boolean} [skyddsbedomningKvitterad] ORO-1: plikt-grinden kräver detta för
- *        förhandsbedömning→utredning på en pliktGrind-typ (orosanmälan). Sätts true
- *        när handläggaren fattat beslutet (verifierad commit av skyddsbedömningen).
+ * @param {(object|boolean)} [kontext] grind-kontexten (alla nycklar valfria):
+ *        { skyddsbedomningKvitterad?, override?:{skal}, inteInledaVal?:{orsak,beslutsfattare},
+ *          kommuniceringVal?:{gjord,skal?}, avslutsmotiv?:{utfall,kvarstaende?} }.
+ *        BAKÅTKOMPAT: en boolean tolkas som legacy-{skyddsbedomningKvitterad}
+ *        (den enda tredje-arg som fanns innan grindarna wirades).
  * @return {Promise<{ok:boolean, steg:string}>}
  */
-export async function transitionSteg(ref, nyttSteg, skyddsbedomningKvitterad = false) {
+export async function transitionSteg(ref, nyttSteg, kontext = {}) {
+	// Normalisera legacy-boolean → kontext-objekt (bakåtkompatibilitet).
+	const ctx = (typeof kontext === 'boolean')
+		? { skyddsbedomningKvitterad: kontext }
+		: (kontext || {})
 	if (DEMO) return { ok: true, steg: nyttSteg }
-	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/steg'), { nyttSteg, skyddsbedomningKvitterad })
+	// Hela kontexten läggs bredvid nyttSteg i bodyn (controllern plockar ut de
+	// enskilda nycklarna och trådar dem in i lifecycleService->transitionera).
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/steg'), { nyttSteg, ...ctx })
 	return ocsData(res)
 }
 
@@ -646,6 +688,20 @@ export async function fetchArendeParter(ref) {
 }
 
 /**
+ * Ärenderummets anslutna (medlemsledger: handläggare/co/observatör/krets) med
+ * roll + visningsnamn. Egen billig ledger-läsning (ArendeController::medlemmar)
+ * så "Anslutna"-panelen kan läsas om vid varje expand utan den tunga full-cachen.
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @return {Promise<Array<{uid:string, roll:string, displayName?:string}>>}
+ */
+export async function fetchArendeMedlemmar(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/medlemmar (ArendeController#medlemmar).
+	if (DEMO) return []
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/medlemmar'))
+	return (ocsData(res) || {}).medlemmar || []
+}
+
+/**
  * Slå upp en person i folkbokföringen (Navet) och skriv in i partsregistret.
  * Ändamålet är obligatoriskt (journalförs; SoLPuL-nödvändighet, K-NAV-4.2).
  * @param {string} ref ärendereferens
@@ -701,6 +757,37 @@ export async function taBortPart(ref, id) {
 	return ocsData(res)
 }
 
+/**
+ * ★ LEGAL-FRIST ★ Registrera per-part-delgivning (FL 33 §) — flyttar
+ * överklagandefristen till partsnivå. Laga kraft = senaste partens frist.
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @param {string} datum delgivningsdatum (YYYY-MM-DD)
+ * @param {string} metod ordinar|forenklad|muntlig|kungorelse|stamning
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function setPartDelgivning(ref, id, datum, metod = 'ordinar') {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/{id}/delgivning (Part#setDelgivning).
+	if (DEMO) return { ok: true, part: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id)) + '/delgivning'), { datum, metod })
+	return ocsData(res)
+}
+
+/**
+ * ★ LEGAL-FRIST ★ Undanta en part från delgivning (OSL 10:3 / skyddad adress /
+ * våld) — parten ska medvetet inte nås och håller inte upp laga kraft.
+ * @param {string} ref ärendereferens
+ * @param {number} id partens id
+ * @param {string} grund osl_10_3|skyddad_adress|vald|annan
+ * @return {Promise<{ok:boolean, part:object}>}
+ */
+export async function undantaPartDelgivning(ref, id, grund) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/part/{id}/delgivning/undanta (Part#undantaDelgivning).
+	if (DEMO) return { ok: true, part: null }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/part/' + encodeURIComponent(String(id)) + '/delgivning/undanta'), { grund })
+	return ocsData(res)
+}
+
 // ---------------------------------------------------------------------------
 // HANDLING-FRÅN-MALL (fas 1) — skapa en ifylld handling ur mallbiblioteket.
 // Motorn läser mallen ur den delade mallmappen, fyller ärendedata (register +
@@ -731,7 +818,13 @@ export async function fetchHandlingUtkast(ref, mallId = null) {
 	// (malldefinitionen — dialogen visar aldrig fält mallen saknar).
 	if (DEMO) return { ok: true, falt: [], skyddsniva: 'ingen', varningar: [] }
 	const params = mallId ? { mallId } : {}
-	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling-utkast'), { params })
+	// Med mallId kan motorn dessutom generera ett källförankrat AI-narrativ via
+	// orkestreraren (inline-läge) — det tar tid (lokal LLM), så tåla längre latens.
+	// Utan mallId (första hämtningen) är det bara register-uppslag → normal snabbhet.
+	const res = await axios.get(
+		HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling-utkast'),
+		{ params, timeout: mallId ? 45000 : undefined },
+	)
 	return ocsData(res)
 }
 
@@ -746,6 +839,130 @@ export async function skapaHandling(ref, payload) {
 	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/handling (Handling#skapa).
 	if (DEMO) return { ok: true, filnamn: 'demo-handling.docx', antalErsatta: 0 }
 	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/handling'), payload)
+	return ocsData(res)
+}
+
+// ---------------------------------------------------------------------------
+// E-UNDERSKRIFT (fas 1, K-SIGN-1–9/15/21–22) — tvånivåmodellen (godkann|ades)
+// + signeringslivscykeln mot motorns OCS-yta (SigneringService → SigneringPort;
+// stub på dev15). UI:t pratar ALDRIG direkt med adaptern — bara motorns yta.
+//
+// SigneringDTO = { signRequestId, handlingRef, filename, niva:'ades',
+//   status:'pending'|'partially_signed'|'signed'|'rejected'|'expired'|'avbruten',
+//   signers:[{uid, role, status:'vantar'|'signerad', tidpunkt|null}],
+//   padesLevel: string|null, createdAt, updatedAt, expiresAt, avvisadSkal }
+// ---------------------------------------------------------------------------
+
+/**
+ * Ärendets signeringsläge: nivåmatrisen (handlingstyp → 'godkann'|'ades',
+ * K-SIGN-1) + alla signeringsposter (SigneringDTO[]).
+ * @param {string} ref hubsCaseId, dnr eller triageRef
+ * @return {Promise<{niva_matris: Object<string,string>, poster: Array<object>}>}
+ */
+export async function signeringList(ref) {
+	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/signering (Signering#oversikt).
+	if (DEMO) return { niva_matris: {}, poster: [] }
+	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering'))
+	return ocsData(res)
+}
+
+/**
+ * Godkänn-nivån (K-SIGN-2): digitalt godkännande som journalförs med
+ * {aktör-uid, roll, tidpunkt, dokumenthash, LoA} — ALDRIG en underskrift.
+ * @param {string} ref ärendereferens
+ * @param {{handlingRef:(string|number), filename:string, dokumentHash:?string}} payload
+ * @return {Promise<{journalfort:boolean, niva:string, tidpunkt:string}>}
+ */
+export async function signeringGodkann(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/godkann (Signering#godkann).
+	if (DEMO) return { journalfort: true, niva: 'godkann', tidpunkt: new Date().toISOString() }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/godkann'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Begär e-underskrift (K-SIGN-3): motorn journalför begäran (PII-fritt) och
+ * skickar via SigneringPort. Stubben kan svara 'signed' direkt (instant).
+ * @param {string} ref ärendereferens
+ * @param {{handlingRef:(string|number), filename:string, dokumentHash:?string,
+ *          signers:Array<{uid:string, role:string}>}} payload
+ * @return {Promise<object>} SigneringDTO (status pending, eller signed om instant)
+ */
+export async function signeringBegar(ref, payload) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/begar (Signering#begar).
+	if (DEMO) {
+		return {
+			signRequestId: 'demo-sign-1',
+			handlingRef: payload && payload.handlingRef,
+			filename: (payload && payload.filename) || '',
+			niva: 'ades',
+			status: 'pending',
+			signers: ((payload && payload.signers) || []).map((s) => ({ ...s, status: 'vantar', tidpunkt: null })),
+			padesLevel: null,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+			expiresAt: null,
+			avvisadSkal: null,
+		}
+	}
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/begar'), payload)
+	return ocsData(res)
+}
+
+/**
+ * Polla/uppdatera en begäran (K-SIGN-22 — idempotent: motorn pollar adaptern
+ * och uppdaterar persisterat state; säkert att anropa hur ofta som helst).
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @return {Promise<object>} uppdaterad SigneringDTO
+ */
+export async function signeringRefresh(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/refresh (Signering#refresh).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/refresh'))
+	return ocsData(res)
+}
+
+/**
+ * Förnya en avvisad/utgången begäran (K-SIGN-7): NY signRequestId med
+ * journalförd kedja till den gamla.
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId den gamla begäran
+ * @return {Promise<object>} den NYA SigneringDTO:n
+ */
+export async function signeringFornya(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/fornya (Signering#fornya).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/fornya'))
+	return ocsData(res)
+}
+
+/**
+ * Avbryt en begäran lokalt (K-SIGN-7): skälet journalförs (enum, aldrig fri
+ * text — PII-invarianten).
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @param {string} skal enum-kod (fel_handling|ny_version|annat)
+ * @return {Promise<object>} SigneringDTO (status avbruten)
+ */
+export async function signeringAvbryt(ref, signRequestId, skal) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/avbryt (Signering#avbryt).
+	if (DEMO) return null
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/avbryt'), { skal })
+	return ocsData(res)
+}
+
+/**
+ * Manuell påminnelse (K-SIGN-7, v1): motorn journalför påminnelsen — ingen
+ * Talk-integration ännu.
+ * @param {string} ref ärendereferens
+ * @param {string} signRequestId
+ * @return {Promise<{paminnelse:boolean}>}
+ */
+export async function signeringPaminn(ref, signRequestId) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/signering/{id}/paminn (Signering#paminn).
+	if (DEMO) return { paminnelse: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/signering/' + encodeURIComponent(String(signRequestId)) + '/paminn'))
 	return ocsData(res)
 }
 
@@ -791,17 +1008,75 @@ export async function fetchArendeHistorik(ref) {
 }
 
 /**
- * Ärendets BEVAKNINGAR (kortets Bevakningar-flik): läs-projektion av ärendets
- * Deck-kort (titel/frist/kolumn/etiketter) via motorn — handläggaren behöver
- * ingen egen Deck-behörighet.
+ * Ärendets BEVAKNINGAR (kortets Bevakningar-flik): REGISTER-RADER ur bevaknings-
+ * registret via motorn (förstaklassiga watches — titel/villkor/status/frist), inte
+ * längre läs-projektioner av Deck-kort. Handläggaren behöver ingen Deck-behörighet.
  * @param {string} ref hubsCaseId eller dnr
- * @return {Promise<Array<{titel:string, frist:?string, kolumn:?string, etiketter:string[]}>>}
+ * @return {Promise<Array<object>>} bevakningar (register-rader; se Bevakning-shapen)
  */
 export async function fetchArendeBevakningar(ref) {
 	// 🔌 LIVE: hubs_arende OCS — GET /arende/{ref}/bevakningar (Arende#bevakningar).
 	if (DEMO) return []
 	const res = await axios.get(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakningar'))
 	return ocsData(res).bevakningar || []
+}
+
+/**
+ * Skapa en ad hoc-bevakning på ett ärende (den tidigare döda "skapa bevakning" —
+ * villkor manuell_kvittering). Rubriken får ALDRIG bära PII. Kvitto först på
+ * verifierat svar (aldrig optimistisk succé).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {{titel:string, fristDue?:?string, recurringDagar?:?number, lagstadgad?:boolean}} data
+ * @return {Promise<object>} den skapade bevakningen (register-rad)
+ */
+export async function skapaBevakning(ref, { titel, fristDue = null, recurringDagar = null, lagstadgad = false }) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/bevakning (Arende#skapaBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning'), {
+		titel, fristDue, recurringDagar, lagstadgad,
+	})
+	return ocsData(res)
+}
+
+/**
+ * Kvittera (klarmarkera) en manuell bevakning. Recurring föder en ny cykel; övriga
+ * slocknar. Endast tillåtet på aktiv + manuell_kvittering (motorn validerar).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {number} id bevakningens id
+ * @return {Promise<object>} den uppdaterade bevakningen
+ */
+export async function kvitteraBevakning(ref, id) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/bevakning/{id}/kvittera (Arende#kvitteraBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning/' + encodeURIComponent(String(id)) + '/kvittera'))
+	return ocsData(res)
+}
+
+/**
+ * Avbryt en bevakning (ej längre relevant) — monotont slutläge.
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {number} id bevakningens id
+ * @return {Promise<object>} den avbrutna bevakningen
+ */
+export async function avbrytBevakning(ref, id) {
+	// 🔌 LIVE: hubs_arende OCS — DELETE /arende/{ref}/bevakning/{id} (Arende#avbrytBevakning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.delete(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/bevakning/' + encodeURIComponent(String(id))))
+	return ocsData(res)
+}
+
+/**
+ * Sätt delgivningsdatum (FL 33 §) → föder/uppdaterar överklagandebevakningen
+ * (3 veckor → laga kraft).
+ * @param {string} ref hubsCaseId eller dnr
+ * @param {string} datum 'YYYY-MM-DD'
+ * @return {Promise<object>} överklagande-bevakningen
+ */
+export async function setDelgivningsdatum(ref, datum) {
+	// 🔌 LIVE: hubs_arende OCS — POST /arende/{ref}/delgivning (Arende#setDelgivning).
+	if (DEMO) return { ok: true, bevakning: null, demo: true }
+	const res = await axios.post(HUBS_ARENDE_OCS('/arende/' + encodeURIComponent(ref) + '/delgivning'), { datum })
+	return ocsData(res)
 }
 
 /**
@@ -874,6 +1149,10 @@ export async function inflodeAction(action, payload) {
 	// Boundary-routing: ärende-verben (skapa/koppla/registrera/gallra) ägs av hubs_arende-
 	// motorn; meddelande-verben (besvara/vidarebefordra) av sdkmc. sdkmc avvisar ärende-verb
 	// med 400 'agas_av_arende_motorn' och vice versa, så routningen måste ske här.
+	// OBS: 'skapa-bevakning' är INTE ett inflöde-verb — det routades tidigare hit och
+	// föll till ett obefintligt sdkmc-endpoint (/inflode/skapa-bevakning) medan UI:t
+	// visade en falsk "Bevakning skapad."-toast. Bevakningar skapas nu via skapaBevakning()
+	// mot motorns /arende/{ref}/bevakning; callern öppnar ärendets Bevakningar-flik i st.f.
 	const ARENDE_VERB = ['skapa', 'koppla', 'registrera', 'gallra']
 	const base = ARENDE_VERB.includes(action) ? HUBS_ARENDE_OCS : SDKMC_OCS
 	const res = await axios.post(base('/inflode/' + encodeURIComponent(action)), payload)
@@ -890,6 +1169,7 @@ export default {
 	fetchTreservaReceipts,
 	skapaArende,
 	transitionSteg,
+	grindKravFel,
 	tilldela,
 	inflodeAction,
 	commitToTreserva,
@@ -911,4 +1191,18 @@ export default {
 	fetchNotes,
 	addNote,
 	fetchArendeEnrichment,
+	fetchArendeHistorik,
+	fetchArendeParter,
+	fetchArendeBevakningar,
+	skapaBevakning,
+	kvitteraBevakning,
+	avbrytBevakning,
+	setDelgivningsdatum,
+	signeringList,
+	signeringGodkann,
+	signeringBegar,
+	signeringRefresh,
+	signeringFornya,
+	signeringAvbryt,
+	signeringPaminn,
 }

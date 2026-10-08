@@ -25,6 +25,10 @@ use OCA\HubsArende\Integration\Client\SdkmcClient;
 use OCA\HubsArende\Integration\Client\SpreedClient;
 use OCA\HubsArende\Integration\Client\TeamClient;
 use OCA\HubsArende\Integration\Port\EdiariumPort;
+use OCA\HubsArende\Service\Brain\BrainProvisionRetryService;
+use OCA\HubsArende\Service\Brain\BrainProvisionService;
+use OCA\HubsArende\Service\Brain\BrainProvisionUnavailable;
+use OCA\HubsArende\Service\Brain\HandelseTypAi;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Services\IAppConfig;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -105,6 +109,10 @@ class ArendeService {
         // ALLA ärendets chattrum (1:n) — saga-originalet först; namn = riktning
         // (null för originalet ⇒ frontendens etikett "Ärendets diskussion").
         'talkRooms' => [],
+        // Dokumentchatt-rum (Collaboras dela→chatt) som förstaklassiga pekare
+        // (P1.3b/T1): objektId=talkToken, riktning=fil-slug. Gör dem enumererbara
+        // för gallringen (rivs MED ärendet) och tar bort rooms.json-skuggregistret.
+        'dokumentchattar' => [],
     ];
 
     /**
@@ -177,6 +185,29 @@ class ArendeService {
         // NC-notiser (klockan): tilldelning/medlemskap/frist-varsel. BEST-EFFORT —
         // en notis får aldrig fälla mutationen. TRAILING OPTIONAL.
         private ?INotificationManager $notificationManager = null,
+        // BEVAKNINGS-LIVSCYKELN: föder standardbevakningarna vid födelse (R5→post-frist),
+        // utvärderar villkor vid koppling, och äger de ref-baserade bevaknings-
+        // mutationerna. TRAILING OPTIONAL — null ⇒ createCase faller tillbaka på den
+        // gamla engångs-frist-beräkningen (computeFristDue) och bevaknings-API:t är dött.
+        private ?BevakningService $bevakningService = null,
+        // A7 — EVIDENS ur journalen som bryter den cirkulära plikt-härledningen:
+        // pliktForArende() läser skyddsbedömningens FAKTISKA artefakt/kvittens i
+        // stället för att gissa ur steget (som grinden själv flyttar). TRAILING
+        // OPTIONAL — null ⇒ fail-open till det gamla steg-baserade beteendet så den
+        // positionella testharnessen förblir grön. Autowirad i drift.
+        private ?EvidensService $evidensService = null,
+        // R2b — BRAIN-PROVISIONERING (SPEC-BRAIN-PER-ARENDE kap 3.3). ICKE-FÄLLANDE
+        // saga-steg som provisionerar ärendets brain-tenant efter register-INSERT.
+        // TRAILING OPTIONAL — null i den positionella testharnessen (R2b hoppas helt)
+        // och autowiras i drift. INVARIANT (kap 1.2): ärendeskapande får ALDRIG
+        // blockeras av dessa; ett provisioneringsfel köas durabelt eller sväljs.
+        private ?BrainProvisionService $brainProvisionService = null,
+        private ?BrainProvisionRetryService $brainProvisionRetryService = null,
+        // KRETSVAKT-STÖD: läser ett Talk-rums FAKTISKA mänskliga deltagare ur
+        // oc_talk_attendees (där tjänstekontots spreed-OCS inte når för fil-rum —
+        // SA:t är inte medlem ⇒ 403/404). losRum() returnerar dem så kretsvakten
+        // kan bekräfta kretsen även i Collaboras dokument-chatt. TRAILING OPTIONAL.
+        private ?\OCP\IDBConnection $db = null,
     ) {
     }
 
@@ -260,6 +291,31 @@ class ArendeService {
                 'exception' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * ÅTKOMSTLOGG (inre sekretess, OSL 26 kap.) — journalför en LÄSNING av ett ärende.
+     *
+     * Inte bara MUTATIONER loggas (dessa journalförs redan som Handelse) utan även
+     * LÄSNINGAR, så åtkomst till skyddad ärendeinformation är revisionsspårbar
+     * (Fredrik 2026-07-15). Anropas från de ANVÄNDARVÄNDA läs-endpointsen i controllern
+     * (ArendeController::show/historik) EFTER att show():s authz-gate släppt igenom —
+     * inte från varje intern show() (som anropas av alla mutationer och skulle dränka
+     * loggen). PII-fritt: uid + case-ref + vy, ALDRIG innehåll.
+     *
+     * Fas 1: best-effort strukturerad logg (audit-markör 'atkomst-lasning' i hubs.log,
+     * filtrerbar). Fas 2 (dokumenterad, ej här): ett durabelt åtkomstlogg-register med
+     * retention + sök, om revisionskravet kräver mer än loggretentionen.
+     */
+    public function auditLasning(string $ref, string $vy): void {
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        $this->logger->info('hubs_arende: atkomst-lasning', [
+            'app' => 'hubs_arende',
+            'audit' => 'lasning',
+            'uid' => $uid,
+            'ref' => $ref,
+            'vy' => $vy,
+        ]);
     }
 
     /**
@@ -430,6 +486,92 @@ class ArendeService {
             ];
 
             // ========================================================== //
+            //  R2b — BRAIN-PROVISIONERING (ICKE-FÄLLANDE, SPEC kap 1.2/3.3).
+            // ========================================================== //
+            // Provisionera ärendets brain-tenant DIREKT efter registret (R2) men
+            // FÖRE de externa saga-stegen. HÅRD INVARIANT (kap 1.2): ärendeskapande
+            // får ALDRIG blockeras av AI-infra — därför är HELA blocket icke-fällande:
+            //   - provision() kastar ENDAST BrainProvisionUnavailable (retrybart);
+            //     då köas ärendet durabelt (BrainProvisionRetryService) och skapandet
+            //     fortsätter UTAN brain (BrainProvisionRetryJob efterprovisionerar).
+            //   - permanent_fel (409/422) ⇒ ingen brain, ingen retry (loggas).
+            //   - noop (ej konfigurerad miljö) ⇒ tyst; ingen brain.
+            //   - lyckat ⇒ brain_tenant-pekare (hubs_case_id → tenant_id) + TYP_AI-
+            //     journal + kompensering 'R2b:drop-brain' som river tenanten om en
+            //     SENARE saga-fas (R3–R10) rullar tillbaka.
+            //   - belt-and-suspenders catch(\Throwable): INGET kast når saga-catch:en.
+            // Trailing-optional-injektionen ⇒ null i testharnessen ⇒ R2b hoppas helt.
+            if ($this->brainProvisionService !== null) {
+                try {
+                    $brainRes = $this->brainProvisionService->provision(
+                        $hubsCaseId,
+                        $typ->getArendeTypId(),
+                        // Normalt false — R0 fångade karantän-inflöden före R2. En typ
+                        // som EXPLICIT föds i karantän får en R0-speglad (fryst) brain.
+                        $commitDestination === 'karantan',
+                    );
+                    $tenantId = (string)($brainRes['tenant_id'] ?? '');
+                    if ($tenantId !== '') {
+                        // Kompenseringen pushas FÖRST (fångar tenantId per värde), så en
+                        // ev. pekar-skrivfel nedan inte tappar rollback-förmågan.
+                        $compensations[] = [
+                            'name' => 'R2b:drop-brain',
+                            'fn' => function () use ($tenantId, $hubsCaseId): void {
+                                try {
+                                    $this->brainProvisionService?->rollback($tenantId);
+                                    $this->pekareMapper?->deleteByCaseAndTyp($hubsCaseId, 'brain_tenant');
+                                } catch (\Throwable $e) {
+                                    $this->logCompensationFailure('R2b', $e);
+                                }
+                            },
+                        ];
+                        // brain_tenant-pekaren är enda vägen hubs_case_id → tenant_id
+                        // (frys/gallring/karantän-spegling resolverar tenanten härifrån).
+                        $this->pekareMapper?->record($hubsCaseId, 'brain_tenant', $tenantId);
+                        $this->loggaHandelse($hubsCaseId, HandelseTypAi::typVarde(), [
+                            'handling' => HandelseTypAi::PROVISIONERAD,
+                            'idempotent' => ($brainRes['idempotent'] ?? false) === true,
+                        ]);
+                    } elseif (($brainRes['permanent_fel'] ?? false) === true) {
+                        // 409/422 = terminalt (t.ex. schema-kollision). Ingen retry (kap 3.3).
+                        $this->logger->critical('hubs_arende: brain-provision permanent fel vid R2b (driftlarm)', [
+                            'app' => 'hubs_arende',
+                            'hubsCaseId' => $hubsCaseId,
+                            'kod' => (string)($brainRes['kod'] ?? ''),
+                        ]);
+                    }
+                    // noop (ej konfigurerad) faller igenom tyst: ingen brain i denna miljö.
+                } catch (BrainProvisionUnavailable $e) {
+                    // RETRYBART (provisionern onåbar/timeout/5xx): köa durabelt och
+                    // neutralisera kön om sagan senare rullar tillbaka (kap 3.3, spärr 1).
+                    $this->brainProvisionRetryService?->enqueue($hubsCaseId, $typ->getArendeTypId());
+                    $compensations[] = [
+                        'name' => 'R2b:retry-neutralisera',
+                        'fn' => function () use ($hubsCaseId): void {
+                            try {
+                                $this->brainProvisionRetryService?->neutralisera($hubsCaseId);
+                            } catch (\Throwable $e) {
+                                $this->logCompensationFailure('R2b', $e);
+                            }
+                        },
+                    ];
+                    $this->logger->warning('hubs_arende: brain-provision onåbar vid R2b — köad för durabel retry', [
+                        'app' => 'hubs_arende',
+                        'hubsCaseId' => $hubsCaseId,
+                    ]);
+                } catch (\Throwable $e) {
+                    // Belt-and-suspenders (kap 3.3): INGET brain-fel får fälla skapandet.
+                    $this->logger->error('hubs_arende: brain-provision ohanterat fel vid R2b (sväljs, ärendet skapas)', [
+                        'app' => 'hubs_arende',
+                        'hubsCaseId' => $hubsCaseId,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            } else {
+                $this->skipStep('R2b', $hubsCaseId);
+            }
+
+            // ========================================================== //
             //  R3 — case:{hubsCaseId} tag via sdkmc (carrier of the token).
             // ========================================================== //
             // Create the case:{hubsCaseId} systemtag/imap_label via the sdkmc OCS
@@ -516,6 +658,9 @@ class ArendeService {
                 $teamSingleId = $this->teamClient->createTeam('Ärende ' . self::kortRef($hubsCaseId), $perCaseGid);
                 if ($teamSingleId !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'team', $teamSingleId);
+                    // Materialisera individ-medlemmarna i teamet (namn i team-vyn).
+                    // Körs EFTER att team-pekaren finns — annars vore synken en no-op.
+                    $this->syncArenderumTeamMedlemmar($hubsCaseId, $this->atkomstUids($hubsCaseId));
                 }
             } else {
                 $this->skipStep('T', $hubsCaseId);
@@ -576,37 +721,21 @@ class ArendeService {
             ];
 
             // ========================================================== //
-            //  R5 — Deck card (board=enhet, label case:, due=frist).
+            //  R5 — Bevaknings-Deck-korten (ETT kort per bevakning).
             // ========================================================== //
-            // 2-step create (POST card -> PUT label case:{id}); store a pekare
-            // (objekt_typ='deck_card', boardId stashed in riktning so the
-            // compensation can DELETE on the right board). R5 sits before R8, so the
-            // frist is not yet computed; pass null due (the register carries the
-            // authoritative frist after R8). isAvailable()-gated graceful skip.
-            if ($this->deckClient !== null && $this->pekareMapper !== null) {
-                // M2 — pseudonym korttitel; KORT ref för läsbarhet på tavlan
-                // (hela UUID:t är oläsbart och sa ingenting om vad bevakningen gäller).
-                $card = $this->deckClient->createCard(
-                    (string)$arende->getEnhet(),
-                    'Ärende ' . self::kortRef($hubsCaseId),
-                    null,
-                    'Bevakning för ärende ' . self::kortRef($hubsCaseId) . ' (' . $typ->getArendeTypId() . '). Fristen bärs av ärendekortet i Hubs Start.',
-                );
-                if ($card !== null) {
-                    $this->deckClient->addLabel($card['boardId'], $card['cardId'], 'case:' . $hubsCaseId);
-                    $this->pekareMapper->record(
-                        $hubsCaseId,
-                        'deck_card',
-                        (string)$card['cardId'],
-                        (string)$card['boardId'],
-                    );
-                }
-            } else {
-                $this->skipStep('R5', $hubsCaseId);
-            }
+            // Den gamla modellen skapade HÄR ett enda generiskt, inert kort
+            // (due=null) per ärende. Nu skapas i stället ETT Deck-kort per
+            // standardbevakning — men först EFTER att fristen beräknats (R8) och
+            // steget satts (R10), av BevakningService::skapaStandardForFodelse
+            // längre ned. Varje sådant kort registreras som en deck_card-pekare,
+            // så kompensationen nedan (och gallringen) river dem uniformt.
+            $this->skipStep('R5', $hubsCaseId);
             $compensations[] = [
-                'name' => 'R5:delete-deck-card',
+                'name' => 'R5:delete-deck-cards+bevakningar',
                 'fn' => function () use ($hubsCaseId): void {
+                    // Riv bevakningsraderna (koordinationsdata) …
+                    $this->bevakningService?->rensaForKompensation($hubsCaseId);
+                    // … och deras Deck-kort via deck_card-pekarna.
                     if ($this->deckClient === null || $this->pekareMapper === null) {
                         $this->noopCompensation('R5', $hubsCaseId);
                         return;
@@ -634,6 +763,15 @@ class ArendeService {
                 );
                 if ($talkToken !== null) {
                     $this->pekareMapper->record($hubsCaseId, 'talk_room', $talkToken);
+                    // AI-BOT: aktivera "Ärende-brain" i rummet DIREKT vid provisionering
+                    // så !hjälp/!brief/!läge funkar utan manuell `occ talk:bot:setup`
+                    // (stänger den manuella GAP:en; reconcile-jobbet är bara skyddsnät).
+                    // Best-effort — tjänstekontot äger rummet (moderator) och Talk är
+                    // idempotent. talk_bot_id=0/tom ⇒ tyst no-op.
+                    $this->spreedClient->enableBotInRoom($talkToken, $this->talkBotId());
+                    // BRAIN-HÄLSNING: boten postar en inledande kommentar så handläggaren
+                    // SER att AI:n finns när rummet öppnas (upptäckbarhet). Admin-styrt.
+                    $this->postaBrainHalsning($talkToken, 'arenderum');
                     // T-koppling: teamet som deltagare (markör-attendee) så rummet
                     // listas som team-resurs + @team-mention. Samma publik som
                     // kretsen — ingen behörighetsbreddning. Best-effort.
@@ -761,6 +899,16 @@ class ArendeService {
                     'vidFodsel' => true,
                 ]);
             }
+
+            // BEVAKNINGSKEDJAN föds här — EFTER att register-raden är komplett (frist
+            // R8, steg R10) så att fristprojektionen inte klottras över av senare
+            // lokala $arende-uppdateringar. Instansierar ärendetypens vidSteg='fodelse'-
+            // mallar (t.ex. orosanmälans 14-dagars förhandsbedömning), skapar deras
+            // Deck-kort (deck_card-pekare → R5-kompensation/gallring river dem) och
+            // projicerar registrets fristDue = tidigaste aktiva bevakning. Best-effort;
+            // ett fel fäller inte det redan födda ärendet. null-service (testharness)
+            // ⇒ computeFristDue (R8) står kvar som frist.
+            $this->bevakningService?->skapaStandardForFodelse($hubsCaseId, $typ, $rad);
 
             $this->logger->info('hubs_arende: createCase OK', [
                 'app' => 'hubs_arende',
@@ -946,16 +1094,11 @@ class ArendeService {
      * @return list<array<string,mixed>>
      */
     public function dashboardArenden(bool $mineOnly = false): array {
-        $minaCaseIds = null;
+        $mineUid = null;
         if ($mineOnly && $this->memberMapper !== null) {
-            $uid = $this->userSession?->getUser()?->getUID();
-            if ($uid !== null && $uid !== '') {
-                try {
-                    $minaCaseIds = array_fill_keys($this->memberMapper->findCaseIdsByUid($uid), true);
-                } catch (\Throwable $e) {
-                    // Graceful: fall tillbaka till enhets-scopad lista hellre än tom vy.
-                    $minaCaseIds = null;
-                }
+            $u = $this->userSession?->getUser()?->getUID();
+            if ($u !== null && $u !== '') {
+                $mineUid = (string)$u;
             }
         }
         $out = [];
@@ -963,8 +1106,21 @@ class ArendeService {
             if (!$this->enhetTillaten($arende->getEnhet())) {
                 continue;
             }
-            if ($minaCaseIds !== null && !isset($minaCaseIds[$arende->getHubsCaseId()])) {
-                continue;
+            // "Mina ärenden" = HANDOFF-MEDVETET: bara ärenden jag faktiskt håller
+            // (aktiv handläggare/co/observatör) eller — medan ärendet är otilldelat —
+            // är i mottagningskretsen för. Speglar exakt rums-/folderåtkomsten
+            // (atkomstUids), så en krets-medlem ser INTE ett ärende som tilldelats
+            // någon annan (inre sekretess, OSL 26 kap). N+1 mot ledgern (≤200 rader);
+            // batcha om volymen växer. Graceful: hellre visa (enhet-scopat) än tappa
+            // raden tyst vid ett ledger-fel.
+            if ($mineUid !== null) {
+                try {
+                    if (!in_array($mineUid, $this->atkomstUids($arende->getHubsCaseId()), true)) {
+                        continue;
+                    }
+                } catch (\Throwable $e) {
+                    // fall igenom → raden visas (enhet-authz gäller fortfarande ovan)
+                }
             }
             // AVSLUTADE ärenden visas ALDRIG i arbetsvyn (Fredrik 2026-07-07):
             // akten lever i SoR och Hubs-raden väntar bara på gallringssvepet —
@@ -1109,7 +1265,7 @@ class ArendeService {
         if ($this->memberMapper !== null) {
             try {
                 $medlemmar = array_map(
-                    static fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll()],
+                    fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll(), 'displayName' => $this->agareVisningsnamn($m->getUid())],
                     $this->memberMapper->findByCaseId($hubsCaseId),
                 );
             } catch (\Throwable $e) {
@@ -1121,7 +1277,10 @@ class ArendeService {
             'meddelanden' => [],
             'moten' => [],
             'bevakningar' => [],
-            'beslut' => null,
+            // A11 — BEVARANDE-panelen: härled beslut+signatur-provenans ur den PERSISTERADE
+            // journalen (TYP_REGISTRERAD) så panelen renderas live vid varje fetch, inte
+            // bara i commit-svaret. null när ärendet ännu inte är registrerat.
+            'beslut' => $this->beslutForCard($arende),
             'medlemmar' => $medlemmar,
             // SAGA-koordinationspekare for deep-länkning (ärenderum/diskussion/
             // ärendekort/kalender). THIN + NEVER-SoR: ENDAST id/token, aldrig PII.
@@ -1144,13 +1303,20 @@ class ArendeService {
 
     /**
      * Gruppledarens fördelningsvy for the hubs_start frontend (roll-läge
-     * 'fordelning'). Returns the OTILLDELADE cases the caller is authorised for,
-     * mapped to the collapsed dashboard card shape, plus the (thin) handläggar-
-     * belastning derivable from the register's own assignment state.
+     * 'fordelning'). Returns the cases the caller is authorised for, mapped to
+     * the collapsed dashboard card shape, plus the (thin) handläggar-belastning
+     * derivable from the register's own assignment state.
      *
-     * Shape mirrors ssDemo.fetchFordelningSummary so the existing UI renders it
-     * unchanged:
-     *   { attFordela: Card[], utredare: [{namn,aktiva,roda,naraTak}], mottagningPagaende:int }
+     * Shape is a superset of ssDemo.fetchFordelningSummary so the existing UI
+     * renders it unchanged ('tilldelade' är rent additiv):
+     *   { attFordela: Card[], tilldelade: Card[],
+     *     utredare: [{namn,aktiva,roda,naraTak}], mottagningPagaende:int }
+     *
+     * 'tilldelade' (B13): urvalet var tidigare per definition bara otilldelade
+     * rader — när alla ärenden är tilldelade var Fördela-vyn tom trots ett fullt
+     * register, och omfördelning saknade underlag. Tilldelade, ej avslutade
+     * ärenden bärs nu som kort på SAMMA informationsnivå som attFordela
+     * (pseudonym barnRef, ingen ny sekretessyta).
      *
      * ENGINE-HONEST: utredar-belastning is derived ONLY from the register's
      * agareUid + frist colour (real coordination state); no name lookup / PII is
@@ -1162,20 +1328,108 @@ class ArendeService {
     public function fordelningSummary(): array {
         try {
             $attFordela = [];
-            foreach ($this->arendeMapper->findOtilldelade(200) as $arende) {
+            $tilldelade = [];
+            /** @var array<string,array{aktiva:int,roda:int}> $perUid */
+            $perUid = [];
+            $mottagningPagaende = 0;
+            /** @var array<string,Arende> $enhetProv en representant per enhet (roster-seed) */
+            $enhetProv = [];
+
+            // EN registerläsning för hela vyn: samma findAll-loop som belastnings-
+            // aggregatet redan krävde bär nu även båda kortzonerna (ersätter det
+            // separata findOtilldelade-anropet). enhetTillaten prövas per rad
+            // precis som tidigare — object-level authz ändras inte.
+            foreach ($this->arendeMapper->findAll(200) as $arende) {
                 if (!$this->enhetTillaten($arende->getEnhet())) {
                     continue;
                 }
-                $attFordela[] = $this->mapToFordelningsKort($arende);
+                // Representant per enhet: rostern seedas ur enhetens FAKTISKA
+                // medlemskap, inte bara ur redan tilldelade ärenden (bootstrap-fix).
+                $enhetProv[$arende->getEnhet() ?? ''] = $arende;
+
+                if ($arende->getStatus() === 'otilldelat') {
+                    $attFordela[] = $this->mapToFordelningsKort($arende);
+                    if (in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true)) {
+                        $mottagningPagaende++;
+                    }
+                    continue;
+                }
+
+                if ($arende->getStatus() !== 'tilldelat') {
+                    continue;
+                }
+
+                $uid = $arende->getAgareUid();
+                $avslutat = $arende->getSteg() === 'avslutat';
+                if ($uid !== null && $uid !== '') {
+                    if (!isset($perUid[$uid])) {
+                        $perUid[$uid] = ['aktiva' => 0, 'roda' => 0];
+                    }
+                    // Avslutade (men ännu ogallrade) ärenden är INTE aktiv belastning
+                    // — de väntar bara på gallringssvepet. Räkna dem aldrig som aktiva/
+                    // röda, annars visar "Utredarnas belastning" spök-ärenden.
+                    if (!$avslutat) {
+                        $perUid[$uid]['aktiva']++;
+                        if ($this->fristAr('error', $arende)) {
+                            $perUid[$uid]['roda']++;
+                        }
+                    }
+                }
+
+                if (!$avslutat) {
+                    // Omfördelningsbart kort. agareUid string-castas medvetet:
+                    // numeriska uid:n (personnummer-konton) får annars läcka som
+                    // JSON-nummer och frontendens strikta strängjämförelser felar.
+                    $kort = $this->mapToCard($arende);
+                    $kort['tilldelning'] = [
+                        'status' => 'tilldelat',
+                        'agareUid' => (string)$uid,
+                        'agareNamn' => $this->agareVisningsnamn($uid),
+                    ];
+                    $tilldelade[] = $kort;
+                }
             }
 
-            // Thin handläggar-belastning from the register's own assignment state:
-            // count active (tilldelat) cases + red frister per agareUid. PII-fritt —
-            // the key is the uid the engine already stores (no name/innehåll lookup).
-            [$utredare, $mottagningPagaende] = $this->utredarBelastning();
+            // findAll är nyast-först men fördelningskön ska vara äldst-först
+            // (samma ordning som findOtilldelade gav) — den som väntat längst
+            // fördelas först.
+            $attFordela = array_reverse($attFordela);
+
+            // Seeda rostern ur enheternas faktiska medlemskap så en utredare UTAN
+            // aktiva ärenden ändå är valbar (annars bootstrap-döläge: första
+            // tilldelningen kan aldrig göras eftersom listan bara speglade tidigare
+            // tilldelningar). Guardat i aclKretsUids → tom i system-/CLI-kontext
+            // (ingen groupManager) så assignment-derived räkningen är oförändrad där.
+            foreach ($enhetProv as $prov) {
+                foreach ($this->aclKretsUids($prov) as $medlemUid) {
+                    if ($medlemUid !== '' && !$this->arSystemkonto($medlemUid) && !isset($perUid[$medlemUid])) {
+                        $perUid[$medlemUid] = ['aktiva' => 0, 'roda' => 0];
+                    }
+                }
+            }
+
+            $utredare = [];
+            foreach ($perUid as $uid => $b) {
+                $utredare[] = [
+                    // uid = assignments-nyckeln (FordelaTill emittar u.uid). (string)-cast:
+                    // PHP koercerar numeriska strängnycklar till int, så ett personnummer-
+                    // uid serialiserades annars som JSON-nummer — uid/namn måste vara sträng.
+                    'uid' => (string)$uid,
+                    // namn = visningsnamn för läsbarhet; fallback uid när namn saknas
+                    // (t.ex. system-/CLI-kontext utan userManager) → aldrig tomt.
+                    'namn' => $this->agareVisningsnamn((string)$uid) ?? (string)$uid,
+                    'aktiva' => $b['aktiva'],
+                    'roda' => $b['roda'],
+                    // Neutral belastnings-tröskel over the engine's own active count.
+                    'naraTak' => $b['aktiva'] >= 18,
+                ];
+            }
+            // Stable order (busiest first) so the UI list is deterministic.
+            usort($utredare, static fn (array $a, array $b): int => $b['aktiva'] <=> $a['aktiva']);
 
             return [
                 'attFordela' => $attFordela,
+                'tilldelade' => $tilldelade,
                 'utredare' => $utredare,
                 'mottagningPagaende' => $mottagningPagaende,
             ];
@@ -1184,7 +1438,7 @@ class ArendeService {
                 'app' => 'hubs_arende',
                 'exception' => $e,
             ]);
-            return ['attFordela' => [], 'utredare' => [], 'mottagningPagaende' => 0];
+            return ['attFordela' => [], 'tilldelade' => [], 'utredare' => [], 'mottagningPagaende' => 0];
         }
     }
 
@@ -1269,62 +1523,6 @@ class ArendeService {
         }
         $now = $this->timeFactory->getDateTime();
         return max(0, (int)$skapad->diff($now)->format('%a'));
-    }
-
-    /**
-     * Thin per-handläggare belastning + mottagningens pågående, derived ONLY from
-     * the register's own coordination state (agareUid + status + frist colour). No
-     * name resolution / PII — the agareUid the engine already stores is the key.
-     *
-     *  - utredare[]: { namn:<uid>, aktiva:int, roda:int, naraTak:bool } for every
-     *    uid that owns at least one tilldelat case.
-     *  - mottagningPagaende: count of cases still in the mottagnings-steg ('inflode'
-     *    /'forhandsbedomning') that are NOT yet assigned (the queue the fördelare
-     *    works from).
-     *
-     * @return array{0: list<array<string,mixed>>, 1: int}
-     */
-    private function utredarBelastning(): array {
-        /** @var array<string,array{aktiva:int,roda:int}> $perUid */
-        $perUid = [];
-        $mottagningPagaende = 0;
-
-        foreach ($this->arendeMapper->findAll(200) as $arende) {
-            if (!$this->enhetTillaten($arende->getEnhet())) {
-                continue;
-            }
-
-            $uid = $arende->getAgareUid();
-            if ($arende->getStatus() === 'tilldelat' && $uid !== null && $uid !== '') {
-                if (!isset($perUid[$uid])) {
-                    $perUid[$uid] = ['aktiva' => 0, 'roda' => 0];
-                }
-                $perUid[$uid]['aktiva']++;
-                if ($this->fristAr('error', $arende)) {
-                    $perUid[$uid]['roda']++;
-                }
-            } elseif (
-                $arende->getStatus() === 'otilldelat'
-                && in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true)
-            ) {
-                $mottagningPagaende++;
-            }
-        }
-
-        $utredare = [];
-        foreach ($perUid as $uid => $b) {
-            $utredare[] = [
-                'namn' => $uid,
-                'aktiva' => $b['aktiva'],
-                'roda' => $b['roda'],
-                // Neutral belastnings-tröskel over the engine's own active count.
-                'naraTak' => $b['aktiva'] >= 18,
-            ];
-        }
-        // Stable order (busiest first) so the UI list is deterministic.
-        usort($utredare, static fn (array $a, array $b): int => $b['aktiva'] <=> $a['aktiva']);
-
-        return [$utredare, $mottagningPagaende];
     }
 
     /**
@@ -1448,16 +1646,45 @@ class ArendeService {
         $arende->setStatus('tilldelat');
         $this->arendeMapper->update($arende);
 
+        // OMFÖRDELNING: revokera tidigare handläggare (annat uid) ur ledgern FÖRE
+        // record() av den nya. tilldela() var additiv → en omfördelning lämnade den
+        // gamla handläggaren kvar som aktiv handlaggare-medlem, vilket gav (a) ärendet
+        // kvar i förra handläggarens "Mina ärenden", (b) dubblettidentiteter i Anslutna
+        // och (c) kvarhängande atkomstUids-åtkomst efter handoff (E2E 2026-07-14).
+        // Speglas i journalen som TYP_MEDLEM riktning=ut så handoffen är granskningsbar.
+        // Endast handlaggare-rollen rensas: en tidigare handläggare som ÄVEN är
+        // co_handlaggare/observatör/krets behåller de rollerna (och därmed sin åtkomst).
+        if ($this->memberMapper !== null) {
+            foreach ($this->memberMapper->findByCaseAndRoll($hubsCaseId, Member::ROLL_HANDLAGGARE) as $gammal) {
+                if ($gammal->getUid() !== $uid) {
+                    $this->memberMapper->deleteByCaseUidRoll($hubsCaseId, $gammal->getUid(), Member::ROLL_HANDLAGGARE);
+                    $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, [
+                        'uid' => $gammal->getUid(),
+                        'roll' => Member::ROLL_HANDLAGGARE,
+                        'riktning' => 'ut',
+                    ]);
+                }
+            }
+        }
         // Förstaklassigt medlemskap: registrera den tilldelade handläggaren som
-        // medlem (roll=handlaggare). ADDITIVT — mottagningskretsen behåller sin
-        // grupp-åtkomst till groupfolder (groupfolders ger åtkomst per GRUPP, inte
+        // medlem (roll=handlaggare). idempotent via UNIQUE. Mottagningskretsen behåller
+        // sin grupp-åtkomst till groupfolder (groupfolders ger åtkomst per GRUPP, inte
         // per användare; äkta per-handläggar-avsmalning kräver per-case-grupp eller
-        // granulära ACL-regler, se Integration/README seam). idempotent via UNIQUE.
+        // granulära ACL-regler, se Integration/README seam).
         $this->memberMapper?->record($hubsCaseId, $uid, Member::ROLL_HANDLAGGARE);
         // Spegla in handläggaren i per-case-gruppen (folder-åtkomst).
         $this->syncArenderumGrupp($hubsCaseId);
 
-        $this->loggaHandelse($hubsCaseId, Handelse::TYP_TILLDELAD, ['uid' => $uid]);
+        // Journalför FÖRDELAREN (T6/F5): tidigare bar detaljen bara mottagaren
+        // ({uid}), så vem som fördelade/omfördelade gick inte att utläsa ur
+        // tilldelnings-posten (aktör_uid finns men är generisk). {av, till} gör
+        // fördelningsbeslutet granskningsbart där det sker. 'uid' behålls bakåtkompat.
+        $fordelare = $this->userSession?->getUser()?->getUID() ?? '';
+        $this->loggaHandelse($hubsCaseId, Handelse::TYP_TILLDELAD, [
+            'av' => $fordelare,
+            'till' => $uid,
+            'uid' => $uid,
+        ]);
         $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_TILLDELAD, [
             'ref' => (string)($arende->getDnr() ?? $hubsCaseId),
         ], $hubsCaseId);
@@ -1492,15 +1719,20 @@ class ArendeService {
         $hubsCaseId = $arende->getHubsCaseId();
 
         $this->memberMapper?->record($hubsCaseId, $uid, $roll);
-        // Spegla in nya medlemmen i per-case-gruppen (folder-åtkomst).
-        $this->syncArenderumGrupp($hubsCaseId);
 
-        // Chat-åtkomst: lägg till som deltagare i varje talkrum (kan vara flera).
+        // Chat-åtkomst FÖRST (före grupp-/cirkelsynken): det tjänstekonto-autentiserade
+        // addParticipant-anropet skapar attendee + 'user_added'-systemmeddelandet med
+        // korrekt aktör (tjänstekontot). Kördes det EFTER syncArenderumGrupp() hann
+        // cirkel-propageringen (en OAUTENTISERAD loopback-request) lägga in deltagaren
+        // först → systemmeddelandet fick actor='Gäst' (E2E 2026-07-14). Ordningen fixar
+        // attributionen. addParticipant är idempotent, så en dubbelinläggning är no-op.
         if ($this->spreedClient !== null && $this->pekareMapper !== null) {
             foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'talk_room') as $p) {
                 $this->spreedClient->addParticipant($p->getObjektId(), $uid);
             }
         }
+        // Spegla in nya medlemmen i per-case-gruppen (folder-åtkomst).
+        $this->syncArenderumGrupp($hubsCaseId);
 
         $this->loggaHandelse($hubsCaseId, Handelse::TYP_MEDLEM, ['uid' => $uid, 'roll' => $roll, 'riktning' => 'in']);
         $this->skickaNotis($uid, \OCA\HubsArende\Notification\Notifier::SUBJECT_MEDLEM, [
@@ -1569,9 +1801,143 @@ class ArendeService {
             return [];
         }
         return array_map(
-            static fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll()],
+            fn ($m): array => ['uid' => $m->getUid(), 'roll' => $m->getRoll(), 'displayName' => $this->agareVisningsnamn($m->getUid())],
             $this->memberMapper->findByCaseId($arende->getHubsCaseId()),
         );
+    }
+
+    /**
+     * REVERSE-lookup rum→ärende (P1.3b/T1): resolvar ett Talk-rums token till dess
+     * ärende via PEKARREGISTRET — samma sanningskälla som allt annat, i stället för
+     * botens rooms.json-skuggregister. Prövar ärenderum (talk_room) och
+     * dokumentchatt-rum (Collaboras dela→chatt). System-uppslagning (SA-only
+     * endpoint); returnerar bara koordinationsdata (aldrig PII/innehåll).
+     *
+     * @return array{hubsCaseId:string, typ:string, fil:?string}|null
+     */
+    public function losRum(string $token): ?array {
+        if ($this->pekareMapper === null || $token === '') {
+            return null;
+        }
+        foreach (['talk_room', 'dokumentchatt'] as $typ) {
+            foreach ($this->pekareMapper->findByTypAndObjektId($typ, $token) as $p) {
+                return [
+                    'hubsCaseId' => $p->getHubsCaseId(),
+                    'typ' => $typ,
+                    'fil' => $typ === 'dokumentchatt' ? $p->getRiktning() : null,
+                    // KRETSVAKT: rummets faktiska mänskliga deltagare (uid) — läses ur
+                    // Talk-DB så kretsvakten kan bekräfta kretsen ÄVEN i fil-rum där
+                    // tjänstekontots spreed-/participants-anrop nekas (SA ej medlem).
+                    'deltagare' => $this->rumDeltagare($token),
+                ];
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Ett Talk-rums FAKTISKA mänskliga deltagare (actor_type='users') ur
+     * oc_talk_attendees. Koordinationsdata (uid) — ingen PII/innehåll. Läser Talk:s
+     * tabeller direkt eftersom tjänstekontots OCS-anrop nekas för fil-rum (SA ej
+     * medlem). Graceful: saknad DB/fel ⇒ NULL (INTE tom lista) så kretsvakten
+     * fail-closar korrekt — en tom lista tolkas som "ingen utanför kretsen" = tillåt.
+     *
+     * @return string[]|null uid:n (tom array för tomt rum) eller null vid fel/otillgänglig DB.
+     */
+    private function rumDeltagare(string $token): ?array {
+        if ($this->db === null || $token === '') {
+            return null;
+        }
+        try {
+            $qb = $this->db->getQueryBuilder();
+            $qb->select('a.actor_id')
+                ->from('talk_attendees', 'a')
+                ->innerJoin('a', 'talk_rooms', 'r', $qb->expr()->eq('a.room_id', 'r.id'))
+                ->where($qb->expr()->eq('r.token', $qb->createNamedParameter($token)))
+                ->andWhere($qb->expr()->eq('a.actor_type', $qb->createNamedParameter('users')));
+            $res = $qb->executeQuery();
+            $uids = [];
+            while (($rad = $res->fetch()) !== false) {
+                $uid = (string)($rad['actor_id'] ?? '');
+                if ($uid !== '') {
+                    $uids[] = $uid;
+                }
+            }
+            $res->closeCursor();
+            return $uids;
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: rumDeltagare DB-läsning misslyckades (graceful, fail-closed)', [
+                'app' => 'hubs_arende', 'exception' => $e->getMessage(),
+            ]);
+            return null; // fail-closed: kretsvakten nekar hellre än fail-open:ar
+        }
+    }
+
+    /**
+     * Registrera ett dokumentchatt-rum (Collaboras dela→chatt) som förstaklassig
+     * pekare (P1.3b) — gör AI-närvaron inventerbar och rummet gallringsbart via
+     * pekarregistret (Fas 3-destruktionsspegeln river det MED ärendet). Idempotent
+     * (skriver aldrig dubblett för samma token+ärende). H1-authz via show().
+     *
+     * @throws DoesNotExistException Okänt/ej behörigt ärende.
+     */
+    public function registreraDokumentchatt(string $ref, string $token, string $fil): void {
+        $arende = $this->show($ref);
+        if ($this->pekareMapper === null || $token === '') {
+            return;
+        }
+        // SÄKERHET: vägra binda ett rum som redan tillhör ett ANNAT ärende. Utan detta
+        // kan en behörig användare i ärende A posta ärende B:s dokumentrums-token och
+        // binda den till A → losRum (nyaste vinner) förgiftas → botens !råd/!minne i
+        // B:s chatt hämtar A:s kontext (kors-ärende-exponering). Samma ärende = idempotent.
+        foreach (['talk_room', 'dokumentchatt'] as $rumTyp) {
+            foreach ($this->pekareMapper->findByTypAndObjektId($rumTyp, $token) as $p) {
+                if ($p->getHubsCaseId() !== $arende->getHubsCaseId()) {
+                    $this->logger->warning('hubs_arende: registreraDokumentchatt vägrade kors-ärende-bindning av rum', [
+                        'app' => 'hubs_arende',
+                    ]);
+                    return;
+                }
+                if ($rumTyp === 'dokumentchatt') {
+                    // Redan registrerat för DETTA ärende — säkerställ ändå boten (idempotent).
+                    $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+                    return;
+                }
+            }
+        }
+        $this->pekareMapper->record($arende->getHubsCaseId(), 'dokumentchatt', $token, $fil !== '' ? $fil : null);
+        // AI-BOT: aktivera "Ärende-brain" i dokumentets filchatt-rum så `!råd` (och de
+        // övriga AI-kommandona med 📄-kontext) funkar direkt i Collabora. Best-effort.
+        // OBS: fil-rum har annan moderator-semantik — enableBot (OCS) kan neka (404);
+        // då sätter reconcile-jobbet (occ talk:bot:setup, admin) upp boten kort därpå.
+        $this->spreedClient?->enableBotInRoom($token, $this->talkBotId());
+        // BRAIN-HÄLSNING i dokumentets chatt (upptäckbarhet + dokumentanpassat `!råd`).
+        $this->postaBrainHalsning($token, 'dokumentchatt', $fil !== '' ? $fil : null);
+    }
+
+    /**
+     * Dokument-AI: pre-provisionera ett dokuments Collabora-chatt vid handlingsskapande.
+     * Skapar/hämtar Talk-fil-rummet för filen (så det FINNS innan handläggaren öppnar
+     * dela→chatt) och registrerar det som dokumentchatt-pekare ({@see registreraDokumentchatt}),
+     * så `!råd` ger dokumentanpassade råd. Best-effort: fil-rummet kan kräva delning till
+     * ≥2 användare; misslyckas det fångar reconcile-jobbet upp rummet när det öppnas.
+     * Anropas av {@see HandlingService} efter att docx:en skrivits.
+     */
+    public function provisioneraDokumentchatt(string $ref, int $fileId, string $filnamn): void {
+        if ($this->spreedClient === null || $fileId <= 0) {
+            return;
+        }
+        try {
+            $token = $this->spreedClient->fileRoomToken($fileId);
+            if ($token === null || $token === '') {
+                return; // fil-rum ej skapbart nu — reconcile fångar det när det öppnas
+            }
+            $this->registreraDokumentchatt($ref, $token, $filnamn);
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: provisioneraDokumentchatt misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'ref' => $ref, 'fileId' => $fileId, 'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -1603,37 +1969,83 @@ class ArendeService {
     }
 
     /**
-     * Ärendets BEVAKNINGAR — läs-projektion av ärendets Deck-kort (titel, frist,
-     * kolumn, etiketter). Byggd för kortets Bevakningar-flik: handläggaren saknar
-     * i regel Deck-board-behörighet (boarden är enhets-/SA-ägd), så motorn läser
-     * kortet via service-kontot och visar PROJEKTIONEN — aldrig en skriv-yta.
-     * H1-authz via show(). Graceful: ingen deck-pekare/klient ⇒ tom lista.
+     * Ärendets BEVAKNINGAR — läs-projektion av bevaknings-REGISTRET (typ, villkor,
+     * status, frist), det förstaklassiga watch-lagret. Byggt för kortets
+     * Bevakningar-flik. H1-authz via show(). Koordinationsdata utan PII.
+     * Graceful: ingen BevakningService (testharness) ⇒ tom lista.
      *
      * @return list<array<string,mixed>>
      * @throws DoesNotExistException
      */
     public function bevakningar(string $ref): array {
         $arende = $this->show($ref);
-        $hubsCaseId = $arende->getHubsCaseId();
-        if ($this->deckClient === null || $this->pekareMapper === null) {
+        if ($this->bevakningService === null) {
             return [];
         }
-        $out = [];
-        try {
-            foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'deck_card') as $p) {
-                $card = $this->deckClient->getCard((int)$p->getRiktning(), (int)$p->getObjektId());
-                if ($card !== null) {
-                    $out[] = $card;
-                }
-            }
-        } catch (\Throwable $e) {
-            $this->logger->warning('hubs_arende: bevaknings-läsning misslyckades (graceful)', [
-                'app' => 'hubs_arende',
-                'hubsCaseId' => $hubsCaseId,
-                'exception' => $e->getMessage(),
-            ]);
+        $ut = [];
+        foreach ($this->bevakningService->listaForCase($arende->getHubsCaseId()) as $b) {
+            $ut[] = $b->jsonSerialize();
         }
-        return $out;
+        return $ut;
+    }
+
+    /**
+     * Handläggarskapad ad hoc-bevakning (den tidigare döda "skapa bevakning").
+     * H1-authz via show(); aktör = inloggad handläggare.
+     *
+     * @param array<string,mixed> $data {titel, fristDue?, recurringDagar?, lagstadgad?}
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function laggTillBevakning(string $ref, array $data): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->laggTillManuell($arende->getHubsCaseId(), $data, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Manuell klarmarkering (kvittering) av en bevakning. H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function kvitteraBevakning(string $ref, int $id): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->kvittera($arende->getHubsCaseId(), $id, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Avbryt en bevakning (ej längre relevant). H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function avbrytBevakning(string $ref, int $id): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->avbryt($arende->getHubsCaseId(), $id, $uid)->jsonSerialize();
+    }
+
+    /**
+     * Sätt delgivningsdatum → föder/uppdaterar överklagandebevakningen (3 v → laga
+     * kraft). H1-authz via show().
+     *
+     * @throws DoesNotExistException|\InvalidArgumentException|\RuntimeException
+     */
+    public function setDelgivningsdatum(string $ref, string $datum): array {
+        $arende = $this->show($ref);
+        if ($this->bevakningService === null) {
+            throw new \RuntimeException('Bevaknings-tjänsten är inte tillgänglig.');
+        }
+        $uid = $this->userSession?->getUser()?->getUID() ?? '';
+        return $this->bevakningService->setDelgivningsdatum($arende->getHubsCaseId(), $datum, $uid)->jsonSerialize();
     }
 
     /**
@@ -1753,6 +2165,12 @@ class ArendeService {
             $this->loggaHandelse($hubsCaseId, Handelse::TYP_KOPPLAD, ['antal' => count($ids)]);
         }
 
+        // BEVAKNING: en kopplad komplettering släcker en komplettering_kopplad-
+        // bevakning ("inväntar komplettering"). Best-effort, koordinationsdata.
+        if ($ids !== []) {
+            $this->bevakningService?->utvardera($hubsCaseId, 'komplettering', ['antal' => count($ids)]);
+        }
+
         // SÄKERHET (IDOR): tagMessage kör server-till-server som SERVICE-KONTOT, som
         // kan tagga VILKET meddelande som helst. Vi får INTE tagga klient-angivna
         // messageIds under den behörigheten utan per-meddelande-authz mot den VERKLIGA
@@ -1813,6 +2231,103 @@ class ArendeService {
             return false;
         }
         return $this->appConfig->getAppValueString('koppla_admin_tag', '0') === '1';
+    }
+
+    /**
+     * Talk-botens ("Ärende-brain") id — den AI-bot som SAGA:n aktiverar i ärende-/
+     * dokumentchatt-rum ({@see SpreedClient::enableBotInRoom()}).
+     *
+     *   occ config:app:set hubs_arende talk_bot_id --value 6
+     *
+     * Default 0 (ingen bot) ⇒ tyst no-op: en miljö utan brain-bot provisionerar
+     * inget och beter sig som förut. Botens id är miljöspecifikt (sätts vid
+     * `occ talk:bot:install`), därför config-styrt och aldrig hårdkodat.
+     */
+    private function talkBotId(): int {
+        if ($this->appConfig === null) {
+            return 0;
+        }
+        $raw = trim($this->appConfig->getAppValueString('talk_bot_id', '0'));
+        return ctype_digit($raw) ? (int)$raw : 0;
+    }
+
+    /**
+     * Botens delade HMAC-secret för att posta som "Ärende-brain" (bot-API:t).
+     * ADMIN: occ config:app:set hubs_arende talk_bot_secret --value <secret>.
+     * Tom ⇒ ingen bot-hälsning (postaBrainHalsning no-op:ar).
+     */
+    private function talkBotSecret(): string {
+        return $this->appConfig === null ? '' : trim($this->appConfig->getAppValueString('talk_bot_secret', ''));
+    }
+
+    /**
+     * ADMIN-INSTÄLLNING: när ska brain-boten posta sin inledande hälsning så
+     * handläggaren SER att AI:n finns (upptäckbarhet)?
+     *   occ config:app:set hubs_arende brain_greeting --value alla|arenderum|off
+     *   - 'alla'      (default): hälsa i BÅDE ärenderum och dokument-chattar.
+     *   - 'arenderum': bara i ärendets diskussionsrum.
+     *   - 'off':      ingen hälsning.
+     */
+    private function brainGreetingMode(): string {
+        $m = $this->appConfig === null ? 'alla' : trim($this->appConfig->getAppValueString('brain_greeting', 'alla'));
+        return in_array($m, ['alla', 'arenderum', 'off'], true) ? $m : 'alla';
+    }
+
+    /**
+     * Posta brain-botens INLEDANDE HÄLSNING i ett rum (upptäckbarhet — så handläggaren
+     * vet att AI:n finns och hur den används). Idempotent via en 'brain_greeting'-pekare
+     * (postas EN gång per rum). Gated på {@see brainGreetingMode()}. Best-effort:
+     * får aldrig fälla provisioneringen. Posten görs SOM BOTEN (bot-API), så den
+     * funkar även i fil-rum där tjänstekontot inte är deltagare.
+     *
+     * @param string $typ 'arenderum' | 'dokumentchatt'
+     */
+    public function postaBrainHalsning(string $token, string $typ, ?string $fil = null): void {
+        if ($token === '' || $this->spreedClient === null || $this->pekareMapper === null) {
+            return;
+        }
+        $mode = $this->brainGreetingMode();
+        if ($mode === 'off' || ($mode === 'arenderum' && $typ !== 'arenderum')) {
+            return;
+        }
+        $secret = $this->talkBotSecret();
+        if ($secret === '') {
+            return; // ingen bot-secret konfigurerad ⇒ kan inte posta som boten
+        }
+        try {
+            // Idempotens: hälsa EN gång per rum (markörpekare). Gallras med ärendet.
+            foreach ($this->pekareMapper->findByTypAndObjektId('brain_greeting', $token) as $p) {
+                return; // redan hälsat
+            }
+            $text = $typ === 'dokumentchatt'
+                ? "📄 **Ärende-brain** är kopplad till detta dokument.\n"
+                    . ($fil !== null && $fil !== '' ? "_{$fil}_\n" : '')
+                    . "· `!råd` — dokumentanpassade råd för arbetsmomentet\n"
+                    . "· `!hjälp` — alla kommandon\n"
+                    . "_AI-svar är arbetsmaterial (ej journal) och delas bara inom handläggarkretsen._"
+                : "👋 **Ärende-brain** är kopplad till detta ärende och hjälper dig genom handläggningen.\n"
+                    . "· `!brief` — AI-lägesbild av hela ärendet\n"
+                    . "· `!minne <fråga>` — sök i ärendets underlag\n"
+                    . "· `!gap` — vad saknas för nästa steg · `!frist` — klockorna\n"
+                    . "· `!hjälp` — alla kommandon\n"
+                    . "_AI-svar är arbetsmaterial (ej journal), källförankrat och HITL — du godkänner allt som blir handling._";
+
+            if ($this->spreedClient->botPostMessage($token, $text, $secret)) {
+                // Markera som hälsad först EFTER lyckad post (annars retas nästa gång).
+                $foraldrar = $this->pekareMapper->findByTypAndObjektId(
+                    $typ === 'dokumentchatt' ? 'dokumentchatt' : 'talk_room',
+                    $token,
+                );
+                $caseId = $foraldrar[0] ?? null;
+                if ($caseId !== null) {
+                    $this->pekareMapper->record($caseId->getHubsCaseId(), 'brain_greeting', $token);
+                }
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('hubs_arende: postaBrainHalsning misslyckades (graceful)', [
+                'app' => 'hubs_arende', 'exception' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -1894,10 +2409,28 @@ class ArendeService {
             }
 
             // Journal: verifierad facksystem-registrering (dnr + destination).
-            $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, [
+            // A11 — SIGNATUR-PROVENANS: när facksystemet signerat beslutet (kraverSignering)
+            // returnerar kvittot ett 'signatur'-block; bär in dess metadata i journalen så
+            // bevarande-panelen (mapToFullCard.beslut) kan renderas live vid varje fetch —
+            // inte bara i commit-svaret. PII-fritt: signeratAv = uid/roll-ref, aldrig namn.
+            $registreradDetalj = [
                 'dnr' => (string)($kvitto['dnr'] ?? ''),
                 'destination' => (string)$arende->getCommitDestination(),
-            ]);
+            ];
+            $signaturDetalj = $this->signaturDetaljFromKvitto($kvitto);
+            if ($signaturDetalj !== null) {
+                $registreradDetalj['signatur'] = $signaturDetalj;
+            }
+            $this->loggaHandelse($hubsCaseId, Handelse::TYP_REGISTRERAD, $registreradDetalj);
+
+            // GAP-044 ÄGARSKIFTE: registreringen är VERIFIERAD ⇒ facksystemet äger nu
+            // fristerna. Släck commit_registrerad-bevakningar (uppnådda) och avbryt
+            // Hubs lagstadgade speglingar så dubbelbevakningen upphör (kortet visar
+            // "bevakas i facksystemet"). Interna/manuella bevakningar behålls.
+            // Best-effort — ett fel här får aldrig fälla den verifierade commiten.
+            if (!empty($kvitto['dnr'])) {
+                $this->bevakningService?->bevakasIFacksystem($hubsCaseId, (string)$kvitto['dnr']);
+            }
 
             // gap24 — steg-advancering sker INTE här. Commit = Treserva-registrering
             // (provenans/dnr/retention) och är ORTOGONAL mot livscykel-steget: en
@@ -1922,6 +2455,36 @@ class ArendeService {
                         'exception' => $e->getMessage(),
                     ]);
                 }
+            }
+
+            // A12 — PERMANENT PROVENANS: journalen (hubs_handelser) gallras TILLSAMMANS
+            // med ärendet, så noten om att beslutet registrerades måste bo utanför
+            // Hubs-gallringen. Spegla den verifierade commiten som provenans i
+            // facksystemet/e-arkivet (rättskällan vid gallring). BEST-EFFORT — får
+            // ALDRIG fälla det redan verifierade kvittot (sparaProvenans returnerar
+            // false i stället för att kasta, men vi omsluter ändå defensivt).
+            try {
+                $signaturDetalj = $this->signaturDetaljFromKvitto($kvitto);
+                $provenans = [
+                    'moment' => 'beslut',
+                    'lagrum' => 'SoL/FL',
+                    'utfall' => 'registrerad',
+                    'harCommit' => true,
+                    'aktorUid' => $this->userSession?->getUser()?->getUID() ?? '',
+                    'dnr' => (string)($kvitto['dnr'] ?? ''),
+                ];
+                // Bär signaturens artefakt-referens (t.ex. PAdES-PDF-pekare) om den finns —
+                // aldrig PII, bara en referens.
+                if ($signaturDetalj !== null && isset($signaturDetalj['artefaktRef'])) {
+                    $provenans['artefaktRef'] = (string)$signaturDetalj['artefaktRef'];
+                }
+                $this->commitService->sparaProvenans($hubsCaseId, $provenans);
+            } catch (\Throwable $e) {
+                $this->logger->warning('hubs_arende: commit-provenans misslyckades (graceful)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $hubsCaseId,
+                    'exception' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -2270,14 +2833,22 @@ class ArendeService {
     }
 
     /**
-     * gap21 — plikt-grinden för kortet. Om ärendetypen deklarerar pliktGrind=true OCH
-     * en skyddsbedömning ännu inte är gjord ⇒ {typ:'skyddsbedomning', kvitterad:false},
+     * gap21 / A7 — plikt-grinden för kortet. Om ärendetypen deklarerar pliktGrind=true
+     * OCH en skyddsbedömning ännu inte är gjord ⇒ {typ:'skyddsbedomning', kvitterad:false},
      * annars null.
      *
-     * Motorn lagrar ingen separat skyddsbedömnings-kvittens; honest härledning: en
-     * skyddsbedömning anses ANNU EJ GJORD så länge ärendet är i ett tidigt steg
-     * ('inflode'/'forhandsbedomning'). Så snart ärendet avancerats förbi
-     * förhandsbedömningen anses plikten infriad ⇒ null (ingen kvarvarande grind).
+     * A7 — CIRKULARITETEN BRUTEN (GAP-U1): tidigare härleddes "skyddsbedömning gjord"
+     * ur STEGET (`!in_array(getSteg(),['inflode','forhandsbedomning'])`) — men steget
+     * flyttas just genom den grind som plikten ska skydda, så beviset var cirkulärt och
+     * kortets röda pliktmarkör ljög. Nu läses beviset ur journalen via EvidensService:
+     * skyddsbedömningen anses gjord om det finns en ARTEFAKT ur mall (handling vars
+     * mall-id matchar 'skyddsbedom') ELLER en journalförd KVITTENS/grindval för momentet.
+     * Detta speglar frontendens harledStatus (arendeFlow.js) så kort och stepper aldrig
+     * divergerar.
+     *
+     * FAIL-OPEN: saknas evidensService (positionell testharness) faller vi tillbaka på
+     * det gamla steg-baserade beteendet så de befintliga testerna förblir gröna.
+     * EvidensService är i sig fail-open vid läsfel (låser aldrig ute en handläggare).
      *
      * @return array{typ:string, kvitterad:bool}|null
      */
@@ -2286,11 +2857,120 @@ class ArendeService {
         if ($typ === null || $typ->getPliktGrind() !== true) {
             return null;
         }
-        $skyddsbedomningGjord = !in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true);
-        if ($skyddsbedomningGjord) {
+        $hubsCaseId = $arende->getHubsCaseId();
+        if ($this->evidensService !== null) {
+            // A7 — honest bevis ur journalen (artefakt ur mall ELLER kvittens/grindval).
+            $skyddsbedomningGjord =
+                $this->evidensService->harArtefakt($hubsCaseId, 'skyddsbedomning')
+                || $this->evidensService->harKvittens($hubsCaseId, 'skyddsbedomning');
+        } else {
+            // Fail-open: gammalt steg-baserat beteende när evidensService ej wirad
+            // (behåller den positionella testharnessen grön).
+            $skyddsbedomningGjord = !in_array($arende->getSteg(), ['inflode', 'forhandsbedomning'], true);
+        }
+        // T4/F5 — BEKRÄFTA i stället för att FÖRSVINNA. Tidigare returnerades null
+        // när skyddsbedömningen var gjord, så kortets pliktmarkör bara försvann —
+        // användaren kunde inte skilja "gjord" från "borta". Nu bär plikt-objektet
+        // ett kvitterat tillstånd (kvitterad=true), som frontenden renderar som en
+        // grön bekräftelse. All grind-logik i frontenden gatar på !kvitterad, så
+        // beteendet är oförändrat (true beter sig som det gamla null:et).
+        return ['typ' => 'skyddsbedomning', 'kvitterad' => $skyddsbedomningGjord];
+    }
+
+    /**
+     * A11 — normalisera signatur-metadatan ur ett verifierat commit-kvitto till den
+     * form som journalförs i TYP_REGISTRERAD.detalj.signatur och renderas i
+     * bevarande-panelen. Facksystemet returnerar blocket när beslutet krävde signering
+     * (kraverSignering). Honest null när kvittot saknar signatur.
+     *
+     * PII-invariant: signeratAv är en uid-/roll-referens, ALDRIG ett namn. Endast
+     * kända, PII-fria nycklar plockas in (format/pdfa/ltv/signeratAv/tid[/artefaktRef]).
+     *
+     * @param array<string,mixed> $kvitto
+     * @return array<string,mixed>|null
+     */
+    private function signaturDetaljFromKvitto(array $kvitto): ?array {
+        $sig = $kvitto['signatur'] ?? null;
+        if (!is_array($sig) || $sig === []) {
             return null;
         }
-        return ['typ' => 'skyddsbedomning', 'kvitterad' => false];
+        $detalj = [
+            'format' => (string)($sig['format'] ?? ''),
+            'pdfa' => (bool)($sig['pdfa'] ?? false),
+            'ltv' => (bool)($sig['ltv'] ?? false),
+            'signeratAv' => (string)($sig['signeratAv'] ?? ''),
+            'tid' => (string)($sig['tid'] ?? ''),
+        ];
+        // Valfri artefakt-referens (t.ex. PAdES-PDF-pekare) — aldrig PII, bara en referens.
+        if (isset($sig['artefaktRef']) && $sig['artefaktRef'] !== '') {
+            $detalj['artefaktRef'] = (string)$sig['artefaktRef'];
+        }
+        return $detalj;
+    }
+
+    /**
+     * A11 — bevarande-panelens beslutsblock för mapToFullCard, härlett ur den
+     * PERSISTERADE journalen (senaste TYP_REGISTRERAD) + register-raden så panelen
+     * renderas live vid varje fetch (inte bara i commit-svaret). Honest null när
+     * ärendet ännu inte är registrerat (ingen commit ⇒ inget beslut att bevara).
+     *
+     * Signatur-provenansen (om beslutet signerats) plockas ur samma journalrad så
+     * "signerat / PDF/A / LTV"-chippen speglar det facksystemet faktiskt kvitterade.
+     * THIN + NEVER-SoR: enbart koordinations-/provenansvärden, aldrig PII/sakinnehåll.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function beslutForCard(Arende $arende): ?array {
+        // Ett beslut att bevara existerar först när ärendet är verifierat registrerat.
+        if ($arende->getProvenanceState() !== 'registrerad') {
+            return null;
+        }
+        $signatur = null;
+        if ($this->handelseMapper !== null) {
+            try {
+                // findByCaseId är ASC (äldst först) ⇒ sista sedda TYP_REGISTRERAD vinner
+                // (nyaste registreringen), samma "sista vinner"-mönster som pekarBlock.
+                foreach ($this->handelseMapper->findByCaseId($arende->getHubsCaseId(), 500) as $h) {
+                    if ($h->getTyp() !== Handelse::TYP_REGISTRERAD) {
+                        continue;
+                    }
+                    $d = $this->handelseDetalj($h);
+                    if (isset($d['signatur']) && is_array($d['signatur'])) {
+                        $signatur = $d['signatur'];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Graceful — panel utan signatur-chip hellre än ett fällt kort.
+                $this->logger->warning('hubs_arende: beslutForCard journal-läsfel (graceful)', [
+                    'app' => 'hubs_arende',
+                    'hubsCaseId' => $arende->getHubsCaseId(),
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
+        return [
+            'dnr' => $arende->getDnr(),
+            'destination' => $arende->getCommitDestination(),
+            'provenans' => $arende->getProvenanceState(),
+            // Signatur-provenans (null när beslutet inte krävde/har signering).
+            'signatur' => $signatur,
+            'signerat' => $signatur !== null,
+        ];
+    }
+
+    /**
+     * Avkoda en journalrads detalj-JSON till en array (tomt vid saknad/ogiltig JSON).
+     * Speglar EvidensService::detalj — ingen ny lagring, bara avläsning.
+     *
+     * @return array<string,mixed>
+     */
+    private function handelseDetalj(Handelse $h): array {
+        $raw = $h->getDetalj();
+        if (!is_string($raw) || $raw === '') {
+            return [];
+        }
+        $decoded = json_decode($raw, true);
+        return is_array($decoded) ? $decoded : [];
     }
 
     /**
@@ -2326,6 +3006,7 @@ class ArendeService {
         $block = self::TOM_PEKARE;
         $deckBoardId = null;
         $talkRooms = [];
+        $dokumentchattar = [];
         foreach ($this->pekareMapper->findByCaseId($hubsCaseId) as $p) {
             // id-DESC ⇒ skriv varje typ varv för varv; sista (= äldsta) vinner.
             switch ($p->getObjektTyp()) {
@@ -2357,12 +3038,21 @@ class ArendeService {
                 case 'team':
                     $block['teamId'] = $p->getObjektId() !== '' ? $p->getObjektId() : null;
                     break;
+                case 'dokumentchatt':
+                    if ($p->getObjektId() !== '') {
+                        $dokumentchattar[] = [
+                            'token' => $p->getObjektId(),
+                            'fil' => $p->getRiktning() !== null && $p->getRiktning() !== '' ? $p->getRiktning() : null,
+                        ];
+                    }
+                    break;
             }
         }
         // bevakningBoardId speglar deck-boardet (bevakningar bor på ärendekortets board).
         $block['bevakningBoardId'] = $deckBoardId;
         // Äldst först (saga-originalet = ärendets diskussion) — Rum-flikens ordning.
         $block['talkRooms'] = array_reverse($talkRooms);
+        $block['dokumentchattar'] = array_reverse($dokumentchattar);
         return $block;
     }
 
@@ -2633,6 +3323,16 @@ class ArendeService {
     }
 
     /**
+     * Service-/systemkonton (tjänstekonto, bottar, admin) är enhetsmedlemmar men
+     * aldrig utredare att fördela till — filtreras bort ur den mänskliga rostern.
+     */
+    private function arSystemkonto(string $uid): bool {
+        return $uid === 'admin'
+            || str_ends_with($uid, '-svc')
+            || str_starts_with($uid, 'bot-');
+    }
+
+    /**
      * Säkerhets-gate för tilldelning: assignee MÅSTE vara behörig för ärendets
      * enhet (medlem av enhetens mottagningskrets) innan vi pekar om ACL/Deck och
      * re-homar kalenderobjektet till deras kalender.
@@ -2694,7 +3394,42 @@ class ArendeService {
      * utan grupp-service/ledger.
      */
     private function syncArenderumGrupp(string $hubsCaseId): void {
-        $this->arenderumGroupService?->sync($hubsCaseId, $this->atkomstUids($hubsCaseId));
+        $uids = $this->atkomstUids($hubsCaseId);
+        $this->arenderumGroupService?->sync($hubsCaseId, $uids);
+        // Spegla samma åtkomstlista in i teamets individ-medlemmar (namn i team-vyn).
+        $this->syncArenderumTeamMedlemmar($hubsCaseId, $uids);
+    }
+
+    /**
+     * Spegla member-ledgerns AKTIVA åtkomstlista in i ärende-TEAMETS individuella
+     * medlemmar (TYPE_USER) så Nextclouds team-/kontaktvy visar allas NAMN, inte
+     * bara den kollapsade gruppraden. Uid:n förfiltreras mot userExists (samma som
+     * gruppsynken) så ej-upplösbara uid:n (demo-hl-*) inte POST:as i evighet.
+     * Graceful no-op utan team-klient/pekare eller innan team-pekaren finns (T i
+     * createCase kör synken explicit EFTER att teamet skapats). Borttagning är
+     * auktoritativ i {@see TeamClient::syncMembers} (revokering får ej hänga kvar).
+     *
+     * @param string[] $uids ärenderummets aktiva åtkomstlista (atkomstUids)
+     */
+    private function syncArenderumTeamMedlemmar(string $hubsCaseId, array $uids): void {
+        if ($this->teamClient === null || $this->pekareMapper === null) {
+            return;
+        }
+        $singleId = null;
+        foreach ($this->pekareMapper->findByCaseAndTyp($hubsCaseId, 'team') as $p) {
+            $singleId = $p->getObjektId();
+            break;
+        }
+        if ($singleId === null || $singleId === '') {
+            return;
+        }
+        if ($this->userManager !== null) {
+            $uids = array_values(array_filter(
+                $uids,
+                fn ($u): bool => $this->userManager->userExists((string)$u),
+            ));
+        }
+        $this->teamClient->syncMembers($singleId, $uids);
     }
 
     /**

@@ -181,7 +181,7 @@ class InflodeFeedService {
             $korg = $this->korgForMailbox($mailbox);
             $channelInfo = $this->channelForMailbox($mailbox);
 
-            $rows = $this->fetchIncomingRows($mailbox->getEmail());
+            $rows = $this->fetchIncomingRows($mailbox->getEmail(), $userId);
 
             foreach ($rows as $row) {
                 if (count($inflode) >= self::MAX_ROWS_TOTAL) {
@@ -266,10 +266,13 @@ class InflodeFeedService {
      *
      * @return list<array<string,mixed>>
      */
-    private function fetchIncomingRows(string $email): array {
+    private function fetchIncomingRows(string $email, string $userId): array {
         try {
             $qb = $this->db->getQueryBuilder();
-            $qb->select('m.id AS db_id', 'm.message_id', 'm.thread_root_id', 'm.subject', 'm.preview_text', 'm.sent_at', 'm.flag_seen', 'a.id AS account_id')
+            // a.user_id följer med raden så dedupen kan föredra den INLOGGADE
+            // användarens egen kopia — se dedupRows/preferRow (cross-account
+            // tagg-404).
+            $qb->select('m.id AS db_id', 'm.message_id', 'm.thread_root_id', 'm.subject', 'm.preview_text', 'm.sent_at', 'm.flag_seen', 'a.id AS account_id', 'a.user_id AS user_id')
                 ->from('mail_messages', 'm')
                 ->join('m', 'mail_mailboxes', 'mb', $qb->expr()->eq('m.mailbox_id', 'mb.id'))
                 ->join('mb', 'mail_accounts', 'a', $qb->expr()->eq('mb.account_id', 'a.id'))
@@ -293,7 +296,7 @@ class InflodeFeedService {
             // 'otriagerat' count (count(rows)) collapses together with the band.
             // Then drop messages already triaged ("behandlad"/case:-taggade) so en
             // "Att ta emot"-rad försvinner när handläggaren tagit emot den.
-            return $this->filterHandled($this->dedupRows($rows));
+            return $this->filterHandled($this->dedupRows($rows, $userId));
         } catch (\Throwable $e) {
             // mail app absent / schema mismatch / no inflow on dev15 → honestly
             // empty for this korg, never crash, never synthesise.
@@ -376,17 +379,22 @@ class InflodeFeedService {
      * account → several db rows for one real message. We collapse on the most
      * stable identity available: thread_root_id, else message_id, else db_id.
      *
-     * On a collision we KEEP the copy that actually carries body text: the
-     * mirrored copies on dev15 have an EMPTY preview_text, so preferring a
-     * non-empty preview_text keeps the excerpt-bearing row. Tiebreak (both empty
-     * or both non-empty) → the lower db_id, for a stable, deterministic pick.
-     * Order of first appearance is preserved (the SELECT already sorts by
-     * sent_at DESC). Never throws.
+     * On a collision we KEEP, in priority order: (1) den INLOGGADE användarens
+     * EGEN kopia — alla taggvägar ("Ta emot"/koppla, via mail-appens
+     * MessageMapper::findByUserId) kräver att anroparen ÄGER exakt den db-rad
+     * feeden exponerar; bär raden en ANNAN användares kopia 404:ar taggningen
+     * tyst (cross-account tagg-404) och raden studsar tillbaka till "Att ta
+     * emot"; (2) the copy that actually carries body text — the mirrored copies
+     * on dev15 have an EMPTY preview_text, so preferring a non-empty
+     * preview_text keeps the excerpt-bearing row; (3) tiebreak → the lower
+     * db_id, for a stable, deterministic pick. Order of first appearance is
+     * preserved (the SELECT already sorts by sent_at DESC). Never throws.
      *
      * @param list<array<string,mixed>> $rows
+     * @param string $userId den inloggade användaren (ägarskaps-prio)
      * @return list<array<string,mixed>>
      */
-    private function dedupRows(array $rows): array {
+    private function dedupRows(array $rows, string $userId): array {
         $kept = [];
         foreach ($rows as $row) {
             $key = (string)($row['thread_root_id'] ?? '');
@@ -407,7 +415,7 @@ class InflodeFeedService {
                 continue;
             }
 
-            if ($this->preferRow($row, $kept[$key])) {
+            if ($this->preferRow($row, $kept[$key], $userId)) {
                 $kept[$key] = $row;
             }
         }
@@ -416,19 +424,28 @@ class InflodeFeedService {
 
     /**
      * Whether $candidate should replace the already-kept $current for the same
-     * dedup key: prefer a non-empty preview_text; on a tie, prefer the lower
-     * db_id. Pure, never throws.
+     * dedup key, in priority order: den inloggade användarens EGEN rad → a
+     * non-empty preview_text → the lower db_id. Pure, never throws.
      *
      * @param array<string,mixed> $candidate
      * @param array<string,mixed> $current
+     * @param string $userId den inloggade användaren
      */
-    private function preferRow(array $candidate, array $current): bool {
+    private function preferRow(array $candidate, array $current, string $userId): bool {
+        // Egen-ägd rad FÖRST: taggvägarna resolvar meddelandet per db-id via
+        // anroparens EGET mail-konto, så en främmande kopia gör 'inf:<dbId>'
+        // otaggbar för just den här användaren (cross-account tagg-404).
+        $candOwned = (string)($candidate['user_id'] ?? '') === $userId;
+        $curOwned = (string)($current['user_id'] ?? '') === $userId;
+        if ($candOwned !== $curOwned) {
+            return $candOwned;
+        }
         $candHasText = trim((string)($candidate['preview_text'] ?? '')) !== '';
         $curHasText = trim((string)($current['preview_text'] ?? '')) !== '';
         if ($candHasText !== $curHasText) {
             return $candHasText;
         }
-        // Same text-presence → deterministic tiebreak on the lower db_id.
+        // Same ownership + text-presence → deterministic tiebreak on the lower db_id.
         return (int)($candidate['db_id'] ?? 0) < (int)($current['db_id'] ?? 0);
     }
     // <<< HUBS-START-ADD ─────────────────────────────────────────────────────
